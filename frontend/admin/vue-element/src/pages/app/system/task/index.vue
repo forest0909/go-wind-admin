@@ -144,7 +144,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       {
         name: "restartAll",
         label: $t("pages.task.button.restartAll"),
-        attrs: { type: "primary" },
+        attrs: { type: "warning", plain: true },
       } as ToolsButton,
       "add",
     ],
@@ -180,7 +180,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
         prop: "action",
         label: $t("common.table.action"),
         fixed: "right",
-        width: 240,
+        width: 300,
         cellType: "tool",
         buttons: [
           { name: "edit", label: $t("common.button.edit"), icon: "lucide:pen-line" },

@@ -14,6 +14,7 @@ import { exportAuditLogsServer } from '@/api/hooks/audit-export';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import ApiAuditLogDetailDrawer from './DetailDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 成功状态列表
@@ -315,7 +316,7 @@ const ApiAuditLog = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

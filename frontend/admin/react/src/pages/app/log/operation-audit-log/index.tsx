@@ -20,6 +20,7 @@ import {
   successToColor,
   successToName,
 } from './constants';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 操作审计日志页面
@@ -262,7 +263,7 @@ const OperationAuditLogPage = () => {
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
           }}

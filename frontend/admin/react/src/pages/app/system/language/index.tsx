@@ -14,6 +14,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { enableBoolToColor } from './constants';
 import LanguageDrawer from './components/LanguageDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 语言管理页面
@@ -173,7 +174,7 @@ const LanguageManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

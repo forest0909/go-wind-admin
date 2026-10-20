@@ -21,6 +21,7 @@ import {
   successToColor,
   successToName,
 } from './constants';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 数据访问审计日志页面
@@ -259,7 +260,7 @@ const DataAccessAuditLogPage = () => {
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
           }}

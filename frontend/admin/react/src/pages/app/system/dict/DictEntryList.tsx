@@ -14,6 +14,7 @@ import { fetchListDictEntries, useDeleteDictEntry } from '@/api/hooks/dict';
 import { enableBoolOptions, getEnableColor, getEnableLabel, getEntryLabel } from './constants';
 import DictEntryDrawer from './DictEntryDrawer';
 import { usePreferencesStore } from '@/core/preferences/store';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 interface DictEntryListProps {
   typeId: number | null;
@@ -159,7 +160,7 @@ const DictEntryList: React.FC<DictEntryListProps> = ({ typeId }) => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

@@ -30,6 +30,7 @@ import {
 } from '@/api/hooks/notification-rule';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 通知路由规则管理（事件类型 → 渠道 + 派发方式）
@@ -284,7 +285,7 @@ const NotificationRulePage = () => {
             return { data: response.items || [], total: response.total || 0, success: true };
           }}
           rowKey="id"
-          search={{ labelWidth: 'auto', defaultCollapsed: false }}
+          search={{ optionRender: searchOptionRender, labelWidth: 'auto', defaultCollapsed: false }}
           pagination={{
             defaultPageSize: TABLE.DEFAULT_PAGE_SIZE,
             showSizeChanger: true,

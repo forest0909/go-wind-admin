@@ -16,6 +16,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { getStatusMap, getStatusOptions, getTypeMap, getTypeOptions } from './constants';
 import MessageDrawer from './components/MessageDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 内部消息列表页面
@@ -156,7 +157,7 @@ const InternalMessageList = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

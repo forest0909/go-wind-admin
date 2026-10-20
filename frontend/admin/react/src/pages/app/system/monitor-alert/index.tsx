@@ -34,6 +34,7 @@ import {
 } from '@/api/hooks/monitor-alert';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 监控告警规则：指标阈值 → 触发通知（联动通知域）。
@@ -269,7 +270,7 @@ const MonitorAlertPage = () => {
             return { data: response.items || [], total: response.total || 0, success: true };
           }}
           rowKey="id"
-          search={{ labelWidth: 'auto', defaultCollapsed: false }}
+          search={{ optionRender: searchOptionRender, labelWidth: 'auto', defaultCollapsed: false }}
           pagination={{
             defaultPageSize: TABLE.DEFAULT_PAGE_SIZE,
             showSizeChanger: true,

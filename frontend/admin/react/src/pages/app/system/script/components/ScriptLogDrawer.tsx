@@ -10,6 +10,7 @@ import { PaginationQuery } from '@/core';
 import { fetchListScriptLogs, usePurgeScriptLogs } from '@/api/hooks/script-log';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { TABLE } from '@/config/constants.ts';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 interface ScriptLogDrawerProps {
   open: boolean;
@@ -162,7 +163,7 @@ const ScriptLogDrawer: React.FC<ScriptLogDrawerProps> = ({ open, onClose }) => {
           };
         }}
         rowKey="id"
-        search={{
+        search={{ optionRender: searchOptionRender,
           labelWidth: 'auto',
           defaultCollapsed: false,
         }}

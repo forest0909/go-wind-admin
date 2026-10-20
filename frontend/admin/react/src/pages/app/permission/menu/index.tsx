@@ -28,6 +28,7 @@ import {
   normalizeAuthority,
 } from './constants';
 import MenuDrawer from './components/MenuDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 菜单标题关键词的前端过滤。
@@ -369,7 +370,7 @@ const MenuManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

@@ -22,6 +22,7 @@ import {
   getRiskLevelOptions,
 } from './constants';
 import LoginAuditLogDetailDrawer from './DetailDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 登录审计日志页面
@@ -288,7 +289,7 @@ const LoginAuditLogPage = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

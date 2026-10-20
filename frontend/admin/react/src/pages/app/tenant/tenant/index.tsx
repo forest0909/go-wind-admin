@@ -21,6 +21,7 @@ import {
   TENANT_STATUS_STATUS,
 } from './constants';
 import TenantDrawer from './components/TenantDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 租户列表页面
@@ -235,7 +236,7 @@ const TenantList = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
               span: 4,

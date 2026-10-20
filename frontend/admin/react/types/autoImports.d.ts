@@ -63,6 +63,7 @@ declare global {
   const monacoLoader: typeof import('../src/components/common/Editor/src/monaco-loader').default
   const reconnectSSEServer: typeof import('../src/hooks/useTokenRefresh').reconnectSSEServer
   const resetDictCache: typeof import('../src/hooks/useDictCache').resetDictCache
+  const searchOptionRender: typeof import('../src/components/common/searchSubmitter').searchOptionRender
   const startRefreshTimer: typeof import('../src/hooks/useTokenRefresh').startRefreshTimer
   const startTransition: typeof import('react').startTransition
   const stopRefreshTimer: typeof import('../src/hooks/useTokenRefresh').stopRefreshTimer

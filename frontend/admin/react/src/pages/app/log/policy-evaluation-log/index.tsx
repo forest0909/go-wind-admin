@@ -13,6 +13,7 @@ import { exportAuditLogs, type AuditExportFormat } from '@/utils/csv';
 import { exportAuditLogsServer } from '@/api/hooks/audit-export';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 评估结果筛选项
@@ -320,7 +321,7 @@ const PolicyEvaluationLog = () => {
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
           }}

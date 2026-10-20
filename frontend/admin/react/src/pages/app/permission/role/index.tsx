@@ -14,6 +14,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { getStatusMap, getStatusOptions, getDataScopeMap } from './constants';
 import RoleDrawer from './components/RoleDrawer';
 import { TABLE } from '@/config/constants.ts';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 角色管理页面
@@ -173,7 +174,7 @@ const RoleManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

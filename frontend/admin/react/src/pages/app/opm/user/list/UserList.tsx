@@ -18,6 +18,7 @@ import { useUserStore } from '@/stores/user';
 import { parseResourceHiddenFields } from '@/core/access';
 import { getUserStatusMap, getUserStatusOptions } from '../constants';
 import UserDrawer from './UserDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 interface UserListProps {
   tenantId: number | undefined;
@@ -290,7 +291,7 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: true,
           }}

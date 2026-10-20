@@ -14,6 +14,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { getMethodColor } from './constants';
 import ApiDrawer from './components/ApiDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * API管理页面
@@ -181,7 +182,7 @@ const ApiManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

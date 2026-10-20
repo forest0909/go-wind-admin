@@ -13,6 +13,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { enableBoolToColor, getEnableBoolMap } from './constants';
 import CategoryDrawer from './components/CategoryDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 内部消息分类管理页面
@@ -139,7 +140,7 @@ const InternalMessageCategoryManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

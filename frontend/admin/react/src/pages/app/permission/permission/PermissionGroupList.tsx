@@ -18,6 +18,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { fetchListPermissionGroups, useDeletePermissionGroup } from '@/api/hooks/permission-group';
 import { getStatusMap, getStatusOptions } from './constants';
 import PermissionGroupDrawer from './PermissionGroupDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 interface PermissionGroupListProps {
   currentGroupId: number | null;
@@ -190,7 +191,7 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
             span: 12,

@@ -16,6 +16,7 @@ import { getLanguageOptions, languageColorMap } from './constants';
 import ScriptDrawer from './components/ScriptDrawer';
 import ScriptLogDrawer from './components/ScriptLogDrawer';
 import TestRunModal from './components/TestRunModal';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 脚本管理页面
@@ -234,7 +235,7 @@ const ScriptManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

@@ -19,6 +19,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { getStatusMap, getStatusOptions, getOrgTypeMap, getOrgTypeOptions } from './constants';
 import OrgDrawer from './components/OrgDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 组织架构管理页面
@@ -221,7 +222,7 @@ const OrgUnitManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

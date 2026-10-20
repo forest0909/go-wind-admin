@@ -18,6 +18,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { getProviderMap, formatFileSize } from './constants';
 import FileDrawer from './components/FileDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 文件管理页面
@@ -198,7 +199,7 @@ const FileManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

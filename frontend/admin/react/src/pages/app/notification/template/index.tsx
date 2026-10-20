@@ -33,6 +33,7 @@ import {
 } from '@/api/hooks/notification-template';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 通知模板管理（可复用的标题/正文占位模板，{{var}} 占位符）。
@@ -236,7 +237,7 @@ const NotificationTemplatePage = () => {
             return { data: response.items || [], total: response.total || 0, success: true };
           }}
           rowKey="id"
-          search={{ labelWidth: 'auto', defaultCollapsed: false }}
+          search={{ optionRender: searchOptionRender, labelWidth: 'auto', defaultCollapsed: false }}
           pagination={{
             defaultPageSize: TABLE.DEFAULT_PAGE_SIZE,
             showSizeChanger: true,

@@ -18,6 +18,7 @@ import {
   getExpiryPolicyOptions,
 } from './constants';
 import PlanDrawer from './components/PlanDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 interface PlanListProps {
   currentPlanId: number | null;
@@ -180,7 +181,7 @@ const PlanList: React.FC<PlanListProps> = ({ currentPlanId, onPlanSelect }) => {
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
             span: 12,

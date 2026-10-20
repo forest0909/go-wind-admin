@@ -12,6 +12,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { TABLE } from '@/config/constants';
 import AiProviderDrawer from './components/AiProviderDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 export default function AiProviderPage() {
   const { t } = useTranslation('aiProvider');
@@ -127,7 +128,7 @@ export default function AiProviderPage() {
       <ListTable<AiProvider>
         actionRef={actionRef}
         rowKey="id"
-        search={{ labelWidth: 'auto', defaultCollapsed: false }}
+        search={{ optionRender: searchOptionRender, labelWidth: 'auto', defaultCollapsed: false }}
         scroll={{ y: tableScrollY, x: 1000 }}
         request={async (params) => {
           const { current, pageSize, ...rest } = params;

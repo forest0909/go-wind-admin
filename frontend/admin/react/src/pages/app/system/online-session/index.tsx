@@ -15,6 +15,7 @@ import TableExportButton from '@/components/common/TableExportButton';
 import { TABLE } from '@/config/constants';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 在线用户（在线会话）页面
@@ -179,7 +180,7 @@ const OnlineSessionPage = () => {
             />,
           ]}
           rowKey={(record) => `${record.clientType}-${record.userId}-${record.jti}`}
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
           }}

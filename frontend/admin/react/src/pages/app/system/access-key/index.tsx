@@ -20,6 +20,7 @@ import {
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import AccessKeyDrawer from './components/AccessKeyDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 export default function AccessKeyPage() {
   const { t } = useTranslation('access-key');
@@ -153,7 +154,7 @@ export default function AccessKeyPage() {
           actionRef={actionRef}
           columns={columns}
           rowKey="id"
-          search={{ labelWidth: 'auto', defaultCollapsed: false }}
+          search={{ optionRender: searchOptionRender, labelWidth: 'auto', defaultCollapsed: false }}
           scroll={{ y: tableScrollY }}
           pagination={{
             defaultPageSize: 20,

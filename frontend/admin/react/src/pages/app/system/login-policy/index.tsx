@@ -14,6 +14,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { getPolicyTypeMap, getPolicyMethodMap, getPolicyMethodOptions } from './constants';
 import LoginPolicyDrawer from './components/LoginPolicyDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 登录策略管理页面
@@ -185,7 +186,7 @@ const LoginPolicyManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

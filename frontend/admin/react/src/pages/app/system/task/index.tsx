@@ -29,6 +29,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import SystemTasksModal from './SystemTasksModal';
 import { getTaskTypeMap, getTaskTypeOptions } from './constants';
 import TaskDrawer from './components/TaskDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 任务管理页面
@@ -301,7 +302,7 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

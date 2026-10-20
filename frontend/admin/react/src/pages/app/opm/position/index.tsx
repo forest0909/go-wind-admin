@@ -25,6 +25,7 @@ import {
   getPositionTypeOptions,
 } from './constants';
 import PositionDrawer from './components/PositionDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 职位管理页面
@@ -205,7 +206,7 @@ const PositionManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

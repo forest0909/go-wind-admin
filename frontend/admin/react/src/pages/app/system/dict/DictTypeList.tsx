@@ -13,6 +13,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { fetchListDictTypes, useDeleteDictType } from '@/api/hooks/dict';
 import { enableBoolOptions, getEnableColor, getEnableLabel } from './constants';
 import DictTypeDrawer from './DictTypeDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 interface DictTypeListProps {
   currentTypeId: number | null;
@@ -134,7 +135,7 @@ const DictTypeList: React.FC<DictTypeListProps> = ({ currentTypeId, onTypeSelect
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
             span: 12,

@@ -19,6 +19,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { InboxDetailDrawer } from './components/InboxDetailDrawer';
 import { getRecipientStatusMap, getRecipientStatusOptions } from './constants';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 收件箱页面
@@ -276,7 +277,7 @@ const InboxList = () => {
             };
           }}
           rowKey="id"
-          search={{
+          search={{ optionRender: searchOptionRender,
             labelWidth: 'auto',
             defaultCollapsed: false,
             // 全局 span 8，各字段再乘自己的 colSize（标题 1 / 状态 0.625 / 接收时间

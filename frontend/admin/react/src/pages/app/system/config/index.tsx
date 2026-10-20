@@ -14,6 +14,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { getValueTypeLabel, valueTypeToColor } from './constants';
 import ConfigDrawer from './components/ConfigDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 /**
  * 参数管理页面（系统参数，动态 KV 运行时配置）
@@ -172,7 +173,7 @@ const ConfigManagement = () => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

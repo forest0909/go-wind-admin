@@ -13,6 +13,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { fetchListPlanQuotas, useDeletePlanQuota } from '@/api/hooks/plan';
 import { getQuotaTypeMap, getQuotaTypeOptions } from './constants';
 import PlanQuotaDrawer from './components/PlanQuotaDrawer';
+import { searchOptionRender } from '@/components/common/searchSubmitter';
 
 interface PlanQuotaListProps {
   planId: number | null;
@@ -153,7 +154,7 @@ const PlanQuotaList: React.FC<PlanQuotaListProps> = ({ planId }) => {
               };
             }}
             rowKey="id"
-            search={{
+            search={{ optionRender: searchOptionRender,
               labelWidth: 'auto',
               defaultCollapsed: false,
             }}

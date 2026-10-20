@@ -96,7 +96,7 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
   return (
     <DrawerForm
       formRef={formRef}
-      title={mode === 'create' ? t('create') : t('edit')}
+      title={mode === 'create' ? t('common:modal.create', { moduleName: t('moduleName') }) : t('common:modal.update', { moduleName: t('moduleName') })}
       open={open}
       onOpenChange={(visible) => {
         if (!visible) {

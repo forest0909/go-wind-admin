@@ -38,7 +38,7 @@
     "confirm": "Confirm",
     "cancel": "Cancel",
     "close": "Close",
-    "view": "View",
+    "view": "View {moduleName}",
     "submit": "Submit",
     "reset": "Reset",
     "save": "Save",
@@ -73,8 +73,9 @@
   },
   "modal": {
     "create": "Create {moduleName}",
-    "update": "Edit {moduleName}",
-    "delete": "Delete {moduleName}"
+    "update": "Update {moduleName}",
+    "delete": "Delete {moduleName}",
+    "view": "View {moduleName}"
   },
   "notification": {
     "create_success": "Created successfully",
@@ -121,7 +122,7 @@
   },
   "title": {
     "create": "Create {moduleName}",
-    "update": "Edit {moduleName}",
+    "update": "Update {moduleName}",
     "delete": "Delete {moduleName}",
     "insert_url": "Insert Link",
     "confirm": "Confirm {action}"

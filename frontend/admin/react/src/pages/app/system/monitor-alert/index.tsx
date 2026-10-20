@@ -308,7 +308,7 @@ const MonitorAlertPage = () => {
       </div>
 
       <DrawerForm
-        title={formMode === 'create' ? t('create') : t('edit')}
+        title={formMode === 'create' ? t('common:modal.create', { moduleName: t('moduleName') }) : t('common:modal.update', { moduleName: t('moduleName') })}
         width={560}
         open={formOpen}
         onOpenChange={setFormOpen}

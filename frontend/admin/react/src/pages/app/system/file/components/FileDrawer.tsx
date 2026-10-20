@@ -80,7 +80,7 @@ const FileDrawer: React.FC<FileDrawerProps> = ({
   return (
     <DrawerForm
       formRef={formRef}
-      title={mode === 'create' ? t('upload') : t('edit')}
+      title={mode === 'create' ? t('common:modal.create', { moduleName: t('moduleName') }) : t('edit')}
       open={open}
       onOpenChange={(visible) => {
         if (!visible) {

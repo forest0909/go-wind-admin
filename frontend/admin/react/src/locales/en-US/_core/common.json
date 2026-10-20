@@ -285,5 +285,10 @@
     "lastWeek": "Last Week",
     "thisMonth": "This Month",
     "lastMonth": "Last Month"
+  },
+  "modal": {
+    "create": "Create {{moduleName}}",
+    "update": "Update {{moduleName}}",
+    "view": "View {{moduleName}}"
   }
 }

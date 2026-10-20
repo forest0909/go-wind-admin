@@ -56,7 +56,7 @@ const ApiAuditLogDetailDrawer = ({ open, data, onClose }: DetailDrawerProps) => 
       open={open}
       onClose={onClose}
       size={780}
-      title={t('title')}
+      title={t('common:modal.view', { moduleName: t('title') })}
       destroyOnHidden
     >
       <Divider titlePlacement="left">{t('sectionBasic')}</Divider>

@@ -149,7 +149,8 @@
   },
   "modal": {
     "create": "Create {moduleName}",
-    "update": "Edit {moduleName}"
+    "update": "Update {moduleName}",
+    "view": "View {moduleName}"
   },
   "confirm": {
     "do_you_want_delete": "Are you sure you want to delete this {moduleName}?",

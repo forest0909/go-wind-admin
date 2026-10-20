@@ -313,7 +313,7 @@ const NotificationRulePage = () => {
       </div>
 
       <DrawerForm
-        title={formMode === 'create' ? t('create') : t('edit')}
+        title={formMode === 'create' ? t('common:modal.create', { moduleName: t('title') }) : t('common:modal.update', { moduleName: t('title') })}
         width={520}
         open={formOpen}
         onOpenChange={setFormOpen}

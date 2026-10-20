@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
 import { $t } from '@vben/locales';
@@ -12,6 +12,12 @@ const emit = defineEmits<{ success: [] }>();
 
 const create = ref(true);
 const row = ref<any>({});
+// 标题按模式区分：创建 Agent 编排 / 更新 Agent 编排（对齐三端抽屉标题口径）
+const title = computed(() =>
+  create.value
+    ? $t('ui.modal.create', { moduleName: $t('page.aiAgent.moduleName') })
+    : $t('ui.modal.update', { moduleName: $t('page.aiAgent.moduleName') }),
+);
 const form = ref<Record<string, any>>({
   name: '',
   description: '',
@@ -73,7 +79,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
 </script>
 
 <template>
-  <Drawer :title="$t('page.aiAgent.moduleName')">
+  <Drawer :title="title">
     <a-form layout="vertical" class="pt-2">
       <a-form-item :label="$t('page.aiAgent.name')" required>
         <a-input v-model:value="form.name" />

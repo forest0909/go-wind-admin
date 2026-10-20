@@ -36,7 +36,7 @@ const signatureText = computed(() => row.value?.signature || '-');
 
 <template>
   <Drawer
-    :title="$t('page.dataAccessAuditLog.moduleName')"
+    :title="$t('ui.modal.view', { moduleName: $t('page.dataAccessAuditLog.moduleName') })"
     class="w-full max-w-[860px]"
   >
     <div class="audit-detail">

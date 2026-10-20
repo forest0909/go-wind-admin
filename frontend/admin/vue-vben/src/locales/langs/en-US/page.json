@@ -480,12 +480,12 @@
     "readAt": "Read At",
     "detail": "Message Detail",
     "button": {
-      "create": "Publish Message",
+      "create": "Create Message",
       "markAsRead": "Mark as Read",
       "markAllRead": "Mark All Read"
     },
     "drawer": {
-      "create": "Publish Message",
+      "create": "Create Message",
       "update": "Update Message"
     },
     "sendScope": "Send To",

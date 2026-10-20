@@ -480,13 +480,13 @@
     "readAt": "已读时间",
     "detail": "消息详情",
     "button": {
-      "create": "发布消息",
+      "create": "创建消息",
       "markAsRead": "标记为已读",
       "markAllRead": "全部已读"
     },
     "drawer": {
-      "create": "发布消息",
-      "update": "修改消息"
+      "create": "创建消息",
+      "update": "更新消息"
     },
     "sendScope": "发送范围",
     "sendScopeAll": "全员",

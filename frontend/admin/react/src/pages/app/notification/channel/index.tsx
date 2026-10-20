@@ -463,7 +463,7 @@ const NotificationChannelManagement = () => {
       {/* 新建/编辑用抽屉不用弹窗：扩展渠道的 settings 动态表单字段多（6~8 个），
           弹窗高度挤不下；抽屉纵向空间足、与 ele 端渠道抽屉同形。 */}
       <DrawerForm
-        title={drawerMode === 'create' ? t('create') : t('edit')}
+        title={drawerMode === 'create' ? t('common:modal.create', { moduleName: t('title') }) : t('common:modal.update', { moduleName: t('title') })}
         width={560}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}

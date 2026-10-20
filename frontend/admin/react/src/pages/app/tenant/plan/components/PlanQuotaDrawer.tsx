@@ -131,7 +131,7 @@ const PlanQuotaDrawer: React.FC<PlanQuotaDrawerProps> = ({
   return (
     <DrawerForm
       formRef={formRef}
-      title={mode === 'create' ? t('create') : t('edit')}
+      title={mode === 'create' ? t('quotaCreate') : t('quotaEdit')}
       open={open}
       onOpenChange={(visible) => {
         if (!visible) {

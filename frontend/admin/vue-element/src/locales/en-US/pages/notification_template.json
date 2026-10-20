@@ -1,6 +1,6 @@
 {
-  "create": "New Template",
-  "edit": "Edit Template",
+  "create": "Create Template",
+  "edit": "Update Template",
   "name": "Name",
   "code": "Code",
   "codeHint": "Referenced by senders via templateCode; letters, digits, underscore and hyphen only. Immutable after creation.",

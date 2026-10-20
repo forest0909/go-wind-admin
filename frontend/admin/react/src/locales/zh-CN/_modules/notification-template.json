@@ -38,5 +38,6 @@
   "maxChars": "不能超过 {{max}} 个字符",
   "txCodeHintTitle": "事务性邮件覆写约定",
   "txCodeHint": "以下 code 为事务性邮件的覆写锚：模板存在且启用时，对应系统邮件改用本模板渲染（缺失/停用/渲染失败自动回落内置文案，绝不阻断发送）——pwd_reset_code（找回密码验证码）、contact_bind_code（邮箱换绑验证码）、channel_test_email（渠道测试邮件）、rule_test_notification（路由规则测试通知）。",
-  "delete": "删除"
+  "delete": "删除",
+  "moduleName": "模板"
 }

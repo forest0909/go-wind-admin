@@ -1,6 +1,6 @@
 {
-  "create": "New Rule",
-  "edit": "Edit Rule",
+  "create": "Create Rule",
+  "edit": "Update Rule",
   "name": "Rule Name",
   "metric": "Metric",
   "op": "Operator",

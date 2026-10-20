@@ -198,7 +198,7 @@ const AiAgentAppManagement = () => {
       </div>
 
       <DrawerForm
-        title={editing ? t('edit') : t('create')}
+        title={editing ? t('common:modal.update', { moduleName: t('moduleName') }) : t('common:modal.create', { moduleName: t('moduleName') })}
         width={520}
         open={formOpen}
         onOpenChange={setFormOpen}

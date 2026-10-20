@@ -29,7 +29,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
 </script>
 
 <template>
-  <Drawer :title="$t('page.operationAuditLog.moduleName')" class="w-full max-w-[800px]">
+  <Drawer :title="$t('ui.modal.view', { moduleName: $t('page.operationAuditLog.moduleName') })" class="w-full max-w-[800px]">
     <div class="audit-detail">
       <Card class="mb-4">
         <template #title>

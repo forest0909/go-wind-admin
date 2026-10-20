@@ -30,7 +30,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
 
 <template>
   <Drawer
-    :title="$t('page.permissionAuditLog.moduleName')"
+    :title="$t('ui.modal.view', { moduleName: $t('page.permissionAuditLog.moduleName') })"
     class="w-full max-w-[800px]"
   >
     <div class="audit-detail">

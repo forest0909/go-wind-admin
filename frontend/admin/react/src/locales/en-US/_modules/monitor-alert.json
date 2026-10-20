@@ -60,5 +60,6 @@
     "WEBHOOK": "Webhook"
   },
   "delete": "Delete",
-  "evaluateFailed2": "Evaluate failed"
+  "evaluateFailed2": "Evaluate failed",
+  "moduleName": "Rule"
 }

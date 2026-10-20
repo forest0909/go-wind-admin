@@ -265,7 +265,7 @@ const NotificationTemplatePage = () => {
       </div>
 
       <DrawerForm
-        title={formMode === 'create' ? t('create') : t('edit')}
+        title={formMode === 'create' ? t('common:modal.create', { moduleName: t('moduleName') }) : t('common:modal.update', { moduleName: t('moduleName') })}
         width={620}
         open={formOpen}
         onOpenChange={setFormOpen}

@@ -285,5 +285,10 @@
     "lastWeek": "上周",
     "thisMonth": "本月",
     "lastMonth": "上月"
+  },
+  "modal": {
+    "create": "创建{{moduleName}}",
+    "update": "更新{{moduleName}}",
+    "view": "查看{{moduleName}}"
   }
 }

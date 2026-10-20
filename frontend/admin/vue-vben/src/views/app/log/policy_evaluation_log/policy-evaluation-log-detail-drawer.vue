@@ -41,7 +41,7 @@ const prettyContext = computed(() => {
 
 <template>
   <Drawer
-    :title="$t('page.policyEvaluationLog.moduleName')"
+    :title="$t('ui.modal.view', { moduleName: $t('page.policyEvaluationLog.moduleName') })"
     class="w-full max-w-[860px]"
   >
     <div class="audit-detail">

@@ -38,5 +38,6 @@
   "maxChars": "At most {{max}} characters",
   "txCodeHintTitle": "Transactional email codes",
   "txCodeHint": "Templates with these codes override system emails when enabled (missing/disabled/render-fail auto-fall back to built-in copy — sending is never blocked): pwd_reset_code (password reset), contact_bind_code (email binding), channel_test_email (channel test), rule_test_notification (routing rule test).",
-  "delete": "Delete"
+  "delete": "Delete",
+  "moduleName": "Template"
 }

@@ -134,19 +134,24 @@ const pageConfig = computed<ProPageConfig>(() => ({
       {
         name: "startAll",
         label: $t("pages.task.button.startAll"),
-        attrs: { type: "success" },
+        attrs: { type: "success", icon: "VideoPlay" },
       } as ToolsButton,
       {
         name: "stopAll",
         label: $t("pages.task.button.stopAll"),
-        attrs: { type: "danger" },
+        attrs: { type: "danger", icon: "VideoPause" },
       } as ToolsButton,
       {
         name: "restartAll",
         label: $t("pages.task.button.restartAll"),
-        attrs: { type: "warning", plain: true },
+        attrs: { type: "warning", plain: true, icon: "RefreshRight" },
       } as ToolsButton,
-      "add",
+      {
+        // 覆盖内置 add 的 plus 图标：本页工具栏三颗批量操作钮带图标、新增不带
+        name: "add",
+        label: $t("common.button.add"),
+        attrs: { type: "primary", plain: true },
+      } as ToolsButton,
     ],
     defaultToolbar: ["refresh", "exports", "filter"],
     pagination: false,

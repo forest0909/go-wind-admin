@@ -146,12 +146,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
         label: $t("pages.task.button.restartAll"),
         attrs: { type: "warning", plain: true, icon: "RefreshRight" },
       } as ToolsButton,
-      {
-        // 覆盖内置 add 的 plus 图标：本页工具栏三颗批量操作钮带图标、新增不带
-        name: "add",
-        label: $t("common.button.add"),
-        attrs: { type: "primary", plain: true },
-      } as ToolsButton,
+      "add",
     ],
     defaultToolbar: ["refresh", "exports", "filter"],
     pagination: false,

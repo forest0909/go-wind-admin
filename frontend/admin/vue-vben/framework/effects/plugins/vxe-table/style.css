@@ -132,13 +132,16 @@
      表体与底部收口线。 */
   border-radius: 6px;
 
-  /* 表格底部收口线：border:false 的全局形态下表区没有可见的闭合线——
-     vxe 外框元素（.vxe-table--border-line）的底边画在裁切边界上被整行
-     裁掉（ele border:true 外框底线/react 宿主卡片底线在同一视觉位都有线）。
-     收口线必须是容器自己的 border：跟随上面的 6px 圆角曲线走过两角无缺口，
-     且 overflow:hidden 裁子元素不裁自身边框。别改成 ::after 覆盖层——
-     直线被圆角裁掉两端后左右下角各留一个缺口（实测踩坑）。 */
+  /* 表区三边收口（左/右/底，顶部开放——表头底色分界已是顶边）：
+     border:false 的全局形态下表区没有可见闭合线，且 vxe 表元素高度与裁切
+     容器存在视口相关的 ±4px 差（滚动条预留/高度矩阵），画在表元素或其
+     外框元素上的底边要么被裁切边界吃掉、要么与侧边发丝线脱开 4px 成缺口。
+     边框画在裁切容器自身：不被自身 overflow:hidden 裁、跟随 6px 圆角、
+     与表体高低差无关，三边连续无缺口。颜色走
+     --vxe-ui-table-border-color（= --border token，亮暗自适配）。 */
+  border-right: 1px solid var(--vxe-ui-table-border-color);
   border-bottom: 1px solid var(--vxe-ui-table-border-color);
+  border-left: 1px solid var(--vxe-ui-table-border-color);
 }
 
 /* 表格 → 分页器 16px（design-language.md §2.6，与 react/ele 同一档）。

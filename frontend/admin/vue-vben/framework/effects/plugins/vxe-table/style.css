@@ -126,25 +126,19 @@
    不参与布局、pointer-events none 不挡交互，颜色走
    --vxe-ui-table-border-color（= --border token，亮暗自适配）。 */
 .vxe-grid--table-wrapper {
-  position: relative;
-
   /* 表区圆角对齐 ele（ele .vxe-table 6px）：vben grid 虽配置了 round:true，
      但 vxe 的 is--round 圆角在滚动状态矩阵下不落地（计算值 0），表区四角
      一直是直角。裁切容器本身 overflow:hidden，圆角会同时裁掉表头底色、
-     表体与底部收口线（::after 线端随圆角内收）。 */
+     表体与底部收口线。 */
   border-radius: 6px;
-}
 
-.vxe-grid--table-wrapper::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 1px;
-  z-index: 30;
-  pointer-events: none;
-  background-color: var(--vxe-ui-table-border-color);
+  /* 表格底部收口线：border:false 的全局形态下表区没有可见的闭合线——
+     vxe 外框元素（.vxe-table--border-line）的底边画在裁切边界上被整行
+     裁掉（ele border:true 外框底线/react 宿主卡片底线在同一视觉位都有线）。
+     收口线必须是容器自己的 border：跟随上面的 6px 圆角曲线走过两角无缺口，
+     且 overflow:hidden 裁子元素不裁自身边框。别改成 ::after 覆盖层——
+     直线被圆角裁掉两端后左右下角各留一个缺口（实测踩坑）。 */
+  border-bottom: 1px solid var(--vxe-ui-table-border-color);
 }
 
 /* 表格 → 分页器 16px（design-language.md §2.6，与 react/ele 同一档）。

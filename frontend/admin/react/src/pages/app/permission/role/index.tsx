@@ -186,7 +186,8 @@ const RoleManagement = () => {
               <TableExportButton key="export" fetcher={fetchListRoles} columns={columns} filename="roles" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -194,7 +195,7 @@ const RoleManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

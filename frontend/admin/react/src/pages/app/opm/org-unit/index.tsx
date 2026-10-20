@@ -230,7 +230,8 @@ const OrgUnitManagement = () => {
               <TableExportButton key="export" fetcher={fetchListOrgUnits} columns={columns} filename="org-units" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -238,7 +239,7 @@ const OrgUnitManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
               <Button
                 key="expandAll"

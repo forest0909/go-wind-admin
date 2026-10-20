@@ -317,7 +317,8 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
               </Button>,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -325,7 +326,7 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
               <Popconfirm
                 key="startAll"

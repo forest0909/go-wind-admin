@@ -198,7 +198,8 @@ const LoginPolicyManagement = () => {
               <TableExportButton key="export" fetcher={fetchListLoginPolicies} columns={columns} filename="login-policies" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -206,7 +207,7 @@ const LoginPolicyManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

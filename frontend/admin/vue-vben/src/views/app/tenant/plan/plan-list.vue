@@ -4,7 +4,7 @@ import type { VxeGridListeners, VxeGridProps } from '#/adapter/vxe-table';
 import { h } from 'vue';
 
 import { useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
@@ -186,8 +186,16 @@ async function handleDelete(row: any) {
 <template>
   <Grid :table-title="$t('page.plan.planList')">
     <template #toolbar-tools>
-      <a-button type="primary" class="mr-2" @click="handleCreate">
-        {{ $t('page.plan.button.create') }}
+      <a-button
+        type="primary"
+        ghost
+        class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+        @click="handleCreate"
+      >
+        <template #icon>
+          <LucidePlus />
+        </template>
+        {{ $t('ui.button.add') }}
       </a-button>
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
     </template>

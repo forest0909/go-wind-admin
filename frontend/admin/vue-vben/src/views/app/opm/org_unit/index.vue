@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
@@ -214,8 +214,16 @@ const collapseAll = () => {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.opm.orgUnit')">
       <template #toolbar-tools>
-        <a-button class="mr-2" type="primary" @click="handleCreate">
-          {{ $t('page.orgUnit.button.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="handleCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
         <a-button class="mr-2" @click="expandAll">
           {{ $t('ui.tree.expand_all') }}

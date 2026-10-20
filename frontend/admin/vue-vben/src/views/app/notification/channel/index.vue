@@ -23,6 +23,7 @@ import {
   type NotificationChannelSchema,
 } from '#/api/composables/notification-channel-schema';
 import TableExportButton from '#/components/TableExportButton.vue';
+import { LucidePlus } from '@vben/icons';
 import type {
   notification_channelservicev1_NotificationChannel as NotificationChannel,
 } from '#/api/generated/admin/service/v1';
@@ -545,8 +546,16 @@ async function handleTestSend() {
   <Page auto-content-height>
     <Grid :table-title="$t('page.notificationChannel.moduleName')">
       <template #toolbar-tools>
-        <a-button type="primary" class="mr-2" @click="openCreate">
-          {{ $t('page.notificationChannel.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="openCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="notification-channels" />
       </template>

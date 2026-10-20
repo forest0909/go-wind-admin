@@ -303,16 +303,16 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
             <TableExportButton key="export" fetcher={fetchListUsers} columns={columns} filename="users" />,
             <Button
               key="create"
-              type="primary"
+              color="primary"
+              variant="outlined"
               icon={<PlusOutlined />}
-              size="small"
               onClick={() => {
                 setEditingUser(null);
                 setDrawerMode('create');
                 setDrawerOpen(true);
               }}
             >
-              {t('create')}
+              {t('common:button.add')}
             </Button>,
           ]}
           options={{

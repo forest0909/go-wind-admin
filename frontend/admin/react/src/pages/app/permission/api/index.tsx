@@ -194,7 +194,8 @@ const ApiManagement = () => {
               <TableExportButton key="export" fetcher={fetchListApis} columns={columns} filename="apis" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -202,7 +203,7 @@ const ApiManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
               <Popconfirm
                 key="sync"

@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { IconifyIcon, LucideFilePenLine, LucideTrash2 } from '@vben/icons';
+import { IconifyIcon, LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
 
 import { Icon } from '@iconify/vue';
 import { notification } from 'ant-design-vue';
@@ -272,8 +272,16 @@ function normalizeAuthority(authority: unknown): string[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.permission.menu')">
       <template #toolbar-tools>
-        <a-button class="mr-2" type="primary" @click="handleCreate">
-          {{ $t('page.menu.button.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="handleCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"

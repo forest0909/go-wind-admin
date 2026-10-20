@@ -194,16 +194,16 @@ const PlanList: React.FC<PlanListProps> = ({ currentPlanId, onPlanSelect }) => {
             <TableExportButton key="export" fetcher={fetchListPlans} columns={columns} filename="plans" />,
             <Button
               key="create"
-              type="primary"
+              color="primary"
+              variant="outlined"
               icon={<PlusOutlined />}
-              size="small"
               onClick={() => {
                 setEditingPlan(null);
                 setDrawerMode('create');
                 setDrawerOpen(true);
               }}
             >
-              {t('create')}
+              {t('common:button.add')}
             </Button>,
           ]}
           options={{

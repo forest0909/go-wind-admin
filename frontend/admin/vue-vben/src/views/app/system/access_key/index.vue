@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h, ref } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideRefreshCw, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucidePlus, LucideRefreshCw, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
@@ -176,8 +176,16 @@ void exportFetcher;
   <Page auto-content-height>
     <Grid :table-title="$t('page.accessKey.moduleName')">
       <template #toolbar-tools>
-        <a-button class="mr-2" type="primary" @click="handleCreate">
-          {{ $t('page.accessKey.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="handleCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
         <TableExportButton
           class="mr-2"

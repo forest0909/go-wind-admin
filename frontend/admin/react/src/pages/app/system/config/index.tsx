@@ -185,7 +185,8 @@ const ConfigManagement = () => {
               <TableExportButton key="export" fetcher={fetchListConfigs} columns={columns} filename="configs" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -193,7 +194,7 @@ const ConfigManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

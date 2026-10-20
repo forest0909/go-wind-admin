@@ -4,13 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h, ref } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import {
-  LucideCirclePlay,
-  LucideCircleStop,
-  LucideFilePenLine,
-  LucideRotateCcw,
-  LucideTrash2,
-} from '@vben/icons';
+import { LucideCirclePlay, LucideCircleStop, LucideFilePenLine, LucidePlus, LucideRotateCcw, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
@@ -341,8 +335,16 @@ async function handleEnableChanged(row: any, checked: boolean) {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.system.task')">
       <template #toolbar-tools>
-        <a-button class="mr-2" type="primary" @click="handleCreate">
-          {{ $t('page.task.button.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="handleCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
 
         <a-button class="mr-2" @click="sysTasksOpen = true">

@@ -31,6 +31,7 @@
     "disable": "禁用"
   },
   "button": {
+    "add": "新增",
     "exportFormatCsv": "CSV (逗号分隔)",
     "exportFormatXlsx": "Excel 工作簿",
     "ok": "确定",

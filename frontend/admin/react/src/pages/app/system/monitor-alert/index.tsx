@@ -288,7 +288,8 @@ const MonitorAlertPage = () => {
             </Tooltip>,
             <Button
               key="create"
-              type="primary"
+              color="primary"
+              variant="outlined"
               icon={<PlusOutlined />}
               onClick={() => {
                 setFormMode('create');
@@ -296,7 +297,7 @@ const MonitorAlertPage = () => {
                 setFormOpen(true);
               }}
             >
-              {t('create')}
+              {t('common:button.add')}
             </Button>,
           ]}
           size="middle"

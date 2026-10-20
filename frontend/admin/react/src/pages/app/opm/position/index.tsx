@@ -218,7 +218,8 @@ const PositionManagement = () => {
               <TableExportButton key="export" fetcher={fetchListPositions} columns={columns} filename="positions" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -226,7 +227,7 @@ const PositionManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
               <Button
                 key="import"

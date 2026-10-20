@@ -12,6 +12,7 @@ import { $t } from '@vben/locales';
 import { message, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { LucidePlus } from '@vben/icons';
 import {
   fetchListMonitorAlertRules,
   PaginationQuery,
@@ -330,8 +331,16 @@ async function handleEvaluate() {
         <a-button class="mr-2" @click="openEvaluate">
           {{ $t('page.monitorAlert.evaluateNow') }}
         </a-button>
-        <a-button type="primary" @click="openCreate">
-          {{ $t('page.monitorAlert.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="openCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
       </template>
       <template #metric="{ row }">

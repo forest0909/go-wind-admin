@@ -12,6 +12,7 @@ import { $t } from '@vben/locales';
 import { message, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { LucidePlus } from '@vben/icons';
 import {
   fetchListNotificationTemplates,
   NOTIFICATION_TEMPLATE_UPDATE_MASK,
@@ -281,8 +282,16 @@ async function handleRender() {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.notification.templates')">
       <template #toolbar-tools>
-        <a-button type="primary" class="mr-2" @click="openCreate">
-          {{ $t('page.notificationTemplate.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="openCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
       </template>
       <template #code="{ row }">

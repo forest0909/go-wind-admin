@@ -172,16 +172,16 @@ const DictEntryList: React.FC<DictEntryListProps> = ({ typeId }) => {
               <TableExportButton key="export" fetcher={fetchListDictEntries} columns={columns} filename="dict-entries" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
-                size="small"
                 onClick={() => {
                   setEditingEntry(null);
                   setDrawerMode('create');
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

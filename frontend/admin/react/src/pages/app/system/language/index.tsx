@@ -186,7 +186,8 @@ const LanguageManagement = () => {
               <TableExportButton key="export" fetcher={fetchListLanguages} columns={columns} filename="languages" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -194,7 +195,7 @@ const LanguageManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

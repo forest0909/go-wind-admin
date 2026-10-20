@@ -166,16 +166,16 @@ const PlanQuotaList: React.FC<PlanQuotaListProps> = ({ planId }) => {
               <TableExportButton key="export" fetcher={fetchListPlanQuotas} columns={columns} filename="plan-quotas" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
-                size="small"
                 onClick={() => {
                   setEditingQuota(null);
                   setDrawerMode('create');
                   setDrawerOpen(true);
                 }}
               >
-                {t('quotaCreate')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

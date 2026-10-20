@@ -151,13 +151,14 @@ function endpointText(row: AiProvider): string {
         <!-- Preflight svg{display:block} 会把 icon+文本竖排，定式见 vben-tailwind-preflight-svg-block-icon-wrap -->
         <a-button
           type="primary"
+          ghost
           class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
           @click="handleAdd"
         >
           <template #icon>
             <LucidePlus />
           </template>
-          {{ $t('page.aiProvider.button.create') }}
+          {{ $t('ui.button.add') }}
         </a-button>
       </template>
       <template #modelType="{ row }">

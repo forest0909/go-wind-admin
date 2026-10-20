@@ -178,7 +178,8 @@ export default function AccessKeyPage() {
           toolBarRender={() => [
             <Button
               key="create"
-              type="primary"
+              color="primary"
+              variant="outlined"
               icon={<PlusOutlined />}
               onClick={() => {
                 setDrawerMode('create');
@@ -186,7 +187,7 @@ export default function AccessKeyPage() {
                 setDrawerOpen(true);
               }}
             >
-              {t('create')}
+              {t('common:button.add')}
             </Button>,
           ]}
           size="middle"

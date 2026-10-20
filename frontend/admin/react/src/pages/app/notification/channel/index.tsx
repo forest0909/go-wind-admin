@@ -442,7 +442,8 @@ const NotificationChannelManagement = () => {
             <TableExportButton key="export" fetcher={fetchListNotificationChannels} columns={columns} filename="notification-channels" />,
             <Button
               key="create"
-              type="primary"
+              color="primary"
+              variant="outlined"
               icon={<PlusOutlined />}
               onClick={() => {
                 setDrawerMode('create');
@@ -450,7 +451,7 @@ const NotificationChannelManagement = () => {
                 setDrawerOpen(true);
               }}
             >
-              {t('create')}
+              {t('common:button.add')}
             </Button>,
           ]}
           size="middle"

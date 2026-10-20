@@ -378,7 +378,8 @@ const MenuManagement = () => {
               <TableExportButton key="export" fetcher={fetchListMenus} columns={columns} filename="menus" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -386,7 +387,7 @@ const MenuManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
               <Button
                 key="expandAll"

@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h, ref } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideCirclePlay, LucideTrash2 } from '@vben/icons';
+import { LucideCirclePlay, LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
@@ -256,8 +256,16 @@ async function handleTestRun() {
         <a-button class="mr-2" @click="handleOpenLogs">
           {{ $t('page.script.logTitle') }}
         </a-button>
-        <a-button class="mr-2" type="primary" @click="handleCreate">
-          {{ $t('page.script.button.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="handleCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="scripts" />
       </template>

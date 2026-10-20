@@ -249,7 +249,8 @@ const TenantList = () => {
               <TableExportButton key="export" fetcher={fetchListTenants} columns={columns} filename="tenants" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -257,7 +258,7 @@ const TenantList = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

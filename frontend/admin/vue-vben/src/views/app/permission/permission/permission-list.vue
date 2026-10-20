@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h, watch } from 'vue';
 
 import { useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
 import { isEqual } from '@vben/utils';
 
 import { notification } from 'ant-design-vue';
@@ -220,8 +220,16 @@ watch(
 <template>
   <Grid :table-title="$t('menu.permission.permission')">
     <template #toolbar-tools>
-      <a-button class="mr-2" type="primary" @click="handleCreate">
-        {{ $t('page.permission.button.create') }}
+      <a-button
+        type="primary"
+        ghost
+        class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+        @click="handleCreate"
+      >
+        <template #icon>
+          <LucidePlus />
+        </template>
+        {{ $t('ui.button.add') }}
       </a-button>
       <a-popconfirm
         :cancel-text="$t('ui.button.cancel')"

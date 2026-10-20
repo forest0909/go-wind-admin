@@ -110,7 +110,8 @@ export default function AiKnowledgePage() {
           toolBarRender={() => [
             <Button
               key="create"
-              type="primary"
+              color="primary"
+              variant="outlined"
               icon={<PlusOutlined />}
               onClick={() => {
                 setSelected(undefined);
@@ -118,7 +119,7 @@ export default function AiKnowledgePage() {
                 setDrawerOpen(true);
               }}
             >
-              {t('create')}
+              {t('common:button.add')}
             </Button>,
           ]}
           columns={columns}

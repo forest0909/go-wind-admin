@@ -19,6 +19,7 @@ import AgentCanvas from './agent-canvas.vue';
 import AgentEditDrawer from './agent-edit-drawer.vue';
 import AgentRunDrawer from './agent-run-drawer.vue';
 import AgentRunsDrawer from './agent-runs-drawer.vue';
+import { LucidePlus } from '@vben/icons';
 
 // 抽屉们：画布（全屏编辑器）/ 编辑（表单）/ 试运行（输入表单+运行）/ 运行台账（只读列表）
 const [CanvasDrawer, canvasDrawerApi] = useVbenDrawer({ connectedComponent: AgentCanvas });
@@ -124,8 +125,16 @@ async function handleDelete(row: AiAgentApp) {
   <Page auto-content-height>
     <Grid :table-title="$t('page.aiAgent.moduleName')">
       <template #toolbar-tools>
-        <a-button type="primary" class="mr-2" @click="openCreate">
-          {{ $t('page.aiAgent.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="openCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="ai-agent-apps" />
       </template>

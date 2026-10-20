@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
@@ -200,8 +200,16 @@ async function handleSync() {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.permission.api')">
       <template #toolbar-tools>
-        <a-button type="primary" class="mr-2" @click="handleCreate">
-          {{ $t('page.api.button.create') }}
+        <a-button
+          type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          @click="handleCreate"
+        >
+          <template #icon>
+            <LucidePlus />
+          </template>
+          {{ $t('ui.button.add') }}
         </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"

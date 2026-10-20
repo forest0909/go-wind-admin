@@ -111,14 +111,15 @@ function handleDocs(row: AiKnowledgeBase) {
     <Grid :table-title="$t('page.aiKnowledge.moduleName')">
       <template #toolbar-tools>
         <a-button
-          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
           type="primary"
+          ghost
+          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
           @click="handleAdd"
         >
           <template #icon>
             <LucidePlus />
           </template>
-          {{ $t('page.aiKnowledge.button.create') }}
+          {{ $t('ui.button.add') }}
         </a-button>
       </template>
       <template #action="{ row }">

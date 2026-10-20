@@ -157,16 +157,16 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
               <TableExportButton key="export" fetcher={fetchListPermissions} columns={columns} filename="permissions" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
-                size="small"
                 onClick={() => {
                   setEditingPermission(null);
                   setDrawerMode('create');
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

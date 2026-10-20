@@ -148,7 +148,8 @@ const InternalMessageCategoryManagement = () => {
               <TableExportButton key="export" fetcher={fetchListMessageCategories} columns={columns} filename="im-categories" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -156,7 +157,7 @@ const InternalMessageCategoryManagement = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

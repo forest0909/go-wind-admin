@@ -165,7 +165,8 @@ const InternalMessageList = () => {
               <TableExportButton key="export" fetcher={fetchListInternalMessages} columns={columns} filename="im-messages" />,
               <Button
                 key="create"
-                type="primary"
+                color="primary"
+                variant="outlined"
                 icon={<PlusOutlined />}
                 onClick={() => {
                   setDrawerMode('create');
@@ -173,7 +174,7 @@ const InternalMessageList = () => {
                   setDrawerOpen(true);
                 }}
               >
-                {t('create')}
+                {t('common:button.add')}
               </Button>,
             ]}
             options={{

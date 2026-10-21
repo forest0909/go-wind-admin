@@ -39,6 +39,8 @@ const [BaseForm, baseFormApi] = useVbenForm({
   showDefaultActions: false,
   // 所有表单项共用，可单独在表单内覆盖
   commonConfig: {
+    // react 基准抽屉标签列为 120px，这里放宽到 130 容纳「字段权限（User）」整行不折行
+    labelWidth: 130,
     // 所有表单项
     componentProps: {
       class: 'w-full',
@@ -73,6 +75,8 @@ const [BaseForm, baseFormApi] = useVbenForm({
       componentProps: {
         placeholder: $t('ui.placeholder.input'),
         allowClear: true,
+        min: 0,
+        precision: 0,
       },
       rules: 'required',
     },
@@ -151,7 +155,8 @@ const [BaseForm, baseFormApi] = useVbenForm({
       componentProps: {
         title: $t('page.role.permissions'),
         showSearch: true,
-        treeDefaultExpandAll: false,
+        // 与 react 端权限树一致：数据加载完成后默认全展开
+        treeDefaultExpandAll: true,
         loadingSlot: 'suffixIcon',
         childrenField: 'children',
         labelField: 'title',
@@ -177,12 +182,14 @@ const [BaseForm, baseFormApi] = useVbenForm({
       },
     },
     {
-      // 字段权限：勾选 = 对该角色用户隐藏（黑名单语义，User 资源试点）。
-      // value 与后端 identity User proto 字段 json_name 逐字一致。
+      // 字段权限：勾选 = 对该角色用户隐藏（黑名单语义）。
+      // value 与后端各资源 proto 字段 json_name 逐字一致。
+      // 多资源分组与 react 端 ROLE_FIELD_RESOURCES 登记表对齐（当前 User/Role）。
       component: 'CheckboxGroup',
       fieldName: 'userHiddenFields',
       defaultValue: [],
-      label: $t('page.role.fieldPerm.title'),
+      label: $t('page.role.fieldPerm.userTitle'),
+      help: $t('page.role.fieldPerm.hint'),
       componentProps: {
         options: [
           { label: $t('page.role.fieldPerm.field.email'), value: 'email' },
@@ -192,6 +199,20 @@ const [BaseForm, baseFormApi] = useVbenForm({
           { label: $t('page.role.fieldPerm.field.region'), value: 'region' },
           { label: $t('page.role.fieldPerm.field.lastLoginAt'), value: 'lastLoginAt' },
           { label: $t('page.role.fieldPerm.field.lastLoginIp'), value: 'lastLoginIp' },
+        ],
+      },
+    },
+    {
+      component: 'CheckboxGroup',
+      fieldName: 'roleHiddenFields',
+      defaultValue: [],
+      label: $t('page.role.fieldPerm.roleTitle'),
+      componentProps: {
+        options: [
+          {
+            label: $t('page.role.fieldPerm.field.permissions'),
+            value: 'permissions',
+          },
         ],
       },
     },
@@ -237,20 +258,21 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
 
     // 字段权限始终随表单提交（含清空场景）：抽屉所见即保存后的最终态。
-    // userHiddenFields 是表单专用中间字段，不是 Role proto 字段，提交前必须移除。
-    finalValues.fieldPermissions =
-      Array.isArray(finalValues.userHiddenFields) &&
-      finalValues.userHiddenFields.length > 0
-        ? [
-            {
-              resource: 'User',
-              hiddenFields: finalValues.userHiddenFields.filter(
-                (v: any) => typeof v === 'string',
-              ),
-            },
-          ]
-        : [];
+    // userHiddenFields/roleHiddenFields 是表单专用中间字段，不是 Role proto
+    // 字段，提交前必须折算成 fieldPermissions 多资源数组并移除。
+    finalValues.fieldPermissions = (
+      [
+        ['User', finalValues.userHiddenFields],
+        ['Role', finalValues.roleHiddenFields],
+      ] as const
+    )
+      .filter(([, fields]) => Array.isArray(fields) && fields.length > 0)
+      .map(([resource, fields]) => ({
+        resource,
+        hiddenFields: fields.filter((v: unknown) => typeof v === 'string'),
+      }));
     delete finalValues.userHiddenFields;
+    delete finalValues.roleHiddenFields;
 
 
     try {
@@ -282,16 +304,20 @@ const [Drawer, drawerApi] = useVbenDrawer({
 
       // 为表单赋值。注意：setValues 必须只调一次——连调两次时后一次会清掉
       // 前一次刚设置的值（vee-validate setValues 非合并语义），因此把字段权限
-      // 的中间态 userHiddenFields 合并在同一次调用里。
+      // 的中间态 userHiddenFields/roleHiddenFields 合并在同一次调用里。
       const row = data.value?.row;
-      const fpEntry = Array.isArray(row?.fieldPermissions)
-        ? row.fieldPermissions.find((e: any) => e?.resource === 'User')
-        : undefined;
+      const findHiddenFields = (resource: string) => {
+        const entry = Array.isArray(row?.fieldPermissions)
+          ? row.fieldPermissions.find((e: any) => e?.resource === resource)
+          : undefined;
+        return Array.isArray(entry?.hiddenFields)
+          ? entry.hiddenFields.filter((v: any) => typeof v === 'string')
+          : [];
+      };
       baseFormApi.setValues({
         ...(row ?? {}),
-        userHiddenFields: Array.isArray(fpEntry?.hiddenFields)
-          ? fpEntry.hiddenFields.filter((v: any) => typeof v === 'string')
-          : [],
+        userHiddenFields: findHiddenFields('User'),
+        roleHiddenFields: findHiddenFields('Role'),
       });
 
       // setLoading(true);

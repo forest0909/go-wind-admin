@@ -214,6 +214,8 @@
     "orgUnits": "授权组织单元",
     "fieldPerm": {
       "title": "字段权限",
+      "userTitle": "字段权限（User）",
+      "roleTitle": "字段权限（Role）",
       "hint": "勾选的字段对该角色用户不可见：列表/详情不再显示，且不能通过创建/编辑写入（重新登录后生效）。",
       "field": {
         "email": "邮箱",
@@ -222,7 +224,8 @@
         "address": "地址",
         "region": "区域",
         "lastLoginAt": "最后登录时间",
-        "lastLoginIp": "最后登录 IP"
+        "lastLoginIp": "最后登录 IP",
+        "permissions": "权限集（角色绑定的权限列表）"
       }
     }
   },

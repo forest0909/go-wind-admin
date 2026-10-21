@@ -4,7 +4,6 @@ import { Avatar, Dropdown, Badge, Tooltip, Button, Breadcrumb, Input, Popover, M
 import type { MenuProps } from 'antd';
 import {
   UserOutlined,
-  SettingOutlined,
   LogoutOutlined,
   InboxOutlined,
   LockOutlined,
@@ -25,6 +24,8 @@ import { useMatches, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getIconFromName } from '@/layouts/MainLayout/utils/iconResolver';
+
+import { SettingBoltIcon } from '@/components/common/settingBoltIcon';
 
 import { useI18n } from '@/core/i18n';
 import { usePreferencesStore } from '@/core/preferences/store';
@@ -1154,7 +1155,7 @@ export const HeaderContent = ({
         <Tooltip title={t('header.settings')}>
           <Button
             type="text"
-            icon={<SettingOutlined />}
+            icon={<SettingBoltIcon />}
             onClick={onOpenSettings}
             size="small"
             style={btnStyle}

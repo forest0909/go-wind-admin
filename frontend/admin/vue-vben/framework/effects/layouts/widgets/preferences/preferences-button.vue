@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Settings } from '@vben/icons';
+import { SvgSettingIcon } from '@vben/icons';
 import { $t } from '@vben/locales';
 import { VbenIconButton, VbenTooltip } from '@vben-core/shadcn-ui';
 
@@ -16,7 +16,7 @@ function clearPreferencesAndLogout() {
     <VbenTooltip side="bottom">
       <template #trigger>
         <VbenIconButton>
-          <Settings class="text-foreground size-4" />
+          <SvgSettingIcon class="text-foreground size-4" />
         </VbenIconButton>
       </template>
       {{ $t('preferences.title') }}

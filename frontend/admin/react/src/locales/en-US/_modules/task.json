@@ -75,7 +75,7 @@
   "sysTaskSchedules": "Schedules",
   "sysTaskStates": "States",
   "sysTaskFailures": "Recent Failures",
-  "sysTaskQueueHint": "queue {queue} (read-only asynq; tasks evaluated every 5 min show up here)",
+  "sysTaskQueueHint": "queue {{queue}} (read-only asynq; tasks evaluated every 5 min show up here)",
   "sysTaskActive": "Active",
   "sysTaskPending": "Pending",
   "sysTaskRetry": "Retry",

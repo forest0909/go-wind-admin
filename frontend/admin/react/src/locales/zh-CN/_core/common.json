@@ -273,7 +273,7 @@
     "title": "导出",
     "csv": "CSV (逗号分隔)",
     "xlsx": "Excel 工作簿",
-    "success": "已导出 {count} 行",
+    "success": "已导出 {{count}} 行",
     "failed": "导出失败",
     "serverXlsx": "服务端全量 (XLSX)",
     "serverSuccess": "导出文件已生成",

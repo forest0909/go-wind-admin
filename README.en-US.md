@@ -45,6 +45,18 @@ Keeping all three usable is a cost borne **upstream**; as an adopter you maintai
 
 ---
 
+## Code Repositories
+
+This project is published in sync on the three platforms below — identical content, clone or star whichever you prefer:
+
+| Platform | URL |
+|----------|-----|
+| GitHub | <https://github.com/tx7do/go-wind-admin> |
+| Gitee | <https://gitee.com/tx7do/go-wind-admin> |
+| AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+
+---
+
 ## Demo
 
 Three URLs, three parallel demos of the same backend capabilities — **open each, compare, you will want only one**:

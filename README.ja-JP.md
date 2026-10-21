@@ -45,6 +45,18 @@
 
 ---
 
+## リポジトリ
+
+本プロジェクトは以下の 3 つのプラットフォームで同時公開しています。内容は同一ですので、クローン / スターはお好みのものをどうぞ：
+
+| プラットフォーム | URL |
+|------------------|-----|
+| GitHub | <https://github.com/tx7do/go-wind-admin> |
+| Gitee | <https://gitee.com/tx7do/go-wind-admin> |
+| AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+
+---
+
 ## デモ
 
 3 つの URL は同じバックエンド機能の並列デモです。**それぞれ開いて比較し、1 つだけ選べばよい**：

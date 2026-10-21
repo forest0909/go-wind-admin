@@ -45,6 +45,18 @@
 
 ---
 
+## 代码仓库
+
+本项目在以下三个平台同步发布，内容一致，任选其一克隆 / Star 即可：
+
+| 平台 | 地址 |
+|------|------|
+| GitHub | <https://github.com/tx7do/go-wind-admin> |
+| Gitee | <https://gitee.com/tx7do/go-wind-admin> |
+| AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+
+---
+
 ## 演示地址
 
 三个地址是同一套后端能力的三个并列演示——**逐个点开对比，你只会要其中一套**：

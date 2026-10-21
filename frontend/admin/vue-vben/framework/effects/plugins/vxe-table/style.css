@@ -38,6 +38,14 @@
   /* table */
   --vxe-ui-table-header-background-color: hsl(var(--accent));
   --vxe-ui-table-border-color: hsl(var(--border));
+  /* 表面四角直角（用户裁决 2026-10-21，见本文件 .vxe-grid--table-wrapper 处的说明）。
+     vxe 配置了 round:true 后有一套滚动状态圆角矩阵（table.scss「圆角」节）：
+     按滚动条方位类（sx-pos--right / sy-pos--bottom / is--scroll-*）给表头、
+     外框线（.vxe-table--border-line）的个别角发 var(--vxe-ui-table-border-radius)
+     圆角，且随滚动状态换角——当年「计算值 0」只是所测状态恰好没发。表头底色
+     亮色下吃这个 4px 圆角非常显眼。矩阵分支全部引用这颗变量，钉 0 一次性
+     归零，新增状态类也免疫。 */
+  --vxe-ui-table-border-radius: 0;
   --vxe-ui-table-row-hover-background-color: hsl(var(--accent-hover));
   --vxe-ui-table-row-striped-background-color: hsl(var(--accent) / 60%);
   --vxe-ui-table-row-hover-striped-background-color: hsl(var(--accent));

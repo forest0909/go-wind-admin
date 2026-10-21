@@ -107,6 +107,9 @@ const FileDrawer: React.FC<FileDrawerProps> = ({
         onClose,
         size: 480,
       }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="fileName"
@@ -126,10 +129,6 @@ const FileDrawer: React.FC<FileDrawerProps> = ({
           allowClear: true,
           rows: 3,
         }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
     </DrawerForm>
   );

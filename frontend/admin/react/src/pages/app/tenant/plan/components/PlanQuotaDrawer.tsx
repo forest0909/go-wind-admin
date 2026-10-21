@@ -5,7 +5,7 @@ import {
   ProFormSelect,
   ProFormDigit,
 } from '@ant-design/pro-components';
-import { App, Select, Form, Col } from 'antd';
+import { App, Select, Form } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -154,23 +154,22 @@ const PlanQuotaDrawer: React.FC<PlanQuotaDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       {/* 所属套餐 - 只读 Select */}
-      <Col span={12}>
-        <Form.Item
-          name="planId"
-          label={t('planId')}
-          rules={[{ required: true, message: t('requiredPlanId') }]}
-        >
-          <Select
-            options={planOptions}
-            placeholder={t('planIdPlaceholder')}
-            disabled
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="planId"
+        label={t('planId')}
+        rules={[{ required: true, message: t('requiredPlanId') }]}
+      >
+        <Select
+          options={planOptions}
+          placeholder={t('planIdPlaceholder')}
+          disabled
+        />
+      </Form.Item>
 
       <ProFormSelect
         name="quotaType"
@@ -179,7 +178,6 @@ const PlanQuotaDrawer: React.FC<PlanQuotaDrawerProps> = ({
         options={getQuotaTypeOptions(t)}
         rules={[{ required: true, message: t('requiredQuotaType') }]}
         fieldProps={SELECT_FILTER_PROPS}
-        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -187,7 +185,6 @@ const PlanQuotaDrawer: React.FC<PlanQuotaDrawerProps> = ({
         label={t('quotaValue')}
         placeholder={t('quotaValuePlaceholder')}
         fieldProps={{ precision: 0, min: 0 }}
-        colProps={{ span: 24 }}
       />
     </DrawerForm>
   );

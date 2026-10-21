@@ -9,7 +9,7 @@ import {
   ProFormTextArea,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { App, Button, Descriptions, Tag, Alert, Col } from 'antd';
+import { App, Button, Descriptions, Tag, Alert } from 'antd';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -274,8 +274,6 @@ const NotificationTemplatePage = () => {
         open={formOpen}
         onOpenChange={setFormOpen}
         drawerProps={{ destroyOnHidden: true, mask: { closable: false }, size: 600 }}
-        grid
-        rowProps={{ gutter: 16 }}
         submitTimeout={3000}
         onFinish={handleSubmit}
         initialValues={
@@ -283,21 +281,21 @@ const NotificationTemplatePage = () => {
             ? { isEnabled: true }
             : { ...selected }
         }
+        layout="horizontal"
+        labelCol={{ flex: '0 0 120px' }}
+        wrapperCol={{ flex: 'auto' }}
       >
-        <Col span={24}>
-          <Alert
-            type="info"
-            showIcon
-            message={t('txCodeHintTitle')}
-            description={t('txCodeHint')}
-            style={{ marginBottom: 16 }}
-          />
-        </Col>
+        <Alert
+          type="info"
+          showIcon
+          message={t('txCodeHintTitle')}
+          description={t('txCodeHint')}
+          style={{ marginBottom: 16 }}
+        />
         <ProFormText
           name="name"
           label={t('name')}
           rules={[{ required: true, message: t('requiredName') }, { max: 100, message: t('maxChars', { max: 100 }) }]}
-          colProps={{ span: 12 }}
         />
         <ProFormText
           name="code"
@@ -308,14 +306,12 @@ const NotificationTemplatePage = () => {
             { pattern: /^[A-Za-z0-9_-]{1,64}$/, message: t('codePattern') },
           ]}
           extra={t('codeHint')}
-          colProps={{ span: 12 }}
         />
         <ProFormText
           name="titleTemplate"
           label={t('titleTemplate')}
           placeholder={t('titleTemplatePlaceholder')}
           rules={[{ required: true, message: t('requiredTitleTemplate') }, { max: 500, message: t('maxChars', { max: 500 }) }]}
-          colProps={{ span: 24 }}
         />
         <ProFormTextArea
           name="contentTemplate"
@@ -323,22 +319,12 @@ const NotificationTemplatePage = () => {
           placeholder={t('contentTemplatePlaceholder')}
           rules={[{ required: true, message: t('requiredContentTemplate') }, { max: 20000, message: t('maxChars', { max: 20000 }) }]}
           fieldProps={{ rows: 6, showCount: true }}
-          colProps={{ span: 24 }}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
         />
-        <ProFormSwitch name="isEnabled" label={t('isEnabled')} colProps={{ span: 12 }} />
+        <ProFormSwitch name="isEnabled" label={t('isEnabled')} />
         <ProFormTextArea
           name="remark"
           label={t('remark')}
           fieldProps={{ rows: 2 }}
-          colProps={{ span: 24 }}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
         />
       </DrawerForm>
 

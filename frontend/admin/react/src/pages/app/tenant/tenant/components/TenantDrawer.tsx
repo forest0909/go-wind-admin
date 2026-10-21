@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DrawerForm, ProFormText, ProFormSelect, ProFormTextArea, ProFormDateTimePicker } from '@ant-design/pro-components';
 import type { ProFormInstance } from '@ant-design/pro-components';
-import { Button, message, Divider, Popconfirm, Descriptions,  Progress, Col } from 'antd';
+import { Button, message, Divider, Popconfirm, Descriptions,  Progress } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useUpdateTenant, useCreateTenantWithAdminUser, useGetTenantUsage, useCleanupTenantData } from '@/api/hooks/tenant';
@@ -201,8 +201,9 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         onClose,
         size: 600,
       }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="name"
@@ -215,7 +216,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         fieldProps={{
           allowClear: true,
         }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -229,7 +229,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         fieldProps={{
           allowClear: true,
         }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -239,7 +238,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         options={getTenantTypeOptions(t)}
         rules={[{ required: true, message: t('requiredType') }]}
         fieldProps={SELECT_FILTER_PROPS}
-        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -249,7 +247,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         options={getAuditStatusOptions(t)}
         rules={[{ required: true, message: t('requiredAuditStatus') }]}
         fieldProps={SELECT_FILTER_PROPS}
-        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -259,7 +256,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         options={getTenantStatusOptions(t)}
         rules={[{ required: true, message: t('requiredStatus') }]}
         fieldProps={SELECT_FILTER_PROPS}
-        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -268,7 +264,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         placeholder={t('subscriptionPlanPlaceholder')}
         options={planOptions}
         fieldProps={SELECT_FILTER_PROPS}
-        colProps={{ span: 12 }}
       />
 
       <ProFormDateTimePicker
@@ -276,7 +271,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
         label={t('expiredAt')}
         placeholder={t('expiredAtPlaceholder')}
         fieldProps={{ allowClear: true, showTime: true, style: { width: '100%' } }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -289,16 +283,11 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
           maxLength: 500,
           showCount: true,
         }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
 
       {/* 编辑模式下显示用量与配额对比 + 清理数据按钮 */}
       {mode === 'edit' && usageQuery.data && (
-        <Col span={24}>
+        <>
           <Divider style={{ margin: '24px 0 16px' }}>{t('usageSection')}</Divider>
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label={t('usageUserCount')}>
@@ -365,15 +354,13 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
               </Button>
             </Popconfirm>
           </div>
-        </Col>
+        </>
       )}
 
       {/* 创建模式下显示管理员账号配置 */}
       {mode === 'create' && (
         <>
-          <Col span={24}>
-            <Divider style={{ margin: '24px 0 16px' }}>{t('adminSection')}</Divider>
-          </Col>
+          <Divider style={{ margin: '24px 0 16px' }}>{t('adminSection')}</Divider>
 
           <ProFormText
             name="username"
@@ -386,7 +373,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
             fieldProps={{
               allowClear: true,
             }}
-            colProps={{ span: 12 }}
           />
 
           <ProFormText.Password
@@ -400,7 +386,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
             fieldProps={{
               allowClear: true,
             }}
-            colProps={{ span: 12 }}
           />
 
           <ProFormText.Password
@@ -423,7 +408,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
             fieldProps={{
               allowClear: true,
             }}
-            colProps={{ span: 12 }}
           />
 
           <ProFormText
@@ -437,7 +421,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
             fieldProps={{
               allowClear: true,
             }}
-            colProps={{ span: 12 }}
           />
 
           <ProFormText
@@ -451,7 +434,6 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
             fieldProps={{
               allowClear: true,
             }}
-            colProps={{ span: 12 }}
           />
         </>
       )}

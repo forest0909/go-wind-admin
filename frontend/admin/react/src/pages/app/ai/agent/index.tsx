@@ -205,28 +205,23 @@ const AiAgentAppManagement = () => {
         open={formOpen}
         onOpenChange={setFormOpen}
         drawerProps={{ destroyOnHidden: true, size: 600 }}
-        grid
-        rowProps={{ gutter: 16 }}
         onFinish={handleSubmit}
         initialValues={editing ?? { enabled: true }}
+        layout="horizontal"
+        labelCol={{ flex: '0 0 120px' }}
+        wrapperCol={{ flex: 'auto' }}
       >
         <ProFormText
           name="name"
           label={t('name')}
           rules={[{ required: true, message: t('requiredName') }]}
-          colProps={{ span: 24 }}
         />
         <ProFormTextArea
           name="description"
           label={t('description')}
           fieldProps={{ rows: 2 }}
-          colProps={{ span: 24 }}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
         />
-        <ProFormSwitch name="enabled" label={t('enabled')} colProps={{ span: 24 }} />
+        <ProFormSwitch name="enabled" label={t('enabled')} />
       </DrawerForm>
 
       <AgentCanvas open={!!canvasApp} app={canvasApp} onClose={() => { setCanvasApp(undefined); refresh(); }} />

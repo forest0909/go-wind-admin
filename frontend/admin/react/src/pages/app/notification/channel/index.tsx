@@ -13,7 +13,7 @@ import {
   ProFormSwitch,
   ProFormDependency,
 } from '@ant-design/pro-components';
-import { Button, Tag, App, Col } from 'antd';
+import { Button, Tag, App } from 'antd';
 import type { ProFormItemProps } from '@ant-design/pro-components';
 import { EditOutlined, DeleteOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -477,8 +477,6 @@ const NotificationChannelManagement = () => {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         drawerProps={{ destroyOnHidden: true, maskClosable: false, size: 600 }}
-        grid
-        rowProps={{ gutter: 16 }}
         submitTimeout={3000}
         onFinish={handleSubmit}
         initialValues={
@@ -501,12 +499,14 @@ const NotificationChannelManagement = () => {
                 settings: selected?.settings ? safeParseSettings(selected.settings) : undefined,
               }
         }
+        layout="horizontal"
+        labelCol={{ flex: '0 0 120px' }}
+        wrapperCol={{ flex: 'auto' }}
       >
         <ProFormText
           name="name"
           label={t('name')}
           rules={[{ required: true, message: t('requiredName') }]}
-          colProps={{ span: 12 }}
         />
         <ProFormSelect
           name="type"
@@ -532,7 +532,6 @@ const NotificationChannelManagement = () => {
           disabled={drawerMode === 'edit'}
           showSearch
           rules={[{ required: true }]}
-          colProps={{ span: 12 }}
         />
         {/* 三类渠道各自的配置项分组显示：表单里同时摆几组，管理员要自己猜哪一组生效。
             编辑态 type 不可改（改类型等于换一条渠道实现），所以几组不会在同一个会话里来回切。 */}
@@ -550,7 +549,6 @@ const NotificationChannelManagement = () => {
                       ? [{ required: true, message: t('requiredWebhookUrl') }]
                       : []
                   }
-                  colProps={{ span: 24 }}
                 />
                 <ProFormSelect
                   name="webhookSignStyle"
@@ -560,7 +558,6 @@ const NotificationChannelManagement = () => {
                     ['CUSTOM', 'NONE', 'DINGTALK', 'FEISHU', 'WECOM'] as const
                   ).map((value) => ({ value, label: t(SIGN_STYLE_LABEL_KEY[value]) }))}
                   rules={[{ required: true, message: t('requiredSignStyle') }]}
-                  colProps={{ span: 12 }}
                 />
                 {/* 留空 = 用该风格的内置默认正文（内置形状由后端 webhook_style.go 持有，
                     这里不复制一份，否则两处会漂）。 */}
@@ -570,11 +567,6 @@ const NotificationChannelManagement = () => {
                   tooltip={t('webhookPayloadTemplateHint', { vars: WEBHOOK_TEMPLATE_VARS })}
                   placeholder='{"msgtype":"text","text":{"content":"{{title}}"}}'
                   fieldProps={{ rows: 3, style: { fontFamily: 'var(--font-mono, monospace)' } }}
-                  colProps={{ span: 24 }}
-                  labelCol={{ span: 24 }}
-                  wrapperCol={{ span: 24 }}
-                  labelAlign="left"
-                  className="form-item-label-top"
                 />
                 <ProFormText.Password
                   name="webhookSecret"
@@ -583,7 +575,6 @@ const NotificationChannelManagement = () => {
                     drawerMode === 'edit' ? t('webhookSecretKeepHint') : t('webhookSecretPlaceholder')
                   }
                   tooltip={t('webhookSecretHint')}
-                  colProps={{ span: 12 }}
                 />
               </>
             ) : isExtType(type) ? (
@@ -599,13 +590,11 @@ const NotificationChannelManagement = () => {
                     { label: t('providerTencent'), value: 'TENCENT' },
                   ]}
                   rules={[{ required: true, message: t('requiredSmsProvider') }]}
-                  colProps={{ span: 12 }}
                 />
                 <ProFormText
                   name="smsAccessKeyId"
                   label={t('smsAccessKeyId')}
                   rules={[{ required: true, message: t('requiredSmsAccessKeyId') }]}
-                  colProps={{ span: 12 }}
                 />
                 <ProFormText.Password
                   name="smsAccessSecret"
@@ -617,14 +606,12 @@ const NotificationChannelManagement = () => {
                   rules={
                     drawerMode === 'create' ? [{ required: true, message: t('requiredSmsAccessSecret') }] : []
                   }
-                  colProps={{ span: 12 }}
                 />
                 <ProFormText
                   name="smsSignName"
                   label={t('smsSignName')}
                   tooltip={t('smsSignNameHint')}
                   rules={[{ required: true, message: t('requiredSmsSignName') }]}
-                  colProps={{ span: 12 }}
                 />
                 <ProFormText
                   name="smsTemplateCode"
@@ -632,7 +619,6 @@ const NotificationChannelManagement = () => {
                   tooltip={t('smsTemplateCodeHint')}
                   placeholder={t('smsTemplateCodePlaceholder')}
                   rules={[{ required: true, message: t('requiredSmsTemplateCode') }]}
-                  colProps={{ span: 12 }}
                 />
                 {/* 腾讯云两项必填、阿里云留空：必留必填差在 tooltip 里说清，
                     不按服务商切 required——否则选错服务商时表单先于后端把人拦在模糊的 red 星号上。 */}
@@ -641,28 +627,25 @@ const NotificationChannelManagement = () => {
                   label={t('smsAppId')}
                   tooltip={t('smsAppIdHint')}
                   placeholder="1400000000"
-                  colProps={{ span: 12 }}
                 />
                 <ProFormText
                   name="smsRegion"
                   label={t('smsRegion')}
                   tooltip={t('smsRegionHint')}
                   placeholder="ap-guangzhou"
-                  colProps={{ span: 12 }}
                 />
               </>
             ) : (
               <>
-                <ProFormText name="smtpHost" label={t('smtpHost')} placeholder="smtp.example.com" colProps={{ span: 12 }} />
+                <ProFormText name="smtpHost" label={t('smtpHost')} placeholder="smtp.example.com" />
                 <ProFormDigit
                   name="smtpPort"
                   label={t('smtpPort')}
                   min={1}
                   max={65535}
                   fieldProps={{ precision: 0 }}
-                  colProps={{ span: 12 }}
                 />
-                <ProFormText name="smtpUsername" label={t('smtpUsername')} colProps={{ span: 12 }} />
+                <ProFormText name="smtpUsername" label={t('smtpUsername')} />
                 <ProFormText.Password
                   name="password"
                   label={t('password')}
@@ -670,10 +653,9 @@ const NotificationChannelManagement = () => {
                   rules={
                     drawerMode === 'create' ? [{ required: true, message: t('requiredPassword') }] : []
                   }
-                  colProps={{ span: 12 }}
                 />
-                <ProFormText name="smtpFrom" label={t('smtpFrom')} placeholder="noreply@example.com" colProps={{ span: 12 }} />
-                <ProFormText name="smtpFromName" label={t('smtpFromName')} placeholder="GoWind" colProps={{ span: 12 }} />
+                <ProFormText name="smtpFrom" label={t('smtpFrom')} placeholder="noreply@example.com" />
+                <ProFormText name="smtpFromName" label={t('smtpFromName')} placeholder="GoWind" />
                 <ProFormSelect
                   name="smtpTls"
                   label={t('smtpTls')}
@@ -682,22 +664,16 @@ const NotificationChannelManagement = () => {
                     { label: t('tlsStartTls'), value: 'START_TLS' },
                     { label: t('tlsSsl'), value: 'SSL' },
                   ]}
-                  colProps={{ span: 12 }}
                 />
               </>
             )
           }
         </ProFormDependency>
-        <ProFormSwitch name="enabled" label={t('enabled')} colProps={{ span: 12 }} />
+        <ProFormSwitch name="enabled" label={t('enabled')} />
         <ProFormTextArea
           name="remark"
           label={t('remark')}
           fieldProps={{ rows: 2 }}
-          colProps={{ span: 24 }}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
         />
       </DrawerForm>
 
@@ -752,11 +728,9 @@ function SettingsFormFields({ schema }: { schema: ChannelSchema | undefined }) {
   return (
     <>
       {schema.targetLabel && (
-        <Col span={24}>
-          <div style={{ color: 'var(--ant-color-text-tertiary, #aaa)', fontSize: 12, marginBottom: 8 }}>
-            {t('ext.targetLabel', { label: schema.targetLabel })}
-          </div>
-        </Col>
+        <div style={{ color: 'var(--ant-color-text-tertiary, #aaa)', fontSize: 12, marginBottom: 8 }}>
+          {t('ext.targetLabel', { label: schema.targetLabel })}
+        </div>
       )}
       {(schema.fields ?? []).map((f) => {
         const name = ['settings', String(f.name)];
@@ -770,11 +744,6 @@ function SettingsFormFields({ schema }: { schema: ChannelSchema | undefined }) {
                 key={f.name}
                 {...common}
                 fieldProps={{ rows: 3, placeholder: f.placeholder }}
-                colProps={{ span: 24 }}
-                labelCol={{ span: 24 }}
-                wrapperCol={{ span: 24 }}
-                labelAlign="left"
-                className="form-item-label-top"
               />
             );
           case 'number':
@@ -783,7 +752,6 @@ function SettingsFormFields({ schema }: { schema: ChannelSchema | undefined }) {
                 key={f.name}
                 {...common}
                 fieldProps={{ precision: 0, placeholder: f.placeholder }}
-                colProps={{ span: 12 }}
               />
             );
           case 'password':
@@ -792,7 +760,6 @@ function SettingsFormFields({ schema }: { schema: ChannelSchema | undefined }) {
                 key={f.name}
                 {...(common as ProFormItemProps)}
                 placeholder={f.placeholder || t('ext.secretKeepHint')}
-                colProps={{ span: 12 }}
               />
             );
           case 'select':
@@ -802,11 +769,10 @@ function SettingsFormFields({ schema }: { schema: ChannelSchema | undefined }) {
                 {...common}
                 options={(f.options ?? []).map((o) => ({ label: o === '' ? t('ext.optionDefault') : o, value: o }))}
                 fieldProps={{ allowClear: true }}
-                colProps={{ span: 12 }}
               />
             );
           default:
-            return <ProFormText key={f.name} {...common} placeholder={f.placeholder} colProps={{ span: 12 }} />;
+            return <ProFormText key={f.name} {...common} placeholder={f.placeholder} />;
         }
       })}
     </>

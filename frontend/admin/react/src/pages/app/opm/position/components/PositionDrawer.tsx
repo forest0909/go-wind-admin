@@ -8,7 +8,7 @@ import {
   ProFormSelect,
   ProFormRadio,
 } from '@ant-design/pro-components';
-import { App, TreeSelect, Form, Col } from 'antd';
+import { App, TreeSelect, Form } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { identityservicev1_Position as Position } from '@/api/generated/admin/service/v1';
@@ -141,8 +141,9 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="name"
@@ -150,7 +151,6 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         placeholder={t('namePlaceholder')}
         rules={[{ required: true, message: t('requiredName') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -159,7 +159,6 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         placeholder={t('codePlaceholder')}
         rules={[{ required: true, message: t('requiredCode') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -174,29 +173,22 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
           filterOption: (input: string, option: any) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
-        colProps={{ span: 12 }}
       />
 
       {/* 所属组织 - TreeSelect */}
-      <Col span={24}>
-        <Form.Item
-          name="orgUnitId"
-          label={t('orgUnit')}
-          rules={[{ required: true, message: t('requiredOrgUnit') }]}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <TreeSelect
-            showSearch
-            allowClear
-            treeDefaultExpandAll
-            placeholder={t('orgUnitPlaceholder')}
-            treeData={orgTreeData}
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="orgUnitId"
+        label={t('orgUnit')}
+        rules={[{ required: true, message: t('requiredOrgUnit') }]}
+      >
+        <TreeSelect
+          showSearch
+          allowClear
+          treeDefaultExpandAll
+          placeholder={t('orgUnitPlaceholder')}
+          treeData={orgTreeData}
+        />
+      </Form.Item>
 
       <ProFormDigit
         name="headcount"
@@ -204,7 +196,6 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         placeholder={t('headcountPlaceholder')}
         rules={[{ required: true }]}
         fieldProps={{ precision: 0, min: 0 }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -213,7 +204,6 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         placeholder={t('sortOrderPlaceholder')}
         rules={[{ required: true }]}
         fieldProps={{ precision: 0, min: 0 }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -222,7 +212,6 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         rules={[{ required: true }]}
         options={getStatusOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -230,11 +219,6 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         label={t('description')}
         placeholder={t('descriptionPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
 
       <ProFormTextArea
@@ -242,11 +226,6 @@ const PositionDrawer: React.FC<PositionDrawerProps> = ({
         label={t('remark')}
         placeholder={t('remarkPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
     </DrawerForm>
   );

@@ -6,7 +6,7 @@ import {
   ProFormDigit,
   ProFormRadio,
 } from '@ant-design/pro-components';
-import { App, Col, Select, Form, Table, Input, Button, Space, Spin } from 'antd';
+import { App, Select, Form, Table, Input, Button, Space, Spin } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -345,24 +345,23 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 800 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       {/* 所属类型 - Select */}
-      <Col span={12}>
-        <Form.Item
-          name="typeId"
-          label={t('typeId')}
-          rules={[{ required: true, message: t('requiredTypeId') }]}
-        >
-          <Select
-            options={typeOptions}
-            placeholder={t('typeIdPlaceholder')}
-            allowClear={false}
-            showSearch
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="typeId"
+        label={t('typeId')}
+        rules={[{ required: true, message: t('requiredTypeId') }]}
+      >
+        <Select
+          options={typeOptions}
+          placeholder={t('typeIdPlaceholder')}
+          allowClear={false}
+          showSearch
+        />
+      </Form.Item>
 
       <ProFormText
         name="entryValue"
@@ -370,7 +369,6 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
         placeholder={t('entryValuePlaceholder')}
         rules={[{ required: true, message: t('requiredEntryValue') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -378,7 +376,6 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
         label={t('numericValue')}
         placeholder={t('numericValuePlaceholder')}
         fieldProps={{ precision: 0 }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -386,7 +383,6 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
         label={t('sortOrder')}
         placeholder={t('sortOrderPlaceholder')}
         fieldProps={{ precision: 0, min: 0 }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -395,31 +391,28 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
         rules={[{ required: true, message: t('requiredStatus') }]}
         options={enableBoolRadioOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
-        colProps={{ span: 12 }}
       />
 
       {/* 国际化子表格 */}
-      <Col span={24}>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'block', marginBottom: 8, color: 'var(--ant-color-text)' }}>
-            {t('i18nTitle')}
-          </label>
-          <Spin spinning={i18nLoading}>
-            <Table
-              dataSource={i18nData}
-              columns={i18nColumns}
-              size="small"
-              pagination={false}
-              bordered
-              scroll={{ y: 300 }}
-              style={{
-                border: '1px solid var(--ant-color-border)',
-                borderRadius: 6,
-              }}
-            />
-          </Spin>
-        </div>
-      </Col>
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: 'block', marginBottom: 8, color: 'var(--ant-color-text)' }}>
+          {t('i18nTitle')}
+        </label>
+        <Spin spinning={i18nLoading}>
+          <Table
+            dataSource={i18nData}
+            columns={i18nColumns}
+            size="small"
+            pagination={false}
+            bordered
+            scroll={{ y: 300 }}
+            style={{
+              border: '1px solid var(--ant-color-border)',
+              borderRadius: 6,
+            }}
+          />
+        </Spin>
+      </div>
     </DrawerForm>
   );
 };

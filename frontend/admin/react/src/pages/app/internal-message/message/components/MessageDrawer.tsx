@@ -6,7 +6,7 @@ import {
   ProFormSelect,
   ProFormRadio,
 } from '@ant-design/pro-components';
-import { App, TreeSelect, Form, Col } from 'antd';
+import { App, TreeSelect, Form } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { internal_messageservicev1_InternalMessage as InternalMessage } from '@/api/generated/admin/service/v1';
@@ -148,8 +148,9 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 800 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormSelect
         name="status"
@@ -162,7 +163,6 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
           filterOption: (input: string, option: any) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -176,7 +176,6 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
           filterOption: (input: string, option: any) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
-        colProps={{ span: 12 }}
       />
 
       {/* 发送范围与接收用户：仅创建模式 */}
@@ -193,7 +192,6 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
             fieldProps={{
               onChange: (e) => setSendScope(e.target.value),
             }}
-            colProps={{ span: 24 }}
           />
 
           {sendScope === 'USERS' && (
@@ -216,36 +214,25 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
                   (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
                 optionFilterProp: 'label',
               }}
-              colProps={{ span: 24 }}
-              labelCol={{ span: 24 }}
-              wrapperCol={{ span: 24 }}
-              labelAlign="left"
-              className="form-item-label-top"
             />
           )}
         </>
       )}
 
       {/* 消息分类 - TreeSelect */}
-      <Col span={24}>
-        <Form.Item
-          name="categoryId"
-          label={t('categoryId')}
-          rules={[{ required: true, message: t('requiredCategoryId') }]}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <TreeSelect
-            showSearch
-            allowClear
-            treeDefaultExpandAll
-            placeholder={t('categoryIdPlaceholder')}
-            treeData={categoryTreeData}
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="categoryId"
+        label={t('categoryId')}
+        rules={[{ required: true, message: t('requiredCategoryId') }]}
+      >
+        <TreeSelect
+          showSearch
+          allowClear
+          treeDefaultExpandAll
+          placeholder={t('categoryIdPlaceholder')}
+          treeData={categoryTreeData}
+        />
+      </Form.Item>
 
       <ProFormText
         name="title"
@@ -253,27 +240,20 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
         placeholder={t('titlePlaceholder')}
         rules={[{ required: true, message: t('requiredTitle') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 24 }}
       />
 
       {/* 消息内容 - Tiptap 富文本编辑器 */}
-      <Col span={24}>
-        <Form.Item
-          name="content"
-          label={t('content')}
-          rules={[{ required: true, message: t('requiredContent', '请输入消息内容') }]}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <Editor
-            editorType={EditorType.RICH_TEXT}
-            height={400}
-            placeholder={t('contentPlaceholder')}
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="content"
+        label={t('content')}
+        rules={[{ required: true, message: t('requiredContent', '请输入消息内容') }]}
+      >
+        <Editor
+          editorType={EditorType.RICH_TEXT}
+          height={400}
+          placeholder={t('contentPlaceholder')}
+        />
+      </Form.Item>
     </DrawerForm>
   );
 };

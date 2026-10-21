@@ -122,6 +122,9 @@ const LanguageDrawer: React.FC<LanguageDrawerProps> = ({
         onClose,
         size: 480,
       }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="languageName"

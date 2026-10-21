@@ -319,8 +319,6 @@ const MonitorAlertPage = () => {
         open={formOpen}
         onOpenChange={setFormOpen}
         drawerProps={{ destroyOnHidden: true, mask: { closable: false }, size: 600 }}
-        grid
-        rowProps={{ gutter: 16 }}
         submitTimeout={3000}
         onFinish={handleSubmit}
         initialValues={
@@ -328,19 +326,20 @@ const MonitorAlertPage = () => {
             ? { cooldownMinutes: 30, channel: 'EMAIL', isEnabled: true }
             : { ...selected }
         }
+        layout="horizontal"
+        labelCol={{ flex: '0 0 120px' }}
+        wrapperCol={{ flex: 'auto' }}
       >
         <ProFormText
           name="name"
           label={t('name')}
           rules={[{ required: true, message: t('requiredName') }, { max: 100, message: t('maxChars', { max: 100 }) }]}
-          colProps={{ span: 12 }}
         />
         <ProFormSelect
           name="metric"
           label={t('metric')}
           options={metricOptions(t)}
           rules={[{ required: true, message: t('requiredMetric') }]}
-          colProps={{ span: 12 }}
         />
         <ProFormDependency name={['metric']}>
           {({ metric }) =>
@@ -351,14 +350,12 @@ const MonitorAlertPage = () => {
                   label={t('op')}
                   options={opOptions(t)}
                   rules={[{ required: true, message: t('requiredOp') }]}
-                  colProps={{ span: 12 }}
                 />
                 <ProFormDigit
                   name="threshold"
                   label={t('threshold')}
                   fieldProps={{ precision: 2, step: 1 }}
                   rules={[{ required: true, message: t('requiredThreshold') }]}
-                  colProps={{ span: 12 }}
                 />
               </>
             )
@@ -371,32 +368,24 @@ const MonitorAlertPage = () => {
           min={1}
           max={1440}
           fieldProps={{ precision: 0 }}
-          colProps={{ span: 12 }}
         />
         <ProFormSelect
           name="channel"
           label={t('channel')}
           options={channelOptions(t)}
           rules={[{ required: true, message: t('requiredChannel') }]}
-          colProps={{ span: 12 }}
         />
         <ProFormText
           name="target"
           label={t('target')}
           tooltip={t('targetHint')}
           rules={[{ required: true, message: t('requiredTarget') }, { max: 500, message: t('maxChars', { max: 500 }) }]}
-          colProps={{ span: 24 }}
         />
-        <ProFormSwitch name="isEnabled" label={t('isEnabled')} colProps={{ span: 12 }} />
+        <ProFormSwitch name="isEnabled" label={t('isEnabled')} />
         <ProFormTextArea
           name="remark"
           label={t('remark')}
           fieldProps={{ rows: 2 }}
-          colProps={{ span: 24 }}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
         />
       </DrawerForm>
     </ContentContainer>

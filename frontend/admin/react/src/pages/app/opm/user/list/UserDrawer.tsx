@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import { DrawerForm, ProFormText, ProFormRadio, ProFormTextArea } from '@ant-design/pro-components';
-import { App, TreeSelect, Select, Form, Col } from 'antd';
+import { App, TreeSelect, Select, Form } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -204,8 +204,9 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="username"
@@ -216,7 +217,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           allowClear: true,
           disabled: mode === 'edit',
         }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText.Password
@@ -224,74 +224,55 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         label={t('password')}
         placeholder={t('passwordPlaceholder')}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       {/* 角色 - TreeSelect 多选（后端要求 role_ids 必填，必填校验前置避免裸 400） */}
-      <Col span={24}>
-        <Form.Item
-          name="roleIds"
-          label={t('roleIds')}
-          rules={mode === 'create' ? [{ required: true, message: t('requiredRoleIds') }] : undefined}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <TreeSelect
-            treeData={roleTreeData}
-            placeholder={t('roleIdsPlaceholder')}
-            allowClear
-            showSearch
-            multiple
-            treeDefaultExpandAll={false}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="roleIds"
+        label={t('roleIds')}
+        rules={mode === 'create' ? [{ required: true, message: t('requiredRoleIds') }] : undefined}
+      >
+        <TreeSelect
+          treeData={roleTreeData}
+          placeholder={t('roleIdsPlaceholder')}
+          allowClear
+          showSearch
+          multiple
+          treeDefaultExpandAll={false}
+          style={{ width: '100%' }}
+        />
+      </Form.Item>
 
       {/* 组织 - TreeSelect 多选 */}
-      <Col span={24}>
-        <Form.Item
-          name="orgUnitIds"
-          label={t('orgUnitIds')}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <TreeSelect
-            treeData={orgUnitTreeData}
-            placeholder={t('orgUnitIdsPlaceholder')}
-            allowClear
-            showSearch
-            multiple
-            treeDefaultExpandAll
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="orgUnitIds"
+        label={t('orgUnitIds')}
+      >
+        <TreeSelect
+          treeData={orgUnitTreeData}
+          placeholder={t('orgUnitIdsPlaceholder')}
+          allowClear
+          showSearch
+          multiple
+          treeDefaultExpandAll
+          style={{ width: '100%' }}
+        />
+      </Form.Item>
 
       {/* 职位 - Select 多选 */}
-      <Col span={24}>
-        <Form.Item
-          name="positionIds"
-          label={t('positionIds')}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <Select
-            mode="multiple"
-            options={positionOptions}
-            placeholder={t('positionIdsPlaceholder')}
-            allowClear
-            showSearch
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="positionIds"
+        label={t('positionIds')}
+      >
+        <Select
+          mode="multiple"
+          options={positionOptions}
+          placeholder={t('positionIdsPlaceholder')}
+          allowClear
+          showSearch
+          style={{ width: '100%' }}
+        />
+      </Form.Item>
 
       {/* 性别 */}
       <ProFormRadio.Group
@@ -299,7 +280,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         label={t('gender')}
         options={getGenderOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -308,7 +288,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         placeholder={t('nicknamePlaceholder')}
         rules={[{ required: true, message: t('requiredNickname') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -316,7 +295,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         label={t('realname')}
         placeholder={t('realnamePlaceholder')}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       {!userHiddenFields.has('email') && (
@@ -326,7 +304,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           placeholder={t('emailPlaceholder')}
           rules={[{ required: true, message: t('requiredEmail') }]}
           fieldProps={{ allowClear: true }}
-          colProps={{ span: 12 }}
         />
       )}
 
@@ -336,7 +313,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           label={t('mobile')}
           placeholder={t('mobilePlaceholder')}
           fieldProps={{ allowClear: true }}
-          colProps={{ span: 12 }}
         />
       )}
 
@@ -347,7 +323,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         rules={[{ required: true, message: t('requiredStatus') }]}
         options={getUserStatusOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -355,11 +330,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         label={t('remark')}
         placeholder={t('remarkPlaceholder')}
         fieldProps={{ allowClear: true, rows: 3 }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
     </DrawerForm>
   );

@@ -9,7 +9,7 @@ import {
   ProFormRadio,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { App, TreeSelect, Form, Col } from 'antd';
+import { App, TreeSelect, Form } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { identityservicev1_OrgUnit as OrgUnit } from '@/api/generated/admin/service/v1';
@@ -156,8 +156,9 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="name"
@@ -165,7 +166,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         placeholder={t('namePlaceholder')}
         rules={[{ required: true, message: t('requiredName') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -174,27 +174,20 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         placeholder={t('codePlaceholder')}
         rules={[{ required: true, message: t('requiredCode') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
-      <Col span={24}>
-        <Form.Item
-          name="parentId"
-          label={t('parentId')}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <TreeSelect
-            showSearch
-            allowClear
-            treeDefaultExpandAll
-            placeholder={t('parentIdPlaceholder')}
-            treeData={parentTreeData}
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="parentId"
+        label={t('parentId')}
+      >
+        <TreeSelect
+          showSearch
+          allowClear
+          treeDefaultExpandAll
+          placeholder={t('parentIdPlaceholder')}
+          treeData={parentTreeData}
+        />
+      </Form.Item>
 
       <ProFormSelect
         name="leaderId"
@@ -207,11 +200,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
           filterOption: (input: string, option: any) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
 
       <ProFormSelect
@@ -226,7 +214,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
           filterOption: (input: string, option: any) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -235,7 +222,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         placeholder={t('sortOrderPlaceholder')}
         rules={[{ required: true }]}
         fieldProps={{ precision: 0, min: 0 }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -244,17 +230,15 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         rules={[{ required: true }]}
         options={getStatusOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
-        colProps={{ span: 12 }}
       />
 
-      <ProFormSwitch name="isLegalEntity" label={t('isLegalEntity')} colProps={{ span: 12 }} />
+      <ProFormSwitch name="isLegalEntity" label={t('isLegalEntity')} />
 
       <ProFormText
         name="registrationNumber"
         label={t('registrationNumber')}
         placeholder={t('registrationNumberPlaceholder')}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -262,7 +246,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         label={t('taxId')}
         placeholder={t('taxIdPlaceholder')}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -270,7 +253,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         label={t('address')}
         placeholder={t('addressPlaceholder')}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -278,11 +260,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         label={t('description')}
         placeholder={t('descriptionPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
 
       <ProFormTextArea
@@ -290,11 +267,6 @@ const OrgDrawer: React.FC<OrgDrawerProps> = ({ open, mode, data, onClose, onSucc
         label={t('remark')}
         placeholder={t('remarkPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
     </DrawerForm>
   );

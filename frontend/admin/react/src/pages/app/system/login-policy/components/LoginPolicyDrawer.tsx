@@ -115,6 +115,9 @@ const LoginPolicyDrawer: React.FC<LoginPolicyDrawerProps> = ({
         onClose,
         size: 520,
       }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       {/* proto 中 target_id 是 uint32（目标用户ID）；IP/MAC/地区类策略应留空，限制内容填"策略值" */}
       <ProFormDigit
@@ -171,10 +174,6 @@ const LoginPolicyDrawer: React.FC<LoginPolicyDrawerProps> = ({
           allowClear: true,
           rows: 3,
         }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
     </DrawerForm>
   );

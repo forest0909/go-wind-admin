@@ -9,7 +9,7 @@ import {
   ProFormItem,
   ProFormCheckbox,
 } from '@ant-design/pro-components';
-import { App, AutoComplete, Col } from 'antd';
+import { App, AutoComplete } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { scriptservicev1_Script as Script } from '@/api/generated/admin/service/v1';
@@ -165,8 +165,9 @@ const ScriptDrawer: React.FC<ScriptDrawerProps> = ({ open, mode, data, onClose, 
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 720 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="name"
@@ -180,7 +181,6 @@ const ScriptDrawer: React.FC<ScriptDrawerProps> = ({ open, mode, data, onClose, 
           },
         ]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -218,30 +218,26 @@ const ScriptDrawer: React.FC<ScriptDrawerProps> = ({ open, mode, data, onClose, 
           },
         }}
         extra={language === 'LUA' ? t('languageLuaTip') : t('languageJavascriptTip')}
-        colProps={{ span: 12 }}
       />
 
-      <Col span={12}>
-        <ProFormItem
-          name="hookPoint"
-          label={t('hookPoint')}
-          extra={t('hookPointPlaceholder')}
-        >
-          <AutoComplete
-            options={hookPointOptions}
-            filterOption
-            allowClear
-            placeholder={t('hookPointPlaceholder')}
-          />
-        </ProFormItem>
-      </Col>
+      <ProFormItem
+        name="hookPoint"
+        label={t('hookPoint')}
+        extra={t('hookPointPlaceholder')}
+      >
+        <AutoComplete
+          options={hookPointOptions}
+          filterOption
+          allowClear
+          placeholder={t('hookPointPlaceholder')}
+        />
+      </ProFormItem>
 
       <ProFormDigit
         name="priority"
         label={t('priority')}
         placeholder={t('priorityPlaceholder')}
         fieldProps={{ precision: 0 }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -249,41 +245,34 @@ const ScriptDrawer: React.FC<ScriptDrawerProps> = ({ open, mode, data, onClose, 
         label={t('description')}
         placeholder={t('descriptionPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
-        colProps={{ span: 24 }}
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 24 }}
-        labelAlign="left"
-        className="form-item-label-top"
       />
 
-      <ProFormCheckbox name="critical" extra={t('criticalTip')} colProps={{ span: 12 }}>
+      <ProFormCheckbox name="critical" extra={t('criticalTip')}>
         {t('critical')}
       </ProFormCheckbox>
 
       {/* 源码编辑器（monaco，按语言高亮） */}
-      <Col span={24}>
-        <div className="mb-6">
-          <label className="mb-2 block text-sm font-medium text-[color:var(--ant-color-text)]">
-            <span className="text-[color:var(--ant-color-error)]">* </span>
-            {t('source')}
-          </label>
-          <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)]">
-            <Editor
-              key={language}
-              editorType={EditorType.CODE}
-              height={360}
-              value={source}
-              codeOptions={{
-                language: language === 'LUA' ? 'lua' : 'javascript',
-                tabSize: 4,
-                // 关闭 hljs 自动探测：其语言表缺 lua，会把 Lua 骨架误判为 plaintext 失去高亮
-                autoDetectLanguage: false,
-              }}
-              onChange={(v) => setSource(v ?? '')}
-            />
-          </div>
+      <div className="mb-6">
+        <label className="mb-2 block text-sm font-medium text-[color:var(--ant-color-text)]">
+          <span className="text-[color:var(--ant-color-error)]">* </span>
+          {t('source')}
+        </label>
+        <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)]">
+          <Editor
+            key={language}
+            editorType={EditorType.CODE}
+            height={360}
+            value={source}
+            codeOptions={{
+              language: language === 'LUA' ? 'lua' : 'javascript',
+              tabSize: 4,
+              // 关闭 hljs 自动探测：其语言表缺 lua，会把 Lua 骨架误判为 plaintext 失去高亮
+              autoDetectLanguage: false,
+            }}
+            onChange={(v) => setSource(v ?? '')}
+          />
         </div>
-      </Col>
+      </div>
     </DrawerForm>
   );
 };

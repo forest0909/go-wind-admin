@@ -5,7 +5,7 @@ import {
   ProFormText,
   ProFormRadio,
 } from '@ant-design/pro-components';
-import { App, TreeSelect, Form, Tree, Spin, Button, Space, Col } from 'antd';
+import { App, TreeSelect, Form, Tree, Spin, Button, Space } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -287,8 +287,9 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 700 }}
-      grid
-      rowProps={{ gutter: 16 }}
+      layout="horizontal"
+      labelCol={{ flex: '0 0 120px' }}
+      wrapperCol={{ flex: 'auto' }}
     >
       <ProFormText
         name="name"
@@ -296,7 +297,6 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
         placeholder={t('namePlaceholder')}
         rules={[{ required: true, message: t('requiredName') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -305,29 +305,22 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
         placeholder={t('codePlaceholder')}
         rules={[{ required: true, message: t('requiredCode') }]}
         fieldProps={{ allowClear: true }}
-        colProps={{ span: 12 }}
       />
 
       {/* 所属分组 - TreeSelect（单选） */}
-      <Col span={24}>
-        <Form.Item
-          name="groupId"
-          label={t('groupId')}
-          rules={[{ required: true, message: t('requiredGroupId') }]}
-          labelCol={{ span: 24 }}
-          wrapperCol={{ span: 24 }}
-          labelAlign="left"
-          className="form-item-label-top"
-        >
-          <TreeSelect
-            treeData={groupTreeData}
-            placeholder={t('groupIdPlaceholder')}
-            allowClear
-            showSearch
-            treeDefaultExpandAll
-          />
-        </Form.Item>
-      </Col>
+      <Form.Item
+        name="groupId"
+        label={t('groupId')}
+        rules={[{ required: true, message: t('requiredGroupId') }]}
+      >
+        <TreeSelect
+          treeData={groupTreeData}
+          placeholder={t('groupIdPlaceholder')}
+          allowClear
+          showSearch
+          treeDefaultExpandAll
+        />
+      </Form.Item>
 
       <ProFormRadio.Group
         name="status"
@@ -335,110 +328,105 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
         rules={[{ required: true, message: t('requiredStatus') }]}
         options={getStatusOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
-        colProps={{ span: 12 }}
       />
 
       {/* 关联菜单 - Tree（勾选） */}
-      <Col span={24}>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'block', marginBottom: 8, color: 'var(--ant-color-text)' }}>
-            {t('menuIds')}
-          </label>
-          <Spin spinning={menuTreeLoading}>
-            {menuTreeData.length > 0 ? (
-              <>
-                {renderTreeToolbar(
-                  menuTreeData,
-                  menuExpandedKeys,
-                  menuCheckedKeys,
-                  (keys) => setMenuExpandedKeys(keys),
-                  (keys) => setMenuCheckedKeys(keys as number[]),
-                )}
-                <Tree
-                  checkable
-                  checkedKeys={menuCheckedKeys}
-                  onCheck={(checked) => {
-                    setMenuCheckedKeys(checked as number[]);
-                  }}
-                  expandedKeys={menuExpandedKeys}
-                  onExpand={(keys) => setMenuExpandedKeys(keys as React.Key[])}
-                  treeData={menuTreeData}
-                  style={{
-                    maxHeight: 300,
-                    overflow: 'auto',
-                    border: '1px solid var(--ant-color-border)',
-                    borderRadius: 6,
-                    padding: 8,
-                  }}
-                />
-              </>
-            ) : (
-              <div
-                style={{
-                  color: 'var(--ant-color-text-quaternary)',
-                  padding: 16,
-                  textAlign: 'center',
-                  border: '1px dashed var(--ant-color-border)',
-                  borderRadius: 6,
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: 'block', marginBottom: 8, color: 'var(--ant-color-text)' }}>
+          {t('menuIds')}
+        </label>
+        <Spin spinning={menuTreeLoading}>
+          {menuTreeData.length > 0 ? (
+            <>
+              {renderTreeToolbar(
+                menuTreeData,
+                menuExpandedKeys,
+                menuCheckedKeys,
+                (keys) => setMenuExpandedKeys(keys),
+                (keys) => setMenuCheckedKeys(keys as number[]),
+              )}
+              <Tree
+                checkable
+                checkedKeys={menuCheckedKeys}
+                onCheck={(checked) => {
+                  setMenuCheckedKeys(checked as number[]);
                 }}
-              >
-                {menuTreeLoading ? '' : t('menuIdsPlaceholder')}
-              </div>
-            )}
-          </Spin>
-        </div>
-      </Col>
+                expandedKeys={menuExpandedKeys}
+                onExpand={(keys) => setMenuExpandedKeys(keys as React.Key[])}
+                treeData={menuTreeData}
+                style={{
+                  maxHeight: 300,
+                  overflow: 'auto',
+                  border: '1px solid var(--ant-color-border)',
+                  borderRadius: 6,
+                  padding: 8,
+                }}
+              />
+            </>
+          ) : (
+            <div
+              style={{
+                color: 'var(--ant-color-text-quaternary)',
+                padding: 16,
+                textAlign: 'center',
+                border: '1px dashed var(--ant-color-border)',
+                borderRadius: 6,
+              }}
+            >
+              {menuTreeLoading ? '' : t('menuIdsPlaceholder')}
+            </div>
+          )}
+        </Spin>
+      </div>
 
       {/* 关联API - Tree（勾选） */}
-      <Col span={24}>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'block', marginBottom: 8, color: 'var(--ant-color-text)' }}>
-            {t('apiIds')}
-          </label>
-          <Spin spinning={apiTreeLoading}>
-            {apiTreeData.length > 0 ? (
-              <>
-                {renderTreeToolbar(
-                  apiTreeData,
-                  apiExpandedKeys,
-                  apiCheckedKeys,
-                  (keys) => setApiExpandedKeys(keys),
-                  (keys) => setApiCheckedKeys(keys as number[]),
-                )}
-                <Tree
-                  checkable
-                  checkedKeys={apiCheckedKeys}
-                  onCheck={(checked) => {
-                    setApiCheckedKeys(checked as number[]);
-                  }}
-                  expandedKeys={apiExpandedKeys}
-                  onExpand={(keys) => setApiExpandedKeys(keys as React.Key[])}
-                  treeData={apiTreeData}
-                  style={{
-                    maxHeight: 300,
-                    overflow: 'auto',
-                    border: '1px solid var(--ant-color-border)',
-                    borderRadius: 6,
-                    padding: 8,
-                  }}
-                />
-              </>
-            ) : (
-              <div
-                style={{
-                  color: 'var(--ant-color-text-quaternary)',
-                  padding: 16,
-                  textAlign: 'center',
-                  border: '1px dashed var(--ant-color-border)',
-                  borderRadius: 6,
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ display: 'block', marginBottom: 8, color: 'var(--ant-color-text)' }}>
+          {t('apiIds')}
+        </label>
+        <Spin spinning={apiTreeLoading}>
+          {apiTreeData.length > 0 ? (
+            <>
+              {renderTreeToolbar(
+                apiTreeData,
+                apiExpandedKeys,
+                apiCheckedKeys,
+                (keys) => setApiExpandedKeys(keys),
+                (keys) => setApiCheckedKeys(keys as number[]),
+              )}
+              <Tree
+                checkable
+                checkedKeys={apiCheckedKeys}
+                onCheck={(checked) => {
+                  setApiCheckedKeys(checked as number[]);
                 }}
-              >
-                {apiTreeLoading ? '' : t('apiIdsPlaceholder')}
-              </div>
-            )}
-          </Spin>
-        </div>
-      </Col>
+                expandedKeys={apiExpandedKeys}
+                onExpand={(keys) => setApiExpandedKeys(keys as React.Key[])}
+                treeData={apiTreeData}
+                style={{
+                  maxHeight: 300,
+                  overflow: 'auto',
+                  border: '1px solid var(--ant-color-border)',
+                  borderRadius: 6,
+                  padding: 8,
+                }}
+              />
+            </>
+          ) : (
+            <div
+              style={{
+                color: 'var(--ant-color-text-quaternary)',
+                padding: 16,
+                textAlign: 'center',
+                border: '1px dashed var(--ant-color-border)',
+                borderRadius: 6,
+              }}
+            >
+              {apiTreeLoading ? '' : t('apiIdsPlaceholder')}
+            </div>
+          )}
+        </Spin>
+      </div>
     </DrawerForm>
   );
 };

@@ -118,6 +118,9 @@ export default function AccessKeyDrawer({
         }}
         onFinish={handleSubmit}
         submitter={{ submitButtonProps: { loading: confirmLoading } }}
+        layout="horizontal"
+        labelCol={{ flex: '0 0 120px' }}
+        wrapperCol={{ flex: 'auto' }}
       >
         <ProFormText
           name="name"

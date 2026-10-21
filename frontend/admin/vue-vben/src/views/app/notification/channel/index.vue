@@ -6,6 +6,8 @@ import { computed, h, reactive, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { LucideFilePenLine, LucideSend, LucideTrash2 } from '@vben/icons';
 import { $t } from '@vben/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 
 import { message, notification } from 'ant-design-vue';
 
@@ -513,6 +515,35 @@ function openTestSend(row: NotificationChannel) {
   testOpen.value = true;
 }
 
+/* 操作列描述符：编辑 + 测试发送（仅 EMAIL/SMS）+ 删除，三钮全行内。
+   测试发送只对有"收件目标"的渠道有意义：EMAIL 测 SMTP 握手发信、SMS 发一条真验证码。
+   WEBHOOK 的"当场试一次"在路由规则页（那里测的是事件 → 渠道 → 台账整条链）。 */
+function buildRowActions(row: NotificationChannel): TableAction[] {
+  return [
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: openEdit,
+    },
+    {
+      key: 'test-send',
+      label: $t('page.notificationChannel.testSend'),
+      icon: h(LucideSend),
+      hidden: !(row.type === 'EMAIL' || row.type === 'SMS'),
+      onClick: openTestSend,
+    },
+    {
+      key: 'delete',
+      label: $t('common.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      confirm: { title: $t('page.notificationChannel.deleteConfirm') },
+      onClick: handleDelete,
+    },
+  ];
+}
+
 async function handleTestSend() {
   if (!testTarget.value?.id) return;
   if (!testRecipient.value) {
@@ -589,30 +620,7 @@ async function handleTestSend() {
         />
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" :icon="h(LucideFilePenLine)" @click.stop="openEdit(row)">
-          {{ $t('common.edit') }}
-        </a-button>
-        <!-- 测试发送只对有"收件目标"的渠道有意义：EMAIL 测 SMTP 握手发信、SMS 发一条真验证码。
-             WEBHOOK 的"当场试一次"在路由规则页（那里测的是事件 → 渠道 → 台账整条链）。 -->
-        <a-button
-          v-if="row.type === 'EMAIL' || row.type === 'SMS'"
-          type="link"
-          size="small"
-          :icon="h(LucideSend)"
-          @click.stop="openTestSend(row)"
-        >
-          {{ $t('page.notificationChannel.testSend') }}
-        </a-button>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="$t('page.notificationChannel.deleteConfirm')"
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" size="small" :icon="h(LucideTrash2)">
-            {{ $t('common.delete') }}
-          </a-button>
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions(row)" />
       </template>
     </Grid>
 

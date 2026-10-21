@@ -19,6 +19,8 @@ import { type access_keyservicev1_AccessKey as AccessKey } from '#/api';
 import TableAddButton from '#/components/TableAddButton.vue';
 import TableExportButton from '#/components/TableExportButton.vue';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 
 import AccessKeyDrawer from './access-key-drawer.vue';
 
@@ -166,6 +168,37 @@ function handleDelete(row: AccessKey) {
   );
 }
 
+/* 操作列描述符：编辑/重置密钥/删除三钮全行内，两个确认都走 Popconfirm */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: handleEdit,
+    },
+    {
+      key: 'reset-secret',
+      label: $t('page.accessKey.resetSecret'),
+      icon: h(LucideRefreshCw),
+      confirm: { title: $t('page.accessKey.resetConfirm') },
+      onClick: handleResetSecret,
+    },
+    {
+      key: 'delete',
+      label: $t('common.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      confirm: {
+        title: $t('page.accessKey.deleteConfirm', {
+          moduleName: $t('page.accessKey.moduleName'),
+        }),
+      },
+      onClick: handleDelete,
+    },
+  ];
+}
+
 const exportFetcher = (
   page: number,
   pageSize: number,
@@ -195,33 +228,7 @@ void exportFetcher;
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button
-          type="link"
-          :icon="h(LucideFilePenLine)"
-          @click="handleEdit(row)"
-        >
-          {{ $t('common.edit') }}
-        </a-button>
-        <a-popconfirm
-          :title="$t('page.accessKey.resetConfirm')"
-          @confirm="handleResetSecret(row)"
-        >
-          <a-button type="link" :icon="h(LucideRefreshCw)">
-            {{ $t('page.accessKey.resetSecret') }}
-          </a-button>
-        </a-popconfirm>
-        <a-popconfirm
-          :title="
-            $t('page.accessKey.deleteConfirm', {
-              moduleName: $t('page.accessKey.moduleName'),
-            })
-          "
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" :icon="h(LucideTrash2)">
-            {{ $t('common.delete') }}
-          </a-button>
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
     <Drawer />

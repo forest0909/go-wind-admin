@@ -3,7 +3,6 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 import {
-  LucideChevronDown,
   LucideCirclePlay,
   LucideFilePenLine,
   LucideHistory,
@@ -21,6 +20,8 @@ import {
   deleteAiAgentApp,
   fetchListAiAgentApps,
 } from '#/api';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 import TableAddButton from '#/components/TableAddButton.vue';
 import TableExportButton from '#/components/TableExportButton.vue';
 import type {
@@ -130,6 +131,44 @@ function confirmDelete(row: AiAgentApp) {
   });
 }
 
+/* 操作列描述符：画布/编辑/测试运行行内，运行台账/删除溢出进「更多」。
+   confirmDelete 内部已弹 Modal.confirm，不再挂 confirm 免双重确认 */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'canvas',
+      label: $t('page.aiAgent.openCanvas'),
+      icon: h(LucideNetwork),
+      onClick: (row) => openCanvas(row),
+    },
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: (row) => openEdit(row),
+    },
+    {
+      key: 'runs',
+      label: $t('page.aiAgent.runsTitle'),
+      icon: h(LucideHistory),
+      onClick: (row) => openRuns(row),
+    },
+    {
+      key: 'test-run',
+      label: $t('page.aiAgent.testRun'),
+      icon: h(LucideCirclePlay),
+      onClick: (row) => openRun(row),
+    },
+    {
+      key: 'delete',
+      label: $t('common.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      onClick: (row) => confirmDelete(row),
+    },
+  ];
+}
+
 async function handleDelete(row: AiAgentApp) {
   try {
     await deleteAiAgentApp(row.id!);
@@ -156,55 +195,7 @@ async function handleDelete(row: AiAgentApp) {
         <a-tag v-else>{{ $t('page.aiAgent.enabledOff') }}</a-tag>
       </template>
       <template #action="{ row }">
-        <a-button
-          type="link"
-          size="small"
-          :icon="h(LucideNetwork)"
-          @click.stop="openCanvas(row)"
-        >
-          {{ $t('page.aiAgent.openCanvas') }}
-        </a-button>
-        <a-button
-          type="link"
-          size="small"
-          :icon="h(LucideFilePenLine)"
-          @click.stop="openEdit(row)"
-        >
-          {{ $t('common.edit') }}
-        </a-button>
-        <a-button
-          type="link"
-          size="small"
-          :icon="h(LucideCirclePlay)"
-          @click.stop="openRun(row)"
-        >
-          {{ $t('page.aiAgent.testRun') }}
-        </a-button>
-        <a-dropdown>
-          <a-button type="link" size="small" @click.prevent>
-            {{ $t('ui.button.more') }}
-            <LucideChevronDown class="ml-1 size-4" />
-          </a-button>
-          <template #overlay>
-            <a-menu
-              :items="[
-                {
-                  key: 'runs',
-                  icon: () => h(LucideHistory),
-                  label: $t('page.aiAgent.runsTitle'),
-                  onClick: () => openRuns(row),
-                },
-                {
-                  key: 'delete',
-                  danger: true,
-                  icon: () => h(LucideTrash2),
-                  label: $t('common.delete'),
-                  onClick: () => confirmDelete(row),
-                },
-              ]"
-            />
-          </template>
-        </a-dropdown>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
     <CanvasDrawer />

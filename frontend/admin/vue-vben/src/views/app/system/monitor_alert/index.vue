@@ -9,6 +9,8 @@ import { h, reactive, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 import { $t } from '@vben/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 
 import { message, notification } from 'ant-design-vue';
 
@@ -323,6 +325,25 @@ async function handleEvaluate() {
     evaluateSaving.value = false;
   }
 }
+/* 操作列描述符：编辑/删除两钮全行内，删除 Popconfirm 确认 */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: openEdit,
+    },
+    {
+      key: 'delete',
+      label: $t('page.monitorAlert.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      confirm: { title: $t('page.monitorAlert.deleteConfirm') },
+      onClick: handleDelete,
+    },
+  ];
+}
 </script>
 
 <template>
@@ -366,19 +387,7 @@ async function handleEvaluate() {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" :icon="h(LucideFilePenLine)" @click.stop="openEdit(row)">
-          {{ $t('common.edit') }}
-        </a-button>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="$t('page.monitorAlert.deleteConfirm')"
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" size="small" :icon="h(LucideTrash2)">
-            {{ $t('page.monitorAlert.delete') }}
-          </a-button>
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
 

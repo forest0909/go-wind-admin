@@ -21,6 +21,8 @@ import {
 } from '#/api';
 import { type scriptservicev1_Script as Script } from '#/api';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 import TableAddButton from '#/components/TableAddButton.vue';
 import TableExportButton from '#/components/TableExportButton.vue';
 
@@ -248,6 +250,36 @@ async function handleTestRun() {
     testRunLoading.value = false;
   }
 }
+/* 操作列描述符：试运行/编辑/删除三钮全行内，删除 Popconfirm 确认 */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'test-run',
+      label: $t('page.script.testRun'),
+      icon: h(LucideCirclePlay),
+      tooltip: $t('page.script.testRun'),
+      onClick: openTestRun,
+    },
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: handleEdit,
+    },
+    {
+      key: 'delete',
+      label: $t('common.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      confirm: {
+        title: $t('ui.text.do_you_want_delete', {
+          moduleName: $t('page.script.moduleName'),
+        }),
+      },
+      onClick: handleDelete,
+    },
+  ];
+}
 </script>
 
 <template>
@@ -278,26 +310,7 @@ async function handleTestRun() {
         />
       </template>
       <template #action="{ row }">
-        <a-tooltip :title="$t('page.script.testRun')">
-          <a-button type="link" :icon="h(LucideCirclePlay)" @click.stop="openTestRun(row)">
-            {{ $t('page.script.testRun') }}
-          </a-button>
-        </a-tooltip>
-        <a-button type="link" :icon="h(LucideFilePenLine)" @click.stop="handleEdit(row)">
-          {{ $t('common.edit') }}
-        </a-button>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="
-            $t('ui.text.do_you_want_delete', { moduleName: $t('page.script.moduleName') })
-          "
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" :icon="h(LucideTrash2)">
-            {{ $t('common.delete') }}
-          </a-button>
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
     <Drawer />

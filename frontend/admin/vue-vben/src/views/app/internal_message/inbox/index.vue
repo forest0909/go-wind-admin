@@ -24,6 +24,8 @@ import {
   useMarkNotificationAsRead,
 } from '#/api';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 
 import InboxDetailDrawer from './inbox-detail-drawer.vue';
 
@@ -314,6 +316,30 @@ async function handleMarkAllRead() {
     markAllReadLoading.value = false;
   }
 }
+/* 操作列描述符：标记已读（未读才显示，hidden 计溢出前剔除）+ 删除 Popconfirm */
+function buildRowActions(row: any): TableAction[] {
+  return [
+    {
+      key: 'mark-read',
+      label: $t('page.internalMessage.button.markAsRead'),
+      icon: h(LucideCheck),
+      hidden: row.status === 'READ',
+      onClick: handleMarkAsRead,
+    },
+    {
+      key: 'delete',
+      label: $t('common.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      confirm: {
+        title: $t('ui.text.do_you_want_delete', {
+          moduleName: $t('page.internalMessage.moduleName'),
+        }),
+      },
+      onClick: handleDelete,
+    },
+  ];
+}
 </script>
 
 <template>
@@ -354,28 +380,7 @@ async function handleMarkAllRead() {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button
-          v-if="row.status !== 'READ'"
-          type="link"
-          :icon="h(LucideCheck)"
-          @click="handleMarkAsRead(row)"
-        >
-          {{ $t('page.internalMessage.button.markAsRead') }}
-        </a-button>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="
-            $t('ui.text.do_you_want_delete', {
-              moduleName: $t('page.internalMessage.moduleName'),
-            })
-          "
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" :icon="h(LucideTrash2)">
-            {{ $t('common.delete') }}
-          </a-button>
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions(row)" />
       </template>
     </Grid>
     <Drawer />

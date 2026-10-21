@@ -18,6 +18,8 @@ import type {
   online_sessionservicev1_OnlineSession as OnlineSession,
 } from '#/api/generated/admin/service/v1';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 
 const { mutateAsync: forceLogout } = useForceLogoutSession();
 
@@ -119,8 +121,7 @@ function clientTagColor(clientType?: string): TagProps['color'] {
 }
 
 /* 强制下线：确认后吊销该会话的访问/刷新令牌 */
-async function handleForceLogout(row: OnlineSession) {
-  if (!row.jti || row.userId === undefined) return;
+async function handleForceLogout(row: OnlineSession) {  if (!row.jti || row.userId === undefined) return;
 
   try {
     await forceLogout({
@@ -137,6 +138,23 @@ async function handleForceLogout(row: OnlineSession) {
       message: error?.message || $t('page.onlineSession.forceLogoutFailed'),
     });
   }
+}
+/* 操作列描述符：单钮强制下线（danger），Popconfirm 确认（确认文案带用户标识） */
+function buildRowActions(row: OnlineSession): TableAction[] {
+  return [
+    {
+      key: 'force-logout',
+      label: $t('page.onlineSession.forceLogout'),
+      icon: h(LucideLogOut),
+      danger: true,
+      confirm: {
+        title: $t('page.onlineSession.forceLogoutConfirmDesc', {
+          user: row.username || String(row.userId),
+        }),
+      },
+      onClick: handleForceLogout,
+    },
+  ];
 }
 </script>
 
@@ -163,28 +181,7 @@ async function handleForceLogout(row: OnlineSession) {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="
-            $t('page.onlineSession.forceLogoutConfirmDesc', {
-              user: row.username || String(row.userId),
-            })
-          "
-          @confirm="handleForceLogout(row)"
-        >
-          <!-- Tailwind Preflight 把 svg 设为 display:block，块级 icon 必然独占一行，
-               nowrap 拦不住，必须把按钮内 svg 收回行内并与文本垂直居中 -->
-          <a-button
-            danger
-            type="link"
-            size="small"
-            class="whitespace-nowrap"
-            :icon="h(LucideLogOut)"
-          >
-            {{ $t('page.onlineSession.forceLogout') }}
-          </a-button>
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions(row)" />
       </template>
     </Grid>
   </Page>

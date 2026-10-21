@@ -9,6 +9,8 @@ import { h, reactive, ref } from 'vue';
 import { Page } from '@vben/common-ui';
 import { LucideEye, LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 import { $t } from '@vben/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 
 import { message, notification } from 'ant-design-vue';
 
@@ -248,6 +250,32 @@ function openRender(row: NotificationTemplate) {
   renderOpen.value = true;
 }
 
+/* 操作列描述符：编辑/预览/删除三钮全行内，删除 Popconfirm 确认 */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: openEdit,
+    },
+    {
+      key: 'render',
+      label: $t('page.notificationTemplate.render'),
+      icon: h(LucideEye),
+      onClick: openRender,
+    },
+    {
+      key: 'delete',
+      label: $t('page.notificationTemplate.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      confirm: { title: $t('page.notificationTemplate.deleteConfirm') },
+      onClick: handleDelete,
+    },
+  ];
+}
+
 async function handleRender() {
   const id = renderRow.value?.id;
   if (!id) return;
@@ -299,22 +327,7 @@ async function handleRender() {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" :icon="h(LucideFilePenLine)" @click.stop="openEdit(row)">
-          {{ $t('common.edit') }}
-        </a-button>
-        <a-button type="link" size="small" :icon="h(LucideEye)" @click.stop="openRender(row)">
-          {{ $t('page.notificationTemplate.render') }}
-        </a-button>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="$t('page.notificationTemplate.deleteConfirm')"
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" size="small" :icon="h(LucideTrash2)">
-            {{ $t('page.notificationTemplate.delete') }}
-          </a-button>
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
 

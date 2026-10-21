@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h, ref } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideChevronDown, LucideCirclePlay, LucideCircleStop, LucideFilePenLine, LucidePause, LucidePlay, LucideRotateCcw, LucideRotateCw, LucideServerCog, LucideTrash2 } from '@vben/icons';
+import { LucideCirclePlay, LucideCircleStop, LucideFilePenLine, LucidePause, LucidePlay, LucideRotateCcw, LucideRotateCw, LucideServerCog, LucideTrash2 } from '@vben/icons';
 
 import { Modal, notification } from 'ant-design-vue';
 
@@ -30,6 +30,8 @@ import {
   useUpdateTask,
 } from '#/api';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 import TableAddButton from '#/components/TableAddButton.vue';
 import TableExportButton from '#/components/TableExportButton.vue';
 
@@ -314,6 +316,67 @@ function handleEdit(row: any) {
   openModal(false, row);
 }
 
+/* 操作列描述符：行内只留前 3 个（编辑/启动/停止），重启/删除溢出进「更多」，
+   下拉里放不下 Popconfirm 由组件自动降级 Modal.confirm（confirmRestart/confirmDelete）。
+   行参数在点击时由组件回传（onClick(row)），这里只需静态描述。 */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: handleEdit,
+    },
+    {
+      key: 'start',
+      label: $t('page.task.button.start'),
+      icon: h(LucideCirclePlay),
+      success: true,
+      confirm: {
+        title: $t('page.task.text.do_you_want_start_task', {
+          moduleName: $t('page.task.moduleName'),
+        }),
+      },
+      onClick: handleStartTask,
+    },
+    {
+      key: 'stop',
+      label: $t('page.task.button.stop'),
+      icon: h(LucideCircleStop),
+      danger: true,
+      confirm: {
+        title: $t('page.task.text.do_you_want_stop_task', {
+          moduleName: $t('page.task.moduleName'),
+        }),
+      },
+      onClick: handleStopTask,
+    },
+    {
+      key: 'restart',
+      label: $t('page.task.button.restart'),
+      icon: h(LucideRotateCcw),
+      confirm: {
+        title: $t('page.task.text.do_you_want_restart_task', {
+          moduleName: $t('page.task.moduleName'),
+        }),
+      },
+      onClick: confirmRestartTask,
+    },
+    {
+      key: 'delete',
+      label: $t('common.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      confirm: {
+        title: $t('ui.text.do_you_want_delete', {
+          moduleName: $t('page.task.moduleName'),
+        }),
+      },
+      onClick: confirmDeleteTask,
+    },
+  ];
+}
+
 /* 删除 */
 async function handleDelete(row: any) {
 
@@ -429,87 +492,10 @@ async function handleEnableChanged(row: any, checked: boolean) {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button
-          type="link"
-          :icon="h(LucideFilePenLine)"
-          @click.stop="handleEdit(row)"
-        >
-          {{ $t('common.edit') }}
-        </a-button>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="
-            $t('page.task.text.do_you_want_start_task', {
-              moduleName: $t('page.task.moduleName'),
-            })
-          "
-          @confirm="handleStartTask(row)"
-        >
-          <a-button
-            type="link"
-            class="green-link-btn"
-            :icon="h(LucideCirclePlay)"
-          >
-            {{ $t('page.task.button.start') }}
-          </a-button>
-        </a-popconfirm>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="
-            $t('page.task.text.do_you_want_stop_task', {
-              moduleName: $t('page.task.moduleName'),
-            })
-          "
-          @confirm="handleStopTask(row)"
-        >
-          <a-button danger type="link" :icon="h(LucideCircleStop)">
-            {{ $t('page.task.button.stop') }}
-          </a-button>
-        </a-popconfirm>
-        <a-dropdown>
-          <a-button type="link" @click.prevent>
-            {{ $t('ui.button.more') }}
-            <LucideChevronDown class="ml-1 size-4" />
-          </a-button>
-          <template #overlay>
-            <a-menu
-              :items="[
-                {
-                  key: 'restart',
-                  icon: () => h(LucideRotateCcw),
-                  label: $t('page.task.button.restart'),
-                  onClick: () => confirmRestartTask(row),
-                },
-                {
-                  key: 'delete',
-                  danger: true,
-                  icon: () => h(LucideTrash2),
-                  label: $t('common.delete'),
-                  onClick: () => confirmDeleteTask(row),
-                },
-              ]"
-            />
-          </template>
-        </a-dropdown>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
     <SystemTasksModal v-model:open="sysTasksOpen" />
     <Drawer />
   </Page>
 </template>
-
-<style scoped>
-/* 链接型按钮的墨取 §2.1 文字档：hsl(var(--success)) 是填充级 #57D188，对白底只有 1.92:1，
-   当链接文字用等于看不见。hover 从文字档再往白走 10%，浅色 4.74、暗色只会更亮，两态都不掉出 4.5。 */
-/* 0-4-0 特异性压过 framework 全局 .ant-btn.ant-btn-link:not(.ant-btn-dangerous)（0-3-0 !important）
-   的主色蓝——否则这里的 success 文字档被整体改写，启动钮一直是蓝的。 */
-:deep(.ant-btn.green-link-btn.green-link-btn) {
-  color: var(--gowind-success-text) !important;
-}
-
-:deep(.ant-btn.green-link-btn.green-link-btn:hover) {
-  color: color-mix(in srgb, var(--gowind-success-text) 90%, white) !important;
-}
-</style>

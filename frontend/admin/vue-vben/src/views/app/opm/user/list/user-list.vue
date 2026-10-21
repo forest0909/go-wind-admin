@@ -4,7 +4,7 @@ import type { VxeGridListeners, VxeGridProps } from '#/adapter/vxe-table';
 import { computed, h, watch } from 'vue';
 
 import { useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideChevronDown, LucideFilePenLine, LucideInfo, LucideShieldOff, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucideInfo, LucideShieldOff, LucideTrash2 } from '@vben/icons';
 import { isEqual } from '@vben/utils';
 
 import { Modal, notification } from 'ant-design-vue';
@@ -27,6 +27,8 @@ import {
   userStatusToName,
 } from '#/api';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 import { router } from '#/router';
 import { parseResourceHiddenFields } from '#/utils';
 import { getRandomColor } from '#/utils/color';
@@ -355,6 +357,41 @@ function handleDetail(row: any) {
   router.push(`/opm/users/detail/${row.id}`);
 }
 
+/* 操作列描述符：详情/编辑 + 平台侧才有重置 MFA（hidden 计溢出前剔除），
+   删除溢出进「更多」由组件降级 Modal.confirm（confirmDelete） */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'detail',
+      label: $t('ui.button.detail'),
+      icon: h(LucideInfo),
+      onClick: handleDetail,
+    },
+    {
+      key: 'edit',
+      label: $t('common.edit'),
+      icon: h(LucideFilePenLine),
+      onClick: handleEdit,
+    },
+    {
+      key: 'reset-mfa',
+      label: $t('page.user.button.resetMfa'),
+      icon: h(LucideShieldOff),
+      hidden: !isPlatformSide.value,
+      confirm: { title: $t('page.user.resetMfaConfirmTitle') },
+      onClick: handleResetMfa,
+    },
+    {
+      key: 'delete',
+      label: $t('common.delete'),
+      icon: h(LucideTrash2),
+      danger: true,
+      // confirmDelete 内部已弹 Modal.confirm（含 okType danger），不再挂 confirm 免双重确认
+      onClick: confirmDelete,
+    },
+  ];
+}
+
 watch(
   () => [userViewStore.currentOrgUnitId, userViewStore.currentTenantId],
   (newValues, oldValue) => {
@@ -419,51 +456,7 @@ watch(
       </div>
     </template>
     <template #action="{ row }">
-      <a-button
-        type="link"
-        :icon="h(LucideInfo)"
-        @click.stop="handleDetail(row)"
-      >
-        {{ $t('ui.button.detail') }}
-      </a-button>
-
-      <a-button
-        type="link"
-        :icon="h(LucideFilePenLine)"
-        @click.stop="handleEdit(row)"
-      >
-        {{ $t('common.edit') }}
-      </a-button>
-      <a-popconfirm
-        v-if="isPlatformSide"
-        :cancel-text="$t('ui.button.cancel')"
-        :ok-text="$t('ui.button.ok')"
-        :title="$t('page.user.resetMfaConfirmTitle')"
-        @confirm="handleResetMfa(row)"
-      >
-        <a-button type="link" :icon="h(LucideShieldOff)">
-          {{ $t('page.user.button.resetMfa') }}
-        </a-button>
-      </a-popconfirm>
-      <a-dropdown>
-        <a-button type="link" @click.prevent>
-          {{ $t('ui.button.more') }}
-          <LucideChevronDown class="ml-1 size-4" />
-        </a-button>
-        <template #overlay>
-          <a-menu
-            :items="[
-              {
-                key: 'delete',
-                danger: true,
-                icon: () => h(LucideTrash2),
-                label: $t('common.delete'),
-                onClick: () => confirmDelete(row),
-              },
-            ]"
-          />
-        </template>
-      </a-dropdown>
+      <TableActions :row="row" :actions="buildRowActions()" />
     </template>
   </Grid>
   <Drawer />

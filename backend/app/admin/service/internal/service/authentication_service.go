@@ -724,9 +724,11 @@ func (s *AuthenticationService) verifyLoginCaptcha(ctx context.Context) bool {
 
 // doGrantTypeRefreshToken 处理授权类型 - 刷新令牌
 func (s *AuthenticationService) doGrantTypeRefreshToken(ctx context.Context, req *authenticationV1.LoginRequest, refreshToken string) (*authenticationV1.LoginResponse, error) {
-	// refresh token 为自描述 JWT，VerifyRefreshToken 验签并原子吊销旧令牌对，返回 uid/jti。
+	// refresh token 为自描述 JWT，VerifyRefreshToken 验签并原子轮换旧令牌，返回 uid/jti。
 	// 不再依赖 access token 提供的身份信息。旧 jti 用于继承会话元数据的登录时间。
-	userId, oldJti, err := s.authenticator.VerifyRefreshToken(ctx, req.GetClientType(), refreshToken)
+	// grace=true 表示 RT 处于宽限窗口（刚被并发刷新对撞方轮换掉），本次兑换
+	// 一个独立新会话，不做旧会话元数据继承。
+	userId, oldJti, grace, err := s.authenticator.VerifyRefreshToken(ctx, req.GetClientType(), refreshToken)
 	if err != nil {
 		s.log.Errorf(ctx, "verify refresh token failed: [%s]", err)
 		return nil, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
@@ -769,15 +771,25 @@ func (s *AuthenticationService) doGrantTypeRefreshToken(ctx context.Context, req
 		return nil, err
 	}
 
-	// 记录新令牌对的会话元数据：刷新轮换是同一客户端续期而非重新登录，
-	// 登录时间继承旧会话（旧元数据已随旧令牌对在 Lua 脚本中原子删除）。
-	oldMeta, gerr := s.authenticator.GetSessionMeta(ctx, req.GetClientType(), userId, oldJti)
-	if gerr != nil {
-		s.log.Errorf(ctx, "get old session meta failed for user [%d]: %v", userId, gerr)
+	// 记录代际链：新 jti 由旧 jti 轮换而来。踢下线沿链回溯删除整条世系的
+	// AT（轮换已不再删除旧 AT，见 VerifyAndRevokeTokenPair）。失败仅降级，
+	// 不阻断刷新。
+	if lerr := s.authenticator.AddTokenLineage(ctx, req.GetClientType(), tokenPayload.GetUserId(), tokenPayload.GetJti(), oldJti); lerr != nil {
+		s.log.Errorf(ctx, "record token lineage failed for user [%d]: %v", userId, lerr)
 	}
+
+	// 记录新令牌对的会话元数据：刷新轮换是同一客户端续期而非重新登录，
+	// 登录时间继承旧会话（旧元数据已随旧令牌对在 Lua 脚本中原子删除）；
+	// 宽限兑换出的独立新会话无可继承，登录时间取当下。
 	var loginAt int64
-	if oldMeta != nil {
-		loginAt = oldMeta.LoginAt
+	if !grace {
+		oldMeta, gerr := s.authenticator.GetSessionMeta(ctx, req.GetClientType(), userId, oldJti)
+		if gerr != nil {
+			s.log.Errorf(ctx, "get old session meta failed for user [%d]: %v", userId, gerr)
+		}
+		if oldMeta != nil {
+			loginAt = oldMeta.LoginAt
+		}
 	}
 	recordSessionMetaAt(ctx, s.log, s.authenticator, req.GetClientType(), tokenPayload, loginAt)
 

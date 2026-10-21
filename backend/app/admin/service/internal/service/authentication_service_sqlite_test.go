@@ -861,7 +861,8 @@ func TestAuthSvcSqlite_LogoutAndRevocation(t *testing.T) {
 
 // TestAuthSvcSqlite_RefreshTokenFlow 验证刷新令牌轮换全链路：
 // 缺 cookie / 错误 grant / 垃圾 token 均 401；合法 refresh token（HttpOnly cookie 注入）
-// 轮换出新令牌对（旧会话元数据登录时间被继承），旧令牌对原子吊销不可复用。
+// 轮换出新令牌对（旧会话元数据登录时间被继承）；旧 AT 保留至自然 TTL（多标签页
+// 共享 cookie 的轮换不互杀在用令牌），旧 RT 在宽限窗口内可兑换、越窗即拒。
 func TestAuthSvcSqlite_RefreshTokenFlow(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
 	base := context.Background()
@@ -920,18 +921,27 @@ func TestAuthSvcSqlite_RefreshTokenFlow(t *testing.T) {
 	require.True(t, valResp.GetIsValid())
 	require.Equal(t, []string{constants.PlatformAdminRoleCode}, valResp.GetPayload().GetRoles())
 
-	// 旧令牌对已原子吊销：旧 access token 与旧 refresh token 均不可再用。
+	// 旧 access token 不随轮换吊销：多标签页/多前端共享同一浏览器 cookie jar，
+	// 轮换即删会把其他标签页刚拿到手的在用令牌作废，引发持续互杀的 401 风暴；
+	// 旧 AT 自然存活至自身 TTL，踢下线经代际链（lin: 键）追杀整条世系。
 	oldValResp, err := e.svc.ValidateToken(base, &authenticationV1.ValidateTokenRequest{
 		Token:         oldAccess,
 		ClientType:    authenticationV1.ClientType_admin,
 		TokenCategory: authenticationV1.TokenCategory_ACCESS,
 	})
-	require.Error(t, err, "旧 access token 应随轮换吊销")
-	require.True(t, authenticationV1.IsUnauthorized(err))
-	require.False(t, oldValResp.GetIsValid())
+	require.NoError(t, err, "旧 access token 应保留至自然 TTL")
+	require.True(t, oldValResp.GetIsValid())
 
+	// 宽限窗口内复用旧 refresh token（并发刷新对撞场景）：兑换独立新会话，
+	// 而不是判 INCORRECT_REFRESH_TOKEN 逼前端强制登出。
+	graceResp, err := e.svc.RefreshToken(headerCtx(base, rotHeader), &authenticationV1.LoginRequest{GrantType: authenticationV1.GrantType_refresh_token})
+	require.NoError(t, err, "宽限窗口内的旧 refresh token 应兑换成功")
+	require.NotEmpty(t, graceResp.GetAccessToken())
+
+	// 越过宽限窗口后复用：拒绝（防盗用重放仍被保留）。
+	e.mr.FastForward(data.RefreshTokenGraceWindow + 30*time.Second)
 	reuseResp, err := e.svc.RefreshToken(headerCtx(base, rotHeader), &authenticationV1.LoginRequest{GrantType: authenticationV1.GrantType_refresh_token})
-	require.Error(t, err, "旧 refresh token 不可复用")
+	require.Error(t, err, "宽限窗口外的旧 refresh token 不可复用")
 	require.True(t, authenticationV1.IsIncorrectRefreshToken(err))
 	require.Nil(t, reuseResp)
 }

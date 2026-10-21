@@ -116,7 +116,7 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
   （Redis，键含 clientType+uid+jti，TTL 各按配置）；
 - **每请求校验**（`Authenticate`，被 `pkg/middleware/auth` 的 accessTokenChecker 调用）：
   JWT 验签 → 过期检查 → **Redis 缓存核对**（`IsValidAccessToken`）——
-  令牌不在缓存（已吊销/被轮换掉/未入缓存）即拒。因此**吊销即时生效**（删缓存键），
+  令牌不在缓存（已吊销/未入缓存）即拒。因此**吊销即时生效**（删缓存键），
   密钥轮换 + 吊销 = 全量下线；
 - 吊销面：`RevokeUserToken`（按 uid，登出用）、`RevokeTokenByJti`（单会话，在线用户强制下线用）、
   `RevokeUserTokenAllClientTypes`（改密踢人等）；
@@ -139,11 +139,19 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 
 - 端点在鉴权白名单内（refresh token 自描述 JWT **独立鉴权**，不依赖 access token）；
 - Cookie 取 refresh → `VerifyRefreshToken`：JWT 验签 + 过期 + **Lua 脚本原子
-  「验证 RT→删除旧令牌对」**（`VerifyAndRevokeTokenPair`）——每次刷新都轮换 jti，
-  旧 access/refresh 立即作废；
+  「验证 RT→删除 RT→旧 RT 入宽限集合」**（`VerifyAndRevokeTokenPair`）——每次刷新都轮换 jti，
+  旧 refresh 立即作废；**旧 access 不随轮换删除**（自然存活至自身 TTL）：
+  多标签页/多前端共享同一浏览器 cookie jar，轮换即删会把其他标签页刚拿到手的
+  在用令牌作废，引发持续互杀的 401 风暴（2026-10-21 定案修复）；
+- **宽限窗口**（`RefreshTokenGraceWindow` 60s，`rtg:` 集合）：并发刷新对撞时
+  持有上一枚 RT 的一方命中宽限即兑换独立新会话，不再判 `INCORRECT_REFRESH_TOKEN`
+  逼前端强制登出；窗口外重放仍拒绝（防盗用重放语义保留）；
+- **代际链**（`lin:{ct}:{uid}:{jti}`，值=上一代 jti，TTL 同 AT）：因旧 AT 不随轮换
+  删除，踢下线（`RevokeTokenByJti`）沿链回溯删除整条世系的 AT，保住「踢即全灭」；
 - 重新走授权丰富（第 2 章第 9 步同款，角色/数据范围/字段黑名单**随每次刷新重算**——
   这是"档位变更最迟随刷新生效"的机制根源）；
-- 会话元数据**继承旧会话的登录时间**（旧元数据已随旧令牌对原子删除，新元数据携带 loginAt）；
+- 会话元数据**继承旧会话的登录时间**（旧元数据已随旧令牌对原子删除，新元数据携带
+  loginAt）；宽限兑换出的独立会话无可继承，登录时间取当下；
 - 新 refresh 仍走 Cookie，响应体只回新 access。
 
 ### 4.3 前端消费（react 实例，`src/bootstrap.ts` + `core/transport/rest/preset-interceptors.ts`）

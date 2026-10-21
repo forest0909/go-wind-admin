@@ -119,7 +119,9 @@ export function ListTable<
       } catch (error) {
         console.error('[ListTable] 列表数据请求失败', error);
         setPhase('failed');
-        setErrorReason((error as Error)?.message ?? String(error));
+        // message 可能为 undefined/空串（异常 rejection 对象缺 message 字段），
+        // 空值兜底到通用失败文案，避免把字面量 "undefined" 渲染进错误态
+        setErrorReason((error as Error)?.message || t('loading.failed'));
         return { data: [], total: 0, success: false };
       } finally {
         stopSkeleton();

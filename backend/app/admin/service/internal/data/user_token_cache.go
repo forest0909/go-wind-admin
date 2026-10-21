@@ -33,20 +33,41 @@ const (
 	// UserSessionKeyFormat 用户会话元数据键格式 us:{ct}:{uid}:{jti}
 	UserSessionKeyFormat = "us:%d:%d:%s"
 
+	// RefreshTokenGraceKeyFormat 刷新令牌宽限集合键格式 rtg:{ct}:{uid}。
+	// 集合成员为刚被轮换掉的 RT 原值，TTL 为宽限窗口；并发刷新对撞时
+	// 持有上一枚 RT 的一方凭成员资格兑换新会话，而不是被判死强制登出。
+	RefreshTokenGraceKeyFormat = "rtg:%d:%d"
+
+	// TokenLineageKeyFormat 令牌代际链键格式 lin:{ct}:{uid}:{jti}，值=上一代 jti。
+	// 轮换不再删除旧 AT（多标签页/多端共享 cookie 的轮换会互杀在用令牌），
+	// 踢下线沿此链回溯删除整条会话世系的 AT，保住「踢即全灭」的语义。
+	TokenLineageKeyFormat = "lin:%d:%d:%s"
+
+	// RefreshTokenGraceWindow RT 宽限窗口。仅需覆盖并发刷新对撞的毫秒级
+	// 时间窗与后台标签页定时器节流的抖动，取 60s 足够且限制被盗 RT 的可用期。
+	RefreshTokenGraceWindow = 60 * time.Second
+
+	// tokenLineageMaxDepth 踢下线回溯代际链的深度上限（防御异常环）
+	tokenLineageMaxDepth = 64
+
 	// scanCount 每次 SCAN 返回的键数量提示（仅是建议值，非强制）
 	scanCount = 100
 )
 
-// verifyAndRevokeRefreshTokenScript 原子验证并吊销刷新令牌的 Lua 脚本。
-// 在单次 Redis 调用中完成「验证 RT → 删除 RT → 删除 AT → 删除会话元数据」，
-// 避免 TOCTOU 竞态。KEYS[3] 为可选的会话元数据键（us:{ct}:{uid}:{jti}），
-// 传空串表示不删除。注意：迁移到 String key 后，rtKey/atKey 均为含 jti 的
-// 完整 key，使用 GET/DEL 操作。返回值: 1=验证成功, 0=令牌不存在或值不匹配
+// verifyAndRevokeRefreshTokenScript 原子验证并轮换刷新令牌的 Lua 脚本。
+// 在单次 Redis 调用中完成「验证 RT → 删除 RT → 删除会话元数据 → 旧 RT 入宽限集合」，
+// 避免 TOCTOU 竞态。KEYS: [rtKey, usKey, graceKey]，ARGV: [refreshToken, graceTTLSeconds]。
+// usKey 传空串表示不删除。
+// 旧 AT（atKey）不再删除：多标签页/多前端共享同一浏览器 cookie jar，顺序轮换
+// 会把上一枚刚发给其他标签页在用的 AT 作废，引发持续互杀的 401 风暴；旧 AT
+// 改为自然存活至自身 TTL，踢下线经代际链（lin: 键）追杀。返回值: 1=验证成功,
+// 0=令牌不存在或值不匹配
 var verifyAndRevokeRefreshTokenScript = redis.NewScript(`
 	local rtKey = KEYS[1]
-	local atKey = KEYS[2]
-	local usKey = KEYS[3]
+	local usKey = KEYS[2]
+	local graceKey = KEYS[3]
 	local refreshToken = ARGV[1]
+	local graceTTL = tonumber(ARGV[2])
 
 	local stored = redis.call('GET', rtKey)
 	if not stored or stored ~= refreshToken then
@@ -54,10 +75,11 @@ var verifyAndRevokeRefreshTokenScript = redis.NewScript(`
 	end
 
 	redis.call('DEL', rtKey)
-	redis.call('DEL', atKey)
 	if usKey and usKey ~= '' then
 		redis.call('DEL', usKey)
 	end
+	redis.call('SADD', graceKey, refreshToken)
+	redis.call('EXPIRE', graceKey, graceTTL)
 	return 1
 `)
 
@@ -158,23 +180,6 @@ func (r *UserTokenCache) RevokeToken(ctx context.Context, clientType authenticat
 	// 会话元数据随令牌一并清理，保持「无令牌即无会话记录」的一致性
 	if err = r.DeleteUserSessionMetas(ctx, clientType, userId); err != nil {
 		r.log.Errorf(ctx, "remove user session metas failed: [%v]", err)
-	}
-
-	return err
-}
-
-func (r *UserTokenCache) RevokeTokenByJti(ctx context.Context, clientType authenticationV1.ClientType, userId uint32, jti string) error {
-	var err error
-	if err = r.RevokeAccessToken(ctx, clientType, userId, jti); err != nil {
-		r.log.Errorf(ctx, "remove user access token failed: [%v]", err)
-	}
-
-	if err = r.RevokeRefreshToken(ctx, clientType, userId, jti); err != nil {
-		r.log.Errorf(ctx, "remove user refresh token failed: [%v]", err)
-	}
-
-	if err = r.DeleteSessionMeta(ctx, clientType, userId, jti); err != nil {
-		r.log.Errorf(ctx, "remove user session meta failed: [%v]", err)
 	}
 
 	return err
@@ -316,9 +321,10 @@ func (r *UserTokenCache) RevokeUserAllRefreshToken(
 	return r.delByPattern(ctx, pattern)
 }
 
-// VerifyAndRevokeTokenPair 原子验证并吊销刷新令牌及其关联的访问令牌。
-// 使用 Lua 脚本保证「验证→删除」操作的原子性，避免 TOCTOU 竞态条件。
-// 返回 (true, nil) 表示刷新令牌有效且已成功吊销旧令牌对。
+// VerifyAndRevokeTokenPair 原子验证并轮换刷新令牌。使用 Lua 脚本保证
+// 「验证→删除→入宽限集合」操作的原子性，避免 TOCTOU 竞态条件。
+// 旧 AT 不再随轮换删除（见脚本注释），返回 (true, nil) 表示刷新令牌有效
+// 且已完成轮换。
 func (r *UserTokenCache) VerifyAndRevokeTokenPair(
 	ctx context.Context,
 	clientType authenticationV1.ClientType,
@@ -327,17 +333,86 @@ func (r *UserTokenCache) VerifyAndRevokeTokenPair(
 	refreshToken string,
 ) (bool, error) {
 	rtKey := r.makeRefreshTokenFieldKey(clientType, userId, jti)
-	atKey := r.makeAccessTokenFieldKey(clientType, userId, jti)
 	// 会话元数据随旧令牌对一并原子删除（刷新轮换后旧会话记录即失效）
 	usKey := r.makeUserSessionKey(clientType, userId, jti)
+	graceKey := r.makeRefreshTokenGraceKey(clientType, userId)
 
-	result, err := verifyAndRevokeRefreshTokenScript.Run(ctx, r.rdb, []string{rtKey, atKey, usKey}, refreshToken).Int64()
+	result, err := verifyAndRevokeRefreshTokenScript.Run(ctx, r.rdb, []string{rtKey, usKey, graceKey},
+		refreshToken, int(RefreshTokenGraceWindow.Seconds())).Int64()
 	if err != nil {
 		r.log.Errorf(ctx, "verifyAndRevokeTokenPair failed for user [%d] jti [%s]: %v", userId, jti, err)
 		return false, err
 	}
 
 	return result == 1, nil
+}
+
+// IsGraceRefreshToken 刷新令牌是否处于宽限窗口内（刚被他人并发轮换掉的 RT）。
+// 命中者可兑换一个独立新会话而不是被判死强制登出。
+func (r *UserTokenCache) IsGraceRefreshToken(
+	ctx context.Context,
+	clientType authenticationV1.ClientType,
+	userId uint32,
+	refreshToken string,
+) bool {
+	graceKey := r.makeRefreshTokenGraceKey(clientType, userId)
+	isMember, err := r.rdb.SIsMember(ctx, graceKey, refreshToken).Result()
+	if err != nil {
+		r.log.Errorf(ctx, "check refresh token grace failed for user [%d]: %v", userId, err)
+		return false
+	}
+	return isMember
+}
+
+// AddTokenLineage 记录令牌代际：newJti 由 prevJti 轮换而来。TTL 与 AT 生命周期
+// 对齐——链节点只需在「持有该代 AT 期间」可被踢下线追到。
+func (r *UserTokenCache) AddTokenLineage(
+	ctx context.Context,
+	clientType authenticationV1.ClientType,
+	userId uint32,
+	newJti string,
+	prevJti string,
+	ttl time.Duration,
+) error {
+	if newJti == "" || prevJti == "" || prevJti == newJti {
+		return nil
+	}
+	key := r.makeTokenLineageKey(clientType, userId, newJti)
+	return r.set(ctx, key, prevJti, ttl)
+}
+
+// RevokeTokenByJti 吊销指定会话（含其整条代际世系的 AT）。
+// 轮换不再删除旧 AT 后，仅删当前 jti 会漏掉同世系更早各代仍在 TTL 内的 AT；
+// 沿 lin: 链回溯逐代删除，恢复「踢即全灭」语义。环/断链由深度上限兜底。
+func (r *UserTokenCache) RevokeTokenByJti(ctx context.Context, clientType authenticationV1.ClientType, userId uint32, jti string) error {
+	var err error
+	if err = r.RevokeAccessToken(ctx, clientType, userId, jti); err != nil {
+		r.log.Errorf(ctx, "remove user access token failed: [%v]", err)
+	}
+
+	if err = r.RevokeRefreshToken(ctx, clientType, userId, jti); err != nil {
+		r.log.Errorf(ctx, "remove user refresh token failed: [%v]", err)
+	}
+
+	if err = r.DeleteSessionMeta(ctx, clientType, userId, jti); err != nil {
+		r.log.Errorf(ctx, "remove user session meta failed: [%v]", err)
+	}
+
+	// 回溯代际链，删除祖先各代残留的 AT 与链节点
+	prev := jti
+	for i := 0; i < tokenLineageMaxDepth; i++ {
+		lineageKey := r.makeTokenLineageKey(clientType, userId, prev)
+		parent, err := r.rdb.GetDel(ctx, lineageKey).Result()
+		if err != nil || parent == "" {
+			break
+		}
+		if err = r.RevokeAccessToken(ctx, clientType, userId, parent); err != nil {
+			r.log.Errorf(ctx, "remove lineage access token failed: [%v]", err)
+		}
+		prev = parent
+	}
+
+	return err
 }
 
 // ==============================
@@ -362,6 +437,16 @@ func (r *UserTokenCache) makeRefreshTokenKey(clientType authenticationV1.ClientT
 // makeRefreshTokenFieldKey 生成刷新令牌键（含 jti）rt:{ct}:{uid}:{jti}
 func (r *UserTokenCache) makeRefreshTokenFieldKey(clientType authenticationV1.ClientType, userId uint32, jti string) string {
 	return fmt.Sprintf(RefreshTokenFieldKeyFormat, clientType.Number(), userId, jti)
+}
+
+// makeRefreshTokenGraceKey 生成刷新令牌宽限集合键 rtg:{ct}:{uid}
+func (r *UserTokenCache) makeRefreshTokenGraceKey(clientType authenticationV1.ClientType, userId uint32) string {
+	return fmt.Sprintf(RefreshTokenGraceKeyFormat, clientType.Number(), userId)
+}
+
+// makeTokenLineageKey 生成令牌代际链键 lin:{ct}:{uid}:{jti}
+func (r *UserTokenCache) makeTokenLineageKey(clientType authenticationV1.ClientType, userId uint32, jti string) string {
+	return fmt.Sprintf(TokenLineageKeyFormat, clientType.Number(), userId, jti)
 }
 
 // makeBlacklistKey 生成黑名单键

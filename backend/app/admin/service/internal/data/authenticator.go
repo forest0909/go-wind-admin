@@ -398,6 +398,21 @@ func (a *Authenticator) CreateUserToken(
 	return
 }
 
+// AddTokenLineage 记录令牌代际（newJti 由 prevJti 轮换而来）。记录失败仅降级为
+// 「踢下线可能漏杀更早各代 AT」，不阻断令牌签发，调用方按日志告警即可。
+func (a *Authenticator) AddTokenLineage(
+	ctx context.Context,
+	clientType authenticationV1.ClientType,
+	userId uint32,
+	newJti string,
+	prevJti string,
+) error {
+	if a.userTokenCache == nil {
+		return nil
+	}
+	return a.userTokenCache.AddTokenLineage(ctx, clientType, userId, newJti, prevJti, a.GetAccessTokenExpires(clientType))
+}
+
 // CreateMachineToken 签发机器令牌（AK/SK 令牌交换专用）：
 // 仅签发 access token（短期、无 refresh、不进在线会话缓存）——
 // 机器令牌无对应用户行，走 CreateUserToken 的 userId 缓存键与 refresh 链路都不适用。
@@ -466,55 +481,63 @@ func (a *Authenticator) RevokeTokenByJti(ctx context.Context, clientType *authen
 	return a.userTokenCache.RevokeTokenByJti(ctx, authenticationV1.ClientType_app, userId, jti)
 }
 
-// VerifyRefreshToken 验证刷新令牌，并原子地吊销旧令牌对。
+// VerifyRefreshToken 验证刷新令牌，并原子地轮换旧刷新令牌。
 // refresh token 现为自描述 JWT，本函数从 token 自身验签解析出 uid/jti，
 // 不再依赖 access token 提供的身份信息。随后用 Lua 脚本保证「验证 RT → 删除 RT →
-// 删除 AT」的原子性，避免 TOCTOU 竞态。
+// 旧 RT 入宽限集合」的原子性，避免 TOCTOU 竞态。
+// grace=true 表示该 RT 处于宽限窗口内（刚被并发刷新对撞的一方轮换掉），
+// 调用方应兑换一个独立新会话，且不得做旧会话元数据继承。
 func (a *Authenticator) VerifyRefreshToken(
 	ctx context.Context,
 	clientType authenticationV1.ClientType,
 	refreshToken string,
-) (userId uint32, jti string, err error) {
+) (userId uint32, jti string, grace bool, err error) {
 	if a.userTokenCache == nil {
 		a.log.Error(ctx, "userTokenCache is nil")
-		return 0, "", authenticationV1.ErrorServiceUnavailable("token cache unavailable")
+		return 0, "", false, authenticationV1.ErrorServiceUnavailable("token cache unavailable")
 	}
 	if refreshToken == "" {
-		return 0, "", authenticationV1.ErrorBadRequest("refresh token is empty")
+		return 0, "", false, authenticationV1.ErrorBadRequest("refresh token is empty")
 	}
 
 	authenticator, err := a.getAuthenticator(clientType)
 	if err != nil {
-		return 0, "", err
+		return 0, "", false, err
 	}
 
 	// 验签 refresh token JWT，提取 uid/jti
 	claims, authErr := authenticator.AuthenticateToken(refreshToken)
 	if authErr != nil {
 		a.log.Errorf(ctx, "authenticate refresh token failed: [%s]", authErr)
-		return 0, "", authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
+		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
 	}
 	if jwt.IsTokenExpired(claims) {
-		return 0, "", authenticationV1.ErrorIncorrectRefreshToken("refresh token is expired")
+		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("refresh token is expired")
 	}
 	userId, jti, err = jwt.ParseRefreshTokenClaims(claims)
 	if err != nil {
 		a.log.Errorf(ctx, "parse refresh token claims failed: [%s]", err)
-		return 0, "", authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
+		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
 	}
 
-	// 原子验证并吊销旧令牌对（Lua 脚本保证原子性）
+	// 原子验证并轮换旧令牌对（Lua 脚本保证原子性）
 	var valid bool
 	if valid, err = a.userTokenCache.VerifyAndRevokeTokenPair(ctx, clientType, userId, jti, refreshToken); err != nil {
 		a.log.Errorf(ctx, "verify refresh token failed for user [%d]: [%s]", userId, err)
-		return 0, "", authenticationV1.ErrorServiceUnavailable("verify refresh token failed")
+		return 0, "", false, authenticationV1.ErrorServiceUnavailable("verify refresh token failed")
 	}
 	if !valid {
+		// 宽限窗口：RT 刚被并发刷新对撞的另一方轮换掉。放行为其兑换独立
+		// 新会话，而不是报 INCORRECT_REFRESH_TOKEN 逼前端强制登出。
+		if a.userTokenCache.IsGraceRefreshToken(ctx, clientType, userId, refreshToken) {
+			a.log.Warnf(ctx, "refresh token for user [%d] accepted in grace window (concurrent refresh race)", userId)
+			return userId, jti, true, nil
+		}
 		a.log.Errorf(ctx, "invalid refresh token for user [%d]", userId)
-		return 0, "", authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
+		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
 	}
 
-	return userId, jti, nil
+	return userId, jti, false, nil
 }
 
 // GetAccessTokens 获取用户的所有访问令牌

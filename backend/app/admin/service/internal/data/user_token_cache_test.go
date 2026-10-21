@@ -164,24 +164,28 @@ func TestUserTokenCache_VerifyAndRevokeTokenPair(t *testing.T) {
 	err = repo.AddTokenPair(ctx, clientType, userId, jti, atVal, rtVal, 0, 0)
 	assert.NoError(t, err)
 
-	// 第一次原子验证并吊销：应成功
+	// 第一次原子验证并轮换：应成功
 	valid, err := repo.VerifyAndRevokeTokenPair(ctx, clientType, userId, jti, rtVal)
 	assert.NoError(t, err)
 	assert.True(t, valid, "第一次验证应成功")
 
-	// 验证旧令牌对已被删除
+	// 轮换后：旧 RT 已删除；旧 AT 保留至自然 TTL（多标签页共享 cookie 的
+	// 轮换不再互杀在用令牌）；旧 RT 进入宽限集合
 	valid, err = repo.IsValidAccessToken(ctx, clientType, userId, jti, atVal)
 	assert.NoError(t, err)
-	assert.False(t, valid, "旧 Access Token 应已被删除")
+	assert.True(t, valid, "旧 Access Token 应保留至自然过期")
 
 	valid, err = repo.IsValidRefreshToken(ctx, clientType, userId, jti, rtVal)
 	assert.NoError(t, err)
 	assert.False(t, valid, "旧 Refresh Token 应已被删除")
 
-	// 第二次原子验证：应失败（已被吊销）
+	assert.True(t, repo.IsGraceRefreshToken(ctx, clientType, userId, rtVal), "被轮换的 RT 应处于宽限集合")
+	assert.False(t, repo.IsGraceRefreshToken(ctx, clientType, userId, "never_seen"), "陌生 RT 不应在宽限集合")
+
+	// 第二次原子验证：应失败（已被轮换），但宽限判定放行
 	valid, err = repo.VerifyAndRevokeTokenPair(ctx, clientType, userId, jti, rtVal)
 	assert.NoError(t, err)
-	assert.False(t, valid, "已吊销的 token 不应再次通过验证")
+	assert.False(t, valid, "已轮换的 token 不应再次通过验证")
 
 	// 测试值不匹配的情况
 	err = repo.AddTokenPair(ctx, clientType, userId, jti, atVal, rtVal, 0, 0)
@@ -195,4 +199,56 @@ func TestUserTokenCache_VerifyAndRevokeTokenPair(t *testing.T) {
 	valid, err = repo.IsValidRefreshToken(ctx, clientType, userId, jti, rtVal)
 	assert.NoError(t, err)
 	assert.True(t, valid, "验证失败时不应删除令牌")
+}
+
+func TestUserTokenCache_RevokeTokenByJtiWalksLineage(t *testing.T) {
+	mr, err := miniredis.Run()
+	assert.NoError(t, err)
+	defer mr.Close()
+
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	ctx := context.Background()
+
+	cfg := &conf.Bootstrap{
+		Server: &conf.Server{
+			Rest: &conf.Server_REST{
+				Middleware: &conf.Middleware{
+					Auth: &conf.Middleware_Auth{Method: "HS256", Key: "some_api_key"},
+				},
+			},
+		},
+		Data: &conf.Data{Redis: &conf.Data_Redis{Addr: mr.Addr()}},
+	}
+	bctx := bootstrap.NewContextWithParam(ctx, &conf.AppInfo{}, cfg, bLogger.NopLogger())
+	repo := NewUserTokenCache(bctx, rdb)
+
+	clientType := authenticationV1.ClientType_app
+	var userId uint32 = 789
+
+	// 三代世系：gen1 → gen2 → gen3（每代各自 AT；RT 已随轮换删除故不建）
+	const (
+		jtiGen1 = "gen-1"
+		jtiGen2 = "gen-2"
+		jtiGen3 = "gen-3"
+	)
+	assert.NoError(t, repo.AddTokenPair(ctx, clientType, userId, jtiGen1, "at-1", "rt-1", 0, 0))
+	assert.NoError(t, repo.AddTokenPair(ctx, clientType, userId, jtiGen2, "at-2", "rt-2", 0, 0))
+	assert.NoError(t, repo.AddTokenPair(ctx, clientType, userId, jtiGen3, "at-3", "rt-3", 0, 0))
+	assert.NoError(t, repo.AddTokenLineage(ctx, clientType, userId, jtiGen2, jtiGen1, 0))
+	assert.NoError(t, repo.AddTokenLineage(ctx, clientType, userId, jtiGen3, jtiGen2, 0))
+
+	// 踢最新一代：整条世系的 AT 都应被删除
+	assert.NoError(t, repo.RevokeTokenByJti(ctx, clientType, userId, jtiGen3))
+
+	for jti, at := range map[string]string{jtiGen1: "at-1", jtiGen2: "at-2", jtiGen3: "at-3"} {
+		valid, err := repo.IsValidAccessToken(ctx, clientType, userId, jti, at)
+		assert.NoError(t, err)
+		assert.False(t, valid, "踢下线应沿代际链删除 %s 的 AT", jti)
+	}
+
+	// 无关会话不受影响
+	assert.NoError(t, repo.AddTokenPair(ctx, clientType, userId, "other", "at-other", "rt-other", 0, 0))
+	valid, err := repo.IsValidAccessToken(ctx, clientType, userId, "other", "at-other")
+	assert.NoError(t, err)
+	assert.True(t, valid, "踢下线不应波及无关会话")
 }

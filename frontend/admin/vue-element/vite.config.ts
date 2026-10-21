@@ -163,7 +163,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         [env.VITE_APP_BASE_API]: {
           changeOrigin: true,
           target: env.VITE_APP_API_URL,
-          rewrite: (path: string) => path.replace(new RegExp("^" + env.VITE_APP_BASE_API), ""),
+          // 后端按 /admin/v1 前缀注册路由（剥前缀会全量 404），前缀原样透传
         },
       },
       // 开发态安全响应头。X-Frame-Options/HSTS/CSP 仅在生产 nginx 生效——

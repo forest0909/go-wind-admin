@@ -407,3 +407,10 @@ input:-webkit-autofill:active {
     order: 4;
 }
 
+/* 抽屉/弹窗表单「复杂控件标签在上」定式（三端口径）：富文本编辑器等复杂控件的
+   Form.Item 加 labelCol/wrapperCol={span:24} + labelAlign="left" + 本类——
+   label 独占一行左对齐，与控件留 8px 间距；简单控件仍走标签同行。 */
+.ant-form-item.form-item-label-top > .ant-form-item-label {
+    padding-bottom: 8px;
+}
+

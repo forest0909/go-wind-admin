@@ -157,13 +157,14 @@ const [BaseForm, baseFormApi] = useVbenForm({
       },
     },
     {
+      // 富文本属复杂控件，按规范标签在上通栏（form-item-label-top 见底部样式）
       component: 'Editor',
       fieldName: 'content',
       defaultValue: '',
       label: $t('page.internalMessage.content'),
-      formItemClass: 'col-span-2 md:col-span-2',
+      formItemClass: 'col-span-2 md:col-span-2 form-item-label-top',
       componentProps: {
-        height: '100%',
+        height: 500,
         placeholder: $t('ui.editor.please_input_content'),
         editorType: EditorType.RICH_TEXT,
         uploadImage: handleUploadImage,
@@ -271,3 +272,19 @@ async function handleUploadImage(_file: File): Promise<string> {
     <BaseForm class="mx-4" />
   </Drawer>
 </template>
+
+<style scoped>
+/* 复杂控件（富文本编辑器）标签在上定式：label 独占一行左对齐，与控件留 8px。
+   !important 用于压过 form-field 模板的 flex-row/justify-end/内联 labelWidth */
+:deep(.form-item-label-top) {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+:deep(.form-item-label-top > label) {
+  width: 100% !important;
+  justify-content: flex-start !important;
+  margin-right: 0 !important;
+  margin-bottom: 8px;
+}
+</style>

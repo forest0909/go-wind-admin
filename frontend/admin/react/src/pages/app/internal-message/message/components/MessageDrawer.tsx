@@ -242,15 +242,19 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
         fieldProps={{ allowClear: true }}
       />
 
-      {/* 消息内容 - Tiptap 富文本编辑器 */}
+      {/* 消息内容 - Tiptap 富文本编辑器；富文本属复杂控件按规范标签在上通栏 */}
       <Form.Item
         name="content"
         label={t('content')}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
         rules={[{ required: true, message: t('requiredContent', '请输入消息内容') }]}
       >
         <Editor
           editorType={EditorType.RICH_TEXT}
-          height={400}
+          height={500}
           placeholder={t('contentPlaceholder')}
         />
       </Form.Item>

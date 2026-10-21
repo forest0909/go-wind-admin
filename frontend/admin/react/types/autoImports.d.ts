@@ -35,6 +35,7 @@ declare global {
   const SloganIcon: typeof import('../src/components/bussiness/AuthLayout/icons/SloganIcon').default
   const StatusBar: typeof import('../src/components/common/Editor/src/TiptapEditor/index').StatusBar
   const Suspense: typeof import('react').Suspense
+  const TableActions: typeof import('../src/components/common/TableActions/index').default
   const TableExportButton: typeof import('../src/components/common/TableExportButton/index').default
   const TableSkeleton: typeof import('../src/components/common/ListTable/TableSkeleton').default
   const ThemeLoading: typeof import('../src/components/common/Loading/index').ThemeLoading
@@ -120,6 +121,6 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
-  export type { FC, ECOption, AuthLayoutProps, EditorProps, CodeEditorProps, JsonEditorProps, MarkdownEditorProps, PlainTextEditorProps, TiptapEditorProps, CodeBlockModalProps, VideoModalProps, IframeModalProps, ImportModalProps, TableSkeletonProps, ThemeLoadingProps, TableExportServerExport, TableExportButtonProps, TokenPayload, AuthState, UserState, TabItem } from './autoImports.d'
+  export type { TableActionConfirm, TableAction, FC, ECOption, AuthLayoutProps, EditorProps, CodeEditorProps, JsonEditorProps, MarkdownEditorProps, PlainTextEditorProps, TiptapEditorProps, CodeBlockModalProps, VideoModalProps, IframeModalProps, ImportModalProps, TableSkeletonProps, ThemeLoadingProps, TableExportServerExport, TableExportButtonProps, TokenPayload, AuthState, UserState, TabItem } from './autoImports.d'
   import('./autoImports.d')
 }

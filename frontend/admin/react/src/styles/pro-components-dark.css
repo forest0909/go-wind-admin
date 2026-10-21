@@ -92,17 +92,23 @@
   background-image: none;
 }
 
-/* ========== 表格竖向分割线策略：对齐 ele/vben（vxe border--none 口径） ==========
-   表体不画常态竖线——vxe border--none/default 只有行底线；表头列间的短竖线
-   由下面一条自绘规则补齐（ele ProTable 同款）。
-   冻结列滚动阴影线是三端一致的既有交互（vxe table.js：scrollLeft < maxScroll 时给
-   fixed-right wrapper 挂 scrolling--middle → 投影；antd 同语义 setShadowEnd），
-   走 antd 原生 ::after inset 阴影，不关。
-   只关容器级阴影条（.ant-table-container:before/after）：那是"无固定列但可横向滚"
-   时的 antd 补偿线，vxe 无固定列表什么都不画。 */
+/* ========== 表格竖向分割线策略（用户定案口径，对齐 ele/vben） ==========
+   表头列间：只有短竖线（下方自绘规则）；表项之间：没有任何竖线。
+   antd 的滚动阴影条全是竖线/渐变形态，与本口径冲突，整族关闭：
+   - 固定单元格的 ::after inset 渐变（rc-table fixed.js，需 scroll.x 才亮）；
+   - 容器的 ::before/::after 补偿条（无固定列但可横向滚时出现）。 */
+.ant-table-wrapper .ant-table-cell-fix-start-shadow::after,
+.ant-table-wrapper .ant-table-cell-fix-end-shadow::after,
 .ant-table-wrapper .ant-table-container::before,
 .ant-table-wrapper .ant-table-container::after {
   display: none !important;
+}
+/* bordered 模式的亚像素列边框（--ant-line-width 0.67px table-border-color）一并去掉：
+   表头竖线只留自绘短竖线，表体不留任何竖线来源；表格外框由列表卡
+   （.ant-pro-card 描边）承担，与 ele 的卡片框同构。 */
+.ant-pro-table .ant-table-bordered .ant-table-tbody > tr > td,
+.ant-pro-table .ant-table-bordered .ant-table-thead > tr > th {
+  border-inline-end: none !important;
 }
 
 /* ========== 表头列间短竖线（ele ProTable 自绘款移植） ==========
@@ -128,25 +134,6 @@
 /* 滚动条补位 th 与表头同底色，它前面那根竖线会悬在空白里——真实末列（补位 th 的前一个）跳过 */
 .ant-pro-table .ant-table-thead > tr > th:has(+ .ant-table-cell-scrollbar)::after {
   content: none;
-}
-
-/* ========== 冻结列滚动边界线加强 ==========
-   antd 原生只有 inset ±10px 0 8px -8px 的 --ant-color-split（亮 11% 墨），
-   可见带宽约 2px，白底/斑马纹上等于隐形（用户三轮实测均报"看不到线"）。
-   vxe scrolling--middle 的投影（rgba(0,0,0,.12) ±8px 0 10px -5px）同样偏淡但
-   叠在滚动内容上更可读；这里叠成"边界 1px 实线 + 8px 渐变"双层：实线与表头
-   短竖线同 token（--ant-color-border）同权重，滚动态一眼可辨，滚到底随
-   -show 类一起消失（antd/vxe 同语义）。!important 必须带：cssinjs 运行时
-   注入在静态 CSS 之后，同特异度按注入序翻盘。 */
-.ant-table-wrapper .ant-table-cell-fix-end-shadow-show::after {
-  box-shadow:
-    inset -1px 0 0 0 var(--ant-color-border),
-    inset -9px 0 8px -8px var(--ant-color-split) !important;
-}
-.ant-table-wrapper .ant-table-cell-fix-start-shadow-show::after {
-  box-shadow:
-    inset 1px 0 0 0 var(--ant-color-border),
-    inset 9px 0 8px -8px var(--ant-color-split) !important;
 }
 
 /* 表格单元格超长文本省略号 */

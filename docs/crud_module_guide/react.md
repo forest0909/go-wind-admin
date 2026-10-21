@@ -185,10 +185,11 @@ export default function <Entity>Page() {
 
   const columns: ProColumns[] = [ /* your columns; action column: valueType:'option', fixed:'right' */ ];
 
-  // Action column convention (design-language §4): buttons are `Button type="link" size="small" icon={<XOutlined />}`
-  // with a text label (`t('common:button.edit')` / `t('common:button.delete')`), never icon-only.
-  // Beyond 3 actions keep the first 3 inline and move the rest into a `Dropdown` keyed by `t('common:button.more')`;
-  // confirmed actions inside the dropdown use `modal.confirm` from `App.useApp()` (Popconfirm cannot live in a menu).
+  // Action column convention (design-language §4): declare a descriptor array and render <TableActions>.
+  // Each action: { key, label, icon, onClick, danger?, success?, confirm?: { title, description? }, hidden? }.
+  // The component renders icon+text link buttons, keeps the first 3 inline, moves the rest into a
+  // "More" dropdown, and downgrades confirm actions there to modal.confirm (Popconfirm cannot live in a menu).
+  // Conditional actions use `hidden` (filtered before the overflow count). Never hand-roll Buttons/Dropdown here.
   // Copy `pages/app/system/language/index.tsx` (≤3) or `pages/app/system/task/index.tsx` (>3).
 
   return (

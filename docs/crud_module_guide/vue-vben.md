@@ -132,15 +132,7 @@ Path: `src/views/app/<group>/<entity>/index.vue`. Mirror `position/index.vue`. T
         <a-tag :color="statusToColor(scope.row.status)">{{ statusToName(scope.row.status) }}</a-tag>
       </template>
       <template #action="{ row }">
-        <a-button type="link" :icon="h(LucideFilePenLine)" @click.stop="handleEdit(row)" />
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="$t('ui.text.do_you_want_delete', { moduleName: $t('page.<entity>.moduleName') })"
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" :icon="h(LucideTrash2)" />
-        </a-popconfirm>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
   </Page>
@@ -157,7 +149,21 @@ import {
   statusList, statusToColor, statusToName,
 } from '#/api';
 import { type identityservicev1_<Entity> as <Entity> } from '#/api';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 import <Entity>Drawer from './<entity>-drawer.vue';
+
+/* Action column (design-language §4): descriptors, not hand-rolled buttons */
+function buildRowActions(): TableAction[] {
+  return [
+    { key: 'edit', label: $t('common.edit'), icon: h(LucideFilePenLine), onClick: handleEdit },
+    {
+      key: 'delete', label: $t('common.delete'), icon: h(LucideTrash2), danger: true,
+      confirm: { title: $t('ui.text.do_you_want_delete', { moduleName: $t('page.<entity>.moduleName') }) },
+      onClick: handleDelete,
+    },
+  ];
+}
 
 const { mutateAsync: delete<Entity> } = useDelete<Entity>();
 
@@ -223,7 +229,7 @@ Rules:
 - **Icons must be `h()`-wrapped**: `:icon="h(LucideFilePenLine)"`. Icons come from `@vben/icons` (lucide series). Never pass a bare component.
 - **Templates use `a-*` global components** (`a-tag`, `a-button`, `a-popconfirm`). Do NOT `import { Tag } from 'ant-design-vue'` and use `<Tag>`.
 - **Confirm deletes with `<a-popconfirm>`**, never `window.confirm`.
-- **Action-column buttons are icon + text** (`a-button type="link" :icon="h(LucideX)"` with a text child — labels: `$t('common.edit')` / `$t('common.delete')` / `$t('ui.button.detail')`). Beyond 3 actions keep the first 3 inline and move the rest into a "More" (`ui.button.more`) `a-dropdown` whose menu items carry icons too; confirmed actions inside the dropdown use `Modal.confirm` (`okType: 'danger'`), since Popconfirm cannot live in a menu. Copy `system/language/index.vue` (≤3) or `system/task/index.vue` (>3). `ui.button.edit` / `ui.button.delete` / `ui.button.view` are drawer-title templates (`编辑{moduleName}`) that need a `moduleName` param — never use them as row-button labels, and `ui.button.ok` belongs in the popconfirm's `ok-text`, never as a button label.
+- **Action column = `TableActions` with a descriptor array** (`src/components/TableActions.vue`; also add `import type { TableAction }`). Each action: `{ key, label, icon: h(LucideX), onClick, danger?, success?, confirm?: { title, description? }, tooltip?, hidden? }` — labels: `$t('common.edit')` / `$t('common.delete')` / `$t('ui.button.detail')`; row-level conditions use `hidden` (filtered before the overflow count); handlers receive the row as `onClick(row)`. The component keeps the first 3 actions inline, moves the rest into a "More" (`ui.button.more`) dropdown, and downgrades confirm actions there to `Modal.confirm` (`okType: 'danger'`). Never hand-roll `a-dropdown`/`a-popconfirm` in the action slot. Copy `system/language/index.vue` (≤3) or `system/task/index.vue` (>3). `ui.button.edit` / `ui.button.delete` / `ui.button.view` are drawer-title templates (`编辑{moduleName}`) that need a `moduleName` param — never use them as row-button labels, and `ui.button.ok` belongs in confirm dialogs, never as a button label.
 
 ## Step 5 — Drawer form
 

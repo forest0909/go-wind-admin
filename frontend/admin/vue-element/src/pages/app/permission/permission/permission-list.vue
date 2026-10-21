@@ -111,7 +111,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
         Number(query.paging?.pageSize) || 1000,
         query.formValues ?? {},
       )),
-    defaultToolbar: ["refresh", "filter", "exports", "zoom"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: true, height: "auto" },
     columns: [
       {

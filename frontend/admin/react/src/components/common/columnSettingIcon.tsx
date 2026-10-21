@@ -5,7 +5,7 @@
  * 用法：options={{ setting: { settingIcon: <ColumnSlidersIcon /> } }}
  */
 export const ColumnSlidersIcon = () => (
-  <span className="anticon" role="img" aria-hidden="true">
+  <span className="anticon anticon-column-sliders" role="img" aria-hidden="true">
     <svg
       viewBox="0 0 24 24"
       width="1em"

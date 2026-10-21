@@ -157,7 +157,7 @@ defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(defineProps<ProToolbarProps>(), {
   visible: true,
-  defaultToolbar: () => ["refresh", "filter", "search", "zoom"] as ToolbarRightType[],
+  defaultToolbar: () => ["refresh", "zoom", "filter", "search"] as ToolbarRightType[],
   leftButtons: () => [],
   rightButtons: () => [],
 });

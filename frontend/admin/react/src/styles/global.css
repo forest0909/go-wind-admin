@@ -349,3 +349,29 @@ input:-webkit-autofill:active {
 .ant-pro-table-list-toolbar .anticon-fullscreen-exit {
     --fullscreen-bracket-icon: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3v3a2 2 0 0 1-2 2H3'/%3E%3Cpath d='M21 8h-3a2 2 0 0 1-2-2V3'/%3E%3Cpath d='M3 16v3a2 2 0 0 0 2 2h3'/%3E%3Cpath d='M16 21h3a2 2 0 0 0 2-2v-3'/%3E%3C/svg%3E");
 }
+
+/* ProTable 工具栏右侧图标组排序：刷新 → 密度 → 全屏 → 列设置
+   （三端口径 下载→刷新→全屏→列设置；react 的导出为文字钮居工具栏左区，
+   下载语义已居首）。pro-table 的 options 键序在包内固定不可配，
+   借 CSS order 对齐；列设置的调节器图标带 anticon-column-sliders 标记类。 */
+.ant-pro-table-list-toolbar-setting-items {
+    display: flex;
+}
+
+.ant-pro-table-list-toolbar-setting-item:has(.anticon-reload) {
+    order: 1;
+}
+
+.ant-pro-table-list-toolbar-setting-item:has(.anticon-column-height) {
+    order: 2;
+}
+
+.ant-pro-table-list-toolbar-setting-item:has(.anticon-fullscreen),
+.ant-pro-table-list-toolbar-setting-item:has(.anticon-fullscreen-exit) {
+    order: 3;
+}
+
+.ant-pro-table-list-toolbar-setting-item:has(.anticon-column-sliders),
+.ant-pro-table-list-toolbar-setting-item:has(.anticon-setting) {
+    order: 4;
+}

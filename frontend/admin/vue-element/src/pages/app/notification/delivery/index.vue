@@ -165,7 +165,7 @@ const pageConfig = computed<ProPageConfig<NotificationDelivery>>(() => ({
       },
     ],
     toolbarRight: [],
-    defaultToolbar: ["refresh", "exports", "filter", "zoom"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: false },
     columns: [
       {

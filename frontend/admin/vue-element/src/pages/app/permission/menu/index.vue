@@ -183,7 +183,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       } as ToolsButton,
     ],
     toolbarRight: ["add"],
-    defaultToolbar: ["refresh", "filter", "zoom"],
+    defaultToolbar: ["refresh", "zoom", "filter"],
     pagination: false,
     tableAttrs: {
       border: true,

@@ -129,7 +129,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
     exportsAction: createPagedExportAction(fetchListInternalMessages),
     toolbar: [],
     toolbarRight: ["add"],
-    defaultToolbar: ["refresh", "exports", "filter", "zoom"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     pagination: false,
     tableAttrs: { border: true, stripe: false },
     columns: [

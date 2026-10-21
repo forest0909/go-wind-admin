@@ -94,7 +94,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       } as ToolsButton,
       "add",
     ],
-    defaultToolbar: ["refresh", "exports", "filter", "zoom"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: false },
     columns: [
       { type: "index", label: $t("common.table.seq"), width: 60 },

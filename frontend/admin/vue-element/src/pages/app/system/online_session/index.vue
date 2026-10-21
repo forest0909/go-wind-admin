@@ -85,7 +85,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       }),),
     toolbar: [],
     toolbarRight: [],
-    defaultToolbar: ["refresh", "filter", "exports", "zoom"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: false },
     columns: [
       { type: "index", label: $t("common.table.seq"), width: 60 },

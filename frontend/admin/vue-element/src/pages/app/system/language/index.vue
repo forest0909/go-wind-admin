@@ -77,7 +77,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
     exportsAction: createPagedExportAction(fetchListLanguages),
     toolbar: [],
     toolbarRight: ["add"],
-    defaultToolbar: ["refresh", "exports", "filter", "zoom"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: false },
     columns: [
       { type: "index", label: $t("common.table.seq"), width: 60 },

@@ -81,7 +81,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
     exportsAction: createPagedExportAction(fetchListConfigs),
     toolbar: [],
     toolbarRight: ["add"],
-    defaultToolbar: ["refresh", "filter", "exports", "zoom"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: true },
     emptyActionText: "common.button.add",
     columns: [

@@ -22,6 +22,8 @@ import {
 } from '#/api';
 import { type auditservicev1_ApiAuditLog as ApiAuditLog } from '#/api';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 import { downloadTableFile } from '#/utils/csv';
 
 import ApiAuditLogDetailDrawer from './api-audit-log-detail-drawer.vue';
@@ -308,6 +310,18 @@ async function handleExportAll(info: { key: string | number }) {
   }
 }
 
+
+/* 操作列描述符：单详情钮（定式由 TableActions 统一执行） */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'detail',
+      label: $t('ui.button.detail'),
+      icon: h(LucideEye),
+      onClick: handleView,
+    },
+  ];
+}
 </script>
 
 <template>
@@ -338,13 +352,7 @@ async function handleExportAll(info: { key: string | number }) {
         {{ row.deviceInfo?.osName }} {{ row.deviceInfo?.browserName }}
       </template>
       <template #action="{ row }">
-        <a-button
-          type="link"
-          :icon="h(LucideEye)"
-          @click="handleView(row)"
-        >
-          {{ $t('ui.button.detail') }}
-        </a-button>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
     <Drawer />

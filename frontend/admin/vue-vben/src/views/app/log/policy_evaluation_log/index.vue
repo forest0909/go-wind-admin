@@ -22,6 +22,8 @@ import {
 } from '#/api';
 import { type permissionservicev1_PolicyEvaluationLog as PolicyEvaluationLog } from '#/api';
 import { $t } from '#/locales';
+import TableActions from '#/components/TableActions.vue';
+import type { TableAction } from '#/components/TableActions.vue';
 import { downloadTableFile } from '#/utils/csv';
 
 import PolicyEvaluationLogDetailDrawer from './policy-evaluation-log-detail-drawer.vue';
@@ -337,6 +339,18 @@ async function handleExportAll(info: { key: string | number }) {
   }
 }
 
+
+/* 操作列描述符：单详情钮（定式由 TableActions 统一执行） */
+function buildRowActions(): TableAction[] {
+  return [
+    {
+      key: 'detail',
+      label: $t('ui.button.detail'),
+      icon: h(LucideEye),
+      onClick: handleView,
+    },
+  ];
+}
 </script>
 
 <template>
@@ -361,13 +375,7 @@ async function handleExportAll(info: { key: string | number }) {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button
-          type="link"
-          :icon="h(LucideEye)"
-          @click="handleView(row)"
-        >
-          {{ $t('ui.button.detail') }}
-        </a-button>
+        <TableActions :row="row" :actions="buildRowActions()" />
       </template>
     </Grid>
     <Drawer />

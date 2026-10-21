@@ -37,6 +37,7 @@ import { useListChannelSchemas, type ChannelSchema } from '@/api/hooks/notificat
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 
 /**
  * 渠道类型 → 文案/颜色。列必须按 record.type 渲染：一个渠道类型对应一列自己的配置
@@ -155,6 +156,8 @@ const NotificationChannelManagement = () => {
   }, [schemas, t]);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(drawerOpen, () => setDrawerOpen(false));
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
   const [selected, setSelected] = useState<NotificationChannel | undefined>();
   const [testTarget, setTestTarget] = useState<NotificationChannel | undefined>();
@@ -475,8 +478,12 @@ const NotificationChannelManagement = () => {
       <DrawerForm
         title={drawerMode === 'create' ? t('common:modal.create', { moduleName: t('title') }) : t('common:modal.update', { moduleName: t('title') })}
         open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        drawerProps={{ destroyOnHidden: true, maskClosable: false, size: 600 }}
+        onOpenChange={(v) => {
+          // 关闭一律走 drawerProps.onClose 守卫；这里只放行打开
+          if (v) setDrawerOpen(true);
+        }}
+        onValuesChange={handleValuesChange}
+        drawerProps={{ destroyOnHidden: true, size: 600, onClose: guardClose }}
         submitTimeout={3000}
         onFinish={handleSubmit}
         initialValues={

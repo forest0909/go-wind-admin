@@ -81,6 +81,7 @@ declare global {
   const useContext: typeof import('react').useContext
   const useDebugValue: typeof import('react').useDebugValue
   const useDeferredValue: typeof import('react').useDeferredValue
+  const useDrawerCloseGuard: typeof import('../src/components/common/use-drawer-close-guard').useDrawerCloseGuard
   const useEcharts: typeof import('../src/hooks/useEcharts').useEcharts
   const useEffect: typeof import('react').useEffect
   const useEffectEvent: typeof import('react').useEffectEvent

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import type { aiservicev1_AiProvider as AiProvider } from '@/api/generated/admin/service/v1';
 import { useCreateAiProvider, useUpdateAiProvider } from '@/api/hooks/ai-provider';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 
 interface AiProviderDrawerProps {
   open: boolean;
@@ -33,6 +34,9 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const formRef = useRef<ProFormInstance>(null);
+
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(open, onClose);
 
   const createMutation = useCreateAiProvider();
   const updateMutation = useUpdateAiProvider();
@@ -85,6 +89,7 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
       }
       queryClient.invalidateQueries({ queryKey: ['listAiProviders'] });
       onSuccess();
+      onClose();
       return true;
     } catch (error) {
       console.error('save ai provider failed:', error);
@@ -98,15 +103,10 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
       formRef={formRef}
       title={mode === 'create' ? t('common:modal.create', { moduleName: t('moduleName') }) : t('common:modal.update', { moduleName: t('moduleName') })}
       open={open}
-      onOpenChange={(visible) => {
-        if (!visible) {
-          formRef.current?.resetFields();
-          onClose();
-        }
-      }}
+      onValuesChange={handleValuesChange}
       onFinish={handleSubmit}
-      submitter={{ submitButtonProps: { loading: createMutation.isPending || updateMutation.isPending } }}
-      drawerProps={{ size: 600 }}
+      submitter={{ submitButtonProps: { loading: createMutation.isPending || updateMutation.isPending }, resetButtonProps: { onClick: guardClose } }}
+      drawerProps={{ destroyOnHidden: true, onClose: guardClose, size: 600 }}
       layout="horizontal"
       labelCol={{ flex: '0 0 120px' }}
       wrapperCol={{ flex: 'auto' }}

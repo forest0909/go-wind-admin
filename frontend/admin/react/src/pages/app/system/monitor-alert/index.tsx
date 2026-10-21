@@ -37,6 +37,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
 import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 
 /**
  * 监控告警规则：指标阈值 → 触发通知（联动通知域）。
@@ -71,6 +72,8 @@ const MonitorAlertPage = () => {
   const tableScrollY = useProTableScrollY(containerRef);
 
   const [formOpen, setFormOpen] = useState(false);
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(formOpen, () => setFormOpen(false));
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [selected, setSelected] = useState<MonitorAlertRule | undefined>();
 
@@ -317,8 +320,12 @@ const MonitorAlertPage = () => {
       <DrawerForm
         title={formMode === 'create' ? t('common:modal.create', { moduleName: t('moduleName') }) : t('common:modal.update', { moduleName: t('moduleName') })}
         open={formOpen}
-        onOpenChange={setFormOpen}
-        drawerProps={{ destroyOnHidden: true, mask: { closable: false }, size: 600 }}
+        onOpenChange={(v) => {
+          // 关闭一律走 drawerProps.onClose 守卫；这里只放行打开
+          if (v) setFormOpen(true);
+        }}
+        onValuesChange={handleValuesChange}
+        drawerProps={{ destroyOnHidden: true, size: 600, onClose: guardClose }}
         submitTimeout={3000}
         onFinish={handleSubmit}
         initialValues={

@@ -294,5 +294,9 @@
     "create": "创建{{moduleName}}",
     "update": "更新{{moduleName}}",
     "view": "查看{{moduleName}}"
+  },
+  "drawer": {
+    "unsavedMessage": "表单内容已修改，是否放弃本次编辑？",
+    "discardButton": "确定放弃"
   }
 }

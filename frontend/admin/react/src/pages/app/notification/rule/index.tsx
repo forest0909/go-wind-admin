@@ -30,6 +30,7 @@ import {
   useUpdateNotificationRule,
 } from '@/api/hooks/notification-rule';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
 import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
@@ -84,6 +85,8 @@ const NotificationRulePage = () => {
   const tableScrollY = useProTableScrollY(containerRef);
 
   const [formOpen, setFormOpen] = useState(false);
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(formOpen, () => setFormOpen(false));
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [selected, setSelected] = useState<NotificationRule | undefined>();
   const [testTarget, setTestTarget] = useState<NotificationRule | undefined>();
@@ -319,8 +322,12 @@ const NotificationRulePage = () => {
       <DrawerForm
         title={formMode === 'create' ? t('common:modal.create', { moduleName: t('title') }) : t('common:modal.update', { moduleName: t('title') })}
         open={formOpen}
-        onOpenChange={setFormOpen}
-        drawerProps={{ destroyOnHidden: true, mask: { closable: false }, size: 600 }}
+        onOpenChange={(v) => {
+          // 关闭一律走 drawerProps.onClose 守卫；这里只放行打开
+          if (v) setFormOpen(true);
+        }}
+        onValuesChange={handleValuesChange}
+        drawerProps={{ destroyOnHidden: true, size: 600, onClose: guardClose }}
         submitTimeout={3000}
         onFinish={handleSubmit}
         initialValues={

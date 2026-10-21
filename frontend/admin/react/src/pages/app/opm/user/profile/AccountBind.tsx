@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { useGetUserProfile } from '@/api/hooks/user-profile';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 
 const ICON_STYLE = { fontSize: 40 };
 
@@ -30,6 +31,8 @@ const AccountBind = ({ onSwitchTab }: AccountBindProps) => {
   const { data: user } = useGetUserProfile();
 
   const [bindOpen, setBindOpen] = useState(false);
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(bindOpen, () => setBindOpen(false));
   const [bindForm] = Form.useForm();
   const [codeSent, setCodeSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -135,19 +138,19 @@ const AccountBind = ({ onSwitchTab }: AccountBindProps) => {
       <Drawer
         title={t('accountBind.bindEmailTitle')}
         open={bindOpen}
-        onClose={() => setBindOpen(false)}
+        onClose={guardClose}
         width={480}
         destroyOnClose
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setBindOpen(false)}>{t('common:button.cancel')}</Button>
+            <Button onClick={guardClose}>{t('common:button.cancel')}</Button>
             <Button type="primary" loading={verifying} onClick={handleVerify}>
               {t('common:button.ok')}
             </Button>
           </div>
         }
       >
-        <Form form={bindForm} layout="horizontal" labelCol={{ flex: '0 0 120px' }} wrapperCol={{ flex: 'auto' }}>
+        <Form form={bindForm} layout="horizontal" labelCol={{ flex: '0 0 120px' }} wrapperCol={{ flex: 'auto' }} onValuesChange={handleValuesChange}>
           <Form.Item
             name="email"
             label={t('accountBind.newEmail')}

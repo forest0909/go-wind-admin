@@ -294,5 +294,9 @@
     "create": "Create {{moduleName}}",
     "update": "Update {{moduleName}}",
     "view": "View {{moduleName}}"
+  },
+  "drawer": {
+    "unsavedMessage": "The form has been modified. Do you want to discard this edit?",
+    "discardButton": "Discard"
   }
 }

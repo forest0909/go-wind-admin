@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import type { internal_messageservicev1_InternalMessage as InternalMessage } from '@/api/generated/admin/service/v1';
 import { PaginationQuery } from '@/core';
 import { useUpdateInternalMessage, useSendMessage, fetchListMessageCategories } from '@/api/hooks/internal-message';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 import { fetchListUsers } from '@/api/hooks/user';
 import { Editor, EditorType } from '@/components/common/Editor';
 import { getStatusOptions, getTypeOptions } from '../constants';
@@ -30,6 +31,9 @@ interface MessageDrawerProps {
 const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose, onSuccess }) => {
   const { t } = useTranslation('internal-message');
   const formRef = useRef<ProFormInstance>(null);
+
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(open, onClose);
   const queryClient = useQueryClient();
   const { message } = App.useApp();
 
@@ -126,12 +130,7 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
       formRef={formRef}
       title={mode === 'create' ? t('drawerCreate') : t('drawerUpdate')}
       open={open}
-      onOpenChange={(visible) => {
-        if (!visible) {
-          formRef.current?.resetFields();
-          onClose();
-        }
-      }}
+      onValuesChange={handleValuesChange}
       initialValues={{
         status: 'DRAFT',
         type: 'NOTIFICATION',
@@ -145,9 +144,9 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
         submitButtonProps: {
           loading: confirmLoading || sendMessageMutation.isPending || updateMutation.isPending,
         },
-        resetButtonProps: { onClick: onClose },
+        resetButtonProps: { onClick: guardClose },
       }}
-      drawerProps={{ destroyOnHidden: true, onClose, size: 800 }}
+      drawerProps={{ destroyOnHidden: true, onClose: guardClose, size: 800 }}
       layout="horizontal"
       labelCol={{ flex: '0 0 120px' }}
       wrapperCol={{ flex: 'auto' }}

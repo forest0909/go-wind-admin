@@ -14,6 +14,7 @@ import { Divider, App } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { permissionservicev1_Menu as Menu } from '@/api/generated/admin/service/v1';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 import { useCreateMenu, useUpdateMenu, fetchListMenus } from '@/api/hooks/menu';
 import { PaginationQuery } from '@/core';
 import {
@@ -40,6 +41,9 @@ interface MenuDrawerProps {
 const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSuccess }) => {
   const { t } = useTranslation('menu');
   const formRef = useRef<ProFormInstance>(null);
+
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(open, onClose);
   const queryClient = useQueryClient();
   const { message } = App.useApp();
 
@@ -168,15 +172,10 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
       formRef={formRef}
       title={mode === 'create' ? t('create') : t('edit')}
       open={open}
-      onOpenChange={(visible) => {
-        if (!visible) {
-          formRef.current?.resetFields();
-          onClose();
-        }
-      }}
+      onValuesChange={handleValuesChange}
       drawerProps={{
         destroyOnHidden: true,
-        onClose,
+        onClose: guardClose,
         size: 800,
       }}
       initialValues={{
@@ -194,7 +193,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
           loading: confirmLoading || createMutation.isPending || updateMutation.isPending,
         },
         resetButtonProps: {
-          onClick: onClose,
+          onClick: guardClose,
         },
       }}
       layout="horizontal"

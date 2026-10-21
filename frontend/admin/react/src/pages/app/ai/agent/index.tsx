@@ -27,6 +27,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import AgentCanvas from './agent-canvas';
 import AgentRunsDrawer from './agent-runs-drawer';
 import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
+import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 
 /**
  * AI Agent 编排应用列表（M1）：
@@ -43,6 +44,8 @@ const AiAgentAppManagement = () => {
   const tableScrollY = useProTableScrollY(containerRef);
 
   const [formOpen, setFormOpen] = useState(false);
+  // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+  const { guardClose, handleValuesChange } = useDrawerCloseGuard(formOpen, () => setFormOpen(false));
   const [editing, setEditing] = useState<AiAgentApp | undefined>();
   const [canvasApp, setCanvasApp] = useState<AiAgentApp | undefined>();
   const [runsApp, setRunsApp] = useState<AiAgentApp | undefined>();
@@ -203,8 +206,12 @@ const AiAgentAppManagement = () => {
       <DrawerForm
         title={editing ? t('common:modal.update', { moduleName: t('moduleName') }) : t('common:modal.create', { moduleName: t('moduleName') })}
         open={formOpen}
-        onOpenChange={setFormOpen}
-        drawerProps={{ destroyOnHidden: true, size: 600 }}
+        onOpenChange={(v) => {
+          // 关闭一律走 drawerProps.onClose 守卫；这里只放行打开
+          if (v) setFormOpen(true);
+        }}
+        onValuesChange={handleValuesChange}
+        drawerProps={{ destroyOnHidden: true, size: 600, onClose: guardClose }}
         onFinish={handleSubmit}
         initialValues={editing ?? { enabled: true }}
         layout="horizontal"

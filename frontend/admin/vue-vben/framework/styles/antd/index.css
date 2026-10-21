@@ -186,6 +186,38 @@ html.dark .ant-btn.gowind-btn-warning-outline:not(:disabled):hover {
   background: rgba(250, 140, 22, 0.15) !important;
 }
 
+/* 绿/红描边按钮（工具栏「启动全部/停止全部」定式，2026-10-21 与橙描边同批）：色值对齐
+   react 端 color="green|danger" variant="outlined" 的 antd 色板渲染实测值
+   （亮 green-6 #52c41a / danger 边 #ff3860 + 字 #b62c4b；暗 #49aa19 / #dc3355 + #ff4c70）。
+   hover 只叠 12% 底，色阶随 react 端渲染走。 */
+.ant-btn.gowind-btn-success-outline {
+  color: #52c41a !important;
+  border-color: #52c41a !important;
+}
+
+html.dark .ant-btn.gowind-btn-success-outline {
+  color: #49aa19 !important;
+  border-color: #49aa19 !important;
+}
+
+.ant-btn.gowind-btn-success-outline:not(:disabled):hover {
+  background: color-mix(in srgb, #52c41a 12%, transparent) !important;
+}
+
+.ant-btn.gowind-btn-danger-outline {
+  color: #b62c4b !important;
+  border-color: #ff3860 !important;
+}
+
+html.dark .ant-btn.gowind-btn-danger-outline {
+  color: #ff4c70 !important;
+  border-color: #dc3355 !important;
+}
+
+.ant-btn.gowind-btn-danger-outline:not(:disabled):hover {
+  background: color-mix(in srgb, #ff3860 12%, transparent) !important;
+}
+
 /* 枚举色相标签只改读不懂的那几个：浅色 gold 2.72 / green 3.37 / cyan 3.39 / orange 3.34
    压暗到 60% 后 5.89~6.92；暗色 purple 3.39 / geekblue 4.16 升到 80% 白后 4.95 / 5.81。
    blue / red / pink / magenta / volcano 等原值已达标，保持不动。与 react 端同一组比例。 */

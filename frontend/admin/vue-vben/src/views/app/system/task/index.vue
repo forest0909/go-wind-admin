@@ -374,7 +374,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
           "
           @confirm="handleStartAllTask()"
         >
-          <a-button class="btn-start-all mr-2" type="primary">
+          <a-button class="gowind-btn-success-outline mr-2">
             {{ $t('page.task.button.startAll') }}
           </a-button>
         </a-popconfirm>
@@ -389,7 +389,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
           "
           @confirm="handleStopAllTask()"
         >
-          <a-button danger class="mr-2" type="primary">
+          <a-button class="gowind-btn-danger-outline mr-2">
             {{ $t('page.task.button.stopAll') }}
           </a-button>
         </a-popconfirm>
@@ -404,7 +404,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
           "
           @confirm="handleRestartAllTask()"
         >
-          <a-button class="mr-2" type="primary">
+          <a-button class="gowind-btn-warning-outline mr-2">
             {{ $t('page.task.button.restartAll') }}
           </a-button>
         </a-popconfirm>
@@ -501,25 +501,6 @@ async function handleEnableChanged(row: any, checked: boolean) {
 </template>
 
 <style scoped>
-/* 绿色按钮走本仓 design token（--success）。原先写的是 var(--ant-color-success)：
-   vben 端 antd 未开 cssVar，页面上根本不存在 --ant-* 变量，整段声明被丢弃，
-   按钮实际一直是主色蓝——注释里"亮/暗自动切换"也因此从未生效。
-   hover 按 §2.1 取亮一阶（禁止手工挑色，用 color-mix 派生）；disabled 不加 !important，
-   让 antd 自己的禁用样式生效。
-   前景取 §2.3 暗色 L0 #0B0F19（不是 --primary-foreground 的 #FAFAFA）：success 在亮/暗两态
-   同为 #57D188（亮度 0.49），近白墨在上面实测 1.85:1，深色墨在同一底上 9.98:1。 */
-.btn-start-all:not([disabled]) {
-  background-color: hsl(var(--success)) !important;
-  border-color: hsl(var(--success)) !important;
-  color: #0b0f19 !important;
-}
-
-.btn-start-all:not([disabled]):hover,
-.btn-start-all:not([disabled]):focus {
-  background-color: color-mix(in srgb, hsl(var(--success)) 80%, white) !important;
-  border-color: color-mix(in srgb, hsl(var(--success)) 80%, white) !important;
-}
-
 /* 链接型按钮的墨取 §2.1 文字档：hsl(var(--success)) 是填充级 #57D188，对白底只有 1.92:1，
    当链接文字用等于看不见。hover 从文字档再往白走 10%，浅色 4.74、暗色只会更亮，两态都不掉出 4.5。 */
 /* 0-4-0 特异性压过 framework 全局 .ant-btn.ant-btn-link:not(.ant-btn-dangerous)（0-3-0 !important）

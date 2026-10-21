@@ -34,7 +34,6 @@ import {
   statusToType,
   statusToName,
   useDeletePermissionGroup,
-  createPagedExportAction,
 } from "@/api/composables";
 import { $t } from "@/core/i18n";
 import { usePermissionViewStore } from "@/pages/app/permission/permission/permission-view.state";
@@ -99,12 +98,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
       } as ToolsButton,
     ],
     toolbarRight: ["add"],
-    exportsAction: createPagedExportAction(async (query: any) =>
-      permissionViewStore.fetchGroupList(
-        Number(query.paging?.page) || 1,
-        Number(query.paging?.pageSize) || 1000,
-        query.formValues ?? {},
-      )),
     defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: {
       border: true,

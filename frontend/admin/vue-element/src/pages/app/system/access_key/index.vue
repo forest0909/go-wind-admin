@@ -45,7 +45,6 @@ import type { ProPageConfig } from "@/components/Pro/ProPage/types";
 import AccessKeyDrawer from "./access-key-drawer.vue";
 import { useI18n } from "@/core/i18n";
 import {
-  createPagedExportAction,
   deleteAccessKey,
   fetchListAccessKeys,
   resetAccessKeySecret,
@@ -87,7 +86,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
     deleteAction: async (ids: string) => {
       await deleteAccessKey(ids);
     },
-    exportsAction: createPagedExportAction(fetchListAccessKeys),
     toolbar: [],
     toolbarRight: ["add"],
     defaultToolbar: ["exports", "refresh", "zoom", "filter"],

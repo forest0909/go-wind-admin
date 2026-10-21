@@ -86,14 +86,6 @@
           >
             <ElButton circle :icon="Search" @click="handleDefaultTool('search')" />
           </ElTooltip>
-          <!-- 导出 -->
-          <ElTooltip
-            v-else-if="tool === 'exports'"
-            :content="t('pages.curd.toolbar.batchExport')"
-            placement="top"
-          >
-            <ElButton circle :icon="Download" @click="handleDefaultTool('export')" />
-          </ElTooltip>
           <!-- 导入 -->
           <ElTooltip
             v-else-if="tool === 'imports'"
@@ -144,7 +136,6 @@ import {
   RefreshLeft,
   Operation,
   Search,
-  Download,
   Upload,
 } from "@element-plus/icons-vue";
 import ColumnFilter from "./ColumnFilter.vue";

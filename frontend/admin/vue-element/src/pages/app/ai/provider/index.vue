@@ -54,7 +54,7 @@ import type { ProPageConfig } from "@/components/Pro/ProPage/types";
 import AiProviderDrawer from "./ai-provider-drawer.vue";
 import { PaginationQuery } from "@/core/transport/rest";
 import type { aiservicev1_AiProvider as AiProvider } from "@/api/generated/admin/service/v1";
-import { createPagedExportAction, deleteAiProvider, fetchListAiProviders } from "@/api/composables";
+import { deleteAiProvider, fetchListAiProviders } from "@/api/composables";
 
 const { t } = useI18n();
 
@@ -79,7 +79,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
     deleteAction: async (ids: string) => {
       await deleteAiProvider(Number(ids));
     },
-    exportsAction: createPagedExportAction(fetchListAiProviders),
     toolbar: [],
     toolbarRight: ["add"],
     defaultToolbar: ["exports", "refresh", "zoom", "filter"],

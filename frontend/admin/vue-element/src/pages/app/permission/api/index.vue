@@ -27,7 +27,6 @@ import {
   fetchListApis,
   useDeleteApi,
   useSyncApisApi,
-  createPagedExportAction,
 } from "@/api/composables";
 import { PaginationQuery } from "@/core/transport/rest";
 import { $t } from "@/core/i18n";
@@ -84,7 +83,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
     deleteAction: async (ids: string) => {
       await deleteApi({ id: ids as any });
     },
-    exportsAction: createPagedExportAction(fetchListApis),
     toolbar: [],
     toolbarRight: [
       {

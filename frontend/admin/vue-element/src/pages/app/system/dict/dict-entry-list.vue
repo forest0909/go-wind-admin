@@ -29,7 +29,6 @@ import DictEntryDrawer from "./dict-entry-drawer.vue";
 import {
   enableBoolToName,
   useDeleteDictEntry,
-  createPagedExportAction,
 } from "@/api/composables";
 import { $t } from "@/core/i18n";
 import { getEntryLabel, useDictViewStore } from "@/pages/app/system/dict/dict-view.state";
@@ -88,13 +87,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
     },
     toolbar: [],
     toolbarRight: ["add"],
-    exportsAction: createPagedExportAction(async (query: any) =>
-      dictViewStore.fetchEntryList(
-        dictViewStore.currentTypeId,
-        Number(query.paging?.page) || 1,
-        Number(query.paging?.pageSize) || 1000,
-        query.formValues ?? {},
-      )),
     defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: true, height: "auto" },
     columns: [

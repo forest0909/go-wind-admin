@@ -31,7 +31,6 @@ import DictTypeDrawer from "./dict-type-drawer.vue";
 import {
   enableBoolToName,
   useDeleteDictType,
-  createPagedExportAction,
 } from "@/api/composables";
 import { $t } from "@/core/i18n";
 import { useDictViewStore } from "@/pages/app/system/dict/dict-view.state";
@@ -67,12 +66,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
     },
     toolbar: [],
     toolbarRight: ["add"],
-    exportsAction: createPagedExportAction(async (query: any) =>
-      dictViewStore.fetchTypeList(
-        Number(query.paging?.page) || 1,
-        Number(query.paging?.pageSize) || 1000,
-        query.formValues ?? {},
-      )),
     defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: {
       border: true,

@@ -130,7 +130,6 @@ import type { ProPageConfig } from "@/components/Pro/ProPage/types";
 
 import { $t } from "@/core/i18n";
 import {
-  createPagedExportAction,
   internalMessageRecipientStatusToType,
   internalMessageRecipientStatusLabel,
   fetchListUserInbox,
@@ -289,19 +288,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
     toolbarRight: [],
     defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     // 导出与列表同口径：区间归一为 gte/lte、recipient_user_id 强制注入（隐私闸门）
-    exportsAction: createPagedExportAction((query: PaginationQuery) => {
-      const userId = userStore.userInfo?.id;
-      if (!userId) return Promise.resolve({ items: [], total: 0 });
-      const formValues: Record<string, any> = { ...(query.formValues ?? {}) };
-      if (Array.isArray(formValues.createdAt) && formValues.createdAt.length === 2) {
-        formValues.created_at__gte = dayjs(formValues.createdAt[0]).format("YYYY-MM-DD HH:mm:ss");
-        formValues.created_at__lte = dayjs(formValues.createdAt[1]).format("YYYY-MM-DD HH:mm:ss");
-        delete formValues.createdAt;
-      }
-      formValues.recipient_user_id = userId.toString();
-      query.formValues = formValues;
-      return fetchListUserInbox(query);
-    }),
     exportFilename: "im-inbox",
     tableAttrs: { border: true, stripe: true, height: "auto" },
     columns: [

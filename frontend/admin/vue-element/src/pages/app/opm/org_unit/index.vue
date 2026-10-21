@@ -43,7 +43,6 @@ import {
   orgUnitTypeToName,
   fetchListOrgUnits,
   useDeleteOrgUnit,
-  createPagedExportAction,
 } from "@/api/composables";
 import { PaginationQuery } from "@/core/transport/rest";
 import { $t } from "@/core/i18n";
@@ -111,7 +110,6 @@ const pageConfig = computed<ProPageConfig>(() => ({
       } as ToolsButton,
     ],
     toolbarRight: ["add"],
-    exportsAction: createPagedExportAction(fetchListOrgUnits),
     defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: {
       border: true,

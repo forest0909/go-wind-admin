@@ -1,16 +1,6 @@
 <template>
   <div class="app-container h-full flex flex-1 flex-col">
     <ProPage ref="pageRef" :config="pageConfig" @operate="handleOperate">
-      <!-- 导出全部（CSV/Excel/服务端全量）：置于图标工具区之前，与 react/vben 同位 -->
-      <template #toolbar-before-tools>
-        <ExportAllDropdown
-          :fetcher="fetchListPolicyEvaluationLogs"
-          :columns="pageConfig.table.columns"
-          :params="latestFormValuesRef"
-          filename="policy-evaluation-logs"
-          :server-export="handleServerExport"
-        />
-      </template>
       <!-- 评估结果 -->
       <template #result="scope: any">
         <ElTag size="small" round :type="successToType(scope.row.result)">
@@ -30,7 +20,6 @@ import { ElTag } from "element-plus";
 import dayjs from "dayjs";
 
 import ProPage from "@/components/Pro/ProPage/index.vue";
-import ExportAllDropdown from "@/components/Pro/ExportAllDropdown.vue";
 import type { ProPageConfig } from "@/components/Pro/ProPage/types";
 import PolicyEvaluationLogDetailDrawer from "./detail-drawer.vue";
 
@@ -40,7 +29,6 @@ import {
   successToType,
   successToName,
   fetchListPolicyEvaluationLogs,
-  createPagedExportAction,
 } from "@/api/composables";
 import { PaginationQuery } from "@/core/transport/rest";
 import { exportAuditLogsServer } from "@/api/composables";
@@ -80,6 +68,7 @@ async function handleServerExport() {
 
 const pageConfig = computed<ProPageConfig>(() => ({
   skeleton: true,
+  exportFilename: "policy-evaluation-logs",
   search: {
     grid: true,
     fields: [
@@ -165,7 +154,8 @@ const pageConfig = computed<ProPageConfig>(() => ({
   },
 
   table: {
-    exportsAction: createPagedExportAction(fetchListPolicyEvaluationLogs),
+    // 服务端全量导出：导出全部下拉的第三项，错误处理在本页 handleServerExport
+    exportServer: handleServerExport,
 
     listAction: async (query: any) => {
       const { page, pageSize, createdAt, ...queryParams } = query;
@@ -200,7 +190,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
     },
     toolbar: [],
     toolbarRight: [],
-    defaultToolbar: ["refresh", "zoom", "filter"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: false },
     columns: [
       {

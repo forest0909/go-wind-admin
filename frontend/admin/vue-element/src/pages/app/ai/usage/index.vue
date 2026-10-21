@@ -17,18 +17,7 @@
 
     <!-- 流水列表：ProPage 统一搜索/分页/导出约定（与其余管理页一致） -->
     <div class="flex-1 min-h-0">
-      <!-- 导出全部（CSV/Excel/服务端全量）：置于图标工具区之前，与 react/vben 同位 -->
-      <ProPage ref="pageRef" :config="pageConfig">
-        <template #toolbar-before-tools>
-          <ExportAllDropdown
-            :fetcher="fetchUsageLogs"
-            :columns="pageConfig.table.columns"
-            :params="latestFormValuesRef"
-            filename="ai-usage-logs"
-            :server-export="handleServerExport"
-          />
-        </template>
-      </ProPage>
+      <ProPage ref="pageRef" :config="pageConfig" />
     </div>
   </div>
 </template>
@@ -38,11 +27,9 @@ import { computed, onMounted, ref } from "vue";
 import { ElCard, ElCol, ElProgress, ElRow, ElMessage } from "element-plus";
 import { useI18n } from "@/core/i18n";
 import ProPage from "@/components/Pro/ProPage/index.vue";
-import ExportAllDropdown from "@/components/Pro/ExportAllDropdown.vue";
 import type { ProPageConfig } from "@/components/Pro/ProPage/types";
 import { PaginationQuery } from "@/core/transport/rest";
 import { apiClient } from "@/api/client";
-import { createPagedExportAction } from "@/api/composables";
 import { serverExportFile } from "@/api/composables/server-export";
 
 const { t } = useI18n();
@@ -123,6 +110,8 @@ const pageConfig = computed<ProPageConfig>(() => ({
     ],
   },
   table: {
+    // 服务端全量导出：导出全部下拉的第三项，错误处理在本页 handleServerExport
+    exportServer: handleServerExport,
     listAction: async (query: any) => {
       const { page, pageSize, ...rest } = query;
       latestFormValuesRef.value = rest;
@@ -135,10 +124,9 @@ const pageConfig = computed<ProPageConfig>(() => ({
       );
       return { items: result.items || [], total: Number(result.total || 0) };
     },
-    exportsAction: createPagedExportAction(fetchUsageLogs),
     toolbar: [],
     toolbarRight: [],
-    defaultToolbar: ["refresh", "zoom", "filter"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: true },
     columns: [
       { type: "index", label: t("common.table.seq"), width: 60 },

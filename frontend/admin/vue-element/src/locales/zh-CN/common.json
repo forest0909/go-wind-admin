@@ -22,7 +22,8 @@
     "ok": "确定",
     "detail": "详情",
     "expand": "展开",
-    "collapse": "收起"
+    "collapse": "收起",
+    "more": "更多"
   },
   "status": {
     "enabled": "启用",
@@ -415,5 +416,12 @@
   },
   "loading": "加载中...",
   "loadingMenu": "正在加载菜单",
-  "operationFailed": "操作失败"
+  "operationFailed": "操作失败",
+  "header": {
+    "settings": "系统设置",
+    "fullscreen": "全屏",
+    "layout": "布局",
+    "language": "语言",
+    "notification": "通知"
+  }
 }

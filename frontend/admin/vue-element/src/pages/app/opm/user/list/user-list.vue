@@ -269,7 +269,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
         prop: "action",
         label: $t("common.table.action"),
         fixed: "right",
-        width: 150,
+        width: 260,
         cellType: "tool",
         buttons: [
           { name: "detail", label: $t("common.button.detail"), icon: "lucide:eye" },

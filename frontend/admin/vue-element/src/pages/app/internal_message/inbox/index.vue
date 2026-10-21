@@ -19,29 +19,23 @@
         </ElTag>
       </template>
 
-      <!-- 操作：标记已读（未读时）+ 删除；查看走标题链接 -->
+      <!-- 操作：标记已读（未读时）+ 删除；查看走标题链接。
+           操作列统一为图标+文本 link 按钮（同 cellType:"tool" 的 ToolCell 形态） -->
       <template #operation="scope: any">
-        <ElTooltip
+        <ElButton
           v-if="scope.row.status !== 'READ'"
-          :content="$t('pages.internal_message.button.markAsRead')"
-          placement="top"
-          :show-after="300"
+          link
+          type="primary"
+          size="small"
+          @click="handleMarkRead(scope.row)"
         >
-          <button
-            class="table-icon-btn table-icon-btn--primary"
-            @click="handleMarkRead(scope.row)"
-          >
-            <SvgIcon icon="lucide:check" :size="16" />
-          </button>
-        </ElTooltip>
-        <ElTooltip :content="$t('common.button.delete')" placement="top" :show-after="300">
-          <button
-            class="table-icon-btn table-icon-btn--danger"
-            @click="handleDelete(scope.row)"
-          >
-            <SvgIcon icon="lucide:trash-2" :size="16" />
-          </button>
-        </ElTooltip>
+          <SvgIcon icon="lucide:check" :size="14" />
+          {{ $t("pages.internal_message.button.markAsRead") }}
+        </ElButton>
+        <ElButton link type="danger" size="small" @click="handleDelete(scope.row)">
+          <SvgIcon icon="lucide:trash-2" :size="14" />
+          {{ $t("common.button.delete") }}
+        </ElButton>
       </template>
 
       <!-- 全部已读（工具栏）：recipientIds 传空 = 标记该用户全部未读 -->
@@ -120,7 +114,6 @@ import {
   ElMessage,
   ElMessageBox,
   ElLink,
-  ElTooltip,
   ElButton,
 } from "element-plus";
 import { UserFilled } from "@element-plus/icons-vue";
@@ -342,7 +335,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       {
         prop: "operation",
         label: $t("common.table.operation"),
-        width: 110,
+        width: 170,
         slotName: "operation",
         fixed: "right",
       },

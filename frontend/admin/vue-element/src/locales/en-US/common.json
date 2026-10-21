@@ -22,7 +22,8 @@
     "ok": "OK",
     "detail": "Detail",
     "expand": "Expand",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "more": "More"
   },
   "status": {
     "enabled": "Enabled",
@@ -415,5 +416,12 @@
   },
   "loading": "Loading...",
   "loadingMenu": "Loading menus",
-  "operationFailed": "Operation failed"
+  "operationFailed": "Operation failed",
+  "header": {
+    "settings": "System Settings",
+    "fullscreen": "Fullscreen",
+    "layout": "Layout",
+    "language": "Language",
+    "notification": "Notifications"
+  }
 }

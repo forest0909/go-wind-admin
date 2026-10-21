@@ -289,7 +289,7 @@ function handleNewConversation() {
         <div class="px-3 pt-2">
           <a-button
             block
-            class="whitespace-nowrap inline-flex items-center justify-center gap-2"
+            class="whitespace-nowrap"
             @click="handleNewConversation"
           >
             <template #icon>

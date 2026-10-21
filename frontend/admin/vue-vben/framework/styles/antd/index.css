@@ -13,6 +13,23 @@
   }
 }
 
+/*
+ * antdv4 按钮统一 icon+文本布局基座：antdv 的 #icon 插槽 / :icon prop 渲染的是裸 svg
+ * （无 .ant-btn-icon 包裹，antd React 版才有），svg 落在 inline 布局里——
+ * vertical-align:middle 只对齐基线+x高一半（图标中心比文本低约 3px），且与文本无间距。
+ * 这里按 antd React 5 的官方形态把按钮升级为 flex 容器：垂直居中 + 8px 间距，
+ * 对所有 .ant-btn 生效（页面/抽屉/适配器一次治愈，新增按钮勿再手写对齐类）。
+ * 必须保持无 @layer：antdv4 cssinjs 虽是 :where() 零特异性，但 unlayered 规则
+ * 只输给更高的特异性或 !important，套 layer 会被 antd 的 display:inline-block 反杀。
+ * 纯文本/纯图标单子元素按钮不受影响；block 钮 width:100% 照常通栏。
+ */
+.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .ant-message-notice-content,
 .ant-notification-notice {
   @apply dark:border-border/60 dark:border;

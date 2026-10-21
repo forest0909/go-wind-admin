@@ -163,15 +163,16 @@ const [Form, formApi] = useTableForm({
   },
   showCollapseButton: true,
   // 搜索栏按钮统一（三端对齐 ele）：搜索（实心蓝+放大镜）在前、重置（文字样式+循环箭头）在后；
-  // class 组修 Preflight svg display:block 竖排 + antd 两字符负 margin 吃掉 icon 后间距（见 vben AGENTS 定式）
+  // icon 尺寸须钉住（lucide-vue-next 默认 width=24）；间距与y轴对齐由全局 .ant-btn flex 基座负责
+  // （framework/styles/antd/index.css），此处不再手写 svg 对齐类
   actionButtonsReverse: true,
   submitButtonOptions: {
-    class: 'whitespace-nowrap [&>svg]:inline-block [&>svg]:size-3.5 [&>svg]:align-middle [&>svg]:mr-2',
+    class: 'whitespace-nowrap [&>svg]:size-3.5',
     content: $t('common.search'),
     icon: h(Search),
   },
   resetButtonOptions: {
-    class: 'whitespace-nowrap [&>svg]:inline-block [&>svg]:size-3.5 [&>svg]:align-middle [&>svg]:mr-2',
+    class: 'whitespace-nowrap [&>svg]:size-3.5',
     icon: h(LucideRefreshCw),
     type: 'text',
   },

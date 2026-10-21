@@ -40,8 +40,8 @@ if (clients.length === 0) {
     protocol: 'openid-connect', publicClient: false,
     standardFlowEnabled: true, directAccessGrantsEnabled: true,
     redirectUris: [
-      'http://localhost:15889/auth/sso/callback',
-      'http://localhost:15890/auth/sso/callback',
+      'http://localhost:15888/auth/sso/callback',
+      'http://localhost:15777/auth/sso/callback',
       'http://localhost:15666/auth/sso/callback',
     ],
     webOrigins: ['+'],
@@ -74,7 +74,7 @@ console.log(`
   SSO_OIDC_ISSUER=${KC}/realms/gwa
   SSO_OIDC_CLIENT_ID=gwa-admin
   SSO_OIDC_CLIENT_SECRET=gwa-secret
-  SSO_OIDC_REDIRECT_URL=http://localhost:15889/auth/sso/callback
+  SSO_OIDC_REDIRECT_URL=http://localhost:15888/auth/sso/callback
   SSO_AUTO_CREATE=true
 登录页点「使用企业账号登录」→ Keycloak 登录页 sso-user / Keycloak@123。
 `);

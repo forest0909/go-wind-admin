@@ -16,7 +16,7 @@ node setup-keycloak.mjs
 export SSO_OIDC_ISSUER=http://localhost:8081/realms/gwa
 export SSO_OIDC_CLIENT_ID=gwa-admin
 export SSO_OIDC_CLIENT_SECRET=gwa-secret
-export SSO_OIDC_REDIRECT_URL=http://localhost:15889/auth/sso/callback
+export SSO_OIDC_REDIRECT_URL=http://localhost:15888/auth/sso/callback
 export SSO_AUTO_CREATE=true   # 首次 SSO 登录按 email 自动预置用户（无密码凭证）
 # 然后启动后端
 
@@ -34,6 +34,6 @@ export SSO_AUTO_CREATE=true   # 首次 SSO 登录按 email 自动预置用户（
 ## 注意
 
 - **仅演练用**：start-dev 模式 + H2 内嵌库，容器删除即失；生产用独立 Keycloak 集群；
-- redirect_uri 含三端开发端口（react 15889 / ele 15890 / vben 15666），按实际端口调整；
+- redirect_uri 含三端开发端口（react 15888 / ele 15777 / vben 15666，2026-09-30 迁 15xxx 后口径；15889 已归 go-wind-iot、15890 已归 go-wind-im，勿再登记），按实际端口调整；
 - `SSO_AUTO_CREATE=true` 预置的用户**无密码凭证**（不能密码登录）且**零角色**
   （fail-closed 403）——需管理员在用户管理里挂角色后方可进入后台。

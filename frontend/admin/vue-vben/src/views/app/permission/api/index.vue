@@ -212,7 +212,7 @@ async function handleSync() {
           "
           @confirm="() => handleSync()"
         >
-          <a-button type="primary" danger class="mr-2">
+          <a-button class="gowind-btn-warning-outline mr-2">
             {{ $t('page.api.button.sync') }}
           </a-button>
         </a-popconfirm>

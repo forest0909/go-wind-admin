@@ -157,6 +157,19 @@ html:not(.dark) {
   color: var(--gowind-primary-text) !important;
 }
 
+/* 橙色描边按钮（工具栏「同步菜单/同步API」定式）：antd-vue 4.2 没有 react v6 的
+   color/variant 新 API，用类补齐 color="warning" variant="outlined"（react）/ type=warning+plain
+   （ele）同款观感。文字走 §2.1 的 --gowind-warning-text 文字档，边框用语义基准色，
+   hover 只叠 12% 基准色底。!important 理由同上：运行时样式表后注入、顺序不定。 */
+.ant-btn.gowind-btn-warning-outline {
+  color: var(--gowind-warning-text) !important;
+  border-color: hsl(var(--warning)) !important;
+}
+
+.ant-btn.gowind-btn-warning-outline:not(:disabled):hover {
+  background: color-mix(in srgb, hsl(var(--warning)) 12%, transparent) !important;
+}
+
 /* 枚举色相标签只改读不懂的那几个：浅色 gold 2.72 / green 3.37 / cyan 3.39 / orange 3.34
    压暗到 60% 后 5.89~6.92；暗色 purple 3.39 / geekblue 4.16 升到 80% 白后 4.95 / 5.81。
    blue / red / pink / magenta / volcano 等原值已达标，保持不动。与 react 端同一组比例。 */

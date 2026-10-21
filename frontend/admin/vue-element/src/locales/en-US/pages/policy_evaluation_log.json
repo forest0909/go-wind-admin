@@ -16,7 +16,6 @@
   "scopeSql": "Scope SQL",
   "logHash": "Log Hash",
   "signature": "Signature",
-  "exportServer": "Server-side full (XLSX)",
   "exportServerSuccess": "Download started",
   "exportServerFailed": "Server-side export failed"
 }

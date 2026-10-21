@@ -1,6 +1,16 @@
 <template>
   <div class="app-container h-full flex flex-1 flex-col">
-    <ProPage ref="pageRef" :config="pageConfig" @operate="handleOperate" @toolbar="handleToolbar">
+    <ProPage ref="pageRef" :config="pageConfig" @operate="handleOperate">
+      <!-- 导出全部（CSV/Excel/服务端全量）：置于图标工具区之前，与 react/vben 同位 -->
+      <template #toolbar-before-tools>
+        <ExportAllDropdown
+          :fetcher="fetchListApiAuditLogs"
+          :columns="pageConfig.table.columns"
+          :params="latestFormValuesRef"
+          filename="api-audit-logs"
+          :server-export="handleServerExport"
+        />
+      </template>
       <!-- 是否成功 -->
       <template #success="scope: any">
         <ElTag size="small" round :type="successToType(scope.row.success)">
@@ -30,6 +40,7 @@ import { ElTag } from "element-plus";
 import dayjs from "dayjs";
 
 import ProPage from "@/components/Pro/ProPage/index.vue";
+import ExportAllDropdown from "@/components/Pro/ExportAllDropdown.vue";
 import type { ProPageConfig } from "@/components/Pro/ProPage/types";
 import ApiAuditLogDetailDrawer from "./detail-drawer.vue";
 
@@ -70,18 +81,7 @@ async function handleServerExport() {
   }
 }
 
-// ProPage 的 toolbar 自定义按钮走 @toolbar 事件（与行操作 @operate 分流）：
-// exportServer 是工具栏按钮，此处承接。
-function handleToolbar(name: string) {
-  if (name === "exportServer") {
-    handleServerExport();
-    return;
-  }
-}
-
 function handleOperate(data: { name: string; row: any }) {
-  // 服务端全量导出（XLSX，上限 50 万行）：不带搜索条件，突破导出弹窗
-  // 客户端聚合的 1 万行上限；带条件的导出走右侧既有的导出弹窗
   if (data.name === "detail") {
     drawerRef.value?.open({ row: data.row });
   }
@@ -207,15 +207,9 @@ const pageConfig = computed<ProPageConfig>(() => ({
       );
       return { items: result.items || [], total: result.total || 0 };
     },
-    toolbar: [
-      {
-        name: "exportServer",
-        label: $t("pages.api_audit_log.exportServer"),
-        icon: "lucide:download",
-      },
-    ],
+    toolbar: [],
     toolbarRight: [],
-    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
+    defaultToolbar: ["refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: true },
     columns: [
       {

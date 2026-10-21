@@ -17,7 +17,7 @@
   "platform": "Platform",
   "geoLocation": "Geo Location",
   "createdAt": "Created At",
-  "export": "Export",
+  "export": "Export All",
   "exportCsv": "CSV (Comma Separated)",
   "exportXlsx": "Excel Workbook",
   "exportServerXlsx": "Server-side full (XLSX)",

@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs, { type Dayjs } from 'dayjs';
 import ListTable from '@/components/common/ListTable';
-import { DownloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import TableActions from '@/components/common/TableActions';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Tag, App } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { auditservicev1_ApiAuditLog as ApiAuditLog } from '@/api/generated/admin/service/v1';
@@ -226,17 +227,19 @@ const ApiAuditLog = () => {
       title: t('action'),
       valueType: 'option',
       width: 110,
-      render: (_, record) => [
-        <Button
-          key="detail"
-          type="link"
-          size="small"
-          icon={<InfoCircleOutlined />}
-          onClick={() => setDetailRecord(record)}
-        >
-          {t('detail')}
-        </Button>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'detail',
+              label: t('detail'),
+              icon: <InfoCircleOutlined />,
+              onClick: () => setDetailRecord(record),
+            },
+          ]}
+        />
+      ),
     },
   ];
 
@@ -335,6 +338,7 @@ const ApiAuditLog = () => {
                   items: [
                     { key: 'csv', label: t('exportCsv') },
                     { key: 'xlsx', label: t('exportXlsx') },
+                    { type: 'divider' },
                     { key: 'server-xlsx', label: t('exportServerXlsx') },
                   ],
                   onClick: ({ key }) => {
@@ -346,7 +350,7 @@ const ApiAuditLog = () => {
                   },
                 }}
               >
-                <Button icon={<DownloadOutlined />}>{t('export')}</Button>
+                <Button>{t('export')}</Button>
               </Dropdown>,
             ]}
 

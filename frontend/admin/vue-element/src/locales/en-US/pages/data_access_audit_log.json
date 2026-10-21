@@ -26,7 +26,6 @@
   "signature": "Signature",
   "province": "Province",
   "city": "City",
-  "exportServer": "Server-side full (XLSX)",
   "exportServerSuccess": "Download started",
   "exportServerFailed": "Server-side export failed"
 }

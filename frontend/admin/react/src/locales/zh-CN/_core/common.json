@@ -270,7 +270,7 @@
     "readFileFailed": "读取文件失败"
   },
   "export": {
-    "title": "导出",
+    "title": "导出全部",
     "csv": "CSV (逗号分隔)",
     "xlsx": "Excel 工作簿",
     "success": "已导出 {{count}} 行",

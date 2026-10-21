@@ -270,7 +270,7 @@
     "readFileFailed": "Failed to read file"
   },
   "export": {
-    "title": "Export",
+    "title": "Export All",
     "csv": "CSV (Comma Separated)",
     "xlsx": "Excel Workbook",
     "success": "Exported {{count}} rows",

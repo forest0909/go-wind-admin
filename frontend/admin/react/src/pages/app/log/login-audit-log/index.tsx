@@ -2,8 +2,9 @@ import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs, { type Dayjs } from 'dayjs';
 import ListTable from '@/components/common/ListTable';
+import TableActions from '@/components/common/TableActions';
 import { Button, Dropdown, Tag, App } from 'antd';
-import { DownloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { auditservicev1_LoginAuditLog as LoginAuditLog } from '@/api/generated/admin/service/v1';
 import { PaginationQuery } from '@/core';
@@ -198,17 +199,19 @@ const LoginAuditLogPage = () => {
       title: t('action'),
       valueType: 'option',
       width: 110,
-      render: (_, record) => [
-        <Button
-          key="detail"
-          type="link"
-          size="small"
-          icon={<InfoCircleOutlined />}
-          onClick={() => setDetailRecord(record)}
-        >
-          {t('detail')}
-        </Button>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'detail',
+              label: t('detail'),
+              icon: <InfoCircleOutlined />,
+              onClick: () => setDetailRecord(record),
+            },
+          ]}
+        />
+      ),
     },
   ];
 
@@ -308,6 +311,7 @@ const LoginAuditLogPage = () => {
                   items: [
                     { key: 'csv', label: t('exportCsv') },
                     { key: 'xlsx', label: t('exportXlsx') },
+                    { type: 'divider' },
                     { key: 'server-xlsx', label: t('exportServerXlsx') },
                   ],
                   onClick: ({ key }) => {
@@ -319,7 +323,7 @@ const LoginAuditLogPage = () => {
                   },
                 }}
               >
-                <Button icon={<DownloadOutlined />}>{t('export')}</Button>
+                <Button>{t('export')}</Button>
               </Dropdown>,
             ]}
 

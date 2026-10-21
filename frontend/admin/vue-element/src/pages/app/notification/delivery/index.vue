@@ -1,6 +1,16 @@
 <template>
   <div class="app-container h-full flex flex-1 flex-col">
-    <ProPage ref="pageRef" :config="pageConfig" @toolbar="handleToolbar">
+    <ProPage ref="pageRef" :config="pageConfig">
+      <!-- 导出全部（CSV/Excel/服务端全量）：置于图标工具区之前，与 react/vben 同位 -->
+      <template #toolbar-before-tools>
+        <ExportAllDropdown
+          :fetcher="fetchListNotificationDeliveries"
+          :columns="pageConfig.table.columns"
+          :params="latestFormValuesRef"
+          filename="notification-deliveries"
+          :server-export="handleServerExport"
+        />
+      </template>
       <!-- 渠道 -->
       <template #channel="scope: any">
         <ElTag
@@ -35,6 +45,7 @@ import { computed, ref } from "vue";
 import { ElTag } from "element-plus";
 
 import ProPage from "@/components/Pro/ProPage/index.vue";
+import ExportAllDropdown from "@/components/Pro/ExportAllDropdown.vue";
 import type { ProPageConfig } from "@/components/Pro/ProPage/types";
 import type { notificationservicev1_NotificationDelivery as NotificationDelivery } from "@/api/generated/admin/service/v1";
 import {
@@ -87,15 +98,6 @@ async function handleServerExport() {
     ElMessage.error(error?.message || $t("pages.notification_delivery.exportServerFailed"));
   } finally {
     exportingServer.value = false;
-  }
-}
-
-// ProPage 的 toolbar 自定义按钮走 @toolbar 事件（与行操作 @operate 分流）：
-// exportServer 是工具栏按钮，此处承接。
-function handleToolbar(name: string) {
-  if (name === "exportServer") {
-    handleServerExport();
-    return;
   }
 }
 
@@ -157,15 +159,9 @@ const pageConfig = computed<ProPageConfig<NotificationDelivery>>(() => ({
       );
       return { items: result.items || [], total: result.total || 0 };
     },
-    toolbar: [
-      {
-        name: "exportServer",
-        label: $t("pages.notification_delivery.exportServer"),
-        icon: "lucide:download",
-      },
-    ],
+    toolbar: [],
     toolbarRight: [],
-    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
+    defaultToolbar: ["refresh", "zoom", "filter"],
     tableAttrs: { border: true, stripe: false },
     columns: [
       {

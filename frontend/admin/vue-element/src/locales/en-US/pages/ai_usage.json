@@ -8,7 +8,6 @@
   "monthTokens": "Tokens this month",
   "monthCalls": "Calls this month",
   "quota": "Quota usage",
-  "exportServer": "Server-side full (XLSX)",
   "exportServerSuccess": "Download started",
   "exportServerFailed": "Server-side export failed"
 }

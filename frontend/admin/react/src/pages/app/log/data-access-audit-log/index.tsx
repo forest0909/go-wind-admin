@@ -2,7 +2,6 @@ import { useRef } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs, { type Dayjs } from 'dayjs';
 import ListTable from '@/components/common/ListTable';
-import { DownloadOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Tag, App } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { auditservicev1_DataAccessAuditLog as DataAccessAuditLog } from '@/api/generated/admin/service/v1';
@@ -277,6 +276,7 @@ const DataAccessAuditLogPage = () => {
                 items: [
                   { key: 'csv', label: t('exportCsv') },
                   { key: 'xlsx', label: t('exportXlsx') },
+                  { type: 'divider' },
                   { key: 'server-xlsx', label: t('exportServerXlsx') },
                 ],
                 onClick: ({ key }) => {
@@ -288,7 +288,7 @@ const DataAccessAuditLogPage = () => {
                 },
               }}
             >
-              <Button icon={<DownloadOutlined />}>{t('export')}</Button>
+              <Button>{t('export')}</Button>
             </Dropdown>,
           ]}
 

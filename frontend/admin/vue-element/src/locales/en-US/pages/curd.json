@@ -22,6 +22,12 @@
   },
   "export": {
     "title": "Export Data",
+    "exportAll": "Export All",
+    "csv": "CSV (Comma Separated)",
+    "xlsx": "Excel Workbook",
+    "serverXlsx": "Server-side full (XLSX)",
+    "success": "Exported {count} rows",
+    "failed": "Export failed",
     "filename": "Filename",
     "filenamePlaceholder": "Please enter filename",
     "fileType": "Save as Type",

@@ -2,7 +2,6 @@ import { useRef } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs, { type Dayjs } from 'dayjs';
 import ListTable from '@/components/common/ListTable';
-import { DownloadOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Tag, App } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { permissionservicev1_PolicyEvaluationLog as PolicyEvaluationLog } from '@/api/generated/admin/service/v1';
@@ -338,6 +337,7 @@ const PolicyEvaluationLog = () => {
                 items: [
                   { key: 'csv', label: t('exportCsv') },
                   { key: 'xlsx', label: t('exportXlsx') },
+                  { type: 'divider' },
                   { key: 'server-xlsx', label: t('exportServerXlsx') },
                 ],
                 onClick: ({ key }) => {
@@ -349,7 +349,7 @@ const PolicyEvaluationLog = () => {
                 },
               }}
             >
-              <Button icon={<DownloadOutlined />}>{t('export')}</Button>
+              <Button>{t('export')}</Button>
             </Dropdown>,
           ]}
 

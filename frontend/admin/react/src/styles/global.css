@@ -323,8 +323,10 @@ input:-webkit-autofill:active {
 /* ProTable 工具栏内建全屏钮：antd FullscreenOutlined/FullscreenExitOutlined 是
    四角箭头造型，与三端统一的 lucide 四角括号对（顶栏 HeaderContent 的
    Maximize/Minimize 内联复刻）不同族。内建图标在 pro-table FullscreenIcon 里
-   写死、无 props 可换，这里藏掉 svg 用 mask 自绘括号对（路径=lucide
-   Maximize/Minimize，画法同 vben vxe-toolbar 的 vben-icon-toolbar-fullscreen* 类）。
+   写死、无 props 可换，这里藏掉 svg 用 mask 自绘括号对（进入=lucide Maximize、
+   退出=顶栏 MinimizeBracketsIcon 同款路径——注意那是手抄混合版：下半两角为
+   外肘贴边造型，与 lucide 官方 Minimize 的内肘不同，以顶栏为基准）。
+   画法同 vben vxe-toolbar 的 vben-icon-toolbar-fullscreen* 类。
    作用域收在 list-toolbar 内：全站仅 ProTable 工具栏此二类。 */
 .ant-pro-table-list-toolbar .anticon-fullscreen svg,
 .ant-pro-table-list-toolbar .anticon-fullscreen-exit svg {
@@ -345,5 +347,5 @@ input:-webkit-autofill:active {
 }
 
 .ant-pro-table-list-toolbar .anticon-fullscreen-exit {
-    --fullscreen-bracket-icon: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3v3a2 2 0 0 1-2 2H3'/%3E%3Cpath d='M21 8h-3a2 2 0 0 1-2-2V3'/%3E%3Cpath d='M3 16h3a2 2 0 0 1 2 2v3'/%3E%3Cpath d='M16 21v-3a2 2 0 0 1 2-2h3'/%3E%3C/svg%3E");
+    --fullscreen-bracket-icon: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 3v3a2 2 0 0 1-2 2H3'/%3E%3Cpath d='M21 8h-3a2 2 0 0 1-2-2V3'/%3E%3Cpath d='M3 16v3a2 2 0 0 0 2 2h3'/%3E%3Cpath d='M16 21h3a2 2 0 0 0 2-2v-3'/%3E%3C/svg%3E");
 }

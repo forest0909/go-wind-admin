@@ -1198,7 +1198,13 @@ export const HeaderContent = ({
           >
             <Badge count={unreadCount} size="small" offset={[0, 4]}>
               <Tooltip title={t('header.notification')}>
-                <Button type="text" icon={<BellOutlined />} size="small" style={btnStyle} />
+                <Button
+                  type="text"
+                  icon={<BellOutlined />}
+                  size="small"
+                  style={btnStyle}
+                  className="header-bell-btn"
+                />
               </Tooltip>
             </Badge>
           </Popover>

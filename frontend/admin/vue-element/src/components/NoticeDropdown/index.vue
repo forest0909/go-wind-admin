@@ -151,6 +151,40 @@ function stripHtml(html: string): string {
     width: 100%;
     height: 100%;
     cursor: pointer;
+
+    // 顶部栏铃铛 hover 摆动（vben notification.vue 同款 bell-ring）；
+    // svg 渲染在 SvgIcon 子组件内，跨组件作用域须 :deep()
+    &:hover :deep(.svg-local-icon svg) {
+      animation: bell-ring 1s both;
+      transform-origin: top;
+    }
+  }
+}
+
+@keyframes bell-ring {
+  0%,
+  100% {
+    transform: rotateZ(0deg);
+  }
+
+  15% {
+    transform: rotateZ(10deg);
+  }
+
+  30% {
+    transform: rotateZ(-10deg);
+  }
+
+  45% {
+    transform: rotateZ(5deg);
+  }
+
+  60% {
+    transform: rotateZ(-5deg);
+  }
+
+  75% {
+    transform: rotateZ(2deg);
   }
 }
 

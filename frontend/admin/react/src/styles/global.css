@@ -414,3 +414,37 @@ input:-webkit-autofill:active {
     padding-bottom: 8px;
 }
 
+/* 顶部栏铃铛 hover 摆动（vben notification.vue 同款 bell-ring） */
+.header-bell-btn:hover .anticon svg {
+    animation: bell-ring 1s both;
+    transform-origin: top;
+}
+
+@keyframes bell-ring {
+    0%,
+    100% {
+        transform: rotateZ(0deg);
+    }
+
+    15% {
+        transform: rotateZ(10deg);
+    }
+
+    30% {
+        transform: rotateZ(-10deg);
+    }
+
+    45% {
+        transform: rotateZ(5deg);
+    }
+
+    60% {
+        transform: rotateZ(-5deg);
+    }
+
+    75% {
+        transform: rotateZ(2deg);
+    }
+}
+
+

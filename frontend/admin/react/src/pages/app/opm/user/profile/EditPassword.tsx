@@ -45,7 +45,7 @@ const EditPassword = () => {
 
   return (
     <div style={{ maxWidth: 460 }}>
-      <Form form={form} layout="vertical">
+      <Form form={form} layout="horizontal" labelCol={{ flex: '0 0 120px' }} wrapperCol={{ flex: 'auto' }}>
         <Form.Item
           name="oldPassword"
           label={t('oldPassword')}

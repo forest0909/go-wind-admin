@@ -110,7 +110,9 @@ const BaseSetting = () => {
       <Col span={14}>
         <Form
           form={form}
-          layout="vertical"
+          layout="horizontal"
+          labelCol={{ flex: '0 0 120px' }}
+          wrapperCol={{ flex: 'auto' }}
           initialValues={{
             nickname: user?.nickname || '',
             realname: user?.realname || '',

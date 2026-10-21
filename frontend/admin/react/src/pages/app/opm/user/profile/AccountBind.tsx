@@ -147,7 +147,7 @@ const AccountBind = ({ onSwitchTab }: AccountBindProps) => {
           </div>
         }
       >
-        <Form form={bindForm} layout="vertical">
+        <Form form={bindForm} layout="horizontal" labelCol={{ flex: '0 0 120px' }} wrapperCol={{ flex: 'auto' }}>
           <Form.Item
             name="email"
             label={t('accountBind.newEmail')}

@@ -52,7 +52,7 @@
             :content="t('pages.curd.toolbar.refresh')"
             placement="top"
           >
-            <ElButton circle :icon="Refresh" @click="handleDefaultTool('refresh')" />
+            <ElButton circle :icon="RefreshLeft" @click="handleDefaultTool('refresh')" />
           </ElTooltip>
           <!-- 筛选 -->
           <ElPopover
@@ -130,7 +130,7 @@
 <script setup lang="ts">
 import { ElButton, ElIcon, ElPopover, ElTooltip } from "element-plus";
 import {
-  Refresh,
+  RefreshLeft,
   Operation,
   Search,
   Download,

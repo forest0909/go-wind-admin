@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, SyncOutlined } from '@ant-design/icons';
 import { cloneElement, isValidElement } from 'react';
 
 type SearchButtonElement = ReactElement<{
@@ -27,6 +27,6 @@ export const searchOptionRender = (
   const [reset, submit] = nodes;
   return [
     cloneElement(submit, { icon: <SearchOutlined /> }),
-    cloneElement(reset, { icon: <ReloadOutlined />, type: 'text' }),
+    cloneElement(reset, { icon: <SyncOutlined />, type: 'text' }),
   ];
 };

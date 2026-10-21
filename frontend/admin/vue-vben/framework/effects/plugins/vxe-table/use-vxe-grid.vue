@@ -25,7 +25,7 @@ import {
 } from 'vue';
 
 import { usePriorityValues } from '@vben/hooks';
-import { EmptyIcon, RotateCw, Search } from '@vben/icons';
+import { EmptyIcon, LucideRefreshCw, Search } from '@vben/icons';
 import { $t } from '@vben/locales';
 import { preferences, usePreferences } from '@vben/preferences';
 import { cloneDeep, cn, mergeWithArrayOverride } from '@vben/utils';
@@ -172,7 +172,7 @@ const [Form, formApi] = useTableForm({
   },
   resetButtonOptions: {
     class: 'whitespace-nowrap [&>svg]:inline-block [&>svg]:size-3.5 [&>svg]:align-middle [&>svg]:mr-2',
-    icon: h(RotateCw),
+    icon: h(LucideRefreshCw),
     type: 'text',
   },
   wrapperClass: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',

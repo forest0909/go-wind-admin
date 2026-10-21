@@ -1,5 +1,5 @@
 <template>
-  <div class="pro-page">
+  <div ref="rootRef" class="pro-page">
     <!-- 搜索区 -->
     <ProSearch
       v-if="!showSkeleton && searchVisible && config.search?.fields?.length"
@@ -193,6 +193,7 @@ const tableState = useTableState<T, Q>({
 const modalState = useModalState<T>(rowKey);
 const tableRef = ref<any>(null);
 const searchRef = ref<any>(null);
+const rootRef = ref<HTMLElement | null>(null);
 const contentRef = ref<HTMLElement | null>(null);
 const exportModalRef = ref<InstanceType<typeof ExportModal>>();
 const importModalRef = ref<InstanceType<typeof ImportModal>>();
@@ -316,7 +317,9 @@ const rightButtons = computed(() => toToolbarButtons(props.config.table.toolbarR
 const defaultToolbarButtons = computed(() => {
   const dt = props.config.table.defaultToolbar;
   if (!dt?.length)
-    return ["refresh", "filter", "search"] as Array<ToolbarRightType | ToolbarCustomButton>;
+    return ["refresh", "filter", "search", "zoom"] as Array<
+      ToolbarRightType | ToolbarCustomButton
+    >;
   return dt.map((item) => {
     if (typeof item === "string") return item as ToolbarRightType;
     // ToolsButton (label) -> ToolbarCustomButton (text)
@@ -467,13 +470,20 @@ async function handleDelete(row: T) {
 }
 
 // === 全屏缩放 ===
+// 全屏目标是整页根节点（搜索卡 + 工具栏 + 表格），对齐 react ProTable fullScreen /
+// vben vxe zoom 的范围（两端都把搜索区一起带进全屏）。
 function handleZoom(isFullscreen: boolean) {
-  const el = contentRef.value;
+  const el = rootRef.value;
   if (!el) return;
   if (isFullscreen) {
-    el.requestFullscreen?.();
+    // requestFullscreen 可能被拒绝（iframe 未授权 / 用户拒绝权限提示），拒绝是正常路径
+    el.requestFullscreen?.()?.catch((error: unknown) => {
+      console.error("[ProPage] 进入全屏失败", error);
+    });
   } else {
-    document.exitFullscreen?.();
+    document.exitFullscreen?.()?.catch((error: unknown) => {
+      console.error("[ProPage] 退出全屏失败", error);
+    });
   }
 }
 
@@ -603,6 +613,14 @@ defineExpose({
 
   &__error-alert {
     margin-bottom: 8px;
+  }
+
+  // 全屏态：铺满视口时去掉卡片圆角，露出根节点背景色的只有搜索卡与列表卡之间的 12px 缝，
+  // 用页面底色填充；小视口下内容超出时允许滚动兜底。
+  &:fullscreen {
+    background: var(--el-bg-color-page);
+    border-radius: 0;
+    overflow: auto;
   }
 }
 </style>

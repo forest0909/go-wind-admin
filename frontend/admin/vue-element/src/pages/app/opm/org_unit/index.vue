@@ -112,7 +112,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
     ],
     toolbarRight: ["add"],
     exportsAction: createPagedExportAction(fetchListOrgUnits),
-    defaultToolbar: ["refresh", "filter", "exports"],
+    defaultToolbar: ["refresh", "filter", "exports", "zoom"],
     tableAttrs: {
       border: true,
       stripe: false,

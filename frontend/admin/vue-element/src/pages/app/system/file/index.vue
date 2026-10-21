@@ -83,7 +83,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
         attrs: { type: "primary", icon: "upload" },
       } as ToolsButton,
     ],
-    defaultToolbar: ["refresh", "exports", "filter"],
+    defaultToolbar: ["refresh", "exports", "filter", "zoom"],
     pagination: false,
     tableAttrs: { border: true, stripe: false },
     columns: [

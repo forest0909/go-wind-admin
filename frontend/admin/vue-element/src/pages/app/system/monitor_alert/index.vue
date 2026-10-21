@@ -178,7 +178,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       },
     ],
     toolbarRight: ["add"],
-    defaultToolbar: ["refresh", "filter"],
+    defaultToolbar: ["refresh", "filter", "zoom"],
     tableAttrs: { border: true, stripe: true },
     emptyActionText: "common.button.add",
     columns: [

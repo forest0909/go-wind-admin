@@ -58,7 +58,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
     exportsAction: createPagedExportAction(fetchListAiKnowledgeBases),
     toolbar: [],
     toolbarRight: ["add"],
-    defaultToolbar: ["refresh", "exports", "filter"],
+    defaultToolbar: ["refresh", "exports", "filter", "zoom"],
     tableAttrs: { border: true, stripe: true },
     columns: [
       { type: "index", label: t("common.table.seq"), width: 60 },

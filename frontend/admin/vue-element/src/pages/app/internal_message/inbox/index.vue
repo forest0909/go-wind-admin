@@ -294,7 +294,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
     },
     toolbar: [],
     toolbarRight: [],
-    defaultToolbar: ["refresh", "exports", "filter"],
+    defaultToolbar: ["refresh", "exports", "filter", "zoom"],
     // 导出与列表同口径：区间归一为 gte/lte、recipient_user_id 强制注入（隐私闸门）
     exportsAction: createPagedExportAction((query: PaginationQuery) => {
       const userId = userStore.userInfo?.id;

@@ -127,7 +127,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       };
     },
     toolbarRight: [],
-    defaultToolbar: ["refresh", "filter"],
+    defaultToolbar: ["refresh", "filter", "zoom"],
     tableAttrs: { border: true, stripe: true, height: "auto" },
     columns: [
       {

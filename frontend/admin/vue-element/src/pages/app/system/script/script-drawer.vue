@@ -67,7 +67,11 @@
         <div class="form-extra">{{ $t("pages.script.criticalTip") }}</div>
       </ElFormItem>
 
-      <ElFormItem :label="$t('pages.script.source')" prop="source">
+      <ElFormItem class="source-form-item">
+        <template #label>
+          <span class="source-required-star">*</span>
+          {{ $t('pages.script.source') }}
+        </template>
         <div class="source-editor-wrapper">
           <Editor
             :key="formData.language"
@@ -168,10 +172,9 @@ const formRules: FormRules = {
       trigger: "blur",
     },
   ],
-  source: [{ required: true, message: $t("pages.script.requiredSource"), trigger: "change" }],
-};
-
-// 标题
+  // source 不进 formRules：源码存在独立 ref 而非 formData，prop 校验恒取 undefined
+  // 会把提交静默拦死；空校验由 handleSubmit 的 trim 检查兜底
+};// 标题
 const title = computed(() =>
   isCreate.value
     ? $t("pages.script.create")
@@ -341,5 +344,21 @@ defineExpose({
 .source-editor-wrapper {
   width: 100%;
   min-height: 360px;
+}
+
+/* 脚本源码：标签独占一行置顶、编辑器全宽（对齐 react/vben 基准） */
+.source-form-item {
+  flex-direction: column;
+  align-items: stretch;
+
+  :deep(.el-form-item__label) {
+    width: 100% !important;
+    justify-content: flex-start;
+  }
+}
+
+.source-required-star {
+  margin-right: 4px;
+  color: var(--el-color-danger);
 }
 </style>

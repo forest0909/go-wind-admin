@@ -14,7 +14,6 @@ import {
   SearchOutlined,
   SunOutlined,
   MoonOutlined,
-  GlobalOutlined,
   BellOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -80,6 +79,31 @@ const MinimizeBracketsIcon = () => (
     <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
     <path d="M3 16v3a2 2 0 0 0 2 2h3" />
     <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+  </svg>
+);
+
+/**
+ * 语言切换的「文A」图标（tabler language 内联复刻）。
+ * antd TranslationOutlined 自带方框外沿，与设计稿的裸文A不符；
+ * stroke 系图形显式 fill="none"，避免继承 antd 的 fill: currentColor 糊成色块。
+ */
+const LanguageTranslateIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width="1em"
+    height="1em"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M4 5h7" />
+    <path d="M9 3v2c0 4.418 -2.239 8 -5 8" />
+    <path d="M5 9c0 2.144 2.952 3.908 6.7 4" />
+    <path d="M12.5 17l4.5 -8l4.5 8" />
+    <path d="M14.5 19h5" />
   </svg>
 );
 
@@ -1154,7 +1178,7 @@ export const HeaderContent = ({
         {widgetConfig.languageToggle && (
           <Dropdown menu={{ items: languageMenuItems }} trigger={['click']} placement="bottomRight">
             <Tooltip title={t('header.switchLanguage')}>
-              <Button type="text" icon={<GlobalOutlined />} size="small" style={btnStyle} />
+              <Button type="text" icon={<LanguageTranslateIcon />} size="small" style={btnStyle} />
             </Tooltip>
           </Dropdown>
         )}

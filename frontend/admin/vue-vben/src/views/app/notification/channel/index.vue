@@ -629,9 +629,18 @@ async function handleTestSend() {
       v-model:open="editOpen"
       :title="editMode === 'create' ? $t('page.notificationChannel.create') : $t('page.notificationChannel.edit')"
       destroy-on-close
-      :width="560"
+      :width="600"
     >
-      <a-form layout="vertical" class="pt-2">
+      <!-- 标签与输入同行（react 端抽屉规范同款）：flex 定宽标签 + grow 输入列，
+           140px 容下「SMTP 密码/授权码」「访问密钥 Secret」等长标签（与 ele 端同值）。
+           输入列 flex 必须是 '1'（basis 0）而非 'auto'：auto 的 basis 取内容 max-content，
+           带 :help 长文案的项会把行撑到 wrap、标签翻到输入上方 -->
+      <a-form
+        layout="horizontal"
+        :label-col="{ flex: '0 0 140px' }"
+        :wrapper-col="{ flex: '1' }"
+        class="pt-2"
+      >
         <a-form-item :label="$t('page.notificationChannel.name')" required>
           <a-input v-model:value="form.name" />
         </a-form-item>

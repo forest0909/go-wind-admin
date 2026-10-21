@@ -133,12 +133,13 @@ const ScriptLogDrawer: React.FC<ScriptLogDrawerProps> = ({ open, onClose }) => {
 
   return (
     <Drawer
-      title={t('logTitle')}
+      title={t('viewTitle')}
       open={open}
       onClose={onClose}
       size={960}
-      destroyOnHidden
+      forceRender
     >
+      <div ref={containerRef} className="page-container-content h-full">
       <ListTable<ScriptLog>
         actionRef={actionRef}
         columns={columns}
@@ -194,6 +195,7 @@ const ScriptLogDrawer: React.FC<ScriptLogDrawerProps> = ({ open, onClose }) => {
         size="middle"
         scroll={{ y: tableScrollY }}
       />
+      </div>
     </Drawer>
   );
 };

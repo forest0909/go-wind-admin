@@ -72,5 +72,6 @@
   "logPurge": "Purge >90d",
   "logPurgeConfirmTitle": "Confirm Purge",
   "logPurgeConfirmDesc": "This deletes all execution logs older than 90 days. Continue?",
-  "logPurgeSuccess": "Purged {{count}} log entries"
+  "logPurgeSuccess": "Purged {{count}} log entries",
+  "viewTitle": "View Script Log"
 }

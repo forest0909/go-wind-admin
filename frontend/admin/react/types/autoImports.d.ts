@@ -11,6 +11,7 @@ declare global {
   const AuthLayout: typeof import('../src/components/bussiness/AuthLayout/index').default
   const CodeBlockModal: typeof import('../src/components/common/Editor/src/TiptapEditor/modals').CodeBlockModal
   const CodeEditor: typeof import('../src/components/common/Editor/src/CodeEditor').default
+  const ColumnSlidersIcon: typeof import('../src/components/common/columnSettingIcon').ColumnSlidersIcon
   const CustomCodeBlockLowlight: typeof import('../src/components/common/Editor/src/TiptapEditor/index').CustomCodeBlockLowlight
   const CustomIframe: typeof import('../src/components/common/Editor/src/TiptapEditor/nodes').CustomIframe
   const CustomVideo: typeof import('../src/components/common/Editor/src/TiptapEditor/nodes').CustomVideo

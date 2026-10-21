@@ -7,7 +7,8 @@
     "search": "搜索",
     "batchImport": "批量导入",
     "batchExport": "批量导出",
-    "fullscreen": "全屏"
+    "fullscreen": "全屏",
+    "columnSetting": "列设置"
   },
   "search": {
     "expand": "展开",

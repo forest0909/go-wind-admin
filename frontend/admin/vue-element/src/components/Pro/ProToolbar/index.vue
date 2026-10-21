@@ -55,22 +55,29 @@
           >
             <ElButton circle :icon="RefreshLeft" @click="handleDefaultTool('refresh')" />
           </ElTooltip>
-          <!-- 筛选 -->
-          <ElPopover
+          <!-- 筛选/列设置 -->
+          <ElTooltip
             v-else-if="tool === 'filter' && hasFilterContent"
-            placement="bottom"
-            trigger="click"
-            :width="350"
+            :content="t('pages.curd.toolbar.columnSetting')"
+            placement="top"
           >
-            <template #reference>
-              <ElButton circle :icon="Operation" />
-            </template>
-            <ColumnFilter
-              :columns="filterableColumns"
-              @confirm="handleFilterConfirm"
-              @cancel="handleFilterCancel"
-            />
-          </ElPopover>
+            <span class="inline-flex">
+              <ElPopover
+                placement="bottom"
+                trigger="click"
+                :width="350"
+              >
+                <template #reference>
+                  <ElButton circle :icon="Operation" />
+                </template>
+                <ColumnFilter
+                  :columns="filterableColumns"
+                  @confirm="handleFilterConfirm"
+                  @cancel="handleFilterCancel"
+                />
+              </ElPopover>
+            </span>
+          </ElTooltip>
           <!-- 搜索 -->
           <ElTooltip
             v-else-if="tool === 'search'"

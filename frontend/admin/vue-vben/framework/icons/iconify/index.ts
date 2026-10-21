@@ -40,6 +40,10 @@ export const LucideEllipsisVertical = createIconifyIcon(
 );
 export const LucideEllipsis = createIconifyIcon('lucide:ellipsis');
 
+export const LucideChevronDown = createIconifyIcon('lucide:chevron-down');
+export const LucideHistory = createIconifyIcon('lucide:history');
+export const LucideNetwork = createIconifyIcon('lucide:network');
+
 export const LucideCirclePlay = createIconifyIcon('lucide:circle-play');
 export const LucideCircleStop = createIconifyIcon('lucide:circle-stop');
 export const LucideRotateCcw = createIconifyIcon('lucide:rotate-ccw');
@@ -59,6 +63,8 @@ export const LucideUserRoundPen = createIconifyIcon('lucide:user-round-pen');
 export const LucideInbox = createIconifyIcon('lucide:inbox');
 
 export const LucideEye = createIconifyIcon('lucide:eye');
+export const LucideSend = createIconifyIcon('lucide:send');
+export const LucideZap = createIconifyIcon('lucide:zap');
 export const LucideCheck = createIconifyIcon('lucide:check');
 
 export const LucideCircleAlert = createIconifyIcon('lucide:circle-alert');

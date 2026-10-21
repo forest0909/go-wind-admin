@@ -4,10 +4,10 @@ import type { VxeGridListeners, VxeGridProps } from '#/adapter/vxe-table';
 import { computed, h, watch } from 'vue';
 
 import { useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideInfo, LucideShieldOff, LucideTrash2 } from '@vben/icons';
+import { LucideChevronDown, LucideFilePenLine, LucideInfo, LucideShieldOff, LucideTrash2 } from '@vben/icons';
 import { isEqual } from '@vben/utils';
 
-import { notification } from 'ant-design-vue';
+import { Modal, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import TableAddButton from '#/components/TableAddButton.vue';
@@ -251,9 +251,8 @@ const gridOptions: VxeGridProps<User> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      // 4 个图标按钮（详情/编辑/重置MFA/删除）实际渲染约 130px+，
-      // 列宽 120 时删除按钮溢出 fixed 列容器被裁剪，无法点击
-      width: 160,
+      // 平台侧最多 4 项（详情/编辑/重置MFA/更多），文本+图标实测约 250px
+      width: 310,
     },
   ] satisfies VxeGridProps<User>['columns']).filter(
     (col) => !userHiddenFields.has(col.field as string),
@@ -338,6 +337,19 @@ async function handleDelete(row: any) {
   }
 }
 
+/* 「更多」下拉里的删除走 Modal 确认（下拉里放不下 Popconfirm） */
+function confirmDelete(row: any) {
+  Modal.confirm({
+    title: $t('ui.text.do_you_want_delete', {
+      moduleName: $t('page.user.moduleName'),
+    }),
+    okText: $t('ui.button.ok'),
+    cancelText: $t('ui.button.cancel'),
+    okType: 'danger',
+    onOk: () => handleDelete(row),
+  });
+}
+
 /* 详情 */
 function handleDetail(row: any) {
   router.push(`/opm/users/detail/${row.id}`);
@@ -411,13 +423,17 @@ watch(
         type="link"
         :icon="h(LucideInfo)"
         @click.stop="handleDetail(row)"
-      />
+      >
+        {{ $t('ui.button.detail') }}
+      </a-button>
 
       <a-button
         type="link"
         :icon="h(LucideFilePenLine)"
         @click.stop="handleEdit(row)"
-      />
+      >
+        {{ $t('common.edit') }}
+      </a-button>
       <a-popconfirm
         v-if="isPlatformSide"
         :cancel-text="$t('ui.button.cancel')"
@@ -425,20 +441,29 @@ watch(
         :title="$t('page.user.resetMfaConfirmTitle')"
         @confirm="handleResetMfa(row)"
       >
-        <a-button type="link" :icon="h(LucideShieldOff)" />
+        <a-button type="link" :icon="h(LucideShieldOff)">
+          {{ $t('page.user.button.resetMfa') }}
+        </a-button>
       </a-popconfirm>
-      <a-popconfirm
-        :cancel-text="$t('ui.button.cancel')"
-        :ok-text="$t('ui.button.ok')"
-        :title="
-          $t('ui.text.do_you_want_delete', {
-            moduleName: $t('page.user.moduleName'),
-          })
-        "
-        @confirm="handleDelete(row)"
-      >
-        <a-button danger type="link" :icon="h(LucideTrash2)" />
-      </a-popconfirm>
+      <a-dropdown>
+        <a-button type="link" @click.prevent>
+          {{ $t('ui.button.more') }}
+          <LucideChevronDown class="ml-1 size-4" />
+        </a-button>
+        <template #overlay>
+          <a-menu
+            :items="[
+              {
+                key: 'delete',
+                danger: true,
+                icon: () => h(LucideTrash2),
+                label: $t('common.delete'),
+                onClick: () => confirmDelete(row),
+              },
+            ]"
+          />
+        </template>
+      </a-dropdown>
     </template>
   </Grid>
   <Drawer />

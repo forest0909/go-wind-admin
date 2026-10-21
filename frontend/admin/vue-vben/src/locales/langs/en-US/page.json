@@ -88,7 +88,8 @@
       "updateUserInfo": "Update Profile",
       "updatePassword": "Change Password",
       "uploadAvatar": "Upload Avatar",
-      "deleteAvatar": "Delete Avatar"
+      "deleteAvatar": "Delete Avatar",
+      "resetMfa": "Reset MFA"
     },
     "profile": {
       "tab": {
@@ -428,9 +429,9 @@
     "enable": "Enabled",
     "button": {
       "create": "Create Task",
-      "start": "Start Task",
-      "restart": "Restart Task",
-      "stop": "Stop Task",
+      "start": "Start",
+      "restart": "Restart",
+      "stop": "Stop",
       "startAll": "Start All Tasks",
       "restartAll": "Restart All Tasks",
       "stopAll": "Stop All Tasks"

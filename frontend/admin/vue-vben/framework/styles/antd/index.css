@@ -30,6 +30,20 @@
   gap: 8px;
 }
 
+/*
+ * 表格操作列 link 按钮收窄（2026-10-21 操作列定式：行内按钮 图标+文本，>3 个走「更多」下拉）：
+ * antdv link 按钮默认 padding-inline 15px + 高 32px，单枚 2 字钮实测 81px，vxe 固定 width
+ * 的操作列装 3+ 枚会被裁切/换行截断（悬浮 title 露出全部文案而行内只见半截）。
+ * 收到 react 端 size="small" 同档（padding 4 / 高 24 / 字号 12，iconify 图标随 1em 缩放），
+ * 只命中表格行内按钮，工具栏/抽屉/弹窗按钮不受影响。antdv4 cssinjs 是 :where() 零特异性，
+ * 这条 0-2-0 unlayered 规则必胜出（同 .ant-btn flex 基座的.layer 理由）。
+ */
+.vxe-body--column .ant-btn-link {
+  padding-inline: 4px;
+  height: 24px;
+  font-size: 12px;
+}
+
 .ant-message-notice-content,
 .ant-notification-notice {
   @apply dark:border-border/60 dark:border;

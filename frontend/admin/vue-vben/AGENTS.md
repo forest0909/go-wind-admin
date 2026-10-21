@@ -309,16 +309,22 @@ views/app/{module}/
   <a-tag :color="xxxStatusToColor(row.status)">{{ xxxStatusToName(row.status) }}</a-tag>
 </template>
 
-<!-- 操作列 -->
+<!-- 操作列：按钮一律 图标+文本（common.edit/common.delete/ui.button.detail 是纯文本键）；
+     超过 3 个操作只留前 3 个行内，其余进「更多」下拉(ui.button.more)，下拉里用 Modal.confirm 确认。
+     注意 ui.button.edit/delete/view 是带 {moduleName} 的抽屉标题键，不能当行内按钮文本。 -->
 <template #action="{ row }">
-  <a-button type="link" :icon="h(LucideFilePenLine)" @click.stop="handleEdit(row)" />
+  <a-button type="link" :icon="h(LucideFilePenLine)" @click.stop="handleEdit(row)">
+    {{ $t('common.edit') }}
+  </a-button>
   <a-popconfirm
     :cancel-text="$t('ui.button.cancel')"
     :ok-text="$t('ui.button.ok')"
     :title="$t('ui.text.do_you_want_delete', { moduleName: $t('page.xxx.moduleName') })"
     @confirm="handleDelete(row)"
   >
-    <a-button danger type="link" :icon="h(LucideTrash2)" />
+    <a-button danger type="link" :icon="h(LucideTrash2)">
+      {{ $t('common.delete') }}
+    </a-button>
   </a-popconfirm>
 </template>
 ```

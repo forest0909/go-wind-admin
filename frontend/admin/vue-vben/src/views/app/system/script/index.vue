@@ -134,7 +134,7 @@ const gridOptions: VxeGridProps<Script> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 130,
+      width: 240,
     },
   ],
 };
@@ -279,9 +279,13 @@ async function handleTestRun() {
       </template>
       <template #action="{ row }">
         <a-tooltip :title="$t('page.script.testRun')">
-          <a-button type="link" :icon="h(LucideCirclePlay)" @click.stop="openTestRun(row)" />
+          <a-button type="link" :icon="h(LucideCirclePlay)" @click.stop="openTestRun(row)">
+            {{ $t('page.script.testRun') }}
+          </a-button>
         </a-tooltip>
-        <a-button type="link" :icon="h(LucideFilePenLine)" @click.stop="handleEdit(row)" />
+        <a-button type="link" :icon="h(LucideFilePenLine)" @click.stop="handleEdit(row)">
+          {{ $t('common.edit') }}
+        </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
           :ok-text="$t('ui.button.ok')"
@@ -290,7 +294,9 @@ async function handleTestRun() {
           "
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" :icon="h(LucideTrash2)" />
+          <a-button danger type="link" :icon="h(LucideTrash2)">
+            {{ $t('common.delete') }}
+          </a-button>
         </a-popconfirm>
       </template>
     </Grid>

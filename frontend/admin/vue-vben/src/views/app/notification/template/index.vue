@@ -4,9 +4,10 @@ import type {
   notificationservicev1_NotificationTemplate as NotificationTemplate,
 } from '#/api';
 
-import { reactive, ref } from 'vue';
+import { h, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { LucideEye, LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { message, notification } from 'ant-design-vue';
@@ -298,10 +299,10 @@ async function handleRender() {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" @click.stop="openEdit(row)">
-          {{ $t('page.notificationTemplate.edit') }}
+        <a-button type="link" size="small" :icon="h(LucideFilePenLine)" @click.stop="openEdit(row)">
+          {{ $t('common.edit') }}
         </a-button>
-        <a-button type="link" size="small" @click.stop="openRender(row)">
+        <a-button type="link" size="small" :icon="h(LucideEye)" @click.stop="openRender(row)">
           {{ $t('page.notificationTemplate.render') }}
         </a-button>
         <a-popconfirm
@@ -310,7 +311,7 @@ async function handleRender() {
           :title="$t('page.notificationTemplate.deleteConfirm')"
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" size="small">
+          <a-button danger type="link" size="small" :icon="h(LucideTrash2)">
             {{ $t('page.notificationTemplate.delete') }}
           </a-button>
         </a-popconfirm>

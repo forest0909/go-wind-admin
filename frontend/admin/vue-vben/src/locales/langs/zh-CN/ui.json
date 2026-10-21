@@ -69,7 +69,9 @@
     "login": "登录",
     "logout": "退出",
     "register": "注册",
-    "exportAll": "导出全部"
+    "exportAll": "导出全部",
+    "detail": "详情",
+    "more": "更多"
   },
   "modal": {
     "create": "创建{moduleName}",

@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import type { VxeGridProps } from '#/adapter/vxe-table';
 
-import { computed, reactive, ref } from 'vue';
+import { computed, h, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { LucideFilePenLine, LucideSend, LucideTrash2 } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { message, notification } from 'ant-design-vue';
@@ -588,7 +589,7 @@ async function handleTestSend() {
         />
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" @click.stop="openEdit(row)">
+        <a-button type="link" size="small" :icon="h(LucideFilePenLine)" @click.stop="openEdit(row)">
           {{ $t('common.edit') }}
         </a-button>
         <!-- 测试发送只对有"收件目标"的渠道有意义：EMAIL 测 SMTP 握手发信、SMS 发一条真验证码。
@@ -597,6 +598,7 @@ async function handleTestSend() {
           v-if="row.type === 'EMAIL' || row.type === 'SMS'"
           type="link"
           size="small"
+          :icon="h(LucideSend)"
           @click.stop="openTestSend(row)"
         >
           {{ $t('page.notificationChannel.testSend') }}
@@ -607,7 +609,7 @@ async function handleTestSend() {
           :title="$t('page.notificationChannel.deleteConfirm')"
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" size="small">
+          <a-button danger type="link" size="small" :icon="h(LucideTrash2)">
             {{ $t('common.delete') }}
           </a-button>
         </a-popconfirm>

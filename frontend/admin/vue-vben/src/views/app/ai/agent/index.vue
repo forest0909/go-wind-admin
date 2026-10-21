@@ -2,9 +2,19 @@
 import type { VxeGridProps } from '#/adapter/vxe-table';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
+import {
+  LucideChevronDown,
+  LucideCirclePlay,
+  LucideFilePenLine,
+  LucideHistory,
+  LucideNetwork,
+  LucideTrash2,
+} from '@vben/icons';
 import { $t } from '@vben/locales';
 
-import { notification } from 'ant-design-vue';
+import { h } from 'vue';
+
+import { Modal, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import {
@@ -72,7 +82,7 @@ const gridOptions: VxeGridProps<AiAgentApp> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 300,
+      width: 360,
     },
   ],
 };
@@ -109,6 +119,17 @@ function openRuns(row: AiAgentApp) {
   runsDrawerApi.open();
 }
 
+/* 「更多」下拉里的删除走 Modal 确认（下拉里放不下 Popconfirm） */
+function confirmDelete(row: AiAgentApp) {
+  Modal.confirm({
+    title: $t('page.aiAgent.deleteConfirm'),
+    okText: $t('ui.button.ok'),
+    cancelText: $t('ui.button.cancel'),
+    okType: 'danger',
+    onOk: () => handleDelete(row),
+  });
+}
+
 async function handleDelete(row: AiAgentApp) {
   try {
     await deleteAiAgentApp(row.id!);
@@ -135,28 +156,55 @@ async function handleDelete(row: AiAgentApp) {
         <a-tag v-else>{{ $t('page.aiAgent.enabledOff') }}</a-tag>
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" @click.stop="openCanvas(row)">
+        <a-button
+          type="link"
+          size="small"
+          :icon="h(LucideNetwork)"
+          @click.stop="openCanvas(row)"
+        >
           {{ $t('page.aiAgent.openCanvas') }}
         </a-button>
-        <a-button type="link" size="small" @click.stop="openEdit(row)">
+        <a-button
+          type="link"
+          size="small"
+          :icon="h(LucideFilePenLine)"
+          @click.stop="openEdit(row)"
+        >
           {{ $t('common.edit') }}
         </a-button>
-        <a-button type="link" size="small" @click.stop="openRun(row)">
+        <a-button
+          type="link"
+          size="small"
+          :icon="h(LucideCirclePlay)"
+          @click.stop="openRun(row)"
+        >
           {{ $t('page.aiAgent.testRun') }}
         </a-button>
-        <a-button type="link" size="small" @click.stop="openRuns(row)">
-          {{ $t('page.aiAgent.runsTitle') }}
-        </a-button>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="$t('page.aiAgent.deleteConfirm')"
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" size="small">
-            {{ $t('common.delete') }}
+        <a-dropdown>
+          <a-button type="link" size="small" @click.prevent>
+            {{ $t('ui.button.more') }}
+            <LucideChevronDown class="ml-1 size-4" />
           </a-button>
-        </a-popconfirm>
+          <template #overlay>
+            <a-menu
+              :items="[
+                {
+                  key: 'runs',
+                  icon: () => h(LucideHistory),
+                  label: $t('page.aiAgent.runsTitle'),
+                  onClick: () => openRuns(row),
+                },
+                {
+                  key: 'delete',
+                  danger: true,
+                  icon: () => h(LucideTrash2),
+                  label: $t('common.delete'),
+                  onClick: () => confirmDelete(row),
+                },
+              ]"
+            />
+          </template>
+        </a-dropdown>
       </template>
     </Grid>
     <CanvasDrawer />

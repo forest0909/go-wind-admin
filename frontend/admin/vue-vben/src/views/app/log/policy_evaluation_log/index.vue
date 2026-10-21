@@ -259,7 +259,7 @@ const gridOptions: VxeGridProps<PolicyEvaluationLog> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 80,
+      width: 100,
     },
   ],
 };
@@ -348,7 +348,9 @@ async function handleExportAll(info: { key: string | number }) {
           type="link"
           :icon="h(LucideEye)"
           @click="handleView(row)"
-        />
+        >
+          {{ $t('ui.button.detail') }}
+        </a-button>
       </template>
     </Grid>
     <Drawer />

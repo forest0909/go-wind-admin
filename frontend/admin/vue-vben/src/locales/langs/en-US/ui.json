@@ -69,7 +69,9 @@
     "login": "Login",
     "logout": "Logout",
     "register": "Register",
-    "exportAll": "Export All"
+    "exportAll": "Export All",
+    "detail": "Detail",
+    "more": "More"
   },
   "modal": {
     "create": "Create {moduleName}",

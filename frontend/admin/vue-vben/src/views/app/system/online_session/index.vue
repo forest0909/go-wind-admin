@@ -104,7 +104,7 @@ const gridOptions: VxeGridProps<OnlineSession> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 130,
+      width: 160,
     },
   ],
 };

@@ -208,7 +208,7 @@ const gridOptions: VxeGridProps<InternalMessageRecipient> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 140,
+      width: 220,
     },
   ],
 };
@@ -359,7 +359,9 @@ async function handleMarkAllRead() {
           type="link"
           :icon="h(LucideCheck)"
           @click="handleMarkAsRead(row)"
-        />
+        >
+          {{ $t('page.internalMessage.button.markAsRead') }}
+        </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
           :ok-text="$t('ui.button.ok')"
@@ -370,7 +372,9 @@ async function handleMarkAllRead() {
           "
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" :icon="h(LucideTrash2)" />
+          <a-button danger type="link" :icon="h(LucideTrash2)">
+            {{ $t('common.delete') }}
+          </a-button>
         </a-popconfirm>
       </template>
     </Grid>

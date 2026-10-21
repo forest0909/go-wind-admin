@@ -4,9 +4,9 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h, ref } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideCirclePlay, LucideCircleStop, LucideFilePenLine, LucideRotateCcw, LucideTrash2 } from '@vben/icons';
+import { LucideChevronDown, LucideCirclePlay, LucideCircleStop, LucideFilePenLine, LucideRotateCcw, LucideTrash2 } from '@vben/icons';
 
-import { notification } from 'ant-design-vue';
+import { Modal, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import SystemTasksModal from './system-tasks-modal.vue';
@@ -158,7 +158,7 @@ const gridOptions: VxeGridProps<Task> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 190,
+      width: 280,
     },
   ],
 };
@@ -283,6 +283,30 @@ async function handleStopTask(row: any) {
 
 async function handleRestartTask(row: any) {
   await controlTask(row.typeName, 'Restart');
+}
+
+/* 「更多」下拉里的重启/删除走 Modal 确认（下拉里放不下 Popconfirm） */
+function confirmRestartTask(row: any) {
+  Modal.confirm({
+    title: $t('page.task.text.do_you_want_restart_task', {
+      moduleName: $t('page.task.moduleName'),
+    }),
+    okText: $t('ui.button.ok'),
+    cancelText: $t('ui.button.cancel'),
+    onOk: () => handleRestartTask(row),
+  });
+}
+
+function confirmDeleteTask(row: any) {
+  Modal.confirm({
+    title: $t('ui.text.do_you_want_delete', {
+      moduleName: $t('page.task.moduleName'),
+    }),
+    okText: $t('ui.button.ok'),
+    cancelText: $t('ui.button.cancel'),
+    okType: 'danger',
+    onOk: () => handleDelete(row),
+  });
 }
 
 /* 编辑 */
@@ -410,7 +434,9 @@ async function handleEnableChanged(row: any, checked: boolean) {
           type="link"
           :icon="h(LucideFilePenLine)"
           @click.stop="handleEdit(row)"
-        />
+        >
+          {{ $t('common.edit') }}
+        </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
           :ok-text="$t('ui.button.ok')"
@@ -425,7 +451,9 @@ async function handleEnableChanged(row: any, checked: boolean) {
             type="link"
             class="green-link-btn"
             :icon="h(LucideCirclePlay)"
-          />
+          >
+            {{ $t('page.task.button.start') }}
+          </a-button>
         </a-popconfirm>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
@@ -437,32 +465,35 @@ async function handleEnableChanged(row: any, checked: boolean) {
           "
           @confirm="handleStopTask(row)"
         >
-          <a-button danger type="link" :icon="h(LucideCircleStop)" />
+          <a-button danger type="link" :icon="h(LucideCircleStop)">
+            {{ $t('page.task.button.stop') }}
+          </a-button>
         </a-popconfirm>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="
-            $t('page.task.text.do_you_want_restart_task', {
-              moduleName: $t('page.task.moduleName'),
-            })
-          "
-          @confirm="handleRestartTask(row)"
-        >
-          <a-button type="link" :icon="h(LucideRotateCcw)" />
-        </a-popconfirm>
-        <a-popconfirm
-          :cancel-text="$t('ui.button.cancel')"
-          :ok-text="$t('ui.button.ok')"
-          :title="
-            $t('ui.text.do_you_want_delete', {
-              moduleName: $t('page.task.moduleName'),
-            })
-          "
-          @confirm="handleDelete(row)"
-        >
-          <a-button danger type="link" :icon="h(LucideTrash2)" />
-        </a-popconfirm>
+        <a-dropdown>
+          <a-button type="link" @click.prevent>
+            {{ $t('ui.button.more') }}
+            <LucideChevronDown class="ml-1 size-4" />
+          </a-button>
+          <template #overlay>
+            <a-menu
+              :items="[
+                {
+                  key: 'restart',
+                  icon: () => h(LucideRotateCcw),
+                  label: $t('page.task.button.restart'),
+                  onClick: () => confirmRestartTask(row),
+                },
+                {
+                  key: 'delete',
+                  danger: true,
+                  icon: () => h(LucideTrash2),
+                  label: $t('common.delete'),
+                  onClick: () => confirmDeleteTask(row),
+                },
+              ]"
+            />
+          </template>
+        </a-dropdown>
       </template>
     </Grid>
     <SystemTasksModal v-model:open="sysTasksOpen" />
@@ -492,11 +523,13 @@ async function handleEnableChanged(row: any, checked: boolean) {
 
 /* 链接型按钮的墨取 §2.1 文字档：hsl(var(--success)) 是填充级 #57D188，对白底只有 1.92:1，
    当链接文字用等于看不见。hover 从文字档再往白走 10%，浅色 4.74、暗色只会更亮，两态都不掉出 4.5。 */
-:deep(.green-link-btn) {
+/* 0-4-0 特异性压过 framework 全局 .ant-btn.ant-btn-link:not(.ant-btn-dangerous)（0-3-0 !important）
+   的主色蓝——否则这里的 success 文字档被整体改写，启动钮一直是蓝的。 */
+:deep(.ant-btn.green-link-btn.green-link-btn) {
   color: var(--gowind-success-text) !important;
 }
 
-:deep(.green-link-btn:hover) {
+:deep(.ant-btn.green-link-btn.green-link-btn:hover) {
   color: color-mix(in srgb, var(--gowind-success-text) 90%, white) !important;
 }
 </style>

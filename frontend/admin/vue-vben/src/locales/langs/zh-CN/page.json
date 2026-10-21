@@ -88,7 +88,8 @@
       "updateUserInfo": "更新基本信息",
       "updatePassword": "更新密码",
       "uploadAvatar": "上传头像",
-      "deleteAvatar": "删除头像"
+      "deleteAvatar": "删除头像",
+      "resetMfa": "重置 MFA"
     },
     "profile": {
       "tab": {
@@ -428,9 +429,9 @@
     "enable": "启用状态",
     "button": {
       "create": "创建任务",
-      "start": "启动任务",
-      "restart": "重启任务",
-      "stop": "停止任务",
+      "start": "启动",
+      "restart": "重启",
+      "stop": "停止",
       "startAll": "启动全部任务",
       "restartAll": "重启全部任务",
       "stopAll": "停止全部任务"

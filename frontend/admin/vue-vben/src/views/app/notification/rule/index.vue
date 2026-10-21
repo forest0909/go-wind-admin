@@ -6,9 +6,10 @@ import type {
   notificationservicev1_NotificationRule as NotificationRule,
 } from '#/api';
 
-import { reactive, ref } from 'vue';
+import { h, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { LucideFilePenLine, LucideTrash2, LucideZap } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { message, notification } from 'ant-design-vue';
@@ -346,15 +347,15 @@ async function handleTestDispatch() {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" @click.stop="openEdit(row)">
-          {{ $t('page.notificationRule.edit') }}
+        <a-button type="link" size="small" :icon="h(LucideFilePenLine)" @click.stop="openEdit(row)">
+          {{ $t('common.edit') }}
         </a-button>
         <!-- 站内信规则不给测试按钮：它需要一条真实的消息本体，填个收件人 ID 测不出东西 -->
         <a-tooltip
           v-if="row.channel !== 'INTERNAL'"
           :title="$t('page.notificationRule.testDispatchHint')"
         >
-          <a-button type="link" size="small" @click.stop="openTestDispatch(row)">
+          <a-button type="link" size="small" :icon="h(LucideZap)" @click.stop="openTestDispatch(row)">
             {{ $t('page.notificationRule.testDispatch') }}
           </a-button>
         </a-tooltip>
@@ -364,7 +365,7 @@ async function handleTestDispatch() {
           :title="$t('page.notificationRule.deleteConfirm')"
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" size="small">
+          <a-button danger type="link" size="small" :icon="h(LucideTrash2)">
             {{ $t('page.notificationRule.delete') }}
           </a-button>
         </a-popconfirm>

@@ -89,7 +89,7 @@ const gridOptions: VxeGridProps = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 130,
+      width: 256,
     },
   ],
   proxyConfig: {
@@ -199,12 +199,16 @@ void exportFetcher;
           type="link"
           :icon="h(LucideFilePenLine)"
           @click="handleEdit(row)"
-        />
+        >
+          {{ $t('common.edit') }}
+        </a-button>
         <a-popconfirm
           :title="$t('page.accessKey.resetConfirm')"
           @confirm="handleResetSecret(row)"
         >
-          <a-button type="link" :icon="h(LucideRefreshCw)" />
+          <a-button type="link" :icon="h(LucideRefreshCw)">
+            {{ $t('page.accessKey.resetSecret') }}
+          </a-button>
         </a-popconfirm>
         <a-popconfirm
           :title="
@@ -214,7 +218,9 @@ void exportFetcher;
           "
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" :icon="h(LucideTrash2)" />
+          <a-button danger type="link" :icon="h(LucideTrash2)">
+            {{ $t('common.delete') }}
+          </a-button>
         </a-popconfirm>
       </template>
     </Grid>

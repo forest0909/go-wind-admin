@@ -4,9 +4,10 @@ import type {
   monitor_alertservicev1_MonitorAlertRule as MonitorAlertRule,
 } from '#/api';
 
-import { reactive, ref } from 'vue';
+import { h, reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 import { $t } from '@vben/locales';
 
 import { message, notification } from 'ant-design-vue';
@@ -365,8 +366,8 @@ async function handleEvaluate() {
         </a-tag>
       </template>
       <template #action="{ row }">
-        <a-button type="link" size="small" @click.stop="openEdit(row)">
-          {{ $t('page.monitorAlert.edit') }}
+        <a-button type="link" size="small" :icon="h(LucideFilePenLine)" @click.stop="openEdit(row)">
+          {{ $t('common.edit') }}
         </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
@@ -374,7 +375,7 @@ async function handleEvaluate() {
           :title="$t('page.monitorAlert.deleteConfirm')"
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" size="small">
+          <a-button danger type="link" size="small" :icon="h(LucideTrash2)">
             {{ $t('page.monitorAlert.delete') }}
           </a-button>
         </a-popconfirm>

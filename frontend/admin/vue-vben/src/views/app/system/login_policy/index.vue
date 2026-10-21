@@ -125,7 +125,7 @@ const gridOptions: VxeGridProps<LoginPolicy> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 90,
+      width: 140,
     },
   ],
 };
@@ -208,7 +208,9 @@ async function handleDelete(row: any) {
           type="link"
           :icon="h(LucideFilePenLine)"
           @click.stop="handleEdit(row)"
-        />
+        >
+          {{ $t('common.edit') }}
+        </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
           :ok-text="$t('ui.button.ok')"
@@ -219,7 +221,9 @@ async function handleDelete(row: any) {
           "
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" :icon="h(LucideTrash2)" />
+          <a-button danger type="link" :icon="h(LucideTrash2)">
+            {{ $t('common.delete') }}
+          </a-button>
         </a-popconfirm>
       </template>
     </Grid>

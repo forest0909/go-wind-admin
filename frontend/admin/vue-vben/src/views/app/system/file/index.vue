@@ -110,7 +110,7 @@ const gridOptions: VxeGridProps<File> = {
       field: 'action',
       fixed: 'right',
       slots: { default: 'action' },
-      width: 90,
+      width: 180,
     },
   ],
 };
@@ -213,7 +213,9 @@ async function handleDelete(row: any) {
           type="link"
           :icon="h(LucideFileDownload)"
           @click.stop="handleDownloadFile(row)"
-        />
+        >
+          {{ $t('ui.button.download') }}
+        </a-button>
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
           :ok-text="$t('ui.button.ok')"
@@ -224,7 +226,9 @@ async function handleDelete(row: any) {
           "
           @confirm="handleDelete(row)"
         >
-          <a-button danger type="link" :icon="h(LucideTrash2)" />
+          <a-button danger type="link" :icon="h(LucideTrash2)">
+            {{ $t('common.delete') }}
+          </a-button>
         </a-popconfirm>
       </template>
     </Grid>

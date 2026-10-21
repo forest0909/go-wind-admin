@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h, ref } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideChevronDown, LucideCirclePlay, LucideCircleStop, LucideFilePenLine, LucideRotateCcw, LucideTrash2 } from '@vben/icons';
+import { LucideChevronDown, LucideCirclePlay, LucideCircleStop, LucideFilePenLine, LucidePause, LucidePlay, LucideRotateCcw, LucideRotateCw, LucideServerCog, LucideTrash2 } from '@vben/icons';
 
 import { Modal, notification } from 'ant-design-vue';
 

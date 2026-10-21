@@ -14,12 +14,12 @@ function clearPreferencesAndLogout() {
 <template>
   <Preferences @clear-preferences-and-logout="clearPreferencesAndLogout">
     <VbenTooltip side="bottom">
-      <VbenIconButton>
-        <Settings class="text-foreground size-4" />
-      </VbenIconButton>
-      <template #content>
-        {{ $t('preferences.title') }}
+      <template #trigger>
+        <VbenIconButton>
+          <Settings class="text-foreground size-4" />
+        </VbenIconButton>
       </template>
+      {{ $t('preferences.title') }}
     </VbenTooltip>
   </Preferences>
 </template>

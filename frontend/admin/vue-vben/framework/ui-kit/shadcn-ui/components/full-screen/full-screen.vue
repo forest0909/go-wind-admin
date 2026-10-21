@@ -5,6 +5,7 @@ import { useFullscreen } from '@vueuse/core';
 import { $t } from '@vben/locales';
 
 import { VbenIconButton } from '../button';
+import { VbenTooltip } from '../tooltip';
 
 defineOptions({ name: 'FullScreen' });
 

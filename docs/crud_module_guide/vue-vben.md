@@ -223,7 +223,7 @@ Rules:
 - **Icons must be `h()`-wrapped**: `:icon="h(LucideFilePenLine)"`. Icons come from `@vben/icons` (lucide series). Never pass a bare component.
 - **Templates use `a-*` global components** (`a-tag`, `a-button`, `a-popconfirm`). Do NOT `import { Tag } from 'ant-design-vue'` and use `<Tag>`.
 - **Confirm deletes with `<a-popconfirm>`**, never `window.confirm`.
-- **Action-column buttons stay icon-only** (as in `position/index.vue`). `ui.button.edit` / `ui.button.delete` are templates (`编辑{moduleName}` / `删除{moduleName}`) that need a `moduleName` param, and `ui.button.ok` means "确定" — it belongs in the popconfirm's `ok-text`, never as a button label.
+- **Action-column buttons are icon + text** (`a-button type="link" :icon="h(LucideX)"` with a text child — labels: `$t('common.edit')` / `$t('common.delete')` / `$t('ui.button.detail')`). Beyond 3 actions keep the first 3 inline and move the rest into a "More" (`ui.button.more`) `a-dropdown` whose menu items carry icons too; confirmed actions inside the dropdown use `Modal.confirm` (`okType: 'danger'`), since Popconfirm cannot live in a menu. Copy `system/language/index.vue` (≤3) or `system/task/index.vue` (>3). `ui.button.edit` / `ui.button.delete` / `ui.button.view` are drawer-title templates (`编辑{moduleName}`) that need a `moduleName` param — never use them as row-button labels, and `ui.button.ok` belongs in the popconfirm's `ok-text`, never as a button label.
 
 ## Step 5 — Drawer form
 

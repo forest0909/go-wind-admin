@@ -174,6 +174,8 @@ function handleSuccess() { pageRef.value?.refresh(); }      // refresh, NOT inva
 
 `ProPage` emits `add` (toolbar) and `edit`/`delete`/`view` (row buttons). Button `name: 'edit' | 'delete'` is auto-recognized; other names route through `@operate`. `cellType` renderers (`date`/`tag`/`switch`/`tool`/...) are registered in `src/components/Pro/ProTable/cellRendererRegistry.ts`.
 
+Action column convention (design-language §4): every `buttons` entry needs `label` + `icon` — the shared ToolCell renders them as link buttons with icon + text. When a page declares more than 3 buttons, ToolCell automatically keeps the first 3 inline and moves the rest into a "More" dropdown (icon + text items; `danger`-typed entries render red). No per-page overflow code needed; keep `width` generous (3 inline + More ≈ 260, 2 buttons ≈ 150).
+
 ## Step 4 — Drawer form
 
 Path: `src/pages/app/<group>/<entity>/<entity>-drawer.vue`. Mirror `position-drawer.vue`. **Prefer `useDrawerForm`** — it wraps state, title generation, validate→mutate→toast→close. Only hand-roll (like `role-drawer.vue`) when the form needs transform logic (e.g. tree checkedKeys → leaf id list).

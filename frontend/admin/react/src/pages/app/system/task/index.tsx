@@ -344,26 +344,12 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
             }}
             pagination={false}
             toolBarRender={() => [
-              <TableExportButton key="export" fetcher={fetchListTasks} columns={columns} filename="tasks" />,
               <Button
                 key="sysTasks"
                 icon={<CloudServerOutlined />}
                 onClick={() => setSysTasksOpen(true)}
               >
                 {t('sysTasksButton')}
-              </Button>,
-              <Button
-                key="create"
-                color="primary"
-                variant="outlined"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setDrawerMode('create');
-                  setSelectedTask(undefined);
-                  setDrawerOpen(true);
-                }}
-              >
-                {t('common:button.add')}
               </Button>,
               <Popconfirm
                 key="startAll"
@@ -415,6 +401,20 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
                   {t('restartAll')}
                 </Button>
               </Popconfirm>,
+              <Button
+                key="create"
+                color="primary"
+                variant="outlined"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setDrawerMode('create');
+                  setSelectedTask(undefined);
+                  setDrawerOpen(true);
+                }}
+              >
+                {t('common:button.add')}
+              </Button>,
+              <TableExportButton key="export" fetcher={fetchListTasks} columns={columns} filename="tasks" />,
             ]}
             options={{
               density: true,

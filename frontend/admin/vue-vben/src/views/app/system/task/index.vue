@@ -360,8 +360,6 @@ async function handleEnableChanged(row: any, checked: boolean) {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.system.task')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
-
         <a-button class="mr-2" @click="sysTasksOpen = true">
           {{ $t('page.task.sysTasksButton') }}
         </a-button>
@@ -410,6 +408,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
             {{ $t('page.task.button.restartAll') }}
           </a-button>
         </a-popconfirm>
+        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="tasks" />
       </template>
 

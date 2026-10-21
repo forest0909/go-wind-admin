@@ -683,18 +683,18 @@ html[data-theme='dark'] .ant-form .ant-input:not(.ant-input-affix-wrapper .ant-i
 
 /* ========== 暗黑模式：默认/取消按钮（#1C2128 浮层色底） ==========
    排除链同时覆盖旧 type API 类名（ant-btn-primary/danger/link/text）与
-   v6 color/variant API 类名（ant-btn-color-primary/danger）——后者是
-   color="primary" variant="outlined" 新增钮的载体，漏排除会被本规则
-   连边框带文字盖成中性灰（暗色下与导出钮无法区分）。 */
-[data-theme='dark'] .ant-btn-default:not(.ant-btn-color-primary):not(.ant-btn-color-danger),
-[data-theme='dark'] .ant-btn:not(.ant-btn-primary):not(.ant-btn-danger):not(.ant-btn-link):not(.ant-btn-text):not(.ant-btn-color-primary):not(.ant-btn-color-danger) {
+   v6 color/variant API 类名——后者是 color="primary|orange|..." variant="outlined"
+   新增钮的载体，漏排除会被本规则连边框带文字盖成中性灰（暗色下与导出钮无法
+   区分）。用 [class*='ant-btn-color-'] 一网打尽全部预设色，新增色板不再回头改这里。 */
+[data-theme='dark'] .ant-btn-default:not([class*='ant-btn-color-']),
+[data-theme='dark'] .ant-btn:not(.ant-btn-primary):not(.ant-btn-danger):not(.ant-btn-link):not(.ant-btn-text):not([class*='ant-btn-color-']) {
   background-color: #1c2128 !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
   color: #f8fafc !important;
 }
 
-[data-theme='dark'] .ant-btn-default:not(.ant-btn-color-primary):not(.ant-btn-color-danger):hover,
-[data-theme='dark'] .ant-btn:not(.ant-btn-primary):not(.ant-btn-danger):not(.ant-btn-link):not(.ant-btn-text):not(.ant-btn-color-primary):not(.ant-btn-color-danger):hover {
+[data-theme='dark'] .ant-btn-default:not([class*='ant-btn-color-']):hover,
+[data-theme='dark'] .ant-btn:not(.ant-btn-primary):not(.ant-btn-danger):not(.ant-btn-link):not(.ant-btn-text):not([class*='ant-btn-color-']):hover {
   background-color: #262c36 !important;
   border-color: rgba(255, 255, 255, 0.22) !important;
   color: #f0f6fc !important;

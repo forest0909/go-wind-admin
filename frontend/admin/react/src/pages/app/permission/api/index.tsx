@@ -220,7 +220,7 @@ const ApiManagement = () => {
                 okText={t('common:button.ok')}
                 cancelText={t('common:button.cancel')}
               >
-                <Button type="primary" danger icon={<SyncOutlined />}>
+                <Button color="orange" variant="outlined" icon={<SyncOutlined />}>
                   {t('sync')}
                 </Button>
               </Popconfirm>,

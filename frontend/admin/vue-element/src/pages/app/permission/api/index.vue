@@ -90,7 +90,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       {
         name: "sync",
         label: $t("pages.api.button.sync"),
-        attrs: { type: "danger", icon: "refresh" },
+        attrs: { type: "warning", plain: true, icon: "refresh" },
       } as ToolsButton,
       "add",
     ],

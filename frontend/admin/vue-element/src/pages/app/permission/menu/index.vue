@@ -179,7 +179,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       {
         name: "syncMenus",
         label: $t("pages.menu.sync"),
-        attrs: { type: "danger", icon: "Refresh", loading: isSyncing.value },
+        attrs: { type: "warning", plain: true, icon: "Refresh", loading: isSyncing.value },
       } as ToolsButton,
     ],
     toolbarRight: ["add"],

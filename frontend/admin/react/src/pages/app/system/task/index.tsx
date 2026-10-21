@@ -30,6 +30,7 @@ import SystemTasksModal from './SystemTasksModal';
 import { getTaskTypeMap, getTaskTypeOptions } from './constants';
 import TaskDrawer from './components/TaskDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 任务管理页面
@@ -383,7 +384,7 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

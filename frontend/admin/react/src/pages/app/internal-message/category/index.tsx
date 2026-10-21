@@ -14,6 +14,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { enableBoolToColor, getEnableBoolMap } from './constants';
 import CategoryDrawer from './components/CategoryDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 内部消息分类管理页面
@@ -164,7 +165,7 @@ const InternalMessageCategoryManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

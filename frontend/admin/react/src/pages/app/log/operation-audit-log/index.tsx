@@ -21,6 +21,7 @@ import {
   successToName,
 } from './constants';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 操作审计日志页面
@@ -297,7 +298,7 @@ const OperationAuditLogPage = () => {
           options={{
             density: true,
             fullScreen: true,
-            setting: true,
+            setting: { settingIcon: <ColumnSlidersIcon /> },
             reload: true,
           }}
           size="middle"

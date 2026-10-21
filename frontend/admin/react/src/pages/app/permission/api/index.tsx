@@ -15,6 +15,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { getMethodColor } from './constants';
 import ApiDrawer from './components/ApiDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * API管理页面
@@ -222,7 +223,7 @@ const ApiManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

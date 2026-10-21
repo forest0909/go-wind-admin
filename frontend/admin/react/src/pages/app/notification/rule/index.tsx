@@ -31,6 +31,7 @@ import {
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 通知路由规则管理（事件类型 → 渠道 + 派发方式）
@@ -290,7 +291,7 @@ const NotificationRulePage = () => {
             defaultPageSize: TABLE.DEFAULT_PAGE_SIZE,
             showSizeChanger: true,
           }}
-          options={{ density: true, fullScreen: true, setting: true, reload: true }}
+          options={{ density: true, fullScreen: true, setting: { settingIcon: <ColumnSlidersIcon /> }, reload: true }}
           toolBarRender={() => [
             <Button
               key="create"

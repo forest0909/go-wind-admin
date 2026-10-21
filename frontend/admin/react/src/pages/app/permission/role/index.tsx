@@ -15,6 +15,7 @@ import { getStatusMap, getStatusOptions, getDataScopeMap } from './constants';
 import RoleDrawer from './components/RoleDrawer';
 import { TABLE } from '@/config/constants.ts';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 角色管理页面
@@ -202,7 +203,7 @@ const RoleManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

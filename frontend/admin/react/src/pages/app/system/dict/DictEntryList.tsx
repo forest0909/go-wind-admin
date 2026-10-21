@@ -15,6 +15,7 @@ import { enableBoolOptions, getEnableColor, getEnableLabel, getEntryLabel } from
 import DictEntryDrawer from './DictEntryDrawer';
 import { usePreferencesStore } from '@/core/preferences/store';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 interface DictEntryListProps {
   typeId: number | null;
@@ -188,7 +189,7 @@ const DictEntryList: React.FC<DictEntryListProps> = ({ typeId }) => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="small"

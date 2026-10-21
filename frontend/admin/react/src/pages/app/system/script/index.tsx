@@ -17,6 +17,7 @@ import ScriptDrawer from './components/ScriptDrawer';
 import ScriptLogDrawer from './components/ScriptLogDrawer';
 import TestRunModal from './components/TestRunModal';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 脚本管理页面
@@ -299,7 +300,7 @@ const ScriptManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

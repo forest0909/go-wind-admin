@@ -15,6 +15,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { enableBoolToColor } from './constants';
 import LanguageDrawer from './components/LanguageDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 语言管理页面
@@ -202,7 +203,7 @@ const LanguageManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

@@ -29,6 +29,7 @@ import {
 } from './constants';
 import MenuDrawer from './components/MenuDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 菜单标题关键词的前端过滤。
@@ -420,7 +421,7 @@ const MenuManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

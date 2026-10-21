@@ -22,6 +22,7 @@ import {
   successToName,
 } from './constants';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 数据访问审计日志页面
@@ -294,7 +295,7 @@ const DataAccessAuditLogPage = () => {
           options={{
             density: true,
             fullScreen: true,
-            setting: true,
+            setting: { settingIcon: <ColumnSlidersIcon /> },
             reload: true,
           }}
           size="middle"

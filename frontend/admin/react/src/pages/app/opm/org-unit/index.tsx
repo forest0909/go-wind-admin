@@ -20,6 +20,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { getStatusMap, getStatusOptions, getOrgTypeMap, getOrgTypeOptions } from './constants';
 import OrgDrawer from './components/OrgDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 组织架构管理页面
@@ -256,7 +257,7 @@ const OrgUnitManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

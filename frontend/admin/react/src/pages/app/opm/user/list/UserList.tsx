@@ -19,6 +19,7 @@ import { parseResourceHiddenFields } from '@/core/access';
 import { getUserStatusMap, getUserStatusOptions } from '../constants';
 import UserDrawer from './UserDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 interface UserListProps {
   tenantId: number | undefined;
@@ -319,7 +320,7 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
           options={{
             density: true,
             fullScreen: true,
-            setting: true,
+            setting: { settingIcon: <ColumnSlidersIcon /> },
             reload: true,
           }}
           size="small"

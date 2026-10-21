@@ -14,6 +14,7 @@ import { fetchListPermissions, useDeletePermission } from '@/api/hooks/permissio
 import { getStatusMap, getStatusOptions } from './constants';
 import PermissionDrawer from './PermissionDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 interface PermissionListProps {
   groupId: number | null;
@@ -173,7 +174,7 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="small"

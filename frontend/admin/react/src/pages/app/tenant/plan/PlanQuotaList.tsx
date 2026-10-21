@@ -14,6 +14,7 @@ import { fetchListPlanQuotas, useDeletePlanQuota } from '@/api/hooks/plan';
 import { getQuotaTypeMap, getQuotaTypeOptions } from './constants';
 import PlanQuotaDrawer from './components/PlanQuotaDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 interface PlanQuotaListProps {
   planId: number | null;
@@ -182,7 +183,7 @@ const PlanQuotaList: React.FC<PlanQuotaListProps> = ({ planId }) => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="small"

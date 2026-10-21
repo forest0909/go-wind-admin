@@ -19,6 +19,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { getProviderMap, formatFileSize } from './constants';
 import FileDrawer from './components/FileDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 文件管理页面
@@ -224,7 +225,7 @@ const FileManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

@@ -24,6 +24,7 @@ import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import AgentCanvas from './agent-canvas';
 import AgentRunsDrawer from './agent-runs-drawer';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * AI Agent 编排应用列表（M1）：
@@ -176,7 +177,7 @@ const AiAgentAppManagement = () => {
           rowKey="id"
           search={false}
           pagination={{ defaultPageSize: TABLE.DEFAULT_PAGE_SIZE, showSizeChanger: true }}
-          options={{ density: true, fullScreen: true, setting: true, reload: true }}
+          options={{ density: true, fullScreen: true, setting: { settingIcon: <ColumnSlidersIcon /> }, reload: true }}
           toolBarRender={() => [
             <Button
               key="create"

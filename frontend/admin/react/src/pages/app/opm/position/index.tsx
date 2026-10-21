@@ -26,6 +26,7 @@ import {
 } from './constants';
 import PositionDrawer from './components/PositionDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 职位管理页面
@@ -241,7 +242,7 @@ const PositionManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

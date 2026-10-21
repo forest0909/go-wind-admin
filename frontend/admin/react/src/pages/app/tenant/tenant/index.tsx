@@ -22,6 +22,7 @@ import {
 } from './constants';
 import TenantDrawer from './components/TenantDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 租户列表页面
@@ -265,7 +266,7 @@ const TenantList = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

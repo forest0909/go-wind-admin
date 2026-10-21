@@ -17,6 +17,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { getStatusMap, getStatusOptions, getTypeMap, getTypeOptions } from './constants';
 import MessageDrawer from './components/MessageDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 内部消息列表页面
@@ -181,7 +182,7 @@ const InternalMessageList = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

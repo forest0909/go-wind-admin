@@ -23,6 +23,7 @@ import {
 } from './constants';
 import LoginAuditLogDetailDrawer from './DetailDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 登录审计日志页面
@@ -323,7 +324,7 @@ const LoginAuditLogPage = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

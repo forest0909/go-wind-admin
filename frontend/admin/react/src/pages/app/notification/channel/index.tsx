@@ -35,6 +35,7 @@ import {
 import { useListChannelSchemas, type ChannelSchema } from '@/api/hooks/notification-channel-schema';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 渠道类型 → 文案/颜色。列必须按 record.type 渲染：一个渠道类型对应一列自己的配置
@@ -437,7 +438,7 @@ const NotificationChannelManagement = () => {
             defaultPageSize: TABLE.DEFAULT_PAGE_SIZE,
             showSizeChanger: true,
           }}
-          options={{ density: true, fullScreen: true, setting: true, reload: true }}
+          options={{ density: true, fullScreen: true, setting: { settingIcon: <ColumnSlidersIcon /> }, reload: true }}
           toolBarRender={() => [
             <TableExportButton key="export" fetcher={fetchListNotificationChannels} columns={columns} filename="notification-channels" />,
             <Button

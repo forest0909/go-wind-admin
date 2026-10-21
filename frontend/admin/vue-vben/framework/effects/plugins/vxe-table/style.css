@@ -174,3 +174,15 @@
 .vxe-tools--operate:not(:has(button)) {
   margin-left: 0;
 }
+
+/* ========== 列设置（custom）工具钮：齿轮字体 → 调节器（三滑杆）图形 ==========
+   vxe 字体里没有裸滑杆造型，用 currentColor + mask 的内联 svg 画；
+   custom.icon 在 use-vxe-grid 的 toolbarConfig 里指向本类。 */
+.vxe-toolbar i.vben-icon-toolbar-sliders {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 4h-7M10 4H3M14 2v4M21 12h-9M8 12H3M8 10v4M21 20h-5M12 20H3M16 18v4'/%3E%3C/svg%3E") no-repeat center / contain;
+  mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 4h-7M10 4H3M14 2v4M21 12h-9M8 12H3M8 10v4M21 20h-5M12 20H3M16 18v4'/%3E%3C/svg%3E") no-repeat center / contain;
+}

@@ -20,6 +20,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { InboxDetailDrawer } from './components/InboxDetailDrawer';
 import { getRecipientStatusMap, getRecipientStatusOptions } from './constants';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 收件箱页面
@@ -289,7 +290,7 @@ const InboxList = () => {
           options={{
             density: true,
             fullScreen: true,
-            setting: true,
+            setting: { settingIcon: <ColumnSlidersIcon /> },
             reload: true,
           }}
           toolBarRender={() => [

@@ -195,6 +195,8 @@ const toolbarOptions = computed(() => {
   const slotTools = slots[TOOLBAR_TOOLS]?.();
 
   const toolbarConfig: VxeGridPropTypes.ToolbarConfig = {
+    // 列设置（custom）钮：调节器图形替代 vxe 字体齿轮（图形见 style.css 的 mask 定义）
+    custom: { icon: 'vben-icon-toolbar-sliders' },
     tools:
       gridOptions.value?.toolbarConfig?.search && !!formOptions.value
         ? [

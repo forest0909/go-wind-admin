@@ -11,6 +11,7 @@ import { fetchListScriptLogs, usePurgeScriptLogs } from '@/api/hooks/script-log'
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { TABLE } from '@/config/constants.ts';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 interface ScriptLogDrawerProps {
   open: boolean;
@@ -189,7 +190,7 @@ const ScriptLogDrawer: React.FC<ScriptLogDrawerProps> = ({ open, onClose }) => {
             </Button>
           </Popconfirm>,
         ]}
-        options={{ density: true, reload: true }}
+        options={{ setting: { settingIcon: <ColumnSlidersIcon /> }, density: true, reload: true }}
         size="middle"
         scroll={{ y: tableScrollY }}
       />

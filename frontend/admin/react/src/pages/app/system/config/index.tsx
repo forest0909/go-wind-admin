@@ -15,6 +15,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { getValueTypeLabel, valueTypeToColor } from './constants';
 import ConfigDrawer from './components/ConfigDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 参数管理页面（系统参数，动态 KV 运行时配置）
@@ -201,7 +202,7 @@ const ConfigManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

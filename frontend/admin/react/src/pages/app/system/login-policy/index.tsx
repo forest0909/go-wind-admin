@@ -15,6 +15,7 @@ import ContentContainer from '@/layouts/components/PageContainer/ContentContaine
 import { getPolicyTypeMap, getPolicyMethodMap, getPolicyMethodOptions } from './constants';
 import LoginPolicyDrawer from './components/LoginPolicyDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
+import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 登录策略管理页面
@@ -214,7 +215,7 @@ const LoginPolicyManagement = () => {
             options={{
               density: true,
               fullScreen: true,
-              setting: true,
+              setting: { settingIcon: <ColumnSlidersIcon /> },
               reload: true,
             }}
             size="middle"

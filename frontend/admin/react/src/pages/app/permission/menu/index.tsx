@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
+import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
 import { Button, Popconfirm, Tag, App, Space } from 'antd';
 import {
@@ -308,35 +309,36 @@ const MenuManagement = () => {
       title: t('action'),
       valueType: 'option',
       width: 150,
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setDrawerMode('edit');
-            setSelectedMenu(record);
-            setDrawerOpen(true);
-          }}
-        >
-          {t('common:button.edit')}
-        </Button>,
-        <Popconfirm
-          key="delete"
-          title={t('deleteConfirmTitle')}
-          description={t('deleteConfirmDesc', {
-            name: (record as any).meta?.title || record.path || '',
-          })}
-          onConfirm={() => record.id && deleteMutation.mutate({ id: record.id })}
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('common:button.delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('common:button.edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setDrawerMode('edit');
+                setSelectedMenu(record);
+                setDrawerOpen(true);
+              },
+            },
+            {
+              key: 'delete',
+              label: t('common:button.delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: {
+                title: t('deleteConfirmTitle'),
+                description: t('deleteConfirmDesc', {
+                  name: (record as any).meta?.title || record.path || '',
+                }),
+              },
+              onClick: () => record.id && deleteMutation.mutate({ id: record.id }),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

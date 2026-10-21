@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableActions from '@/components/common/TableActions';
 import {
   ModalForm,
   DrawerForm,
@@ -8,7 +9,7 @@ import {
   ProFormTextArea,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { App, Button, Descriptions, Popconfirm, Tag, Alert } from 'antd';
+import { App, Button, Descriptions, Tag, Alert } from 'antd';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -187,38 +188,40 @@ const NotificationTemplatePage = () => {
       // 编辑模板+预览+删除 三个图标+文字按钮实测需 256px，240 会被截断
       width: 260,
       fixed: 'right',
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setFormMode('edit');
-            setSelected(record);
-            setFormOpen(true);
-          }}
-        >
-          {t('edit')}
-        </Button>,
-        <Button
-          key="render"
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => {
-            setRenderTarget(record);
-            setRenderResult(undefined);
-          }}
-        >
-          {t('render')}
-        </Button>,
-        <Popconfirm key="delete" title={t('deleteConfirm')} onConfirm={() => handleDelete(record)}>
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setFormMode('edit');
+                setSelected(record);
+                setFormOpen(true);
+              },
+            },
+            {
+              key: 'render',
+              label: t('render'),
+              icon: <EyeOutlined />,
+              onClick: () => {
+                setRenderTarget(record);
+                setRenderResult(undefined);
+              },
+            },
+            {
+              key: 'delete',
+              label: t('delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: { title: t('deleteConfirm') },
+              onClick: () => handleDelete(record),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

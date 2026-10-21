@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
+import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Dropdown, Popconfirm, Tag, Switch, App } from 'antd';
+import { Button, Popconfirm, Tag, Switch, App } from 'antd';
 import { EditOutlined,
   DeleteOutlined,
   PlusOutlined,
@@ -10,7 +11,6 @@ import { EditOutlined,
   PauseOutlined,
   ReloadOutlined,
   CloudServerOutlined,
-  MoreOutlined,
 } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +40,7 @@ const TaskManagement = () => {
   const { t } = useTranslation('task');
   const actionRef = useRef<ActionType>(null);
   const queryClient = useQueryClient();
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const tableScrollY = useProTableScrollY(containerRef);
@@ -212,100 +212,74 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
       title: t('action'),
       valueType: 'option',
       width: 310,
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setDrawerMode('edit');
-            setSelectedTask(record);
-            setDrawerOpen(true);
-          }}
-        >
-          {t('common:button.edit')}
-        </Button>,
-        <Popconfirm
-          key="start"
-          title={t('startTaskConfirmTitle')}
-          description={t('startTaskConfirmDesc', { moduleName: t('moduleName') })}
-          onConfirm={() =>
-            controlMutation.mutate({ typeName: record.typeName as string, controlType: 'Start' })
-          }
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          {/* 取 §2.1 的文字档而不是 var(--ant-color-success)：浅色 success #57D188 在白底实测
-              只有 1.93:1（旧值 #52c41a 也才 2.27:1），连图标的 3:1 档都不够 */}
-          <Button
-            type="link"
-            size="small"
-            icon={<CaretRightOutlined />}
-            style={{ color: 'var(--gowind-success-text)' }}
-          >
-            {t('start')}
-          </Button>
-        </Popconfirm>,
-        <Popconfirm
-          key="stop"
-          title={t('stopTaskConfirmTitle')}
-          description={t('stopTaskConfirmDesc', { moduleName: t('moduleName') })}
-          onConfirm={() =>
-            controlMutation.mutate({ typeName: record.typeName as string, controlType: 'Stop' })
-          }
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          <Button danger type="link" size="small" icon={<PauseOutlined />}>
-            {t('stop')}
-          </Button>
-        </Popconfirm>,
-        <Dropdown
-          key="more"
-          menu={{
-            items: [
-              {
-                key: 'restart',
-                icon: <ReloadOutlined />,
-                label: t('restart'),
-                onClick: () =>
-                  modal.confirm({
-                    title: t('restartTaskConfirmTitle'),
-                    content: t('restartTaskConfirmDesc', { moduleName: t('moduleName') }),
-                    okText: t('common:button.ok'),
-                    cancelText: t('common:button.cancel'),
-                    onOk: () =>
-                      controlMutation.mutate({
-                        typeName: record.typeName as string,
-                        controlType: 'Restart',
-                      }),
-                  }),
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('common:button.edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setDrawerMode('edit');
+                setSelectedTask(record);
+                setDrawerOpen(true);
               },
-              {
-                key: 'delete',
-                icon: <DeleteOutlined />,
-                danger: true,
-                label: t('common:button.delete'),
-                onClick: () =>
-                  modal.confirm({
-                    title: t('deleteConfirmTitle'),
-                    content: t('deleteConfirmDesc', { moduleName: t('moduleName') }),
-                    okText: t('common:button.ok'),
-                    cancelText: t('common:button.cancel'),
-                    okButtonProps: { danger: true },
-                    onOk: () => record.id && deleteMutation.mutate({ id: record.id }),
-                  }),
+            },
+            {
+              key: 'start',
+              label: t('start'),
+              icon: <CaretRightOutlined />,
+              success: true,
+              // 取 §2.1 的文字档而不是 var(--ant-color-success)：浅色 success #57D188 在白底实测
+              // 只有 1.93:1（旧值 #52c41a 也才 2.27:1），连图标的 3:1 档都不够
+              confirm: {
+                title: t('startTaskConfirmTitle'),
+                description: t('startTaskConfirmDesc', { moduleName: t('moduleName') }),
               },
-            ],
-          }}
-        >
-          <Button type="link" size="small">
-            {t('common:button.more')}
-            <MoreOutlined style={{ marginInlineStart: 4 }} />
-          </Button>
-        </Dropdown>,
-      ],
+              onClick: () =>
+                controlMutation.mutate({ typeName: record.typeName as string, controlType: 'Start' }),
+            },
+            {
+              key: 'stop',
+              label: t('stop'),
+              icon: <PauseOutlined />,
+              danger: true,
+              confirm: {
+                title: t('stopTaskConfirmTitle'),
+                description: t('stopTaskConfirmDesc', { moduleName: t('moduleName') }),
+              },
+              onClick: () =>
+                controlMutation.mutate({ typeName: record.typeName as string, controlType: 'Stop' }),
+            },
+            {
+              key: 'restart',
+              label: t('restart'),
+              icon: <ReloadOutlined />,
+              confirm: {
+                title: t('restartTaskConfirmTitle'),
+                description: t('restartTaskConfirmDesc', { moduleName: t('moduleName') }),
+              },
+              onClick: () =>
+                controlMutation.mutate({
+                  typeName: record.typeName as string,
+                  controlType: 'Restart',
+                }),
+            },
+            {
+              key: 'delete',
+              label: t('common:button.delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: {
+                title: t('deleteConfirmTitle'),
+                description: t('deleteConfirmDesc', { moduleName: t('moduleName') }),
+              },
+              onClick: () => record.id && deleteMutation.mutate({ id: record.id }),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

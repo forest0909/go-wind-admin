@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
+import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Popconfirm, Tag, App } from 'antd';
+import { Button, Tag, App } from 'antd';
 import {
   EditOutlined,
   DeleteOutlined,
@@ -119,44 +120,34 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
       title: t('action'),
       valueType: 'option',
       width: 150,
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditingGroup(record);
-            setDrawerMode('edit');
-            setDrawerOpen(true);
-          }}
-        >
-          {t('common:button.edit')}
-        </Button>,
-        <Popconfirm
-          key="delete"
-          title={t('deleteConfirmTitle')}
-          description={t('deleteConfirmDesc', { moduleName: t('moduleName') })}
-          onConfirm={(e) => {
-            e?.stopPropagation();
-            record.id && deleteMutation.mutate({ id: record.id });
-          }}
-          onCancel={(e) => e?.stopPropagation()}
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          <Button
-            danger
-            type="link"
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {t('common:button.delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('common:button.edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setEditingGroup(record);
+                setDrawerMode('edit');
+                setDrawerOpen(true);
+              },
+            },
+            {
+              key: 'delete',
+              label: t('common:button.delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: {
+                title: t('deleteConfirmTitle'),
+                description: t('deleteConfirmDesc', { moduleName: t('moduleName') }),
+              },
+              onClick: () => record.id && deleteMutation.mutate({ id: record.id }),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

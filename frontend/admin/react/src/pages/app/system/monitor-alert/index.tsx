@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableActions from '@/components/common/TableActions';
 import {
   DrawerForm,
   ProFormDependency,
@@ -10,7 +11,7 @@ import {
   ProFormDigit,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { App, Button, Popconfirm, Tag, Tooltip } from 'antd';
+import { App, Button, Tag, Tooltip } from 'antd';
 import {
   CaretRightOutlined,
   DeleteOutlined,
@@ -231,26 +232,31 @@ const MonitorAlertPage = () => {
       valueType: 'option',
       width: 180,
       fixed: 'right',
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setFormMode('edit');
-            setSelected(record);
-            setFormOpen(true);
-          }}
-        >
-          {t('edit')}
-        </Button>,
-        <Popconfirm key="delete" title={t('deleteConfirm')} onConfirm={() => handleDelete(record)}>
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setFormMode('edit');
+                setSelected(record);
+                setFormOpen(true);
+              },
+            },
+            {
+              key: 'delete',
+              label: t('delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: { title: t('deleteConfirm') },
+              onClick: () => handleDelete(record),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
-import { Button, Modal, Popconfirm, Tag, Typography, App } from 'antd';
+import TableActions from '@/components/common/TableActions';
+import { Button, Modal, Tag, Typography, App } from 'antd';
 import {
   EditOutlined,
   DeleteOutlined,
@@ -98,57 +99,52 @@ export default function AccessKeyPage() {
       valueType: 'option',
       width: 250,
       fixed: 'right',
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setDrawerMode('edit');
-            setSelected(record);
-            setDrawerOpen(true);
-          }}
-        >
-          {t('common:button.edit')}
-        </Button>,
-        <Button
-          key="reset"
-          type="link"
-          size="small"
-          icon={<ReloadOutlined />}
-          onClick={() => {
-            resetMutation.mutate(
-              { id: record.id! },
-              {
-                onSuccess: (resp) => {
-                  message.success(t('resetSuccess'));
-                  setResetSecretFor(record);
-                  setResetSecretValue(resp.secret ?? null);
-                },
-                onError: (error: Error) =>
-                  message.error(error.message || t('resetFailed')),
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('common:button.edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setDrawerMode('edit');
+                setSelected(record);
+                setDrawerOpen(true);
               },
-            );
-          }}
-        >
-          {t('resetSecret')}
-        </Button>,
-        <Popconfirm
-          key="delete"
-          title={t('deleteConfirmTitle')}
-          description={t('deleteConfirmDesc', { moduleName: t('moduleName') })}
-          onConfirm={() =>
-            record.id && deleteMutation.mutate({ id: record.id })
-          }
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('common:button.delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+            },
+            {
+              key: 'reset',
+              label: t('resetSecret'),
+              icon: <ReloadOutlined />,
+              onClick: () => {
+                resetMutation.mutate(
+                  { id: record.id! },
+                  {
+                    onSuccess: (resp) => {
+                      message.success(t('resetSuccess'));
+                      setResetSecretFor(record);
+                      setResetSecretValue(resp.secret ?? null);
+                    },
+                    onError: (error: Error) => message.error(error.message || t('resetFailed')),
+                  },
+                );
+              },
+            },
+            {
+              key: 'delete',
+              label: t('common:button.delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: {
+                title: t('deleteConfirmTitle'),
+                description: t('deleteConfirmDesc', { moduleName: t('moduleName') }),
+              },
+              onClick: () => record.id && deleteMutation.mutate({ id: record.id }),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

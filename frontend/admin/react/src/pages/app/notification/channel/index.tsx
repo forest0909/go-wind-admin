@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
+import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
 import {
   ModalForm,
@@ -12,7 +13,7 @@ import {
   ProFormSwitch,
   ProFormDependency,
 } from '@ant-design/pro-components';
-import { Button, Popconfirm, Tag, App } from 'antd';
+import { Button, Tag, App } from 'antd';
 import type { ProFormItemProps } from '@ant-design/pro-components';
 import { EditOutlined, DeleteOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -387,33 +388,40 @@ const NotificationChannelManagement = () => {
       // 编辑渠道+测试发送+删除 三个图标+文字按钮实测需 284px，250 会被截断
       width: 290,
       fixed: 'right',
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setDrawerMode('edit');
-            setSelected(record);
-            setDrawerOpen(true);
-          }}
-        >
-          {t('edit')}
-        </Button>,
-        // 测试发送对"有收件目标语义"的渠道有意义：EMAIL 测 SMTP、SMS 发真验证码、
-        // EXT_* 按 schema 发一条测试消息；WEBHOOK 的端到端验证在路由规则页。
-        (record.type === 'EMAIL' || record.type === 'SMS' || isExtType(record.type)) && (
-          <Button key="test" type="link" size="small" icon={<SendOutlined />} onClick={() => setTestTarget(record)}>
-            {t('testSend')}
-          </Button>
-        ),
-        <Popconfirm key="delete" title={t('deleteConfirm')} onConfirm={() => handleDelete(record)}>
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setDrawerMode('edit');
+                setSelected(record);
+                setDrawerOpen(true);
+              },
+            },
+            {
+              // 测试发送对"有收件目标语义"的渠道有意义：EMAIL 测 SMTP、SMS 发真验证码、
+              // EXT_* 按 schema 发一条测试消息；WEBHOOK 的端到端验证在路由规则页。
+              key: 'test',
+              label: t('testSend'),
+              icon: <SendOutlined />,
+              hidden: !(record.type === 'EMAIL' || record.type === 'SMS' || isExtType(record.type)),
+              onClick: () => setTestTarget(record),
+            },
+            {
+              key: 'delete',
+              label: t('delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: { title: t('deleteConfirm') },
+              onClick: () => handleDelete(record),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

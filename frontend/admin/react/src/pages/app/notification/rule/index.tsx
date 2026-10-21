@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableActions from '@/components/common/TableActions';
 import {
   ModalForm,
   DrawerForm,
@@ -9,7 +10,7 @@ import {
   ProFormSelect,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { App, Button, Popconfirm, Tag, Tooltip } from 'antd';
+import { App, Button, Tag } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type {
@@ -234,39 +235,40 @@ const NotificationRulePage = () => {
       // 编辑规则+测试投递+删除 三个图标+文字按钮实测需 284px，240 会被截断
       width: 290,
       fixed: 'right',
-      render: (_, record) => [
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setFormMode('edit');
-            setSelected(record);
-            setFormOpen(true);
-          }}
-        >
-          {t('edit')}
-        </Button>,
-        // 站内信规则不给测试按钮：它需要一条真实的消息本体，填个收件人 ID 测不出东西
-        record.channel !== 'INTERNAL' && (
-          <Tooltip key="test-tip" title={t('testDispatchHint')}>
-            <Button
-              type="link"
-              size="small"
-              icon={<ThunderboltOutlined />}
-              onClick={() => setTestTarget(record)}
-            >
-              {t('testDispatch')}
-            </Button>
-          </Tooltip>
-        ),
-        <Popconfirm key="delete" title={t('deleteConfirm')} onConfirm={() => handleDelete(record)}>
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'edit',
+              label: t('edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setFormMode('edit');
+                setSelected(record);
+                setFormOpen(true);
+              },
+            },
+            {
+              // 站内信规则不给测试按钮：它需要一条真实的消息本体，填个收件人 ID 测不出东西
+              key: 'test',
+              label: t('testDispatch'),
+              icon: <ThunderboltOutlined />,
+              hidden: record.channel === 'INTERNAL',
+              tooltip: t('testDispatchHint'),
+              onClick: () => setTestTarget(record),
+            },
+            {
+              key: 'delete',
+              label: t('delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: { title: t('deleteConfirm') },
+              onClick: () => handleDelete(record),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

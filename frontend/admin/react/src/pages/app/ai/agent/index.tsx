@@ -1,14 +1,15 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableActions from '@/components/common/TableActions';
 import {
   DrawerForm,
   ProFormText,
   ProFormTextArea,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { Button, Dropdown, Tag, App } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, ApartmentOutlined, HistoryOutlined, MoreOutlined } from '@ant-design/icons';
+import { Button, Tag, App } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, ApartmentOutlined, HistoryOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { aiservicev1_AiAgentApp as AiAgentApp } from '@/api/generated/admin/service/v1';
@@ -36,7 +37,7 @@ const AiAgentAppManagement = () => {
   const { t } = useTranslation('ai-agent');
   const actionRef = useRef<ActionType>(null);
   const queryClient = useQueryClient();
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const containerRef = useRef<HTMLDivElement>(null);
   const tableScrollY = useProTableScrollY(containerRef);
 
@@ -118,64 +119,42 @@ const AiAgentAppManagement = () => {
       // 画布/编辑/运行台账/更多四个按钮实测约 341px（en 335），窄了必截断
       width: 350,
       fixed: 'right',
-      render: (_, record) => [
-        <Button
-          key="canvas"
-          type="link"
-          size="small"
-          icon={<ApartmentOutlined />}
-          onClick={() => setCanvasApp(record)}
-        >
-          {t('openCanvas')}
-        </Button>,
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setEditing(record);
-            setFormOpen(true);
-          }}
-        >
-          {t('edit')}
-        </Button>,
-        <Button
-          key="runs"
-          type="link"
-          size="small"
-          icon={<HistoryOutlined />}
-          onClick={() => setRunsApp(record)}
-        >
-          {t('openRuns')}
-        </Button>,
-        <Dropdown
-          key="more"
-          menu={{
-            items: [
-              {
-                key: 'delete',
-                icon: <DeleteOutlined />,
-                danger: true,
-                label: t('delete'),
-                onClick: () =>
-                  modal.confirm({
-                    title: t('deleteConfirm'),
-                    okText: t('common:button.ok'),
-                    cancelText: t('common:button.cancel'),
-                    okButtonProps: { danger: true },
-                    onOk: () => handleDelete(record),
-                  }),
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'canvas',
+              label: t('openCanvas'),
+              icon: <ApartmentOutlined />,
+              onClick: () => setCanvasApp(record),
+            },
+            {
+              key: 'edit',
+              label: t('edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setEditing(record);
+                setFormOpen(true);
               },
-            ],
-          }}
-        >
-          <Button type="link" size="small">
-            {t('common:button.more')}
-            <MoreOutlined style={{ marginInlineStart: 4 }} />
-          </Button>
-        </Dropdown>,
-      ],
+            },
+            {
+              key: 'runs',
+              label: t('openRuns'),
+              icon: <HistoryOutlined />,
+              onClick: () => setRunsApp(record),
+            },
+            {
+              key: 'delete',
+              label: t('delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: { title: t('deleteConfirm') },
+              onClick: () => handleDelete(record),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

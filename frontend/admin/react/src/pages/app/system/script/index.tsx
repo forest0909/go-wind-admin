@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
+import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Popconfirm, Popover, Switch, Tag, Tooltip, App } from 'antd';
+import { Button, Popover, Switch, Tag, App } from 'antd';
 import { ApiOutlined, DeleteOutlined, EditOutlined, PlusOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -170,46 +171,43 @@ const ScriptManagement = () => {
       valueType: 'option',
       width: 250,
       fixed: 'right',
-      render: (_, record) => [
-        <Tooltip key="testRun" title={t('testRun')}>
-          <Button
-            type="link"
-            size="small"
-            icon={<PlayCircleOutlined />}
-            onClick={() => {
-              setTestRunTarget(record);
-              setTestRunOpen(true);
-            }}
-          >
-            {t('testRun')}
-          </Button>
-        </Tooltip>,
-        <Button
-          key="edit"
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setDrawerMode('edit');
-            setSelectedScript(record);
-            setDrawerOpen(true);
-          }}
-        >
-          {t('common:button.edit')}
-        </Button>,
-        <Popconfirm
-          key="delete"
-          title={t('deleteConfirmTitle')}
-          description={t('deleteConfirmDesc', { moduleName: t('moduleName') })}
-          onConfirm={() => record.id && deleteMutation.mutate({ ids: [record.id] })}
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('common:button.delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'testRun',
+              label: t('testRun'),
+              icon: <PlayCircleOutlined />,
+              onClick: () => {
+                setTestRunTarget(record);
+                setTestRunOpen(true);
+              },
+            },
+            {
+              key: 'edit',
+              label: t('common:button.edit'),
+              icon: <EditOutlined />,
+              onClick: () => {
+                setDrawerMode('edit');
+                setSelectedScript(record);
+                setDrawerOpen(true);
+              },
+            },
+            {
+              key: 'delete',
+              label: t('common:button.delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: {
+                title: t('deleteConfirmTitle'),
+                description: t('deleteConfirmDesc', { moduleName: t('moduleName') }),
+              },
+              onClick: () => record.id && deleteMutation.mutate({ ids: [record.id] }),
+            },
+          ]}
+        />
+      ),
     },
   ];
 

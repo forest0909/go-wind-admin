@@ -2,8 +2,9 @@ import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import dayjs, { type Dayjs } from 'dayjs';
 import TableExportButton from '@/components/common/TableExportButton';
+import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Popconfirm, Tag, App } from 'antd';
+import { Button, Tag, App } from 'antd';
 import { DeleteOutlined, CheckOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -201,45 +202,45 @@ const InboxList = () => {
       title: t('action'),
       valueType: 'option',
       width: 180,
-      render: (_, record) => [
-        record.status !== 'READ' && (
-          <Button
-            key="read"
-            type="link"
-            size="small"
-            icon={<CheckOutlined />}
-            onClick={() => {
-              if (record.id) {
-                markReadMutation.mutate({
-                  userId: record.recipientUserId,
-                  recipientIds: [record.id],
-                });
-              }
-            }}
-          >
-            {t('markRead')}
-          </Button>
-        ),
-        <Popconfirm
-          key="delete"
-          title={t('deleteConfirmTitle')}
-          description={t('deleteConfirmDesc', { moduleName: t('moduleName') })}
-          onConfirm={() => {
-            if (record.id) {
-              deleteMutation.mutate({
-                userId: record.recipientUserId,
-                recipientIds: [record.id],
-              });
-            }
-          }}
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('common:button.delete')}
-          </Button>
-        </Popconfirm>,
-      ],
+      render: (_, record) => (
+        <TableActions
+          record={record}
+          actions={[
+            {
+              key: 'read',
+              label: t('markRead'),
+              icon: <CheckOutlined />,
+              hidden: record.status === 'READ',
+              onClick: () => {
+                if (record.id) {
+                  markReadMutation.mutate({
+                    userId: record.recipientUserId,
+                    recipientIds: [record.id],
+                  });
+                }
+              },
+            },
+            {
+              key: 'delete',
+              label: t('common:button.delete'),
+              icon: <DeleteOutlined />,
+              danger: true,
+              confirm: {
+                title: t('deleteConfirmTitle'),
+                description: t('deleteConfirmDesc', { moduleName: t('moduleName') }),
+              },
+              onClick: () => {
+                if (record.id) {
+                  deleteMutation.mutate({
+                    userId: record.recipientUserId,
+                    recipientIds: [record.id],
+                  });
+                }
+              },
+            },
+          ]}
+        />
+      ),
     },
   ];
 

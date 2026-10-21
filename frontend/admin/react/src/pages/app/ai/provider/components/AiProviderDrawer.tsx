@@ -106,31 +106,37 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
       }}
       onFinish={handleSubmit}
       submitter={{ submitButtonProps: { loading: createMutation.isPending || updateMutation.isPending } }}
+      grid
+      rowProps={{ gutter: 16 }}
+      drawerProps={{ size: 600 }}
     >
       <ProFormText
         name="name"
         label={t('name')}
         rules={[{ required: true, message: t('requiredName') }]}
         placeholder={t('namePlaceholder')}
+        colProps={{ span: 12 }}
       />
       <ProFormRadio.Group
         name="modelType"
         label={t('modelType')}
         options={MODEL_TYPE_OPTIONS(t)}
         rules={[{ required: true }]}
+        colProps={{ span: 12 }}
       />
       <ProFormText
         name="modelName"
         label={t('modelName')}
         rules={[{ required: true, message: t('requiredModelName') }]}
         placeholder={t('modelNamePlaceholder')}
+        colProps={{ span: 12 }}
       />
       <ProFormDependency name={['modelType']}>
         {({ modelType }) =>
           modelType === 'LOCAL' ? (
             <>
-              <ProFormText name="localHost" label={t('localHost')} placeholder={t('localHostPlaceholder')} />
-              <ProFormDigit name="localPort" label={t('localPort')} min={1} max={65535} fieldProps={{ precision: 0 }} placeholder={t('localPortPlaceholder')} />
+              <ProFormText name="localHost" label={t('localHost')} placeholder={t('localHostPlaceholder')} colProps={{ span: 12 }} />
+              <ProFormDigit name="localPort" label={t('localPort')} min={1} max={65535} fieldProps={{ precision: 0 }} placeholder={t('localPortPlaceholder')} colProps={{ span: 12 }} />
             </>
           ) : (
             <>
@@ -139,13 +145,15 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
                 label={t('baseUrl')}
                 rules={[{ required: true, message: t('requiredBaseUrl') }]}
                 placeholder={t('baseUrlPlaceholder')}
+                colProps={{ span: 24 }}
               />
-              <ProFormText name="organization" label={t('organization')} />
+              <ProFormText name="organization" label={t('organization')} colProps={{ span: 12 }} />
               <ProFormText.Password
                 name="apiKey"
                 label={`${t('apiKey')}${mode === 'edit' ? `（${t('apiKeyHint')}）` : ''}`}
                 placeholder={mode === 'edit' ? t('apiKeyKeepExisting') : t('apiKeyPlaceholder')}
                 extra={mode === 'edit' ? data?.apiKeyHint : undefined}
+                colProps={{ span: 12 }}
               />
             </>
           )
@@ -157,12 +165,18 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
         min={1}
         max={600}
         fieldProps={{ precision: 0 }}
+        colProps={{ span: 12 }}
       />
       <ProFormTextArea
         name="systemPrompt"
         label={t('systemPrompt')}
         placeholder={t('systemPromptPlaceholder')}
         fieldProps={{ rows: 3 }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
       <ProFormSelect
         name="isDefault"
@@ -172,6 +186,7 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
           { label: 'No', value: false },
         ]}
         tooltip={t('isDefaultTooltip')}
+        colProps={{ span: 12 }}
       />
       <ProFormSelect
         name="isEnabled"
@@ -181,8 +196,18 @@ export default function AiProviderDrawer({ open, mode, data, onClose, onSuccess 
           { label: t('statusMap.OFF'), value: false },
         ]}
         rules={[{ required: true }]}
+        colProps={{ span: 12 }}
       />
-      <ProFormTextArea name="remark" label={t('remark')} fieldProps={{ rows: 2 }} />
+      <ProFormTextArea
+        name="remark"
+        label={t('remark')}
+        fieldProps={{ rows: 2 }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
+      />
     </DrawerForm>
   );
 }

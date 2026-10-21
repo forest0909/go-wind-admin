@@ -10,7 +10,7 @@ import {
   ProFormCheckbox,
   ProFormDependency,
 } from '@ant-design/pro-components';
-import { Divider, App } from 'antd';
+import { Col, Divider, App } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { permissionservicev1_Menu as Menu } from '@/api/generated/admin/service/v1';
@@ -177,8 +177,10 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
       drawerProps={{
         destroyOnHidden: true,
         onClose,
-        size: 720,
+        size: 800,
       }}
+      grid
+      rowProps={{ gutter: 16 }}
       initialValues={{
         type: 'MENU',
         status: 'ON',
@@ -207,6 +209,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
           optionType: 'button',
           buttonStyle: 'solid',
         }}
+        colProps={{ span: 24 }}
       />
 
       {/* 菜单标题（i18n key） */}
@@ -218,6 +221,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         fieldProps={{
           allowClear: true,
         }}
+        colProps={{ span: 12 }}
       />
 
       {/* 上级菜单 */}
@@ -233,6 +237,11 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
           treeNodeFilterProp: 'title',
           placeholder: t('parentIdPlaceholder'),
         }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
 
       {/* 排序 */}
@@ -244,6 +253,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
           precision: 0,
           min: 0,
         }}
+        colProps={{ span: 12 }}
       />
 
       {/* 图标 - 仅非按钮类型 */}
@@ -258,6 +268,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
               fieldProps={{
                 allowClear: true,
               }}
+              colProps={{ span: 12 }}
             />
           );
         }}
@@ -276,6 +287,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
               fieldProps={{
                 allowClear: true,
               }}
+              colProps={{ span: 24 }}
             />
           );
         }}
@@ -294,6 +306,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
               fieldProps={{
                 allowClear: true,
               }}
+              colProps={{ span: 24 }}
             />
           );
         }}
@@ -312,6 +325,11 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
               fieldProps={{
                 tokenSeparators: [','],
               }}
+              colProps={{ span: 24 }}
+              labelCol={{ span: 24 }}
+              wrapperCol={{ span: 24 }}
+              labelAlign="left"
+              className="form-item-label-top"
             />
           );
         }}
@@ -327,13 +345,18 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
           optionType: 'button',
           buttonStyle: 'solid',
         }}
+        colProps={{ span: 12 }}
       />
 
       {/* 高级设置分割线 */}
       <ProFormDependency name={['type']}>
         {({ type }) => {
           if (isButton(type) || type === 'LINK') return null;
-          return <Divider titlePlacement="left">{t('advancedSettings')}</Divider>;
+          return (
+            <Col span={24}>
+              <Divider titlePlacement="left">{t('advancedSettings')}</Divider>
+            </Col>
+          );
         }}
       </ProFormDependency>
 
@@ -342,7 +365,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         {({ type }) => {
           if (!isMenu(type)) return null;
           return (
-            <ProFormCheckbox name="meta.keepAlive">
+            <ProFormCheckbox name="meta.keepAlive" colProps={{ span: 12 }}>
               {t('keepAlive')}
             </ProFormCheckbox>
           );
@@ -354,7 +377,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         {({ type }) => {
           if (!isMenu(type) && !isEmbedded(type)) return null;
           return (
-            <ProFormCheckbox name="meta.affixTab">
+            <ProFormCheckbox name="meta.affixTab" colProps={{ span: 12 }}>
               {t('affixTab')}
             </ProFormCheckbox>
           );
@@ -366,7 +389,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         {({ type }) => {
           if (isButton(type)) return null;
           return (
-            <ProFormCheckbox name="meta.hideInMenu">
+            <ProFormCheckbox name="meta.hideInMenu" colProps={{ span: 12 }}>
               {t('hideInMenu')}
             </ProFormCheckbox>
           );
@@ -378,7 +401,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         {({ type }) => {
           if (!isCatalog(type) && !isMenu(type)) return null;
           return (
-            <ProFormCheckbox name="meta.hideChildrenInMenu">
+            <ProFormCheckbox name="meta.hideChildrenInMenu" colProps={{ span: 12 }}>
               {t('hideChildrenInMenu')}
             </ProFormCheckbox>
           );
@@ -390,7 +413,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         {({ type }) => {
           if (isButton(type) || type === 'LINK') return null;
           return (
-            <ProFormCheckbox name="meta.hideInBreadcrumb">
+            <ProFormCheckbox name="meta.hideInBreadcrumb" colProps={{ span: 12 }}>
               {t('hideInBreadcrumb')}
             </ProFormCheckbox>
           );
@@ -402,7 +425,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         {({ type }) => {
           if (isButton(type) || type === 'LINK') return null;
           return (
-            <ProFormCheckbox name="meta.hideInTab">
+            <ProFormCheckbox name="meta.hideInTab" colProps={{ span: 12 }}>
               {t('hideInTab')}
             </ProFormCheckbox>
           );

@@ -9,7 +9,7 @@ import {
   ProFormSelect,
   ProFormDependency,
 } from '@ant-design/pro-components';
-import { App, Tree, Spin, Checkbox } from 'antd';
+import { App, Tree, Spin, Checkbox, Col } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { permissionservicev1_Role as Role } from '@/api/generated/admin/service/v1';
@@ -214,6 +214,8 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
+      grid
+      rowProps={{ gutter: 16 }}
     >
       <ProFormText
         name="name"
@@ -221,6 +223,7 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         placeholder={t('namePlaceholder')}
         rules={[{ required: true, message: t('requiredName') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -229,6 +232,7 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         placeholder={t('codePlaceholder')}
         rules={[{ required: true, message: t('requiredCode') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -237,6 +241,7 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         placeholder={t('sortOrderPlaceholder')}
         rules={[{ required: true }]}
         fieldProps={{ precision: 0, min: 0 }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -245,6 +250,7 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         rules={[{ required: true, message: t('requiredStatus') }]}
         options={getStatusOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -254,35 +260,38 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         options={getDataScopeOptions(t)}
         rules={[{ required: true, message: t('requiredDataScope') }]}
         fieldProps={{ allowClear: false }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormDependency name={['dataScope']}>
         {({ dataScope }) =>
           dataScope === 'SELECTED_UNITS' ? (
-            <div className="mb-6">
-              <label className="block mb-2 text-sm font-medium text-[color:var(--ant-color-text)]">
-                {t('orgUnits')}
-              </label>
-              {unitTreeData.length > 0 ? (
-                <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)] bg-[color:var(--ant-color-fill-quaternary)] p-2.5">
-                  <Tree
-                    checkable
-                    checkedKeys={unitCheckedKeys}
-                    onCheck={(checked) => {
-                      setUnitCheckedKeys(checked as number[]);
-                    }}
-                    treeData={unitTreeData}
-                    defaultExpandAll
-                    key={unitTreeVersion}
-                    className="max-h-80 overflow-auto"
-                  />
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-[color:var(--ant-color-border)] py-4 text-center text-sm text-[color:var(--ant-color-text-quaternary)]">
-                  {t('noOrgUnitData')}
-                </div>
-              )}
-            </div>
+            <Col span={24}>
+              <div className="mb-6">
+                <label className="block mb-2 text-sm font-medium text-[color:var(--ant-color-text)]">
+                  {t('orgUnits')}
+                </label>
+                {unitTreeData.length > 0 ? (
+                  <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)] bg-[color:var(--ant-color-fill-quaternary)] p-2.5">
+                    <Tree
+                      checkable
+                      checkedKeys={unitCheckedKeys}
+                      onCheck={(checked) => {
+                        setUnitCheckedKeys(checked as number[]);
+                      }}
+                      treeData={unitTreeData}
+                      defaultExpandAll
+                      key={unitTreeVersion}
+                      className="max-h-80 overflow-auto"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-[color:var(--ant-color-border)] py-4 text-center text-sm text-[color:var(--ant-color-text-quaternary)]">
+                    {t('noOrgUnitData')}
+                  </div>
+                )}
+              </div>
+            </Col>
           ) : null
         }
       </ProFormDependency>
@@ -303,64 +312,73 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         }
         placeholder={t('descriptionPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
 
       {/* 权限树 */}
-      <div className="mb-6">
-        <label className="block mb-2 text-sm font-medium text-[color:var(--ant-color-text)]">
-          {t('permissions')}
-        </label>
-        <Spin spinning={treeLoading}>
-          {treeData.length > 0 ? (
-            <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)] bg-[color:var(--ant-color-fill-quaternary)] p-2.5">
-              <Tree
-                checkable
-                checkedKeys={checkedKeys}
-                onCheck={(checked) => {
-                  setCheckedKeys(checked as number[]);
-                }}
-                treeData={treeData}
-                defaultExpandAll
-                key={treeVersion}
-                className="max-h-80 overflow-auto"
-              />
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-[color:var(--ant-color-border)] py-4 text-center text-sm text-[color:var(--ant-color-text-quaternary)]">
-              {treeLoading ? '' : 'No permission data'}
-            </div>
-          )}
-        </Spin>
-      </div>
-
-      {/* 字段权限：勾选 = 对该角色用户隐藏（黑名单语义，User 资源试点） */}
-      <div className="mb-6">
-        <label className="block mb-2 text-sm font-medium text-[color:var(--ant-color-text)]">
-          {t('fieldPerm.title')}
-        </label>
-        <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)] bg-[color:var(--ant-color-fill-quaternary)] p-2.5">
-          <p className="mb-2 text-xs text-[color:var(--ant-color-text-quaternary)]">
-            {t('fieldPerm.hint')}
-          </p>
-          <div className="flex flex-col gap-3">
-            {ROLE_FIELD_RESOURCES.map(({ resource, options }) => (
-              <div key={resource}>
-                <p className="mb-1.5 text-xs font-medium text-[color:var(--ant-color-text-secondary)]">
-                  {resource}
-                </p>
-                <Checkbox.Group
-                  value={hiddenByResource[resource] ?? []}
-                  onChange={(vals) =>
-                    setHiddenByResource((prev) => ({ ...prev, [resource]: vals as string[] }))
-                  }
-                  options={options(t)}
-                  className="flex flex-col gap-2"
+      <Col span={24}>
+        <div className="mb-6">
+          <label className="block mb-2 text-sm font-medium text-[color:var(--ant-color-text)]">
+            {t('permissions')}
+          </label>
+          <Spin spinning={treeLoading}>
+            {treeData.length > 0 ? (
+              <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)] bg-[color:var(--ant-color-fill-quaternary)] p-2.5">
+                <Tree
+                  checkable
+                  checkedKeys={checkedKeys}
+                  onCheck={(checked) => {
+                    setCheckedKeys(checked as number[]);
+                  }}
+                  treeData={treeData}
+                  defaultExpandAll
+                  key={treeVersion}
+                  className="max-h-80 overflow-auto"
                 />
               </div>
-            ))}
+            ) : (
+              <div className="rounded-lg border border-dashed border-[color:var(--ant-color-border)] py-4 text-center text-sm text-[color:var(--ant-color-text-quaternary)]">
+                {treeLoading ? '' : 'No permission data'}
+              </div>
+            )}
+          </Spin>
+        </div>
+      </Col>
+
+      {/* 字段权限：勾选 = 对该角色用户隐藏（黑名单语义，User 资源试点） */}
+      <Col span={24}>
+        <div className="mb-6">
+          <label className="block mb-2 text-sm font-medium text-[color:var(--ant-color-text)]">
+            {t('fieldPerm.title')}
+          </label>
+          <div className="rounded-lg border border-[color:var(--ant-color-border-secondary)] bg-[color:var(--ant-color-fill-quaternary)] p-2.5">
+            <p className="mb-2 text-xs text-[color:var(--ant-color-text-quaternary)]">
+              {t('fieldPerm.hint')}
+            </p>
+            <div className="flex flex-col gap-3">
+              {ROLE_FIELD_RESOURCES.map(({ resource, options }) => (
+                <div key={resource}>
+                  <p className="mb-1.5 text-xs font-medium text-[color:var(--ant-color-text-secondary)]">
+                    {resource}
+                  </p>
+                  <Checkbox.Group
+                    value={hiddenByResource[resource] ?? []}
+                    onChange={(vals) =>
+                      setHiddenByResource((prev) => ({ ...prev, [resource]: vals as string[] }))
+                    }
+                    options={options(t)}
+                    className="flex flex-col gap-2"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </Col>
     </DrawerForm>
   );
 };

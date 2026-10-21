@@ -122,6 +122,8 @@ const DictTypeDrawer: React.FC<DictTypeDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, placement: 'left', size: 600 }}
+      grid
+      rowProps={{ gutter: 16 }}
     >
       <ProFormText
         name="typeName"
@@ -129,6 +131,7 @@ const DictTypeDrawer: React.FC<DictTypeDrawerProps> = ({
         placeholder={t('typeNamePlaceholder')}
         rules={[{ required: true, message: t('requiredTypeName') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -137,6 +140,7 @@ const DictTypeDrawer: React.FC<DictTypeDrawerProps> = ({
         placeholder={t('typeCodePlaceholder')}
         rules={[{ required: true, message: t('requiredTypeCode') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -144,6 +148,7 @@ const DictTypeDrawer: React.FC<DictTypeDrawerProps> = ({
         label={t('sortOrder')}
         placeholder={t('sortOrderPlaceholder')}
         fieldProps={{ precision: 0, min: 0 }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -152,6 +157,7 @@ const DictTypeDrawer: React.FC<DictTypeDrawerProps> = ({
         rules={[{ required: true, message: t('requiredStatus') }]}
         options={enableBoolRadioOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
+        colProps={{ span: 12 }}
       />
     </DrawerForm>
   );

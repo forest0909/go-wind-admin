@@ -198,6 +198,8 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
+      grid
+      rowProps={{ gutter: 16 }}
     >
       <ProFormText
         name="name"
@@ -205,6 +207,7 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         placeholder={t('namePlaceholder')}
         rules={[{ required: true, message: t('requiredName') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -214,6 +217,7 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         options={getPlanVersionOptions(t)}
         rules={[{ required: true, message: t('requiredVersion') }]}
         fieldProps={SELECT_FILTER_PROPS}
+        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -223,6 +227,7 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         options={getExpiryPolicyOptions(t)}
         rules={[{ required: true, message: t('requiredExpiryPolicy') }]}
         fieldProps={SELECT_FILTER_PROPS}
+        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -231,6 +236,7 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         placeholder={t('moduleWhitelistPlaceholder')}
         options={getModuleOptions(t)}
         fieldProps={{ ...SELECT_FILTER_PROPS, mode: 'multiple' }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -238,6 +244,7 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         label={t('dataRetentionDays')}
         placeholder={t('dataRetentionDaysPlaceholder')}
         fieldProps={{ precision: 0, min: 0 }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -245,6 +252,11 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         label={t('description')}
         placeholder={t('descriptionPlaceholder')}
         fieldProps={{ allowClear: true, autoSize: { minRows: 2, maxRows: 4 } }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
 
       <ProFormTextArea
@@ -252,6 +264,11 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
         label={t('remark')}
         placeholder={t('remarkPlaceholder')}
         fieldProps={{ allowClear: true, autoSize: { minRows: 2, maxRows: 4 } }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
     </DrawerForm>
   );

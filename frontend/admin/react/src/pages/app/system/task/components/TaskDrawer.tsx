@@ -154,6 +154,8 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
+      grid
+      rowProps={{ gutter: 16 }}
     >
       <ProFormSelect
         name="type"
@@ -166,6 +168,7 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
           filterOption: (input: string, option: any) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormSelect
@@ -179,6 +182,7 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
           filterOption: (input: string, option: any) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -186,6 +190,11 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
         label={t('taskPayload')}
         placeholder={t('taskPayloadPlaceholder')}
         fieldProps={{ allowClear: true, rows: 3 }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
 
       {/* Cron 表达式 - 仅周期任务 */}
@@ -198,6 +207,7 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
               label={t('cronSpec')}
               placeholder={t('cronSpecPlaceholder')}
               fieldProps={{ allowClear: true }}
+              colProps={{ span: 12 }}
             />
           );
         }}
@@ -207,6 +217,7 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
         name="taskOptions.maxRetry"
         label={t('taskOptionsMaxRetry')}
         fieldProps={{ precision: 0, min: 0 }}
+        colProps={{ span: 12 }}
       />
 
       {/* 超时时间 - 延迟/等待结果任务 */}
@@ -218,6 +229,7 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
               name="taskOptions.timeout"
               label={t('taskOptionsTimeout')}
               fieldProps={{ precision: 0, min: 0 }}
+              colProps={{ span: 12 }}
             />
           );
         }}
@@ -233,16 +245,19 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
                 name="taskOptions.deadline"
                 label={t('taskOptionsDeadline')}
                 fieldProps={{ allowClear: true, showTime: true, style: { width: '100%' } }}
+                colProps={{ span: 12 }}
               />
               <ProFormDateTimePicker
                 name="taskOptions.processIn"
                 label={t('taskOptionsProcessIn')}
                 fieldProps={{ allowClear: true, showTime: true, style: { width: '100%' } }}
+                colProps={{ span: 12 }}
               />
               <ProFormDateTimePicker
                 name="taskOptions.processAt"
                 label={t('taskOptionsProcessAt')}
                 fieldProps={{ allowClear: true, showTime: true, style: { width: '100%' } }}
+                colProps={{ span: 12 }}
               />
             </>
           );
@@ -258,6 +273,7 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
           { label: t('enableMap.false'), value: false },
         ]}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -265,6 +281,11 @@ const TaskDrawer: React.FC<TaskDrawerProps> = ({ open, mode, data, onClose, onSu
         label={t('remark')}
         placeholder={t('remarkPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
     </DrawerForm>
   );

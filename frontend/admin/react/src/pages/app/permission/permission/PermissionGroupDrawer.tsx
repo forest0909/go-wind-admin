@@ -6,7 +6,7 @@ import {
   ProFormDigit,
   ProFormRadio,
 } from '@ant-design/pro-components';
-import { App, TreeSelect, Form } from 'antd';
+import { App, TreeSelect, Form, Col } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -140,6 +140,8 @@ const PermissionGroupDrawer: React.FC<PermissionGroupDrawerProps> = ({
         resetButtonProps: { onClick: onClose },
       }}
       drawerProps={{ destroyOnHidden: true, onClose, placement: 'left', size: 600 }}
+      grid
+      rowProps={{ gutter: 16 }}
     >
       <ProFormText
         name="name"
@@ -147,6 +149,7 @@ const PermissionGroupDrawer: React.FC<PermissionGroupDrawerProps> = ({
         placeholder={t('namePlaceholder')}
         rules={[{ required: true, message: t('requiredName') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -155,27 +158,35 @@ const PermissionGroupDrawer: React.FC<PermissionGroupDrawerProps> = ({
         placeholder={t('modulePlaceholder')}
         rules={[{ required: true, message: t('requiredModule') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       {/* 父级分组 - TreeSelect */}
-      <Form.Item
-        name="parentId"
-        label={t('parentId')}
-      >
-        <TreeSelect
-          treeData={parentTreeData}
-          placeholder={t('parentIdPlaceholder')}
-          allowClear
-          showSearch
-          treeDefaultExpandAll
-        />
-      </Form.Item>
+      <Col span={24}>
+        <Form.Item
+          name="parentId"
+          label={t('parentId')}
+          labelCol={{ span: 24 }}
+          wrapperCol={{ span: 24 }}
+          labelAlign="left"
+          className="form-item-label-top"
+        >
+          <TreeSelect
+            treeData={parentTreeData}
+            placeholder={t('parentIdPlaceholder')}
+            allowClear
+            showSearch
+            treeDefaultExpandAll
+          />
+        </Form.Item>
+      </Col>
 
       <ProFormDigit
         name="sortOrder"
         label={t('sortOrder')}
         placeholder={t('sortOrderPlaceholder')}
         fieldProps={{ precision: 0, min: 0 }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -184,6 +195,7 @@ const PermissionGroupDrawer: React.FC<PermissionGroupDrawerProps> = ({
         rules={[{ required: true, message: t('requiredStatus') }]}
         options={getStatusOptions(t)}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
+        colProps={{ span: 12 }}
       />
     </DrawerForm>
   );

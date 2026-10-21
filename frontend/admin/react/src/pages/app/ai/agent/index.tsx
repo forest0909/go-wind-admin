@@ -202,10 +202,11 @@ const AiAgentAppManagement = () => {
 
       <DrawerForm
         title={editing ? t('common:modal.update', { moduleName: t('moduleName') }) : t('common:modal.create', { moduleName: t('moduleName') })}
-        width={520}
         open={formOpen}
         onOpenChange={setFormOpen}
-        drawerProps={{ destroyOnHidden: true }}
+        drawerProps={{ destroyOnHidden: true, size: 600 }}
+        grid
+        rowProps={{ gutter: 16 }}
         onFinish={handleSubmit}
         initialValues={editing ?? { enabled: true }}
       >
@@ -213,9 +214,19 @@ const AiAgentAppManagement = () => {
           name="name"
           label={t('name')}
           rules={[{ required: true, message: t('requiredName') }]}
+          colProps={{ span: 24 }}
         />
-        <ProFormTextArea name="description" label={t('description')} fieldProps={{ rows: 2 }} />
-        <ProFormSwitch name="enabled" label={t('enabled')} />
+        <ProFormTextArea
+          name="description"
+          label={t('description')}
+          fieldProps={{ rows: 2 }}
+          colProps={{ span: 24 }}
+          labelCol={{ span: 24 }}
+          wrapperCol={{ span: 24 }}
+          labelAlign="left"
+          className="form-item-label-top"
+        />
+        <ProFormSwitch name="enabled" label={t('enabled')} colProps={{ span: 24 }} />
       </DrawerForm>
 
       <AgentCanvas open={!!canvasApp} app={canvasApp} onClose={() => { setCanvasApp(undefined); refresh(); }} />

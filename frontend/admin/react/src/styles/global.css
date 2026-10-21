@@ -406,3 +406,10 @@ input:-webkit-autofill:active {
 .ant-pro-table-list-toolbar-setting-item:has(.anticon-setting) {
     order: 4;
 }
+
+/* 抽屉/弹窗表单统一规范（三端口径）：简单控件标签同行、双列；
+   复杂控件（textarea/树选择/选人/富文本/代码编辑器）加 form-item-label-top——
+   label 占满一行左对齐（labelCol/wrapperCol=24 + labelAlign=left），与控件留 8px 间距。 */
+.ant-form-item.form-item-label-top > .ant-form-item-label {
+    padding-bottom: 8px;
+}

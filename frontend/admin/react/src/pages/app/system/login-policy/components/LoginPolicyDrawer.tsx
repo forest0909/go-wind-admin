@@ -171,6 +171,10 @@ const LoginPolicyDrawer: React.FC<LoginPolicyDrawerProps> = ({
           allowClear: true,
           rows: 3,
         }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
     </DrawerForm>
   );

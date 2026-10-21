@@ -113,7 +113,9 @@ const CategoryDrawer: React.FC<CategoryDrawerProps> = ({ open, mode, data, onClo
         },
         resetButtonProps: { onClick: onClose },
       }}
-      drawerProps={{ destroyOnHidden: true, onClose, size: 500 }}
+      drawerProps={{ destroyOnHidden: true, onClose, size: 600 }}
+      grid
+      rowProps={{ gutter: 16 }}
     >
       <ProFormText
         name="name"
@@ -121,6 +123,7 @@ const CategoryDrawer: React.FC<CategoryDrawerProps> = ({ open, mode, data, onClo
         placeholder={t('namePlaceholder')}
         rules={[{ required: true, message: t('requiredName') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -129,6 +132,7 @@ const CategoryDrawer: React.FC<CategoryDrawerProps> = ({ open, mode, data, onClo
         placeholder={t('codePlaceholder')}
         rules={[{ required: true, message: t('requiredCode') }]}
         fieldProps={{ allowClear: true }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormDigit
@@ -136,6 +140,7 @@ const CategoryDrawer: React.FC<CategoryDrawerProps> = ({ open, mode, data, onClo
         label={t('sortOrder')}
         placeholder={t('sortOrderPlaceholder')}
         fieldProps={{ precision: 0, min: 0 }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
@@ -147,6 +152,7 @@ const CategoryDrawer: React.FC<CategoryDrawerProps> = ({ open, mode, data, onClo
           { label: t('no'), value: false },
         ]}
         fieldProps={{ optionType: 'button', buttonStyle: 'solid' }}
+        colProps={{ span: 12 }}
       />
 
       <ProFormTextArea
@@ -154,6 +160,11 @@ const CategoryDrawer: React.FC<CategoryDrawerProps> = ({ open, mode, data, onClo
         label={t('remark')}
         placeholder={t('remarkPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
       />
     </DrawerForm>
   );

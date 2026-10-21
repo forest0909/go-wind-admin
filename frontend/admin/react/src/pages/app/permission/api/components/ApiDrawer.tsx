@@ -93,12 +93,15 @@ const ApiDrawer: React.FC<ApiDrawerProps> = ({ open, mode, data, onClose, onSucc
         onClose,
         size: 600,
       }}
+      grid
+      rowProps={{ gutter: 16 }}
     >
       <ProFormText
         name="description"
         label={t('description')}
         placeholder={t('descriptionPlaceholder')}
         rules={[{ required: false }, { max: 200, message: t('maxChars', { max: 200 }) }]}
+        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -106,6 +109,7 @@ const ApiDrawer: React.FC<ApiDrawerProps> = ({ open, mode, data, onClose, onSucc
         label={t('module')}
         placeholder={t('modulePlaceholder')}
         rules={[{ required: false }, { max: 100, message: t('maxChars', { max: 100 }) }]}
+        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -113,6 +117,7 @@ const ApiDrawer: React.FC<ApiDrawerProps> = ({ open, mode, data, onClose, onSucc
         label={t('moduleDescription')}
         placeholder={t('moduleDescriptionPlaceholder')}
         rules={[{ required: false }, { max: 200, message: t('maxChars', { max: 200 }) }]}
+        colProps={{ span: 12 }}
       />
 
       <ProFormText
@@ -123,6 +128,7 @@ const ApiDrawer: React.FC<ApiDrawerProps> = ({ open, mode, data, onClose, onSucc
           { required: true, message: t('requiredPath') },
           { max: 500, message: t('maxChars', { max: 500 }) },
         ]}
+        colProps={{ span: 24 }}
       />
 
       <ProFormSelect
@@ -136,6 +142,7 @@ const ApiDrawer: React.FC<ApiDrawerProps> = ({ open, mode, data, onClose, onSucc
           filterOption: (input, option) =>
             (option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
         }}
+        colProps={{ span: 12 }}
       />
     </DrawerForm>
   );

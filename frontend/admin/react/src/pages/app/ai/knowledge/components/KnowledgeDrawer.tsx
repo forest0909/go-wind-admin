@@ -91,26 +91,41 @@ export default function KnowledgeDrawer({ open, mode, data, onClose, onSuccess }
       }}
       onFinish={handleSubmit}
       submitter={{ submitButtonProps: { loading: createMutation.isPending || updateMutation.isPending } }}
+      grid
+      rowProps={{ gutter: 16 }}
+      drawerProps={{ size: 600 }}
     >
       <ProFormText
         name="name"
         label={t('name')}
         rules={[{ required: true, message: t('requiredName') }]}
         placeholder={t('namePlaceholder')}
+        colProps={{ span: 24 }}
       />
-      <ProFormTextArea name="description" label={t('description')} fieldProps={{ rows: 2 }} />
+      <ProFormTextArea
+        name="description"
+        label={t('description')}
+        fieldProps={{ rows: 2 }}
+        colProps={{ span: 24 }}
+        labelCol={{ span: 24 }}
+        wrapperCol={{ span: 24 }}
+        labelAlign="left"
+        className="form-item-label-top"
+      />
       <ProFormSelect
         name="providerId"
         label={t('provider')}
         options={providerOptions}
         rules={[{ required: true, message: t('requiredProvider') }]}
         tooltip={t('providerTooltip')}
+        colProps={{ span: 12 }}
       />
       <ProFormText
         name="embeddingModel"
         label={t('embeddingModel')}
         rules={[{ required: true, message: t('requiredEmbeddingModel') }]}
         placeholder="text-embedding-3-small / bge-m3"
+        colProps={{ span: 12 }}
       />
     </DrawerForm>
   );

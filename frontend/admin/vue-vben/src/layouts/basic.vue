@@ -64,7 +64,9 @@ async function reloadUnreadCount() {
       },
     }),
   );
-  unreadCount.value = resp.total ?? 0;
+  // proto int64 经 protojson 运行时是字符串（TS 类型却标 number），必须显式转数字，
+  // 否则 NotificationPopup 的 count prop 类型校验告警。
+  unreadCount.value = Number(resp.total ?? 0);
 }
 
 const { destroyWatermark, updateWatermark } = useWatermark();

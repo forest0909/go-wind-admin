@@ -52,7 +52,8 @@ export function useNotice() {
     );
     // 转换数据格式
     list.value = (result.items || []).map((item) => convertInternalMessageRecipient(item));
-    unreadTotal.value = result.total ?? 0;
+    // proto int64 经 protojson 运行时是字符串（TS 类型却标 number），须显式转数字
+    unreadTotal.value = Number(result.total ?? 0);
   }
 
   async function read(item: { id?: number; messageId?: number }) {

@@ -213,8 +213,8 @@ function buildRowActions(): TableAction[] {
 <template>
   <Grid :table-title="$t('page.plan.planList')">
     <template #toolbar-tools>
-      <TableAddButton @click="handleCreate" />
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
+          <TableAddButton @click="handleCreate" />
     </template>
     <template #version="{ row }">
       <a-tag :color="planVersionToColor(row.version)">

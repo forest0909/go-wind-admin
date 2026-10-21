@@ -299,7 +299,6 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.permission.menu')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
           :ok-text="$t('ui.button.ok')"
@@ -317,6 +316,7 @@ function buildRowActions(): TableAction[] {
           {{ $t('ui.tree.collapse_all') }}
         </a-button>
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="menus" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #title="{ row }">
         <div class="flex w-full items-center gap-1">

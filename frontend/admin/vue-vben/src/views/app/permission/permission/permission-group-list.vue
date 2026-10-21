@@ -250,7 +250,6 @@ function buildRowActions(): TableAction[] {
 <template>
   <Grid :table-title="$t('page.permissionGroup.moduleName')">
     <template #toolbar-tools>
-      <TableAddButton @click="handleCreate" />
       <a-button class="mr-2" @click="expandAll">
         {{ $t('ui.tree.expand_all') }}
       </a-button>
@@ -258,6 +257,7 @@ function buildRowActions(): TableAction[] {
         {{ $t('ui.tree.collapse_all') }}
       </a-button>
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
+          <TableAddButton @click="handleCreate" />
     </template>
     <template #status="{ row }">
       <a-tag :color="statusToColor(row.status)">

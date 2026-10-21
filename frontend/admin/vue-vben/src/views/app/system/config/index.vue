@@ -203,8 +203,8 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.system.config')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="configs" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #valueType="{ row }">
         <a-tag :color="configValueTypeToColor(row.valueType)">

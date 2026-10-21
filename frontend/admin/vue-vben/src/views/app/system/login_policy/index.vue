@@ -216,8 +216,8 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.system.loginPolicy')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="login-policies" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #type="{ row }">
         <a-tag :color="loginPolicyTypeToColor(row.type)">

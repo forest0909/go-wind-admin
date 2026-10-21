@@ -289,8 +289,8 @@ function buildRowActions(): TableAction[] {
         <a-button class="mr-2" @click="handleOpenLogs">
           {{ $t('page.script.logTitle') }}
         </a-button>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="scripts" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #language="{ row }">
         <a-tag :color="scriptLanguageToColor(row.language)">

@@ -25,6 +25,10 @@
 
       <!-- 右侧工具按钮 -->
       <div class="toolbar-right flex items-center gap-y-2.5 gap-x-1 md:gap-x-1.5 flex-wrap">
+        <!-- 工具栏图标按钮区前插槽（导出全部下拉在此落地，位于页面配置按钮左侧，与 react/vben 同位） -->
+        <slot name="before-tools" />
+
+        <!-- 页面配置按钮（toolbarRight，"add" 惯例收尾）：排在导出下拉之后、内置图标之前 -->
         <template v-for="btn in rightButtons" :key="'right-' + btn.name">
           <AccessControl
             :codes="btn.auth ? (Array.isArray(btn.auth) ? btn.auth : [btn.auth]) : undefined"
@@ -41,9 +45,6 @@
             </ElButton>
           </AccessControl>
         </template>
-
-        <!-- 工具栏图标按钮区前插槽 -->
-        <slot name="before-tools" />
 
         <!-- 默认工具栏图标按钮（全部带 Tooltip，对齐 react ProTable options 惯例） -->
         <template v-for="(tool, idx) in defaultToolbar" :key="'tool-' + idx">

@@ -241,7 +241,6 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.opm.orgUnit')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <a-button class="mr-2" @click="expandAll">
           {{ $t('ui.tree.expand_all') }}
         </a-button>
@@ -249,6 +248,7 @@ function buildRowActions(): TableAction[] {
           {{ $t('ui.tree.collapse_all') }}
         </a-button>
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="org-units" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #status="{ row }">
         <a-tag :color="orgUnitStatusToColor(row.status)">

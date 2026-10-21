@@ -238,6 +238,16 @@ const OrgUnitManagement = () => {
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListOrgUnits} columns={columns} filename="org-units" />,
               <Button
+                key="expandAll"
+                icon={<NodeExpandOutlined />}
+                onClick={() => handleExpandAll(treeData)}
+              >
+                {t('expandAll')}
+              </Button>,
+              <Button key="collapseAll" icon={<NodeCollapseOutlined />} onClick={handleCollapseAll}>
+                {t('collapseAll')}
+              </Button>,
+              <Button
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -249,16 +259,6 @@ const OrgUnitManagement = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
-              <Button
-                key="expandAll"
-                icon={<NodeExpandOutlined />}
-                onClick={() => handleExpandAll(treeData)}
-              >
-                {t('expandAll')}
-              </Button>,
-              <Button key="collapseAll" icon={<NodeCollapseOutlined />} onClick={handleCollapseAll}>
-                {t('collapseAll')}
               </Button>,
             ]}
             options={{

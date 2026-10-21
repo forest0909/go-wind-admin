@@ -285,11 +285,11 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.opm.position')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <a-button class="mr-2" @click="importOpen = true">
           {{ $t('ui.import.title') }}
         </a-button>
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="positions" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #status="{ row }">
         <a-tag :color="statusToColor(row.status)">

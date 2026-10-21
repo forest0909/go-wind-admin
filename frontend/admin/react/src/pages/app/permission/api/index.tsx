@@ -201,6 +201,18 @@ const ApiManagement = () => {
             }}
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListApis} columns={columns} filename="apis" />,
+              <Popconfirm
+                key="sync"
+                title={t('syncConfirmTitle')}
+                description={t('syncConfirmDesc')}
+                onConfirm={handleSync}
+                okText={t('common:button.ok')}
+                cancelText={t('common:button.cancel')}
+              >
+                <Button color="orange" variant="outlined" icon={<SyncOutlined />}>
+                  {t('sync')}
+                </Button>
+              </Popconfirm>,
               <Button
                 key="create"
                 color="primary"
@@ -214,18 +226,6 @@ const ApiManagement = () => {
               >
                 {t('common:button.add')}
               </Button>,
-              <Popconfirm
-                key="sync"
-                title={t('syncConfirmTitle')}
-                description={t('syncConfirmDesc')}
-                onConfirm={handleSync}
-                okText={t('common:button.ok')}
-                cancelText={t('common:button.cancel')}
-              >
-                <Button color="orange" variant="outlined" icon={<SyncOutlined />}>
-                  {t('sync')}
-                </Button>
-              </Popconfirm>,
             ]}
             options={{
               density: true,

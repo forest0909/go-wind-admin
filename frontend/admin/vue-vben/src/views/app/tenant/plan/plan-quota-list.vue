@@ -169,8 +169,8 @@ function buildRowActions(): TableAction[] {
 <template>
   <Grid :table-title="$t('page.plan.planQuotaList')">
     <template #toolbar-tools>
-      <TableAddButton @click="handleCreate" />
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
+          <TableAddButton @click="handleCreate" />
     </template>
     <template #quotaType="{ row }">
       {{ planQuotaTypeToName(row.quotaType) }}

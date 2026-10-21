@@ -226,6 +226,13 @@ const PositionManagement = () => {
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListPositions} columns={columns} filename="positions" />,
               <Button
+                key="import"
+                icon={<UploadOutlined />}
+                onClick={() => setImportOpen(true)}
+              >
+                {t('common:import.title')}
+              </Button>,
+              <Button
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -237,13 +244,6 @@ const PositionManagement = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
-              <Button
-                key="import"
-                icon={<UploadOutlined />}
-                onClick={() => setImportOpen(true)}
-              >
-                {t('common:import.title')}
               </Button>,
             ]}
             options={{

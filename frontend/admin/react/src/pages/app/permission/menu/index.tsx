@@ -386,19 +386,6 @@ const MenuManagement = () => {
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListMenus} columns={columns} filename="menus" />,
               <Button
-                key="create"
-                color="primary"
-                variant="outlined"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setDrawerMode('create');
-                  setSelectedMenu(undefined);
-                  setDrawerOpen(true);
-                }}
-              >
-                {t('common:button.add')}
-              </Button>,
-              <Button
                 key="expandAll"
                 icon={<NodeExpandOutlined />}
                 onClick={() => handleExpandAll(treeData)}
@@ -424,6 +411,19 @@ const MenuManagement = () => {
                   {t('sync')}
                 </Button>
               </Popconfirm>,
+              <Button
+                key="create"
+                color="primary"
+                variant="outlined"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setDrawerMode('create');
+                  setSelectedMenu(undefined);
+                  setDrawerOpen(true);
+                }}
+              >
+                {t('common:button.add')}
+              </Button>,
             ]}
             options={{
               density: true,

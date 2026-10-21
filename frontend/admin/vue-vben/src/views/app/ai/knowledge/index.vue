@@ -147,8 +147,8 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('page.aiKnowledge.moduleName')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleAdd" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="ai-knowledge-bases" />
+        <TableAddButton @click="handleAdd" />
       </template>
       <template #action="{ row }">
         <TableActions :row="row" :actions="buildRowActions()" />

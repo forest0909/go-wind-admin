@@ -210,13 +210,13 @@ void exportFetcher;
   <Page auto-content-height>
     <Grid :table-title="$t('page.accessKey.moduleName')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton
           class="mr-2"
           :fetcher="exportFetcher"
           :columns="gridOptions.columns"
           filename="access-keys"
         />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #status="{ row }">
         <a-tag :color="row.status === 'ON' ? 'success' : 'default'">

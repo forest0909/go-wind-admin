@@ -406,8 +406,8 @@ watch(
 <template>
   <Grid :table-title="$t('menu.opm.user')">
     <template #toolbar-tools>
-      <TableAddButton @click="handleCreate" />
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
+          <TableAddButton @click="handleCreate" />
     </template>
     <template #status="{ row }">
       <a-tag :color="userStatusToColor(row.status)">

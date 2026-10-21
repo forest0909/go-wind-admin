@@ -219,8 +219,8 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.permission.role')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="roles" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #status="{ row }">
         <a-tag :color="statusToColor(row.status)">

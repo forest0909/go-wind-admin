@@ -259,8 +259,8 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.internalMessage.internalMessage')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="im-messages" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #status="{ row }">
         <a-tag :color="internalMessageStatusColor(row.status)">

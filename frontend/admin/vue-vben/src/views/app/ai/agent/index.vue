@@ -185,8 +185,8 @@ async function handleDelete(row: AiAgentApp) {
   <Page auto-content-height>
     <Grid :table-title="$t('page.aiAgent.moduleName')">
       <template #toolbar-tools>
-        <TableAddButton @click="openCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="ai-agent-apps" />
+        <TableAddButton @click="openCreate" />
       </template>
       <template #enabled="{ row }">
         <a-tag v-if="row.enabled" color="success">

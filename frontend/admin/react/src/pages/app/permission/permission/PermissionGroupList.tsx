@@ -200,19 +200,6 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
           toolBarRender={() => [
             <TableExportButton key="export" fetcher={fetchListPermissionGroups} columns={columns} filename="permission-groups" />,
             <Button
-              key="create"
-              color="primary"
-              variant="outlined"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditingGroup(null);
-                setDrawerMode('create');
-                setDrawerOpen(true);
-              }}
-            >
-              {t('common:button.add')}
-            </Button>,
-            <Button
               key="expandAll"
               icon={<NodeExpandOutlined />}
               size="small"
@@ -227,6 +214,19 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
               onClick={handleCollapseAll}
             >
               {t('collapseAll')}
+            </Button>,
+            <Button
+              key="create"
+              color="primary"
+              variant="outlined"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setEditingGroup(null);
+                setDrawerMode('create');
+                setDrawerOpen(true);
+              }}
+            >
+              {t('common:button.add')}
             </Button>,
           ]}
           options={{

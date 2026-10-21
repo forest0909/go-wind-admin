@@ -247,7 +247,6 @@ function buildRowActions(): TableAction[] {
 <template>
   <Grid :table-title="$t('menu.permission.permission')">
     <template #toolbar-tools>
-      <TableAddButton @click="handleCreate" />
       <a-popconfirm
         :cancel-text="$t('ui.button.cancel')"
         :ok-text="$t('ui.button.ok')"
@@ -263,6 +262,7 @@ function buildRowActions(): TableAction[] {
         </a-button>
       </a-popconfirm>
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
+          <TableAddButton @click="handleCreate" />
     </template>
     <template #status="{ row }">
       <a-tag :color="statusToColor(row.status)">

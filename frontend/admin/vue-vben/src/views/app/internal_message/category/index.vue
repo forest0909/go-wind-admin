@@ -207,8 +207,8 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.internalMessage.internalMessageCategory')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="im-categories" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #isEnabled="{ row }">
         <a-tag :color="enableBoolToColor(row.isEnabled)">

@@ -578,8 +578,8 @@ async function handleTestSend() {
   <Page auto-content-height>
     <Grid :table-title="$t('page.notificationChannel.moduleName')">
       <template #toolbar-tools>
-        <TableAddButton @click="openCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="notification-channels" />
+        <TableAddButton @click="openCreate" />
       </template>
       <template #type="{ row }">
         <a-tag v-if="row.type" :color="typeColor(row.type)">{{ typeLabel(row.type) }}</a-tag>

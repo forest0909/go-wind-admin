@@ -471,8 +471,8 @@ async function handleEnableChanged(row: any, checked: boolean) {
             {{ $t('page.task.button.restartAll') }}
           </a-button>
         </a-popconfirm>
-        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="tasks" />
+        <TableAddButton @click="handleCreate" />
       </template>
 
       <template #enable="{ row }">

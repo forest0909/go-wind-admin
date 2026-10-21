@@ -227,7 +227,6 @@ function buildRowActions(): TableAction[] {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.permission.api')">
       <template #toolbar-tools>
-        <TableAddButton @click="handleCreate" />
         <a-popconfirm
           :cancel-text="$t('ui.button.cancel')"
           :ok-text="$t('ui.button.ok')"
@@ -243,6 +242,7 @@ function buildRowActions(): TableAction[] {
           </a-button>
         </a-popconfirm>
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="apis" />
+        <TableAddButton @click="handleCreate" />
       </template>
       <template #action="{ row }">
         <TableActions :row="row" :actions="buildRowActions()" />

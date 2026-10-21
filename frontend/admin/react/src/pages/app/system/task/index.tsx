@@ -361,6 +361,7 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
                   {t('restartAll')}
                 </Button>
               </Popconfirm>,
+              <TableExportButton key="export" fetcher={fetchListTasks} columns={columns} filename="tasks" />,
               <Button
                 key="create"
                 color="primary"
@@ -374,7 +375,6 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
               >
                 {t('common:button.add')}
               </Button>,
-              <TableExportButton key="export" fetcher={fetchListTasks} columns={columns} filename="tasks" />,
             ]}
             options={{
               density: true,

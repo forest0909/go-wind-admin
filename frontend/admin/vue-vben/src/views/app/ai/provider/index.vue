@@ -180,8 +180,8 @@ function endpointText(row: AiProvider): string {
     <Grid :table-title="$t('page.aiProvider.moduleName')">
       <template #toolbar-tools>
         <!-- Preflight svg{display:block} 会把 icon+文本竖排，定式见 vben-tailwind-preflight-svg-block-icon-wrap -->
-        <TableAddButton @click="handleAdd" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="ai-providers" />
+        <TableAddButton @click="handleAdd" />
       </template>
       <template #modelType="{ row }">
         <a-tag v-if="row.modelType" :color="modelTypeColor(row.modelType)">

@@ -202,8 +202,8 @@ function buildRowActions(): TableAction[] {
 <template>
   <Grid :table-title="$t('page.dict.dictEntryList')">
     <template #toolbar-tools>
-      <TableAddButton @click="handleCreate" />
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
+          <TableAddButton @click="handleCreate" />
     </template>
     <template #isEnabled="{ row }">
       <a-tag :color="enableBoolToColor(row.isEnabled)">

@@ -71,7 +71,7 @@ async function handlePurge() {
 }
 
 const [Drawer] = useVbenDrawer({
-  title: $t('page.script.logTitle'),
+  title: $t('page.script.viewLogTitle'),
   class: 'w-[960px]',
   footer: false,
   onOpenChange(isOpen) {

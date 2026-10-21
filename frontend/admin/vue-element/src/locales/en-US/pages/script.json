@@ -47,5 +47,6 @@
   "logCreatedAt": "Executed At",
   "logPurge": "Purge >90d",
   "logPurgeConfirmDesc": "This deletes all execution logs older than 90 days. Continue?",
-  "logPurgeSuccess": "Purged {count} log entries"
+  "logPurgeSuccess": "Purged {count} log entries",
+  "viewLogTitle": "View Script Log"
 }

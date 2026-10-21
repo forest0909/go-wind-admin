@@ -36,6 +36,14 @@ setupVbenVxeTable({
       },
     });
 
+    // 表格工具栏内建全屏钮（zoom 工具）图标：vxe 字体字形与三端统一的 lucide
+    // 四角括号对（顶栏 VbenFullScreen 的 Maximize/Minimize）不同族，setIcon 指向
+    // style.css 里的 mask 自绘类；退出全屏=括角内收（Minimize）
+    vxeUI.setIcon({
+      TOOLBAR_TOOLS_FULLSCREEN: 'vben-icon-toolbar-fullscreen',
+      TOOLBAR_TOOLS_MINIMIZE: 'vben-icon-toolbar-fullscreen-exit',
+    });
+
     // 表格配置项可以用 cellRender: { name: 'CellImage' },
     // vxe 新版（@vxe-ui/core 4.4+）内置了 CellImage/CellLink 渲染器，直接 add
     // 会刷"参数 renderTableDefault 重复定义"警告；先 delete 再覆盖为 antd 实现

@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { useFormCloseGuard } from '#/composables/use-form-close-guard';
 import { $t } from '@vben/locales';
 import { StorageManager } from '@vben-core/shared/cache';
 
@@ -173,7 +174,11 @@ const [BaseForm, baseFormApi] = useVbenForm({
   ],
 });
 
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+const closeGuard = useFormCloseGuard(baseFormApi);
+
 const [Drawer, drawerApi] = useVbenDrawer({
+  onBeforeClose: () => closeGuard.onBeforeClose(),
   onCancel() {
     drawerApi.close();
   },
@@ -207,6 +212,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           ? $t('ui.notification.create_success')
           : $t('ui.notification.update_success'),
       });
+      closeGuard.markClean();
     } catch {
       notification.error({
         message: data.value?.create
@@ -222,14 +228,14 @@ const [Drawer, drawerApi] = useVbenDrawer({
 
   onOpenChange(isOpen: boolean) {
     if (isOpen) {
-      onOpenDrawer();
+      void onOpenDrawer();
     } else {
       onCloseDrawer();
     }
   },
 });
 
-function onOpenDrawer() {
+async function onOpenDrawer() {
   // 获取传入的数据
   data.value = drawerApi.getData<Record<string, any>>();
 
@@ -238,7 +244,8 @@ function onOpenDrawer() {
   }
 
   // 为表单赋值
-  baseFormApi.setValues(data.value?.row);
+  await baseFormApi.setValues(data.value?.row);
+  await closeGuard.syncBaseline();
 
   setLoading(false);
 

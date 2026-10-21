@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { useFormCloseGuard } from '#/composables/use-form-close-guard';
 import { $t } from '@vben/locales';
 
 import { Modal, notification } from 'ant-design-vue';
@@ -158,7 +159,15 @@ const [BaseForm, baseFormApi] = useVbenForm({
   ],
 });
 
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）；
+// 脚本编辑器内容/语言在表单外，经 getExtra 纳入脏判定
+const closeGuard = useFormCloseGuard(baseFormApi, () => ({
+  language: language.value,
+  source: source.value,
+}));
+
 const [Drawer, drawerApi] = useVbenDrawer({
+  onBeforeClose: () => closeGuard.onBeforeClose(),
   onCancel() {
     drawerApi.close();
   },
@@ -188,6 +197,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           ? $t('ui.notification.create_success')
           : $t('ui.notification.update_success'),
       });
+      closeGuard.markClean();
     } catch {
       notification.error({
         message: data.value?.create
@@ -200,7 +210,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
   },
 
-  onOpenChange(isOpen) {
+  async onOpenChange(isOpen) {
     if (isOpen) {
       data.value = drawerApi.getData<Record<string, any>>();
       loadHookPointOptions();
@@ -220,6 +230,8 @@ const [Drawer, drawerApi] = useVbenDrawer({
       );
       language.value = row?.language ?? 'LUA';
       source.value = row?.source ?? skeletonFor('LUA');
+      // 脚本编辑器内容/语言在表单外（source/language ref），一并纳入脏判定
+      await closeGuard.syncBaseline();
 
       setLoading(false);
     }

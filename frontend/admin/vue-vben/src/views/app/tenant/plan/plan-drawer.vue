@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { useFormCloseGuard } from '#/composables/use-form-close-guard';
 import { $t } from '@vben/locales';
 
 import { notification } from 'ant-design-vue';
@@ -127,7 +128,11 @@ const [BaseForm, baseFormApi] = useVbenForm({
   ],
 });
 
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+const closeGuard = useFormCloseGuard(baseFormApi);
+
 const [Drawer, drawerApi] = useVbenDrawer({
+  onBeforeClose: () => closeGuard.onBeforeClose(),
   onCancel() {
     drawerApi.close();
   },
@@ -164,6 +169,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
           ? $t('ui.notification.create_success')
           : $t('ui.notification.update_success'),
       });
+      closeGuard.markClean();
 
       // 编辑模式下同步模块白名单 diff
       if (!data.value?.create && data.value.row?.id) {
@@ -213,23 +219,23 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
   },
 
-  onOpenChange(isOpen: boolean) {
+  async onOpenChange(isOpen: boolean) {
     if (isOpen) {
       // 获取传入的数据
       data.value = drawerApi.getData<Record<string, any>>();
 
       // 为表单赋值
       if (data.value.row !== undefined) {
-        baseFormApi.setValues(data.value?.row);
+        await baseFormApi.setValues(data.value?.row);
 
-        // 加载该套餐已有的模块白名单
+        // 加载该套餐已有的模块白名单（回填 moduleWhitelist 后再记基线）
         try {
-          fetchListPlanModules(
+          await fetchListPlanModules(
             new PaginationQuery({
               paging: { page: 1, pageSize: 999 },
               formValues: { plan_id: data.value.row.id },
             }),
-          ).then((resp: any) => {
+          ).then(async (resp: any) => {
             const names: string[] = [];
             if (resp?.items) {
               for (const item of resp.items) {
@@ -241,11 +247,15 @@ const [Drawer, drawerApi] = useVbenDrawer({
               }
             }
             existingModules.value = names;
-            baseFormApi.setValues({ moduleWhitelist: [...names] });
+            await baseFormApi.setValues({ moduleWhitelist: [...names] });
+            await closeGuard.syncBaseline();
           });
         } catch {
           existingModules.value = [];
+          await closeGuard.syncBaseline();
         }
+      } else {
+        await closeGuard.syncBaseline();
       }
 
       setLoading(false);

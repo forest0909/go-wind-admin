@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { useFormCloseGuard } from '#/composables/use-form-close-guard';
 import { $t } from '@vben/locales';
 
 import { notification } from 'ant-design-vue';
@@ -67,7 +68,11 @@ const [BaseForm, baseFormApi] = useVbenForm({
   ],
 });
 
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+const closeGuard = useFormCloseGuard(baseFormApi);
+
 const [Drawer, drawerApi] = useVbenDrawer({
+  onBeforeClose: () => closeGuard.onBeforeClose(),
   onCancel() {
     drawerApi.close();
   },
@@ -93,6 +98,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         notification.success({
           message: $t('ui.notification.create_success'),
         });
+        closeGuard.markClean();
         if (resp.secret) {
           // 一次性 Secret 展示：a-modal teleport 到 body，抽屉关闭后仍可见
           createdSecret.value = resp.secret;
@@ -111,6 +117,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         notification.success({
           message: $t('ui.notification.update_success'),
         });
+        closeGuard.markClean();
       }
     } catch {
       notification.error({
@@ -124,10 +131,11 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
   },
 
-  onOpenChange(isOpen) {
+  async onOpenChange(isOpen) {
     if (isOpen) {
       data.value = drawerApi.getData<Record<string, any>>();
-      baseFormApi.setValues(data.value?.row ?? {});
+      await baseFormApi.setValues(data.value?.row ?? {});
+      await closeGuard.syncBaseline();
       setLoading(false);
     }
   },

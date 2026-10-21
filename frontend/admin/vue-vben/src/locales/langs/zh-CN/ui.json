@@ -79,6 +79,10 @@
     "delete": "删除{moduleName}",
     "view": "查看{moduleName}"
   },
+  "drawer": {
+    "unsavedMessage": "表单内容已修改，是否放弃本次编辑？",
+    "discardButton": "确定放弃"
+  },
   "notification": {
     "create_success": "创建成功",
     "create_failed": "创建失败",

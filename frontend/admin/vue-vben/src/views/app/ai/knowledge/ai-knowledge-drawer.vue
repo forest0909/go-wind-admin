@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { useFormCloseGuard } from '#/composables/use-form-close-guard';
 import { $t } from '@vben/locales';
 
 import { message } from 'ant-design-vue';
@@ -57,7 +58,11 @@ const getTitle = computed(() =>
     : $t('ui.modal.update', { moduleName: $t('page.aiKnowledge.moduleName') }),
 );
 
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+const closeGuard = useFormCloseGuard(baseFormApi);
+
 const [Drawer, drawerApi] = useVbenDrawer({
+  onBeforeClose: () => closeGuard.onBeforeClose(),
   class: 'w-[520px]',
   onConfirm: async () => {
     const { valid } = await baseFormApi.validate();
@@ -71,6 +76,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       } else {
         await updateAiKnowledgeBase(data.value?.row?.id, values);
         message.success($t('ui.notification.update_success'));
+        closeGuard.markClean();
       }
       emit('success');
       drawerApi.close();
@@ -82,10 +88,11 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
   },
   onCancel: () => drawerApi.close(),
-  onOpenChange(isOpen) {
+  async onOpenChange(isOpen) {
     if (isOpen) {
       data.value = drawerApi.getData<{ create?: boolean; row?: any }>() ?? {};
-      baseFormApi.setValues(data.value?.row ?? {});
+      await baseFormApi.setValues(data.value?.row ?? {});
+      await closeGuard.syncBaseline();
       // provider 下拉（启用项）；失败不阻断抽屉打开
       fetchListAiProviders(new PaginationQuery({ paging: { page: 1, pageSize: 100 } }))
         .then((res) => {

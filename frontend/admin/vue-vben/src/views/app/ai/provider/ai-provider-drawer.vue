@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 
 import { useVbenDrawer } from '@vben/common-ui';
+import { useFormCloseGuard } from '#/composables/use-form-close-guard';
 import { $t } from '@vben/locales';
 
 import { message } from 'ant-design-vue';
@@ -139,7 +140,11 @@ const getTitle = computed(() =>
     : $t('ui.modal.update', { moduleName: $t('page.aiProvider.moduleName') }),
 );
 
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+const closeGuard = useFormCloseGuard(baseFormApi);
+
 const [Drawer, drawerApi] = useVbenDrawer({
+  onBeforeClose: () => closeGuard.onBeforeClose(),
   class: 'w-[560px]',
   onConfirm: async () => {
     const { valid } = await baseFormApi.validate();
@@ -155,6 +160,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
       } else {
         await updateAiProvider(data.value?.row?.id, payload);
         message.success($t('ui.notification.update_success'));
+        closeGuard.markClean();
       }
       emit('success');
       drawerApi.close();
@@ -166,7 +172,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
   },
   onCancel: () => drawerApi.close(),
-  onOpenChange(isOpen) {
+  async onOpenChange(isOpen) {
     if (isOpen) {
       data.value = drawerApi.getData<{ create?: boolean; row?: any }>() ?? {};
       currentHint.value = data.value?.row?.apiKeyHint || '';
@@ -174,7 +180,8 @@ const [Drawer, drawerApi] = useVbenDrawer({
       const row = { ...(data.value?.row ?? {}) };
       delete row.apiKey;
       delete row.apiKeyHint;
-      baseFormApi.setValues(row);
+      await baseFormApi.setValues(row);
+      await closeGuard.syncBaseline();
     }
   },
 });

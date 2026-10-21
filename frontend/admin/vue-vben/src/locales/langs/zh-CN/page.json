@@ -721,7 +721,7 @@
     }
   },
   "language": {
-    "moduleName": "语言管理",
+    "moduleName": "语言",
     "languageName": "语言名称",
     "languageCode": "语言代码",
     "nativeName": "本地名称",

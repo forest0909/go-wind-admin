@@ -1360,7 +1360,7 @@
     }
   },
   "language": {
-    "moduleName": "Language Management",
+    "moduleName": "Language",
     "languageName": "Language Name",
     "languageCode": "Language Code",
     "nativeName": "Native Name",

@@ -311,6 +311,19 @@ input:-webkit-autofill:active {
     padding: 0 !important;
 }
 
+/* 列表表格四角直角（用户裁决 2026-10-21：以 ele 实际渲染为基准）。
+   antd v6 给 .ant-table（上两角）/ .ant-table-container（下两角）发
+   borderRadiusLG 圆角，bordered 表格的外框线随圆角走弧线；ele 的 vxe
+   外框线是方角（其 :deep(.vxe-table) 的 6px 圆角不被内层裁切落地，
+   实际渲染就是直角），三端以它为准。
+   !important 必须留：antd cssinjs 运行时注入在打包 CSS 之后，同特异性
+   平局时后注入者赢。外层宿主卡（.ant-pro-card）保持圆角不动——ele 的
+   列表卡同样圆角，方角的只是表格面。 */
+.ant-table.ant-table,
+.ant-table .ant-table-container {
+    border-radius: 0 !important;
+}
+
 /* 全局搜索面板头部输入（vben 同款无边框形态）：暗色下表单描边惯例
    （[data-theme=dark] .ant-input-affix-wrapper(:focus-within) + !important，
    (0,3,0)）会盖过 variant="borderless"，这里以 (0,4,0) + !important 压平 */

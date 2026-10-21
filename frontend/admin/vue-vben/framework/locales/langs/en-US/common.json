@@ -17,5 +17,7 @@
   "retry": "Retry",
   "fullscreen": "Fullscreen",
   "exitFullscreen": "Exit Fullscreen",
-  "language": "Language"
+  "language": "Language",
+  "download": "Download",
+  "columnSetting": "Column Settings"
 }

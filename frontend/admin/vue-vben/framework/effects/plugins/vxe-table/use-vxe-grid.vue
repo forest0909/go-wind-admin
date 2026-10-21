@@ -25,14 +25,24 @@ import {
 } from 'vue';
 
 import { usePriorityValues } from '@vben/hooks';
-import { EmptyIcon, LucideRefreshCw, Search } from '@vben/icons';
+import {
+  EmptyIcon,
+  LucideDownload,
+  LucideRefreshCw,
+  LucideRotateCcw,
+  Maximize,
+  Search,
+  SlidersHorizontal,
+} from '@vben/icons';
 import { $t } from '@vben/locales';
 import { preferences, usePreferences } from '@vben/preferences';
 import { cloneDeep, cn, mergeWithArrayOverride } from '@vben/utils';
 import {
   VbenButton,
   VbenHelpTooltip,
+  VbenIconButton,
   VbenLoading,
+  VbenTooltip,
 } from '@vben-core/shadcn-ui';
 
 import { VxeGrid, VxeUI } from 'vxe-table';
@@ -72,6 +82,38 @@ const {
 } = usePriorityValues(props, state);
 
 const { isMobile } = usePreferences();
+
+/**
+ * 列表工具栏默认工具（下载/刷新/全屏/列设置）：vben 化按钮 + VbenTooltip 样式化提示，
+ * 替代 vxe 内建钮的原生 title；下载/全屏/列设置经 commitProxy 与原内建行为一致，
+ * 刷新走 api.query()（保留搜索表单值）。
+ */
+const defaultToolbarTools = computed(() => [
+  {
+    code: 'download',
+    icon: LucideDownload,
+    label: $t('common.download'),
+    onClick: () => gridRef.value?.commitProxy('export'),
+  },
+  {
+    code: 'refresh',
+    icon: LucideRotateCcw,
+    label: $t('common.refresh'),
+    onClick: () => props.api?.query(),
+  },
+  {
+    code: 'zoom',
+    icon: Maximize,
+    label: $t('common.fullscreen'),
+    onClick: () => gridRef.value?.commitProxy('zoom'),
+  },
+  {
+    code: 'custom',
+    icon: SlidersHorizontal,
+    label: $t('common.columnSetting'),
+    onClick: () => gridRef.value?.commitProxy('custom'),
+  },
+]);
 
 const slots = useSlots();
 
@@ -196,22 +238,13 @@ const toolbarOptions = computed(() => {
   const slotTools = slots[TOOLBAR_TOOLS]?.();
 
   const toolbarConfig: VxeGridPropTypes.ToolbarConfig = {
-    // 列设置（custom）钮：调节器图形替代 vxe 字体齿轮（图形见 style.css 的 mask 定义）
-    // vxe 4.22 起 custom 对象形式已废弃，图标须挪到 customOptions
-    custom: true,
-    customOptions: { icon: 'vben-icon-toolbar-sliders' },
-    tools:
-      gridOptions.value?.toolbarConfig?.search && !!formOptions.value
-        ? [
-            {
-              code: 'search',
-              icon: 'vxe-icon--search',
-              circle: true,
-              status: showSearchForm.value ? 'primary' : undefined,
-              title: $t('common.search'),
-            },
-          ]
-        : [],
+    // 内建工具钮（下载/刷新/全屏/列设置）全部禁用：由本组件模板以 vben 化按钮
+    // （VbenIconButton + VbenTooltip 样式化提示）在 toolbar-tools 插槽前部渲染，
+    // 行为经 commitProxy 与原内建钮一致
+    refresh: false,
+    export: false,
+    zoom: false,
+    custom: false,
   };
 
   if (!showToolbar.value) {
@@ -452,6 +485,25 @@ onUnmounted(() => {
         #[slotName]="slotProps"
       >
         <slot :name="slotName" v-bind="slotProps"></slot>
+        <!-- 默认工具（下载/刷新/全屏/列设置）：vben 化按钮 + VbenTooltip 样式化提示，
+             替代 vxe 内建钮的原生 title；点击经 commitProxy 与原内建行为一致 -->
+        <div
+          v-if="slotName === TOOLBAR_TOOLS"
+          class="mr-1 flex items-center gap-x-1"
+        >
+          <VbenTooltip
+            v-for="tool in defaultToolbarTools"
+            :key="tool.code"
+            side="bottom"
+          >
+            <template #trigger>
+              <VbenIconButton @click="tool.onClick()">
+                <component :is="tool.icon" class="size-4" />
+              </VbenIconButton>
+            </template>
+            {{ tool.label }}
+          </VbenTooltip>
+        </div>
       </template>
 
       <!-- form表单 -->

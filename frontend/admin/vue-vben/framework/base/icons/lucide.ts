@@ -49,6 +49,7 @@ export {
   SearchX,
   Settings,
   Shrink,
+  SlidersHorizontal,
   Sun,
   SunMoon,
   SwatchBook,

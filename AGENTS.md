@@ -75,6 +75,7 @@ gow 未覆盖的任务（三端 TS 生成 `make ts`、OpenAPI `make openapi`、`
 
 - **文档总入口（两层索引：教程层 + 参考层）**：`docs/README.md`；渐进教程系列（面向采用者的 10 章学习路径）在 `docs/tutorial/`
 - 各端规范：`frontend/admin/{react,vue-element,vue-vben}/AGENTS.md`
+- **表单抽屉关闭守卫**：`docs/form_drawer_close_guard.md`（遮罩/ESC/X/取消四路径脏数据确认的三端统一规范）——新做或改表单抽屉关闭行为前必读
 - 后端：`docs/backend_project_struct.md`、`docs/backend_deploy.md`、`docs/audit-log-producer-design.md`
 - 前端权限模型：`docs/frontend_authority.md`
 - 查询/分页规则：`docs/list_query_rule.md`

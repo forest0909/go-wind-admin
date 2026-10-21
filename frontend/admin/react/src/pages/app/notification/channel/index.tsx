@@ -384,7 +384,7 @@ const NotificationChannelManagement = () => {
     {
       title: t('actions'),
       valueType: 'option',
-      width: 220,
+      width: 250,
       fixed: 'right',
       render: (_, record) => [
         <Button

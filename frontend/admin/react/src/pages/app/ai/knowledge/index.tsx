@@ -49,7 +49,7 @@ export default function AiKnowledgePage() {
     {
       title: t('action'),
       valueType: 'option',
-      width: 220,
+      width: 230,
       fixed: 'right',
       render: (_, record) => [
         <Button
@@ -75,7 +75,7 @@ export default function AiKnowledgePage() {
             setDrawerOpen(true);
           }}
         >
-          {t('edit')}
+          {t('common:button.edit')}
         </Button>,
         <Popconfirm
           key="delete"
@@ -84,7 +84,7 @@ export default function AiKnowledgePage() {
           onConfirm={() => deleteMutation.mutate({ id: record.id! })}
         >
           <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-            {t('deleteConfirmTitle')}
+            {t('common:button.delete')}
           </Button>
         </Popconfirm>,
       ],

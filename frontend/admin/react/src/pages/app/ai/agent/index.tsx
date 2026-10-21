@@ -7,8 +7,8 @@ import {
   ProFormTextArea,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { Button, Popconfirm, Tag, App } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, ApartmentOutlined, HistoryOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Tag, App } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, ApartmentOutlined, HistoryOutlined, MoreOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { aiservicev1_AiAgentApp as AiAgentApp } from '@/api/generated/admin/service/v1';
@@ -36,7 +36,7 @@ const AiAgentAppManagement = () => {
   const { t } = useTranslation('ai-agent');
   const actionRef = useRef<ActionType>(null);
   const queryClient = useQueryClient();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const containerRef = useRef<HTMLDivElement>(null);
   const tableScrollY = useProTableScrollY(containerRef);
 
@@ -115,8 +115,8 @@ const AiAgentAppManagement = () => {
     {
       title: t('actions'),
       valueType: 'option',
-      // 画布/编辑应用/运行台账/删除四个带图标按钮实测约 341px（en 335），窄了必截断
-      width: 360,
+      // 画布/编辑/运行台账/更多四个按钮实测约 341px（en 335），窄了必截断
+      width: 350,
       fixed: 'right',
       render: (_, record) => [
         <Button
@@ -149,11 +149,32 @@ const AiAgentAppManagement = () => {
         >
           {t('openRuns')}
         </Button>,
-        <Popconfirm key="delete" title={t('deleteConfirm')} onConfirm={() => handleDelete(record)}>
-          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
-            {t('delete')}
+        <Dropdown
+          key="more"
+          menu={{
+            items: [
+              {
+                key: 'delete',
+                icon: <DeleteOutlined />,
+                danger: true,
+                label: t('delete'),
+                onClick: () =>
+                  modal.confirm({
+                    title: t('deleteConfirm'),
+                    okText: t('common:button.ok'),
+                    cancelText: t('common:button.cancel'),
+                    okButtonProps: { danger: true },
+                    onOk: () => handleDelete(record),
+                  }),
+              },
+            ],
+          }}
+        >
+          <Button type="link" size="small">
+            {t('common:button.more')}
+            <MoreOutlined style={{ marginInlineStart: 4 }} />
           </Button>
-        </Popconfirm>,
+        </Dropdown>,
       ],
     },
   ];

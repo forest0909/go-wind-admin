@@ -2,8 +2,8 @@ import { useRef, useState, useEffect } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import ListTable from '@/components/common/ListTable';
-import { Button, Popconfirm, Tag, App } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, InfoCircleOutlined , SafetyOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Popconfirm, Tag, App } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, InfoCircleOutlined , SafetyOutlined, MoreOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +35,7 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tableScrollY = useProTableScrollY(containerRef);
   const queryClient = useQueryClient();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
 
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -193,53 +193,73 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
     {
       title: t('action'),
       valueType: 'option',
-      width: 100,
+      width: 370,
       render: (_, record) => [
-        <a
+        <Button
           key="detail"
-          title={t('detail')}
+          type="link"
+          size="small"
+          icon={<InfoCircleOutlined />}
           onClick={() => navigate(`/opm/users/detail/${record.id}`)}
         >
-          <InfoCircleOutlined />
-        </a>,
-        <a
+          {t('detail')}
+        </Button>,
+        <Button
           key="edit"
+          type="link"
+          size="small"
+          icon={<EditOutlined />}
           onClick={() => {
             setEditingUser(record);
             setDrawerMode('edit');
             setDrawerOpen(true);
           }}
         >
-          <EditOutlined />
-        </a>,
+          {t('common:button.edit')}
+        </Button>,
         isPlatformSide ? (
-        <Popconfirm
-          key="reset-mfa"
-          title={t('resetMfaConfirmTitle')}
-          description={t('resetMfaConfirmDesc')}
-          onConfirm={() =>
-            record.id && adminResetMfa.mutate({ userId: record.id, method: 'TOTP' } as any)
-          }
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
-        >
-          <a title={t('resetMfa')}>
-            <SafetyOutlined />
-          </a>
-        </Popconfirm>
+          <Popconfirm
+            key="reset-mfa"
+            title={t('resetMfaConfirmTitle')}
+            description={t('resetMfaConfirmDesc')}
+            onConfirm={() =>
+              record.id && adminResetMfa.mutate({ userId: record.id, method: 'TOTP' } as any)
+            }
+            okText={t('common:button.ok')}
+            cancelText={t('common:button.cancel')}
+          >
+            <Button type="link" size="small" icon={<SafetyOutlined />}>
+              {t('resetMfa')}
+            </Button>
+          </Popconfirm>
         ) : null,
-        <Popconfirm
-          key="delete"
-          title={t('deleteConfirmTitle')}
-          description={t('deleteConfirmDesc', { moduleName: t('moduleName') })}
-          onConfirm={() => record.id && deleteMutation.mutate(record.id)}
-          okText={t('common:button.ok')}
-          cancelText={t('common:button.cancel')}
+        <Dropdown
+          key="more"
+          menu={{
+            items: [
+              {
+                key: 'delete',
+                icon: <DeleteOutlined />,
+                danger: true,
+                label: t('common:button.delete'),
+                onClick: () =>
+                  modal.confirm({
+                    title: t('deleteConfirmTitle'),
+                    content: t('deleteConfirmDesc', { moduleName: t('moduleName') }),
+                    okText: t('common:button.ok'),
+                    cancelText: t('common:button.cancel'),
+                    okButtonProps: { danger: true },
+                    onOk: () => record.id && deleteMutation.mutate(record.id),
+                  }),
+              },
+            ],
+          }}
         >
-          <a style={{ color: 'var(--ant-color-error)' }}>
-            <DeleteOutlined />
-          </a>
-        </Popconfirm>,
+          <Button type="link" size="small">
+            {t('common:button.more')}
+            <MoreOutlined style={{ marginInlineStart: 4 }} />
+          </Button>
+        </Dropdown>,
       ],
     },
   ] satisfies ProColumns<any>[]).filter((col) => {

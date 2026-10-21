@@ -10,7 +10,8 @@
     "delete": "Delete",
     "submit": "Submit",
     "reset": "Reset",
-    "retry": "Retry"
+    "retry": "Retry",
+    "more": "More"
   },
   "header": {
     "profile": "Profile",

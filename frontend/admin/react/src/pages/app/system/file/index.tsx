@@ -146,11 +146,17 @@ const FileManagement = () => {
     {
       title: t('action'),
       valueType: 'option',
-      width: 100,
+      width: 150,
       render: (_, record) => [
-        <a key="download" onClick={() => handleDownload(record)}>
-          <DownloadOutlined />
-        </a>,
+        <Button
+          key="download"
+          type="link"
+          size="small"
+          icon={<DownloadOutlined />}
+          onClick={() => handleDownload(record)}
+        >
+          {t('download')}
+        </Button>,
         <Popconfirm
           key="delete"
           title={t('deleteConfirmTitle')}
@@ -159,7 +165,9 @@ const FileManagement = () => {
           okText={t('common:button.ok')}
           cancelText={t('common:button.cancel')}
         >
-          <a style={{ color: 'var(--ant-color-error)' }}><DeleteOutlined /></a>
+          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
+            {t('common:button.delete')}
+          </Button>
         </Popconfirm>,
       ],
     },

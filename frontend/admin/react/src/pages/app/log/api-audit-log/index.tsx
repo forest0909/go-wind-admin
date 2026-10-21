@@ -225,15 +225,17 @@ const ApiAuditLog = () => {
     {
       title: t('action'),
       valueType: 'option',
-      width: 80,
+      width: 110,
       render: (_, record) => [
-        <a
+        <Button
           key="detail"
-          title={t('detail')}
+          type="link"
+          size="small"
+          icon={<InfoCircleOutlined />}
           onClick={() => setDetailRecord(record)}
         >
-          <InfoCircleOutlined />
-        </a>,
+          {t('detail')}
+        </Button>,
       ],
     },
   ];

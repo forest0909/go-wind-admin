@@ -200,11 +200,14 @@ const InboxList = () => {
     {
       title: t('action'),
       valueType: 'option',
-      width: 90,
+      width: 180,
       render: (_, record) => [
         record.status !== 'READ' && (
-          <a
+          <Button
             key="read"
+            type="link"
+            size="small"
+            icon={<CheckOutlined />}
             onClick={() => {
               if (record.id) {
                 markReadMutation.mutate({
@@ -214,8 +217,8 @@ const InboxList = () => {
               }
             }}
           >
-            <CheckOutlined />
-          </a>
+            {t('markRead')}
+          </Button>
         ),
         <Popconfirm
           key="delete"
@@ -232,9 +235,9 @@ const InboxList = () => {
           okText={t('common:button.ok')}
           cancelText={t('common:button.cancel')}
         >
-          <a style={{ color: 'var(--ant-color-error)' }}>
-            <DeleteOutlined />
-          </a>
+          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
+            {t('common:button.delete')}
+          </Button>
         </Popconfirm>,
       ],
     },

@@ -152,18 +152,21 @@ const PositionManagement = () => {
     {
       title: t('action'),
       valueType: 'option',
-      width: 90,
+      width: 150,
       render: (_, record) => [
-        <a
+        <Button
           key="edit"
+          type="link"
+          size="small"
+          icon={<EditOutlined />}
           onClick={() => {
             setDrawerMode('edit');
             setSelectedPosition(record);
             setDrawerOpen(true);
           }}
         >
-          <EditOutlined />
-        </a>,
+          {t('common:button.edit')}
+        </Button>,
         <Popconfirm
           key="delete"
           title={t('deleteConfirmTitle')}
@@ -172,7 +175,9 @@ const PositionManagement = () => {
           okText={t('common:button.ok')}
           cancelText={t('common:button.cancel')}
         >
-          <a style={{ color: 'var(--ant-color-error)' }}><DeleteOutlined /></a>
+          <Button danger type="link" size="small" icon={<DeleteOutlined />}>
+            {t('common:button.delete')}
+          </Button>
         </Popconfirm>,
       ],
     },

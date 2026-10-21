@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import {
   DrawerForm,
@@ -179,6 +180,7 @@ const AiAgentAppManagement = () => {
           pagination={{ defaultPageSize: TABLE.DEFAULT_PAGE_SIZE, showSizeChanger: true }}
           options={{ density: true, fullScreen: true, setting: { settingIcon: <ColumnSlidersIcon /> }, reload: true }}
           toolBarRender={() => [
+            <TableExportButton key="export" fetcher={fetchListAiAgentApps} columns={columns} filename="ai-agent-apps" />,
             <Button
               key="create"
               color="primary"

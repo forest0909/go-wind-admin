@@ -19,6 +19,7 @@ import type { aiservicev1_AiKnowledgeBase as AiKnowledgeBase } from '#/api/gener
 import AiKnowledgeDrawer from './ai-knowledge-drawer.vue';
 import DocsModal from './docs-modal.vue';
 import TableAddButton from '#/components/TableAddButton.vue';
+import TableExportButton from '#/components/TableExportButton.vue';
 
 const [BaseDrawer, baseDrawerApi] = useVbenDrawer({
   connectedComponent: AiKnowledgeDrawer,
@@ -80,6 +81,9 @@ const gridOptions: VxeGridProps<AiKnowledgeBase> = {
     },
   ],
 };
+
+const exportFetcher = (page: number, pageSize: number) =>
+  fetchListAiKnowledgeBases(new PaginationQuery({ paging: { page, pageSize } }));
 
 const [Grid, gridApi] = useVbenVxeGrid({ gridOptions, formOptions });
 
@@ -144,6 +148,7 @@ function buildRowActions(): TableAction[] {
     <Grid :table-title="$t('page.aiKnowledge.moduleName')">
       <template #toolbar-tools>
         <TableAddButton @click="handleAdd" />
+        <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="ai-knowledge-bases" />
       </template>
       <template #action="{ row }">
         <TableActions :row="row" :actions="buildRowActions()" />

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import { Button, Tag, App } from 'antd';
 import { DeleteOutlined, EditOutlined, FileTextOutlined, PlusOutlined } from '@ant-design/icons';
@@ -106,6 +107,7 @@ export default function AiKnowledgePage() {
             return { data: res.items || [], total: res.total || 0, success: true };
           }}
           toolBarRender={() => [
+            <TableExportButton key="export" fetcher={fetchListAiKnowledgeBases} columns={columns} filename="ai-knowledge-bases" />,
             <Button
               key="create"
               color="primary"

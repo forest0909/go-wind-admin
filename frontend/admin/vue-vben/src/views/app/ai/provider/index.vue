@@ -19,6 +19,7 @@ import type { aiservicev1_AiProvider as AiProvider } from '#/api/generated/admin
 
 import AiProviderDrawer from './ai-provider-drawer.vue';
 import TableAddButton from '#/components/TableAddButton.vue';
+import TableExportButton from '#/components/TableExportButton.vue';
 
 const formOptions = {
   collapsed: false,
@@ -95,6 +96,9 @@ const gridOptions: VxeGridProps<AiProvider> = {
     },
   ],
 };
+
+const exportFetcher = (page: number, pageSize: number) =>
+  fetchListAiProviders(new PaginationQuery({ paging: { page, pageSize } }));
 
 const [Grid, gridApi] = useVbenVxeGrid({ gridOptions, formOptions });
 
@@ -177,6 +181,7 @@ function endpointText(row: AiProvider): string {
       <template #toolbar-tools>
         <!-- Preflight svg{display:block} 会把 icon+文本竖排，定式见 vben-tailwind-preflight-svg-block-icon-wrap -->
         <TableAddButton @click="handleAdd" />
+        <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="ai-providers" />
       </template>
       <template #modelType="{ row }">
         <a-tag v-if="row.modelType" :color="modelTypeColor(row.modelType)">

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import { Button, Modal, Tag, Typography, App } from 'antd';
 import {
@@ -178,6 +179,7 @@ export default function AccessKeyPage() {
             };
           }}
           toolBarRender={() => [
+            <TableExportButton key="export" fetcher={fetchListAccessKeys} columns={columns} filename="access-keys" />,
             <Button
               key="create"
               color="primary"

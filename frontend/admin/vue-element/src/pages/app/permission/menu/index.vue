@@ -147,6 +147,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
   },
 
   table: {
+    exportFilename: "menus",
     listAction: async (query: any) => {
       const { page, pageSize, ...queryParams } = query;
       // 标题走前端过滤（见 filterMenusByTitle），服务端只收 status
@@ -183,7 +184,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       } as ToolsButton,
     ],
     toolbarRight: ["add"],
-    defaultToolbar: ["refresh", "zoom", "filter"],
+    defaultToolbar: ["exports", "refresh", "zoom", "filter"],
     pagination: false,
     tableAttrs: {
       border: true,

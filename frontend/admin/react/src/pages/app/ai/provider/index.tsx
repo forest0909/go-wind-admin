@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import ListTable from '@/components/common/ListTable';
+import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import { Button, Tag, Tooltip, App } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, CloudOutlined, LaptopOutlined } from '@ant-design/icons';
@@ -144,6 +145,7 @@ export default function AiProviderPage() {
           return { data: res.items || [], total: res.total || 0, success: true };
         }}
         toolBarRender={() => [
+          <TableExportButton key="export" fetcher={fetchListAiProviders} columns={columns} filename="ai-providers" />,
           <Tooltip key="create-tip" title={t('isDefaultTooltip')}>
             <Button
               key="create"

@@ -87,33 +87,40 @@ const { isMobile } = usePreferences();
  * 列表工具栏默认工具（下载/刷新/全屏/列设置）：vben 化按钮 + VbenTooltip 样式化提示，
  * 替代 vxe 内建钮的原生 title；下载/全屏/列设置经 commitProxy 与原内建行为一致，
  * 刷新走 api.query()（保留搜索表单值）。
+ * 沿用 vxe 内建 toolbarConfig 开关语义：对应键（export/refresh/zoom/custom）显式
+ * false 即隐藏该钮；缺省全显示，存量页面不受影响。
  */
-const defaultToolbarTools = computed(() => [
-  {
-    code: 'download',
-    icon: LucideDownload,
-    label: $t('common.download'),
-    onClick: () => gridRef.value?.commitProxy('export'),
-  },
-  {
-    code: 'refresh',
-    icon: LucideRotateCcw,
-    label: $t('common.refresh'),
-    onClick: () => props.api?.query(),
-  },
-  {
-    code: 'zoom',
-    icon: Maximize,
-    label: $t('common.fullscreen'),
-    onClick: () => gridRef.value?.commitProxy('zoom'),
-  },
-  {
-    code: 'custom',
-    icon: SlidersHorizontal,
-    label: $t('common.columnSetting'),
-    onClick: () => gridRef.value?.commitProxy('custom'),
-  },
-]);
+const defaultToolbarTools = computed(() => {
+  const flags = gridOptions.value?.toolbarConfig as
+    | Record<string, boolean | undefined>
+    | undefined;
+  return [
+    {
+      code: 'export',
+      icon: LucideDownload,
+      label: $t('common.download'),
+      onClick: () => gridRef.value?.commitProxy('export'),
+    },
+    {
+      code: 'refresh',
+      icon: LucideRotateCcw,
+      label: $t('common.refresh'),
+      onClick: () => props.api?.query(),
+    },
+    {
+      code: 'zoom',
+      icon: Maximize,
+      label: $t('common.fullscreen'),
+      onClick: () => gridRef.value?.commitProxy('zoom'),
+    },
+    {
+      code: 'custom',
+      icon: SlidersHorizontal,
+      label: $t('common.columnSetting'),
+      onClick: () => gridRef.value?.commitProxy('custom'),
+    },
+  ].filter((tool) => flags?.[tool.code] !== false);
+});
 
 const slots = useSlots();
 

@@ -74,14 +74,13 @@ const formOptions: VbenFormProps = {
 };
 
 const gridOptions: VxeGridProps<PermissionGroup> = {
+  // 分组面板工具栏只留刷新圆钮：导出有独立「导出全部」文字按钮，全屏/列设置冗余
   toolbarConfig: {
-    custom: true,
-    export: true,
-    // import: true,
+    export: false,
     refresh: true,
-    zoom: true,
+    zoom: false,
+    custom: false,
   },
-  exportConfig: {},
   pagerConfig: {
     enabled: false,
   },

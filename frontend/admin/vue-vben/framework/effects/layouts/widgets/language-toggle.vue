@@ -3,7 +3,7 @@ import type { SupportedLanguagesType } from '@vben/locales';
 
 import { SUPPORT_LANGUAGES } from '@vben/constants';
 import { Languages } from '@vben/icons';
-import { loadLocaleMessages } from '@vben/locales';
+import { $t, loadLocaleMessages } from '@vben/locales';
 import { preferences, updatePreferences } from '@vben/preferences';
 import { VbenDropdownRadioMenu, VbenIconButton } from '@vben-core/shadcn-ui';
 
@@ -29,7 +29,7 @@ async function handleUpdate(value: string) {
       :model-value="preferences.app.locale"
       @update:model-value="handleUpdate"
     >
-      <VbenIconButton>
+      <VbenIconButton :title="$t('common.language')">
         <Languages class="text-foreground size-4" />
       </VbenIconButton>
     </VbenDropdownRadioMenu>

@@ -7,6 +7,7 @@ import {
   VbenButton,
   VbenIconButton,
   VbenPopover,
+  VbenTooltip,
   VbenScrollbar,
 } from '@vben-core/shadcn-ui';
 
@@ -72,19 +73,24 @@ function handleClick(item: NotificationItem) {
   >
     <template #trigger>
       <div class="flex-center mr-2 h-full" @click.stop="toggle()">
-        <VbenIconButton class="bell-button text-foreground relative">
-          <span
-            v-if="dot"
-            class="bg-primary absolute right-0.5 top-0.5 h-2 w-2 rounded"
-          ></span>
-          <span
-            v-if="count > 0"
-            class="bg-destructive text-destructive-foreground absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 text-[10px] font-semibold leading-4"
-          >
-            {{ count > 99 ? '99+' : count }}
-          </span>
-          <Bell class="size-4" />
-        </VbenIconButton>
+        <VbenTooltip side="bottom">
+          <template #trigger>
+            <VbenIconButton class="bell-button text-foreground relative">
+              <span
+                v-if="dot"
+                class="bg-primary absolute right-0.5 top-0.5 h-2 w-2 rounded"
+              ></span>
+              <span
+                v-if="count > 0"
+                class="bg-destructive text-destructive-foreground absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 text-[10px] font-semibold leading-4"
+              >
+                {{ count > 99 ? '99+' : count }}
+              </span>
+              <Bell class="size-4" />
+            </VbenIconButton>
+          </template>
+          {{ $t('ui.widgets.notifications') }}
+        </VbenTooltip>
       </div>
     </template>
 

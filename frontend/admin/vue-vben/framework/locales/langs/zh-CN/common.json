@@ -14,5 +14,8 @@
   "edit": "编辑",
   "delete": "删除",
   "loadDataFailed": "数据加载失败",
-  "retry": "重试"
+  "retry": "重试",
+  "fullscreen": "全屏",
+  "exitFullscreen": "退出全屏",
+  "language": "语言"
 }

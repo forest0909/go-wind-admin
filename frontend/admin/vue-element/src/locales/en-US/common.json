@@ -422,6 +422,10 @@
     "fullscreen": "Fullscreen",
     "layout": "Layout",
     "language": "Language",
-    "notification": "Notifications"
+    "notification": "Notifications",
+    "sidebar": "Sidebar",
+    "refresh": "Refresh Content",
+    "preferences": "Preferences",
+    "theme": "Theme"
   }
 }

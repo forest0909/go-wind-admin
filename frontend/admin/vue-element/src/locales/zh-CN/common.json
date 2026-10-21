@@ -422,6 +422,10 @@
     "fullscreen": "全屏",
     "layout": "布局",
     "language": "语言",
-    "notification": "通知"
+    "notification": "通知",
+    "sidebar": "侧边栏",
+    "refresh": "刷新内容",
+    "preferences": "偏好设置",
+    "theme": "主题切换"
   }
 }

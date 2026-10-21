@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { Settings } from '@vben/icons';
-import { VbenIconButton } from '@vben-core/shadcn-ui';
+import { $t } from '@vben/locales';
+import { VbenIconButton, VbenTooltip } from '@vben-core/shadcn-ui';
 
 import Preferences from './preferences.vue';
 
@@ -12,8 +13,13 @@ function clearPreferencesAndLogout() {
 </script>
 <template>
   <Preferences @clear-preferences-and-logout="clearPreferencesAndLogout">
-    <VbenIconButton>
-      <Settings class="text-foreground size-4" />
-    </VbenIconButton>
+    <VbenTooltip side="bottom">
+      <VbenIconButton>
+        <Settings class="text-foreground size-4" />
+      </VbenIconButton>
+      <template #content>
+        {{ $t('preferences.title') }}
+      </template>
+    </VbenTooltip>
   </Preferences>
 </template>

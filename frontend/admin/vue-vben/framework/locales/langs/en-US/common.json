@@ -14,5 +14,8 @@
   "edit": "Edit",
   "delete": "Delete",
   "loadDataFailed": "Failed to load data",
-  "retry": "Retry"
+  "retry": "Retry",
+  "fullscreen": "Fullscreen",
+  "exitFullscreen": "Exit Fullscreen",
+  "language": "Language"
 }

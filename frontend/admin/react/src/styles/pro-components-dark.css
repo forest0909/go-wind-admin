@@ -130,6 +130,25 @@
   content: none;
 }
 
+/* ========== 冻结列滚动边界线加强 ==========
+   antd 原生只有 inset ±10px 0 8px -8px 的 --ant-color-split（亮 11% 墨），
+   可见带宽约 2px，白底/斑马纹上等于隐形（用户三轮实测均报"看不到线"）。
+   vxe scrolling--middle 的投影（rgba(0,0,0,.12) ±8px 0 10px -5px）同样偏淡但
+   叠在滚动内容上更可读；这里叠成"边界 1px 实线 + 8px 渐变"双层：实线与表头
+   短竖线同 token（--ant-color-border）同权重，滚动态一眼可辨，滚到底随
+   -show 类一起消失（antd/vxe 同语义）。!important 必须带：cssinjs 运行时
+   注入在静态 CSS 之后，同特异度按注入序翻盘。 */
+.ant-table-wrapper .ant-table-cell-fix-end-shadow-show::after {
+  box-shadow:
+    inset -1px 0 0 0 var(--ant-color-border),
+    inset -9px 0 8px -8px var(--ant-color-split) !important;
+}
+.ant-table-wrapper .ant-table-cell-fix-start-shadow-show::after {
+  box-shadow:
+    inset 1px 0 0 0 var(--ant-color-border),
+    inset 9px 0 8px -8px var(--ant-color-split) !important;
+}
+
 /* 表格单元格超长文本省略号 */
 .ant-pro-table .ant-table-cell {
   overflow: hidden;

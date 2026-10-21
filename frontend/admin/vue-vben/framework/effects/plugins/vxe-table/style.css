@@ -186,3 +186,14 @@
   -webkit-mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 4h-7M10 4H3M14 2v4M21 12h-9M8 12H3M8 10v4M21 20h-5M12 20H3M16 18v4'/%3E%3C/svg%3E") no-repeat center / contain;
   mask: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M21 4h-7M10 4H3M14 2v4M21 12h-9M8 12H3M8 10v4M21 20h-5M12 20H3M16 18v4'/%3E%3C/svg%3E") no-repeat center / contain;
 }
+
+/* ========== 工具栏内建工具钮（下载/刷新/全屏/列设置）：去圆形描边 ==========
+   裸图标对齐 ele/react 的工具栏观感；hover 用 accent 底保持可感知反馈。 */
+.vxe-toolbar .vxe-tools--operate .vxe-button.is--circle {
+  border: none;
+  background-color: transparent;
+}
+
+.vxe-toolbar .vxe-tools--operate .vxe-button.is--circle:hover {
+  background-color: hsl(var(--accent));
+}

@@ -52,6 +52,13 @@ const notifications = ref<NotificationItem[]>([]);
 // 铃铛角标未读数：服务端独立 COUNT（status=RECEIVED），不能用面板当前页条数——后者封顶在 pageSize
 const unreadCount = ref(0);
 
+// 「全部已读」请求进行中（按钮 loading + 防重入）
+const makeAllLoading = ref(false);
+
+// 兜底轮询：实时更新靠 SSE notification 事件触发重拉，这里只在 SSE 失联时补拉
+const POLL_INTERVAL = 300_000;
+let pollTimer: ReturnType<typeof setInterval> | undefined;
+
 async function reloadUnreadCount() {
   const userId = userStore.userInfo?.id;
   if (!userId) return;
@@ -131,20 +138,25 @@ function htmlToText(html: string): string {
 }
 
 /**
- * 把收件箱数据转换为UI数据
+ * 把收件箱数据转换为UI数据。
+ * 面板形态对齐 react 端：标题单行、纯文本摘要 46 字符封顶、相对时间右侧。
  * @param item
  */
 function convertInternalMessageRecipient(item: InternalMessageRecipient) {
-  const date = dateUtil(item.createdAt as string).fromNow();
+  // 缺失/非法时间显示 "-"（dayjs(undefined) 会落到当前时刻，fromNow 变"几秒前"）
+  const created = item.createdAt ? dateUtil(item.createdAt as string) : null;
+  const date = created?.isValid() ? created.fromNow() : '-';
   return {
     id: item.id ?? 0,
     messageId: item.messageId ?? 0,
-    avatar: preferences.app.defaultAvatar,
     date,
     isRead: item.status === 'READ',
     // item.content 是不可信富文本 HTML，通知面板只需纯文本摘要。
     // 用 DOMParser 去标签，避免 XSS（不执行脚本）且避免显示原始标签文本。
-    message: htmlToText(item.content || ''),
+    message: htmlToText(item.content || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 46),
     title: item.title || '',
   };
 }
@@ -157,70 +169,33 @@ async function handleLogout() {
 }
 
 /**
- * 清空通知
- */
-function handleNoticeClear() {
-  notifications.value = [];
-}
-
-/**
- * 标记为已读
- * @param item
- */
-async function handleMarkAsRead(item: NotificationItem) {
-  if (item.isRead) {
-    return;
-  }
-
-  try {
-    await markNotificationAsRead({
-      userId: userStore.userInfo?.id ?? 0,
-      recipientIds: [item.id],
-    });
-
-    notification.success({
-      message: $t('ui.notification.update_success'),
-    });
-  } catch {
-    notification.error({
-      message: $t('ui.notification.update_failed'),
-    });
-  } finally {
-    for (const n of notifications.value) {
-      if (n.id === item.id) {
-        n.isRead = true;
-      }
-    }
-    reloadUnreadCount();
-  }
-}
-
-/**
- * 全部通知标识为已读
+ * 全部通知标识为已读（对齐 react 端：空 recipientIds 标记该用户全部未读）
  */
 async function handleMakeAll() {
-  if (!notifications.value.some((item) => !item.isRead)) {
+  const userId = userStore.userInfo?.id;
+  if (!userId || unreadCount.value <= 0 || makeAllLoading.value) {
     return;
   }
 
+  makeAllLoading.value = true;
   try {
-    // 空 recipientIds 表示标记该用户全部未读（服务端按用户维度兜底）：
-    // 面板只加载了当前页，无法枚举全部未读ID。
     await markNotificationAsRead({
-      userId: userStore.userInfo?.id ?? 0,
+      userId,
       recipientIds: [],
     });
 
     notification.success({
-      message: $t('ui.notification.update_success'),
+      message: $t('ui.widgets.markAllReadSuccess'),
     });
-  } catch {
+    reloadMessages();
+    reloadUnreadCount();
+  } catch (error) {
+    console.error('markAllRead failed:', error);
     notification.error({
-      message: $t('ui.notification.update_failed'),
+      message: $t('ui.widgets.markAllReadFailed'),
     });
   } finally {
-    notifications.value.forEach((item) => (item.isRead = true));
-    reloadUnreadCount();
+    makeAllLoading.value = false;
   }
 }
 
@@ -231,36 +206,29 @@ function handleViewAllNotifications() {
   router.push('/internal-message/inbox');
 }
 
-function hasMessage(data: InternalMessageRecipient): boolean {
-  for (const item of notifications.value) {
-    if (item.messageId === data.messageId) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function handleSseNotification(
-  data: InternalMessageRecipient,
-  _event: MessageEvent,
-) {
-
-  if (!hasMessage(data)) {
-    notifications.value.unshift(convertInternalMessageRecipient(data));
-    reloadUnreadCount();
-  }
-}
-
-function initSseClient() {
-  globalSSEClient.on<InternalMessageRecipient>(
-    SSE_EVENT.Notification,
-    handleSseNotification,
+/**
+ * SSE 收到新站内信 / 兜底轮询：整体重拉预览与未读数（不做增量插入）
+ */
+function reloadInboxPreview() {
+  reloadMessages().catch((error) =>
+    console.error('reload inbox preview failed:', error),
+  );
+  reloadUnreadCount().catch((error) =>
+    console.error('reload unread count failed:', error),
   );
 }
 
+function handleSseNotification() {
+  reloadInboxPreview();
+}
+
+function initSseClient() {
+  globalSSEClient.on(SSE_EVENT.Notification, handleSseNotification);
+}
+
 initSseClient();
-reloadMessages();
-reloadUnreadCount();
+reloadInboxPreview();
+pollTimer = setInterval(reloadInboxPreview, POLL_INTERVAL);
 
 // 必须在卸载时注销 SSE 监听器，否则 globalSSEClient.handlers 会持续累加：
 // basicLayout 在登录态切换（登出再登入、登录过期 modal 流程）时会被反复挂载，
@@ -268,6 +236,7 @@ reloadUnreadCount();
 // 且旧组件闭包引用旧 ref 造成内存泄漏。
 onUnmounted(() => {
   globalSSEClient.off(SSE_EVENT.Notification, handleSseNotification);
+  if (pollTimer) clearInterval(pollTimer);
 });
 
 watch(
@@ -301,10 +270,9 @@ watch(
     <template #notification>
       <Notification
         :count="unreadCount"
+        :make-all-loading="makeAllLoading"
         :notifications="notifications"
-        @clear="handleNoticeClear"
         @make-all="handleMakeAll"
-        @read="handleMarkAsRead"
         @view-all="handleViewAllNotifications"
       />
     </template>

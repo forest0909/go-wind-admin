@@ -244,6 +244,68 @@ func TestPermissionService_SyncPermissions_MenuAndApiDerived(t *testing.T) {
 	require.Equal(t, 1, apiLinks, "接口派生权限应建一条权限-接口关联")
 }
 
+// TestPermissionService_SyncPermissions_DuplicateCodeDeduped 验证不同层级的菜单
+// 推导出同一权限码时（如菜单同步 MERGE 后新旧路径形态并存），同步不撞 code
+// 唯一约束整批失败，且同码只落一条、保留条目关联到来源菜单。
+func TestPermissionService_SyncPermissions_DuplicateCodeDeduped(t *testing.T) {
+	svc, client := newPermissionServiceForTest(t)
+	ctx := enttest.NewSystemContext(context.Background())
+	opCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{UserId: 7})
+
+	// 扁平旧菜单（id 小）：/profile 独段成码 profile
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:   trans.Ptr("旧-个人中心"),
+			Path:   trans.Ptr("/profile"),
+			Type:   permissionV1.Menu_MENU.Enum(),
+			Status: permissionV1.Menu_ON.Enum(),
+		},
+	}))
+	// 嵌套新菜单（id 大）：/opm 下 profile 子段，同码 profile
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:   trans.Ptr("组织目录"),
+			Path:   trans.Ptr("/opm"),
+			Type:   permissionV1.Menu_CATALOG.Enum(),
+			Status: permissionV1.Menu_ON.Enum(),
+		},
+	}))
+	rows, err := client.Menu.Query().All(ctx)
+	require.NoError(t, err)
+	var catalogID uint32
+	for _, r := range rows {
+		if r.Path != nil && *r.Path == "/opm" {
+			catalogID = r.ID
+		}
+	}
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:     trans.Ptr("新-个人中心"),
+			Path:     trans.Ptr("profile"),
+			ParentId: &catalogID,
+			Type:     permissionV1.Menu_MENU.Enum(),
+			Status:   permissionV1.Menu_ON.Enum(),
+		},
+	}))
+
+	_, err = svc.SyncPermissions(opCtx, &emptypb.Empty{})
+	require.NoError(t, err, "重复权限码应被去重而不是整批插入失败")
+
+	perms, err := client.Permission.Query().All(ctx)
+	require.NoError(t, err)
+	var matched []*ent.Permission
+	for _, p := range perms {
+		if p.Code != nil && *p.Code == "profile:view" {
+			matched = append(matched, p)
+		}
+	}
+	require.Len(t, matched, 1, "同码权限应只落一条")
+	require.NotNil(t, matched[0].Name)
+	menuLinks, err := client.PermissionMenu.Query().Count(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, menuLinks, 1, "保留的权限应关联到其来源菜单")
+}
+
 // TestPermissionService_ListAndGetTenantScoping 验证 List/Get 的租户范围限定
 // 与平台侧全量可见 + 组名富集。
 func TestPermissionService_ListAndGetTenantScoping(t *testing.T) {

@@ -418,9 +418,13 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 		return nil, err
 	}
 
-	// 清理菜单相关权限
-	_ = s.permissionRepo.TruncateBizPermissions(ctx)
-	_ = s.permissionGroupRepo.TruncateBizGroup(ctx)
+	// 清理菜单相关权限；清不干净就继续插入必然撞唯一约束整批失败，必须快速失败
+	if err := s.permissionRepo.TruncateBizPermissions(ctx); err != nil {
+		return nil, err
+	}
+	if err := s.permissionGroupRepo.TruncateBizGroup(ctx); err != nil {
+		return nil, err
+	}
 
 	// 查询所有启用的菜单
 	menus, err := s.menuRepo.List(ctx, &paginationV1.PagingRequest{
@@ -443,6 +447,9 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 	var permissionGroups []*permissionV1.PermissionGroup
 	var permissions []*permissionV1.Permission
 	var mapPermissions = make(map[string][]*permissionV1.Permission)
+	// 不同层级的菜单可能推导出同一个权限码（如菜单同步 MERGE 后新旧路径形态
+	// 并存），code 唯一约束会让整批插入失败；同码只保留首个，后续跳过
+	var seenPermissionCodes = make(map[string]struct{})
 
 	permissionGroups = append(permissionGroups, &permissionV1.PermissionGroup{
 		Name:      trans.Ptr("未分类"),
@@ -460,6 +467,10 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 		if permissionCode == "" {
 			continue
 		}
+		if _, exists := seenPermissionCodes[permissionCode]; exists {
+			continue
+		}
+		seenPermissionCodes[permissionCode] = struct{}{}
 
 		module := menuPathToModuleName(menu.GetPath())
 

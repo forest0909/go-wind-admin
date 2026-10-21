@@ -69,7 +69,7 @@
     "operationFailed": "操作失败",
     "getDetailFailed": "获取详情失败",
     "confirmDelete": "确定要删除该{moduleName}吗？",
-    "confirmSyncPermissions": "确定要同步{moduleName}权限吗？",
+    "confirmSyncPermissions": "确定要同步{moduleName}吗？",
     "developing": "开发中 ...",
     "loadDataFailed": "数据加载失败"
   },

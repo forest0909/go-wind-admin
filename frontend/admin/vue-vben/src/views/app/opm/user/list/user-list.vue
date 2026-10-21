@@ -4,12 +4,13 @@ import type { VxeGridListeners, VxeGridProps } from '#/adapter/vxe-table';
 import { computed, h, watch } from 'vue';
 
 import { useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucideInfo, LucidePlus, LucideShieldOff, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucideInfo, LucideShieldOff, LucideTrash2 } from '@vben/icons';
 import { isEqual } from '@vben/utils';
 
 import { notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import TableAddButton from '#/components/TableAddButton.vue';
 import TableExportButton from '#/components/TableExportButton.vue';
 import { useAccessStore, useUserStore } from '@vben/stores';
 import { type identityservicev1_User as User } from '#/api';
@@ -356,17 +357,7 @@ watch(
 <template>
   <Grid :table-title="$t('menu.opm.user')">
     <template #toolbar-tools>
-      <a-button
-        type="primary"
-        ghost
-        class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-        @click="handleCreate"
-      >
-        <template #icon>
-          <LucidePlus />
-        </template>
-        {{ $t('ui.button.add') }}
-      </a-button>
+      <TableAddButton @click="handleCreate" />
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
     </template>
     <template #status="{ row }">

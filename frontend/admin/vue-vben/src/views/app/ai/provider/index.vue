@@ -5,7 +5,7 @@ import { h } from 'vue';
 
 import { Page } from '@vben/common-ui';
 import { $t } from '@vben/locales';
-import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 
 import { message } from 'ant-design-vue';
 
@@ -16,6 +16,7 @@ import { PaginationQuery, deleteAiProvider, fetchListAiProviders } from '#/api';
 import type { aiservicev1_AiProvider as AiProvider } from '#/api/generated/admin/service/v1';
 
 import AiProviderDrawer from './ai-provider-drawer.vue';
+import TableAddButton from '#/components/TableAddButton.vue';
 
 const formOptions = {
   collapsed: false,
@@ -149,17 +150,7 @@ function endpointText(row: AiProvider): string {
     <Grid :table-title="$t('page.aiProvider.moduleName')">
       <template #toolbar-tools>
         <!-- Preflight svg{display:block} 会把 icon+文本竖排，定式见 vben-tailwind-preflight-svg-block-icon-wrap -->
-        <a-button
-          type="primary"
-          ghost
-          class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-          @click="handleAdd"
-        >
-          <template #icon>
-            <LucidePlus />
-          </template>
-          {{ $t('ui.button.add') }}
-        </a-button>
+        <TableAddButton @click="handleAdd" />
       </template>
       <template #modelType="{ row }">
         <a-tag v-if="row.modelType" :color="modelTypeColor(row.modelType)">

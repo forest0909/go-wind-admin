@@ -12,7 +12,6 @@ import { $t } from '@vben/locales';
 import { message, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { LucidePlus } from '@vben/icons';
 import {
   fetchListMonitorAlertRules,
   PaginationQuery,
@@ -21,6 +20,7 @@ import {
   useEvaluateMonitorAlerts,
   useUpdateMonitorAlertRule,
 } from '#/api';
+import TableAddButton from '#/components/TableAddButton.vue';
 
 /**
  * 监控告警规则：指标阈值 → 触发通知（联动通知域）。
@@ -331,17 +331,7 @@ async function handleEvaluate() {
         <a-button class="mr-2" @click="openEvaluate">
           {{ $t('page.monitorAlert.evaluateNow') }}
         </a-button>
-        <a-button
-          type="primary"
-          ghost
-          class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-          @click="openCreate"
-        >
-          <template #icon>
-            <LucidePlus />
-          </template>
-          {{ $t('ui.button.add') }}
-        </a-button>
+        <TableAddButton @click="openCreate" />
       </template>
       <template #metric="{ row }">
         <a-tag v-if="row.metric" color="geekblue">

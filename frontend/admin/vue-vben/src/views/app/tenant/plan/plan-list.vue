@@ -4,11 +4,12 @@ import type { VxeGridListeners, VxeGridProps } from '#/adapter/vxe-table';
 import { h } from 'vue';
 
 import { useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import TableAddButton from '#/components/TableAddButton.vue';
 import TableExportButton from '#/components/TableExportButton.vue';
 import {
   type identityservicev1_Plan as Plan,
@@ -186,17 +187,7 @@ async function handleDelete(row: any) {
 <template>
   <Grid :table-title="$t('page.plan.planList')">
     <template #toolbar-tools>
-      <a-button
-        type="primary"
-        ghost
-        class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-        @click="handleCreate"
-      >
-        <template #icon>
-          <LucidePlus />
-        </template>
-        {{ $t('ui.button.add') }}
-      </a-button>
+      <TableAddButton @click="handleCreate" />
           <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="export" />
     </template>
     <template #version="{ row }">

@@ -5,7 +5,7 @@ import { h, ref } from 'vue';
 
 import { Page, useVbenDrawer } from '@vben/common-ui';
 import { $t } from '@vben/locales';
-import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 import { Icon as Iconify } from '@iconify/vue';
 
 import { message } from 'ant-design-vue';
@@ -16,6 +16,7 @@ import type { aiservicev1_AiKnowledgeBase as AiKnowledgeBase } from '#/api/gener
 
 import AiKnowledgeDrawer from './ai-knowledge-drawer.vue';
 import DocsModal from './docs-modal.vue';
+import TableAddButton from '#/components/TableAddButton.vue';
 
 const [BaseDrawer, baseDrawerApi] = useVbenDrawer({
   connectedComponent: AiKnowledgeDrawer,
@@ -110,17 +111,7 @@ function handleDocs(row: AiKnowledgeBase) {
   <Page auto-content-height>
     <Grid :table-title="$t('page.aiKnowledge.moduleName')">
       <template #toolbar-tools>
-        <a-button
-          type="primary"
-          ghost
-          class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-          @click="handleAdd"
-        >
-          <template #icon>
-            <LucidePlus />
-          </template>
-          {{ $t('ui.button.add') }}
-        </a-button>
+        <TableAddButton @click="handleAdd" />
       </template>
       <template #action="{ row }">
         <a-button type="link" size="small" @click.stop="handleDocs(row)">

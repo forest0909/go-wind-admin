@@ -12,7 +12,6 @@ import { $t } from '@vben/locales';
 import { message, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { LucidePlus } from '@vben/icons';
 import {
   fetchListNotificationTemplates,
   NOTIFICATION_TEMPLATE_UPDATE_MASK,
@@ -22,6 +21,7 @@ import {
   useRenderNotificationTemplate,
   useUpdateNotificationTemplate,
 } from '#/api';
+import TableAddButton from '#/components/TableAddButton.vue';
 
 /**
  * 通知模板管理（可复用的标题/正文占位模板，{{var}} 占位符）。
@@ -282,17 +282,7 @@ async function handleRender() {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.notification.templates')">
       <template #toolbar-tools>
-        <a-button
-          type="primary"
-          ghost
-          class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-          @click="openCreate"
-        >
-          <template #icon>
-            <LucidePlus />
-          </template>
-          {{ $t('ui.button.add') }}
-        </a-button>
+        <TableAddButton @click="openCreate" />
       </template>
       <template #code="{ row }">
         <a-tag v-if="row.code" color="geekblue">{{ row.code }}</a-tag>

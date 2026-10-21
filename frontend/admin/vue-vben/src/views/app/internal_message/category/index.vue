@@ -4,7 +4,7 @@ import type { VxeGridProps } from '#/adapter/vxe-table';
 import { h } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from '@vben/common-ui';
-import { LucideFilePenLine, LucidePlus, LucideTrash2 } from '@vben/icons';
+import { LucideFilePenLine, LucideTrash2 } from '@vben/icons';
 
 import { notification } from 'ant-design-vue';
 
@@ -18,6 +18,7 @@ import {
   useDeleteMessageCategory,
 } from '#/api';
 import { $t } from '#/locales';
+import TableAddButton from '#/components/TableAddButton.vue';
 import TableExportButton from '#/components/TableExportButton.vue';
 
 import InternalMessageCategoryDrawer from './internal-message-category-drawer.vue';
@@ -180,17 +181,7 @@ async function handleDelete(row: any) {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.internalMessage.internalMessageCategory')">
       <template #toolbar-tools>
-        <a-button
-          type="primary"
-          ghost
-          class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-          @click="handleCreate"
-        >
-          <template #icon>
-            <LucidePlus />
-          </template>
-          {{ $t('ui.button.add') }}
-        </a-button>
+        <TableAddButton @click="handleCreate" />
         <TableExportButton :fetcher="exportFetcher" :columns="gridOptions.columns" filename="im-categories" />
       </template>
       <template #isEnabled="{ row }">

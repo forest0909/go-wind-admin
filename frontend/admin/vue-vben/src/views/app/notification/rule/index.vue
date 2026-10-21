@@ -14,7 +14,6 @@ import { $t } from '@vben/locales';
 import { message, notification } from 'ant-design-vue';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { LucidePlus } from '@vben/icons';
 import {
   fetchListNotificationRules,
   NOTIFICATION_RULE_UPDATE_MASK,
@@ -33,6 +32,7 @@ import {
   useTestDispatchNotification,
   useUpdateNotificationRule,
 } from '#/api';
+import TableAddButton from '#/components/TableAddButton.vue';
 
 /**
  * 通知路由规则管理（业务事件 → 投递渠道 + 派发方式）
@@ -324,17 +324,7 @@ async function handleTestDispatch() {
   <Page auto-content-height>
     <Grid :table-title="$t('page.notificationRule.moduleName')">
       <template #toolbar-tools>
-        <a-button
-          type="primary"
-          ghost
-          class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
-          @click="openCreate"
-        >
-          <template #icon>
-            <LucidePlus />
-          </template>
-          {{ $t('ui.button.add') }}
-        </a-button>
+        <TableAddButton @click="openCreate" />
       </template>
       <template #eventType="{ row }">
         {{ notificationRuleEventTypeToName(row.eventType) || '-' }}

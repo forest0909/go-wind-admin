@@ -312,15 +312,21 @@ input:-webkit-autofill:active {
 }
 
 /* 列表表格四角直角（用户裁决 2026-10-21：以 ele 实际渲染为基准）。
-   antd v6 给 .ant-table（上两角）/ .ant-table-container（下两角）发
-   borderRadiusLG 圆角，bordered 表格的外框线随圆角走弧线；ele 的 vxe
-   外框线是方角（其 :deep(.vxe-table) 的 6px 圆角不被内层裁切落地，
-   实际渲染就是直角），三端以它为准。
+   antd v6 不止给 .ant-table（上两角）/ .ant-table-container（下两角）发
+   borderRadiusLG 圆角，还向内层发了一轮：sticky 表头包装 .ant-table-header、
+   表头/表体两张内层 <table>、首末 th 单元格（含 .ant-table-cell-scrollbar
+   滚动条占位格）各带 12px——只清外两层时表头左上仍见明显圆弧（用户截图
+   实证）。此处连同内层一并取直，bordered 表格的外框线随之走直线直角。
+   ele 的 vxe 外框线是方角（其 :deep(.vxe-table) 的 6px 圆角不被内层裁切
+   落地，实际渲染就是直角），三端以它为准。
    !important 必须留：antd cssinjs 运行时注入在打包 CSS 之后，同特异性
    平局时后注入者赢。外层宿主卡（.ant-pro-card）保持圆角不动——ele 的
    列表卡同样圆角，方角的只是表格面。 */
 .ant-table.ant-table,
-.ant-table .ant-table-container {
+.ant-table .ant-table-container,
+.ant-table .ant-table-header,
+.ant-table table,
+.ant-table .ant-table-header th.ant-table-cell {
     border-radius: 0 !important;
 }
 

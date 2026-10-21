@@ -491,8 +491,11 @@ onUnmounted(() => {
               </template>
             </Form>
           </slot>
+          <!-- overflow-hidden 不能留：.gowind-grid-form-gap 的 ::before/::after
+               圆角补块画在色带框外（上/下缘外侧各 6px），留着会被整体裁掉；
+               空色带本身也没有可裁内容。补块画法见 style.css 同名类。 -->
           <div
-            class="bg-background-deep z-100 absolute -left-2 bottom-1 h-2 w-[calc(100%+1rem)] overflow-hidden md:bottom-2 md:h-3"
+            class="gowind-grid-form-gap bg-background-deep z-100 absolute -left-2 bottom-1 h-2 w-[calc(100%+1rem)] md:bottom-2 md:h-3"
           ></div>
         </div>
       </template>

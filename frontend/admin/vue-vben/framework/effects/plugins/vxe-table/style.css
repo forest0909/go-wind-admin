@@ -144,6 +144,63 @@
   border-left: 1px solid var(--vxe-ui-table-border-color);
 }
 
+/* ========== 搜索栏 ↔ 表区 交界四角的内凹圆角 ==========
+   搜索表单与表区同住一张 bg-card(rounded-md, 6px) 卡片，两块之间靠 form 槽
+   底部的页底色色带（模板里的 .gowind-grid-form-gap，bg-background-deep）模拟
+   react/ele「两张独立圆角卡之间的缝隙」。色带是全宽矩形，上下缘与卡片左右
+   边各交出一个 90° 直角——搜索块的两个底角、表块的两个顶角，是整页仅剩的
+   四枚直角。在色带上/下缘外侧用径向渐变补四枚 6px 内凹四分之一圆，交界
+   两端的角读起来与其余各角同为圆角。
+   6px 取值与网格卡 rounded-md、表区裁切容器圆角同档；颜色必须与色带同源
+   hsl(var(--background-deep))，亮暗自适配，透明段透出的是卡片底色。
+   补块只是补漆，pointer-events none 不挡交互。 */
+.gowind-grid-form-gap::before,
+.gowind-grid-form-gap::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  pointer-events: none;
+}
+
+/* 上缘外侧两枚：补搜索块的两个底角。渐变圆心在各 6px 补块的内侧角上
+   （左块的右上、右块的左上），弧外涂色带色、弧内透出卡片底色。 */
+.gowind-grid-form-gap::before {
+  bottom: 100%;
+  background:
+    radial-gradient(
+      circle 6px at 100% 0,
+      transparent 5.5px,
+      hsl(var(--background-deep)) 6px
+    )
+    0 100% / 6px 6px no-repeat,
+    radial-gradient(
+      circle 6px at 0 0,
+      transparent 5.5px,
+      hsl(var(--background-deep)) 6px
+    )
+    100% 100% / 6px 6px no-repeat;
+}
+
+/* 下缘外侧两枚：补表块的两个顶角。圆心镜像（左块的右下、右块的左下）。 */
+.gowind-grid-form-gap::after {
+  top: 100%;
+  background:
+    radial-gradient(
+      circle 6px at 100% 100%,
+      transparent 5.5px,
+      hsl(var(--background-deep)) 6px
+    )
+    0 0 / 6px 6px no-repeat,
+    radial-gradient(
+      circle 6px at 0 100%,
+      transparent 5.5px,
+      hsl(var(--background-deep)) 6px
+    )
+    100% 0 / 6px 6px no-repeat;
+}
+
 /* 表格 → 分页器 16px（design-language.md §2.6，与 react/ele 同一档）。
    vxe 的 grid 不给 `.vxe-grid--pager-wrapper` 写任何间距（vxe-table/es/grid/src/grid.js:731
    只出这个 class，grid.scss 里没有对应规则），`.vxe-pager` 自身也只有高度相关声明，

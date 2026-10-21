@@ -25,11 +25,13 @@ declare global {
   const LinkModal: typeof import('../src/components/common/Editor/src/TiptapEditor/index').LinkModal
   const ListTable: typeof import('../src/components/common/ListTable/index').default
   const Loading: typeof import('../src/components/common/Loading/index').default
+  const MIN_COLUMN_WIDTH: typeof import('../src/components/common/ListTable/ResizableHeaderCell').MIN_COLUMN_WIDTH
   const MarkdownEditor: typeof import('../src/components/common/Editor/src/MarkdownEditor').default
   const NavLink: typeof import('react-router-dom').NavLink
   const Navigate: typeof import('react-router-dom').Navigate
   const Outlet: typeof import('react-router-dom').Outlet
   const PlainTextEditor: typeof import('../src/components/common/Editor/src/PlainTextEditor').default
+  const ResizableHeaderCell: typeof import('../src/components/common/ListTable/ResizableHeaderCell').default
   const Route: typeof import('react-router-dom').Route
   const Routes: typeof import('react-router-dom').Routes
   const SloganIcon: typeof import('../src/components/bussiness/AuthLayout/icons/SloganIcon').default
@@ -121,6 +123,6 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
-  export type { TableActionConfirm, TableAction, FC, ECOption, AuthLayoutProps, EditorProps, CodeEditorProps, JsonEditorProps, MarkdownEditorProps, PlainTextEditorProps, TiptapEditorProps, CodeBlockModalProps, VideoModalProps, IframeModalProps, ImportModalProps, TableSkeletonProps, ThemeLoadingProps, TableExportServerExport, TableExportButtonProps, TokenPayload, AuthState, UserState, TabItem } from './autoImports.d'
+  export type { ResizableCellProps, TableActionConfirm, TableAction, FC, ECOption, AuthLayoutProps, EditorProps, CodeEditorProps, JsonEditorProps, MarkdownEditorProps, PlainTextEditorProps, TiptapEditorProps, CodeBlockModalProps, VideoModalProps, IframeModalProps, ImportModalProps, TableSkeletonProps, ThemeLoadingProps, TableExportServerExport, TableExportButtonProps, TokenPayload, AuthState, UserState, TabItem } from './autoImports.d'
   import('./autoImports.d')
 }

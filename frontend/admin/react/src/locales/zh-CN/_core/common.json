@@ -107,6 +107,9 @@
     "initializing": "初始化中",
     "loadingRouter": "正在加载路由配置..."
   },
+  "table": {
+    "columnResizeHint": "拖动调整列宽，双击恢复自适应"
+  },
   "unknownPage": "未知页面",
   "pageContainer": {
     "defaultTitle": "页面",

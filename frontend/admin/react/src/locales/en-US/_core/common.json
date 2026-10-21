@@ -107,6 +107,9 @@
     "initializing": "Initializing",
     "loadingRouter": "Loading route configuration..."
   },
+  "table": {
+    "columnResizeHint": "Drag to resize column, double-click to auto-fit"
+  },
   "unknownPage": "Unknown Page",
   "pageContainer": {
     "defaultTitle": "Page",

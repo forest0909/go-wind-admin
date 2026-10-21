@@ -21,11 +21,16 @@ interface Props {
    * 消息列表
    */
   notifications?: NotificationItem[];
+  /**
+   * 未读数（红底数字角标；>0 时显示，封顶 99+）
+   */
+  count?: number;
 }
 
 defineOptions({ name: 'NotificationPopup' });
 
 withDefaults(defineProps<Props>(), {
+  count: 0,
   dot: false,
   notifications: () => [],
 });
@@ -72,6 +77,12 @@ function handleClick(item: NotificationItem) {
             v-if="dot"
             class="bg-primary absolute right-0.5 top-0.5 h-2 w-2 rounded"
           ></span>
+          <span
+            v-if="count > 0"
+            class="bg-destructive text-destructive-foreground absolute -right-1 -top-1 h-4 min-w-4 rounded-full px-1 text-[10px] font-semibold leading-4"
+          >
+            {{ count > 99 ? '99+' : count }}
+          </span>
           <Bell class="size-4" />
         </VbenIconButton>
       </div>

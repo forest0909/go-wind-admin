@@ -49,9 +49,23 @@ const { mutateAsync: markNotificationAsRead } = useMarkNotificationAsRead();
 
 const notifications = ref<NotificationItem[]>([]);
 
-const showDot = computed(() =>
-  notifications.value.some((item) => !item.isRead),
-);
+// 铃铛角标未读数：服务端独立 COUNT（status=RECEIVED），不能用面板当前页条数——后者封顶在 pageSize
+const unreadCount = ref(0);
+
+async function reloadUnreadCount() {
+  const userId = userStore.userInfo?.id;
+  if (!userId) return;
+  const resp = await fetchListUserInbox(
+    new PaginationQuery({
+      paging: { page: 1, pageSize: 1 },
+      formValues: {
+        recipient_user_id: userId.toString(),
+        status: 'RECEIVED',
+      },
+    }),
+  );
+  unreadCount.value = resp.total ?? 0;
+}
 
 const { destroyWatermark, updateWatermark } = useWatermark();
 
@@ -175,6 +189,7 @@ async function handleMarkAsRead(item: NotificationItem) {
         n.isRead = true;
       }
     }
+    reloadUnreadCount();
   }
 }
 
@@ -203,6 +218,7 @@ async function handleMakeAll() {
     });
   } finally {
     notifications.value.forEach((item) => (item.isRead = true));
+    reloadUnreadCount();
   }
 }
 
@@ -229,6 +245,7 @@ function handleSseNotification(
 
   if (!hasMessage(data)) {
     notifications.value.unshift(convertInternalMessageRecipient(data));
+    reloadUnreadCount();
   }
 }
 
@@ -241,6 +258,7 @@ function initSseClient() {
 
 initSseClient();
 reloadMessages();
+reloadUnreadCount();
 
 // 必须在卸载时注销 SSE 监听器，否则 globalSSEClient.handlers 会持续累加：
 // basicLayout 在登录态切换（登出再登入、登录过期 modal 流程）时会被反复挂载，
@@ -280,7 +298,7 @@ watch(
     </template>
     <template #notification>
       <Notification
-        :dot="showDot"
+        :count="unreadCount"
         :notifications="notifications"
         @clear="handleNoticeClear"
         @make-all="handleMakeAll"

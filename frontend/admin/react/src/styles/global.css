@@ -330,6 +330,18 @@ input:-webkit-autofill:active {
     border-radius: 0 !important;
 }
 
+/* 空状态占位行的右缘杂线（用户截图实证：悬空在「暂无数据」右侧的细竖线）。
+   scroll.x + 固定列的表格里，antd 给占位内容的粘性包装
+   （.ant-table-expanded-row-fixed）画 ::after（1px × 内容高的竖线，颜色走
+   colorSplit），本意是横向滚动时给固定列分界补线——但占位行不是数据行，
+   空表里这条线悬空在空图标右侧，读作脏东西。占位行内直接摘掉；
+   ::before 同形一并处理。真正的展开行（.ant-table-expanded-row）内容
+   不在 .ant-table-placeholder 子树里，不受影响。 */
+.ant-table-placeholder .ant-table-expanded-row-fixed::before,
+.ant-table-placeholder .ant-table-expanded-row-fixed::after {
+    display: none;
+}
+
 /* 全局搜索面板头部输入（vben 同款无边框形态）：暗色下表单描边惯例
    （[data-theme=dark] .ant-input-affix-wrapper(:focus-within) + !important，
    (0,3,0)）会盖过 variant="borderless"，这里以 (0,4,0) + !important 压平 */

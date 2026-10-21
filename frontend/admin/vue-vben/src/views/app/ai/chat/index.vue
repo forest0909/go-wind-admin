@@ -289,7 +289,7 @@ function handleNewConversation() {
         <div class="px-3 pt-2">
           <a-button
             block
-            class="whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+            class="whitespace-nowrap inline-flex items-center justify-center gap-2"
             @click="handleNewConversation"
           >
             <template #icon>

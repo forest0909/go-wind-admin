@@ -179,7 +179,7 @@ async function handleForceLogout(row: OnlineSession) {
             danger
             type="link"
             size="small"
-            class="whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+            class="whitespace-nowrap inline-flex items-center justify-center gap-2"
             :icon="h(LucideLogOut)"
           >
             {{ $t('page.onlineSession.forceLogout') }}

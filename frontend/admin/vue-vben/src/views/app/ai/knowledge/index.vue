@@ -113,7 +113,7 @@ function handleDocs(row: AiKnowledgeBase) {
         <a-button
           type="primary"
           ghost
-          class="mr-2 whitespace-nowrap [&>svg]:inline-block [&>svg]:align-middle"
+          class="mr-2 whitespace-nowrap inline-flex items-center justify-center gap-2"
           @click="handleAdd"
         >
           <template #icon>

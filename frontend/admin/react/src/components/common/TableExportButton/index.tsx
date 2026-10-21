@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { App, Button, Dropdown } from 'antd';
-import { DownloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { PaginationQuery } from '@/core';
 import { exportAuditLogs, type AuditExportFormat } from '@/utils/csv';
@@ -113,7 +112,7 @@ export default function TableExportButton({
         },
       }}
     >
-      <Button icon={<DownloadOutlined />} loading={exporting}>
+      <Button loading={exporting}>
         {t('export.title')}
       </Button>
     </Dropdown>

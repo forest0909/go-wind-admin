@@ -15,8 +15,6 @@ import {
   SunOutlined,
   MoonOutlined,
   GlobalOutlined,
-  FullscreenOutlined,
-  FullscreenExitOutlined,
   BellOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -41,6 +39,49 @@ import { useLockStore } from '@/stores';
 import { LockScreenModal } from './LockScreenModal';
 
 dayjs.extend(relativeTime);
+
+/**
+ * 全屏按钮的四角括号图标（vben 同款 lucide Maximize/Minimize 内联复刻）。
+ * antd 图标集里没有这个括号造型（FullscreenOutlined 是四角向外箭头）；
+ * stroke 系图形必须显式 fill="none"，否则继承 antd 的 fill: currentColor 会糊成色块。
+ */
+const MaximizeBracketsIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width="1em"
+    height="1em"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+  </svg>
+);
+
+const MinimizeBracketsIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    width="1em"
+    height="1em"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+    <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+  </svg>
+);
 
 /** 键位提示条的小 kbd 徽标（与触发条上的 Ctrl K 同族样式） */
 const searchHintKbdStyle: React.CSSProperties = {
@@ -404,8 +445,9 @@ export const HeaderContent = ({
     refetchInterval: 300_000,
     refetchIntervalInBackground: false,
   });
-  // 未读数用列表响应的服务端 total（独立 COUNT），不能用当前页条数——后者封顶在 pageSize
-  const unreadCount = inboxUnread?.total ?? 0;
+  // 未读数用列表响应的服务端 total（独立 COUNT），不能用当前页条数——后者封顶在 pageSize。
+  // proto int64 经 protojson 运行时是字符串（TS 类型却标 number），须显式转数字。
+  const unreadCount = Number(inboxUnread?.total ?? 0);
 
   // 弹层列表：最近 5 条（已读+未读混合），未读带圆点加粗
   const { data: inboxRecent, isLoading: recentLoading } = useQuery({
@@ -1122,7 +1164,7 @@ export const HeaderContent = ({
           <Tooltip title={isFullscreen ? t('header.exitFullscreen') : t('header.fullscreen')}>
             <Button
               type="text"
-              icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+              icon={isFullscreen ? <MinimizeBracketsIcon /> : <MaximizeBracketsIcon />}
               onClick={onToggleFullscreen}
               size="small"
               style={btnStyle}

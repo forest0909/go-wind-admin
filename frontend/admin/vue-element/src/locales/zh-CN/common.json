@@ -153,6 +153,10 @@
     "update": "更新{moduleName}",
     "view": "查看{moduleName}"
   },
+  "drawer": {
+    "unsavedMessage": "表单内容已修改，是否放弃本次编辑？",
+    "discardButton": "确定放弃"
+  },
   "confirm": {
     "do_you_want_delete": "确定要删除该{moduleName}吗？",
     "do_you_want_sync": "确定要同步{moduleName}权限吗？"

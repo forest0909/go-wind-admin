@@ -2,7 +2,8 @@
   <ProModal
     v-model:visible="visible"
     :title="title"
-    :config="{ component: 'drawer', drawer: { size: '800px', closeOnClickModal: false } }"
+    :config="{ component: 'drawer', drawer: { size: '800px' } }"
+    :close-guard="guard.allowClose"
   >
     <ElForm ref="formRef" :model="formData" :rules="formRules" label-width="120px">
       <ElRow :gutter="20">
@@ -103,7 +104,7 @@
 
     <template #footer>
       <div class="drawer-footer">
-        <ElButton @click="handleClose">{{ $t("common.button.cancel") }}</ElButton>
+        <ElButton @click="guard.requestClose(handleClose)">{{ $t("common.button.cancel") }}</ElButton>
         <ElButton type="primary" :loading="loading" @click="handleSubmit">
           {{ $t("common.button.confirm") }}
         </ElButton>
@@ -129,6 +130,7 @@ import {
 import { PaginationQuery } from "@/core/transport/rest";
 import { $t } from "@/core/i18n";
 import ProModal from "@/components/Pro/ProModal/index.vue";
+import { useDrawerCloseGuard } from "@/components/Pro/composables/use-drawer-close-guard";
 
 const emit = defineEmits(["success"]);
 
@@ -239,6 +241,9 @@ function resetForm() {
 }
 
 // 打开抽屉
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+const guard = useDrawerCloseGuard(() => ({ ...formData }));
+
 async function open(row?: any) {
   visible.value = true;
   await loadCategoryTree();
@@ -257,6 +262,9 @@ async function open(row?: any) {
     currentId.value = undefined;
     resetForm();
   }
+
+  // 填充完成后记录基线快照（回填不算脏）
+  guard.syncBaseline();
 }
 
 // 关闭抽屉

@@ -2,7 +2,8 @@
   <ProModal
     v-model:visible="visible"
     :title="title"
-    :config="{ component: 'drawer', drawer: { size: DRAWER_WIDTH, closeOnClickModal: false } }"
+    :config="{ component: 'drawer', drawer: { size: DRAWER_WIDTH } }"
+    :close-guard="guard.allowClose"
   >
     <ElForm
       ref="formRef"
@@ -121,7 +122,7 @@
       </ElFormItem>
     </ElForm>
     <template #footer>
-      <ElButton @click="handleClose">{{ $t("common.button.cancel") }}</ElButton>
+      <ElButton @click="guard.requestClose(handleClose)">{{ $t("common.button.cancel") }}</ElButton>
       <ElButton type="primary" :loading="submitLoading" @click="handleSubmit">
         {{ $t("common.button.confirm") }}
       </ElButton>
@@ -147,6 +148,7 @@ import {
 import { QuestionFilled } from "@element-plus/icons-vue";
 
 import ProModal from "@/components/Pro/ProModal/index.vue";
+import { useDrawerCloseGuard } from "@/components/Pro/composables/use-drawer-close-guard";
 import type {
   monitor_alertservicev1_MonitorAlertRule,
   monitor_alertservicev1_MonitorMetric,
@@ -234,6 +236,8 @@ function resetForm() {
   formRef.value?.clearValidate();
 }
 
+// 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
+const guard = useDrawerCloseGuard(() => ({ ...formData }));
 function open(options: { create: boolean; row?: monitor_alertservicev1_MonitorAlertRule }) {
   visible.value = true;
   isCreate.value = options.create;
@@ -251,6 +255,9 @@ function open(options: { create: boolean; row?: monitor_alertservicev1_MonitorAl
     formData.isEnabled = !!options.row.isEnabled;
     formData.remark = options.row.remark ?? "";
   }
+
+  // 填充完成后记录基线快照（回填不算脏）
+  guard.syncBaseline();
 }
 
 function handleClose() {

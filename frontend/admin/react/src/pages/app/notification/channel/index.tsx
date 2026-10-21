@@ -384,7 +384,8 @@ const NotificationChannelManagement = () => {
     {
       title: t('actions'),
       valueType: 'option',
-      width: 250,
+      // 编辑渠道+测试发送+删除 三个图标+文字按钮实测需 284px，250 会被截断
+      width: 290,
       fixed: 'right',
       render: (_, record) => [
         <Button

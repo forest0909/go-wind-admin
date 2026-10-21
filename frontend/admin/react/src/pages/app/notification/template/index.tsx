@@ -184,7 +184,8 @@ const NotificationTemplatePage = () => {
     {
       title: t('actions'),
       valueType: 'option',
-      width: 240,
+      // 编辑模板+预览+删除 三个图标+文字按钮实测需 256px，240 会被截断
+      width: 260,
       fixed: 'right',
       render: (_, record) => [
         <Button

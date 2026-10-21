@@ -231,7 +231,8 @@ const NotificationRulePage = () => {
     {
       title: t('actions'),
       valueType: 'option',
-      width: 240,
+      // 编辑规则+测试投递+删除 三个图标+文字按钮实测需 284px，240 会被截断
+      width: 290,
       fixed: 'right',
       render: (_, record) => [
         <Button

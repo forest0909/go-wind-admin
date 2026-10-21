@@ -3,7 +3,7 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import ListTable from '@/components/common/ListTable';
 import { Button, Popconfirm, Popover, Switch, Tag, Tooltip, App } from 'antd';
-import { ApiOutlined, CodeOutlined, DeleteOutlined, EditOutlined, FileTextOutlined, PlusOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { ApiOutlined, DeleteOutlined, EditOutlined, PlusOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { scriptservicev1_Script as Script } from '@/api/generated/admin/service/v1';
@@ -278,9 +278,9 @@ const ScriptManagement = () => {
                   </div>
                 }
               >
-                <Button icon={<CodeOutlined />}>{t('hookPoints')}</Button>
+                <Button>{t('hookPoints')}</Button>
               </Popover>,
-              <Button key="logs" icon={<FileTextOutlined />} onClick={() => setLogOpen(true)}>
+              <Button key="logs" onClick={() => setLogOpen(true)}>
                 {t('logTitle')}
               </Button>,
               <Button

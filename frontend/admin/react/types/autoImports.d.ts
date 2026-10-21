@@ -34,6 +34,7 @@ declare global {
   const ResizableHeaderCell: typeof import('../src/components/common/ListTable/ResizableHeaderCell').default
   const Route: typeof import('react-router-dom').Route
   const Routes: typeof import('react-router-dom').Routes
+  const SettingBoltIcon: typeof import('../src/components/common/settingBoltIcon').SettingBoltIcon
   const SloganIcon: typeof import('../src/components/bussiness/AuthLayout/icons/SloganIcon').default
   const StatusBar: typeof import('../src/components/common/Editor/src/TiptapEditor/index').StatusBar
   const Suspense: typeof import('react').Suspense

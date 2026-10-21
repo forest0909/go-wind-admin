@@ -139,10 +139,21 @@ export function ListTable<
     return configured && configured > 0 ? configured : TABLE.DEFAULT_PAGE_SIZE;
   }, [pagination]);
 
+  // antd（rc-table）以 scroll.x 是否存在作为表格可横向滚动（horizonScroll）的开关：
+  // 冻结列的分割线 shadow 类、scrollLeft 监听全被它门控，而 sticky 冻结本身是纯 CSS——
+  // 缺 x 时列照样冻、能横向滚，分割线却永远不画（脚本页操作列实测）。
+  // 列里带 fixed 时补 '100%'：表格仍自适应撑满容器（不会像固定像素那样撑出空白列，
+  // 即 4bae15a3 批量去掉 scroll.x 的原因），真溢出时 antd 的滚动与分割线链路照常工作。
+  const hasFixedColumn = !!columns?.some((column) => !!column.fixed);
+  const mergedScroll = useMemo(() => {
+    if (typeof scroll !== 'object' || scroll?.x || !hasFixedColumn) return scroll;
+    return { ...scroll, x: '100%' };
+  }, [scroll, hasFixedColumn]);
+
   // 骨架继承页面的两向 scroll：scroll.x 保证列宽与真实表格逐列对齐，scroll.y 保证两态都有
   // 同一层限高 .ant-table-body —— 分页器的落点由它决定，骨架缺这层就会在数据到位时整段跳动。
-  const scrollX = typeof scroll === 'object' ? scroll?.x : undefined;
-  const scrollY = typeof scroll === 'object' ? scroll?.y : undefined;
+  const scrollX = typeof mergedScroll === 'object' ? mergedScroll?.x : undefined;
+  const scrollY = typeof mergedScroll === 'object' ? mergedScroll?.y : undefined;
 
   const tableViewRender = useCallback<NonNullable<ListTableProps<RecordType, Params>['tableViewRender']>>(
     (_tableProps, defaultDom) => {
@@ -204,7 +215,7 @@ export function ListTable<
       pagination={pagination}
       size={size}
       bordered={bordered}
-      scroll={scroll}
+      scroll={mergedScroll}
       actionRef={ownActionRef}
       request={wrappedRequest}
       rowClassName={composedRowClassName}

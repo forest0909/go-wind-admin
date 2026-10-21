@@ -84,27 +84,18 @@ const MinimizeBracketsIcon = () => (
 );
 
 /**
- * 语言切换的「文A」图标（tabler language 内联复刻）。
- * antd TranslationOutlined 自带方框外沿，与设计稿的裸文A不符；
- * stroke 系图形显式 fill="none"，避免继承 antd 的 fill: currentColor 糊成色块。
+ * 语言切换的「文A」图标（Remix translate-2 填充复刻；ele 顶栏 SvgIcon "language" 同款）。
+ * antd TranslationOutlined 自带方框外沿，tabler language 是描边文A，均与 ele 的实心文A不符。
  */
 const LanguageTranslateIcon = () => (
   <svg
     viewBox="0 0 24 24"
     width="1em"
     height="1em"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
+    fill="currentColor"
     aria-hidden="true"
   >
-    <path d="M4 5h7" />
-    <path d="M9 3v2c0 4.418 -2.239 8 -5 8" />
-    <path d="M5 9c0 2.144 2.952 3.908 6.7 4" />
-    <path d="M12.5 17l4.5 -8l4.5 8" />
-    <path d="M14.5 19h5" />
+    <path d="m18.5 10 4.4 11h-2.155l-1.201-3h-4.09l-1.199 3h-2.154L16.5 10h2zM10 2v2h6v2h-1.968a18.221 18.221 0 0 1-3.62 6.301 14.865 14.865 0 0 0 2.335 1.707l-.75 1.878A17.016 17.016 0 0 1 9 13.725a16.677 16.677 0 0 1-6.201 3.548l-.536-1.929a14.7 14.7 0 0 0 5.327-3.042A18.078 18.078 0 0 1 4.767 8h2.24A16.031 16.031 0 0 0 9 10.877a16.165 16.165 0 0 0 2.91-4.876L2 6V4h6V2h2zm7.5 10.885L16.253 16h2.492L17.5 12.885z" />
   </svg>
 );
 

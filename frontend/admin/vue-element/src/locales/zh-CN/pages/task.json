@@ -15,9 +15,9 @@
   "button": {
     "create": "创建任务",
     "update": "更新任务",
-    "startAll": "启动所有",
-    "stopAll": "停止所有",
-    "restartAll": "重启所有",
+    "startAll": "全部启动",
+    "stopAll": "全部停止",
+    "restartAll": "全部重启",
     "start": "启动",
     "stop": "停止",
     "restart": "重启"

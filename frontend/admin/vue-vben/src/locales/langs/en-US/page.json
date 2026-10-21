@@ -432,9 +432,9 @@
       "start": "Start",
       "restart": "Restart",
       "stop": "Stop",
-      "startAll": "Start All Tasks",
-      "restartAll": "Restart All Tasks",
-      "stopAll": "Stop All Tasks"
+      "startAll": "Start All",
+      "restartAll": "Restart All",
+      "stopAll": "Stop All"
     },
     "text": {
       "do_you_want_start_all_task": "Are you sure you want to start all tasks?",

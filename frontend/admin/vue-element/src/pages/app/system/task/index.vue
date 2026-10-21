@@ -134,7 +134,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       {
         name: "startAll",
         label: $t("pages.task.button.startAll"),
-        attrs: { type: "success", plain: true, icon: "VideoPlay" },
+        attrs: { type: "success", plain: true, icon: "CaretRight" },
       } as ToolsButton,
       {
         name: "stopAll",
@@ -144,7 +144,7 @@ const pageConfig = computed<ProPageConfig>(() => ({
       {
         name: "restartAll",
         label: $t("pages.task.button.restartAll"),
-        attrs: { type: "warning", plain: true, icon: "RefreshRight" },
+        attrs: { type: "warning", plain: true, icon: "Refresh" },
       } as ToolsButton,
       "add",
     ],

@@ -54,6 +54,10 @@ export const LucideCirclePlus = createIconifyIcon('lucide:circle-plus');
 export const LucideBuilding = createIconifyIcon('lucide:building');
 
 export const LucideRefreshCw = createIconifyIcon('lucide:refresh-cw');
+export const LucidePlay = createIconifyIcon('lucide:play');
+export const LucidePause = createIconifyIcon('lucide:pause');
+export const LucideRotateCw = createIconifyIcon('lucide:rotate-cw');
+export const LucideServerCog = createIconifyIcon('lucide:server-cog');
 
 export const LucideDownload = createIconifyIcon('lucide:download');
 export const LucideCloudDownload = createIconifyIcon('lucide:cloud-download');

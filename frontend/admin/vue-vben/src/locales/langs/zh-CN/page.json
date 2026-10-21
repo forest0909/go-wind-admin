@@ -432,9 +432,9 @@
       "start": "启动",
       "restart": "重启",
       "stop": "停止",
-      "startAll": "启动全部任务",
-      "restartAll": "重启全部任务",
-      "stopAll": "停止全部任务"
+      "startAll": "全部启动",
+      "restartAll": "全部重启",
+      "stopAll": "全部停止"
     },
     "text": {
       "do_you_want_start_all_task": "您确定要启动全部任务吗？",

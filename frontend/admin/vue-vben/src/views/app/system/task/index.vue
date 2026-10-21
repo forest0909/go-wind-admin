@@ -360,7 +360,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
   <Page auto-content-height>
     <Grid :table-title="$t('menu.system.task')">
       <template #toolbar-tools>
-        <a-button class="mr-2" @click="sysTasksOpen = true">
+        <a-button class="mr-2" :icon="h(LucideServerCog)" @click="sysTasksOpen = true">
           {{ $t('page.task.sysTasksButton') }}
         </a-button>
 
@@ -374,7 +374,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
           "
           @confirm="handleStartAllTask()"
         >
-          <a-button class="gowind-btn-success-outline mr-2">
+          <a-button class="gowind-btn-success-outline mr-2" :icon="h(LucidePlay)">
             {{ $t('page.task.button.startAll') }}
           </a-button>
         </a-popconfirm>
@@ -389,7 +389,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
           "
           @confirm="handleStopAllTask()"
         >
-          <a-button class="gowind-btn-danger-outline mr-2">
+          <a-button class="gowind-btn-danger-outline mr-2" :icon="h(LucidePause)">
             {{ $t('page.task.button.stopAll') }}
           </a-button>
         </a-popconfirm>
@@ -404,7 +404,7 @@ async function handleEnableChanged(row: any, checked: boolean) {
           "
           @confirm="handleRestartAllTask()"
         >
-          <a-button class="gowind-btn-warning-outline mr-2">
+          <a-button class="gowind-btn-warning-outline mr-2" :icon="h(LucideRotateCw)">
             {{ $t('page.task.button.restartAll') }}
           </a-button>
         </a-popconfirm>

@@ -3,15 +3,15 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Tag, App, Empty } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Tag, App, Empty, Popconfirm } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { PaginationQuery } from '@/core';
 import { TABLE } from '@/config/constants';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
-import { fetchListPermissions, useDeletePermission } from '@/api/hooks/permission';
+import { fetchListPermissions, useDeletePermission, useSyncPermissions } from '@/api/hooks/permission';
 import { getStatusMap, getStatusOptions } from './constants';
 import PermissionDrawer from './PermissionDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
@@ -47,6 +47,19 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
     },
     onError: (error: Error) => {
       message.error(error.message || t('deleteFailed'));
+    },
+  });
+
+  // 同步权限点：按菜单树重建业务权限分组与权限点
+  const syncMutation = useSyncPermissions({
+    onSuccess: () => {
+      message.success(t('syncSuccess'));
+      actionRef.current?.reload();
+      queryClient.invalidateQueries({ queryKey: ['listPermissions'] });
+      queryClient.invalidateQueries({ queryKey: ['listPermissionGroups'] });
+    },
+    onError: (error: Error) => {
+      message.error(error.message || t('syncFailed'));
     },
   });
 
@@ -164,6 +177,18 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
             }}
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListPermissions} columns={columns} filename="permissions" />,
+              <Popconfirm
+                key="syncPermissions"
+                title={t('syncConfirmTitle')}
+                description={t('syncConfirmDesc')}
+                onConfirm={() => syncMutation.mutateAsync()}
+                okText={t('common:button.ok')}
+                cancelText={t('common:button.cancel')}
+              >
+                <Button color="orange" variant="outlined" icon={<SyncOutlined />} loading={syncMutation.isPending}>
+                  {t('syncPermissions')}
+                </Button>
+              </Popconfirm>,
               <Button
                 key="create"
                 color="primary"

@@ -236,8 +236,14 @@
     "path": "树路径",
     "groupId": "分组",
     "groupName": "分组名称",
-    "menuIds": "分配菜单",
-    "apiIds": "分配API",
+    "menuIds": "关联菜单",
+    "apiIds": "关联API",
+    "menuIdsPlaceholder": "请选择关联菜单",
+    "apiIdsPlaceholder": "请选择关联API",
+    "treeExpandAll": "展开",
+    "treeCollapseAll": "折叠",
+    "selectAll": "全选",
+    "deselectAll": "取选",
     "description": "权限描述",
     "button": {
       "create": "创建权限",
@@ -251,7 +257,8 @@
     "parentId": "上级分组",
     "button": {
       "create": "创建分组"
-    }
+    },
+    "moduleOther": "其他"
   },
   "dict": {
     "moduleName": "字典",

@@ -236,8 +236,14 @@
     "path": "Tree Path",
     "groupId": "Group",
     "groupName": "Group Name",
-    "menuIds": "Assigned Menus",
-    "apiIds": "Assigned APIs",
+    "menuIds": "Associated Menus",
+    "apiIds": "Associated APIs",
+    "menuIdsPlaceholder": "Select associated menus",
+    "apiIdsPlaceholder": "Select associated APIs",
+    "treeExpandAll": "Expand",
+    "treeCollapseAll": "Collapse",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect",
     "description": "Permission Description",
     "button": {
       "create": "Create Permission",
@@ -251,7 +257,8 @@
     "parentId": "Parent Group",
     "button": {
       "create": "Create Group"
-    }
+    },
+    "moduleOther": "Other"
   },
   "dict": {
     "moduleName": "Dictionary",

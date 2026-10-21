@@ -28,7 +28,7 @@ import { usePermissionViewStore } from '#/views/app/permission/permission/permis
 import PermissionDrawer from './permission-drawer.vue';
 
 const { mutateAsync: deletePermission } = useDeletePermission();
-const { mutateAsync: syncPermissions } = useSyncPermissions();
+const { mutateAsync: syncPermissions, isPending: isSyncing } = useSyncPermissions();
 const permissionViewStore = usePermissionViewStore();
 
 const formOptions: VbenFormProps = {
@@ -257,7 +257,7 @@ function buildRowActions(): TableAction[] {
         "
         @confirm="() => handleSyncPermissions()"
       >
-        <a-button type="primary" danger class="mr-2">
+        <a-button class="gowind-btn-warning-outline mr-2" :loading="isSyncing">
           {{ $t('page.permission.button.syncPermissions') }}
         </a-button>
       </a-popconfirm>

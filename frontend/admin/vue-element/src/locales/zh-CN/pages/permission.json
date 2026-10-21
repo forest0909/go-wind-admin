@@ -5,5 +5,6 @@
   "groupId": "所属分组",
   "groupName": "分组名称",
   "menuIds": "关联菜单",
-  "apiIds": "关联API"
+  "apiIds": "关联API",
+  "syncPermissions": "同步权限"
 }

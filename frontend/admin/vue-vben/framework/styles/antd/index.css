@@ -158,16 +158,32 @@ html:not(.dark) {
 }
 
 /* 橙色描边按钮（工具栏「同步菜单/同步API」定式）：antd-vue 4.2 没有 react v6 的
-   color/variant 新 API，用类补齐 color="warning" variant="outlined"（react）/ type=warning+plain
-   （ele）同款观感。文字走 §2.1 的 --gowind-warning-text 文字档，边框用语义基准色，
-   hover 只叠 12% 基准色底。!important 理由同上：运行时样式表后注入、顺序不定。 */
+   color/variant 新 API，用类补齐同款观感。色值对齐 react 端 color="orange" 的 antd
+   色板阶梯（orange-6 #fa8c16 / 暗色 orange-7 #d87a16，hover orange-5/orange-3 + orange-1 底）——
+   2026-10-21 用户反馈：用 --warning 语义 token（#EFBD48 琥珀 + 橄榄文字档）整钮发黄没识别度，
+   与蓝色描边的新增钮放一起尤其明显；真橙（色相 27°）才与 react/ele 的观感对齐。
+   这里是有意偏离 --warning token 的裸色值，改色阶先对照 react 端渲染。
+   !important 理由同上：运行时样式表后注入、顺序不定。 */
 .ant-btn.gowind-btn-warning-outline {
-  color: var(--gowind-warning-text) !important;
-  border-color: hsl(var(--warning)) !important;
+  color: #fa8c16 !important;
+  border-color: #fa8c16 !important;
+}
+
+html.dark .ant-btn.gowind-btn-warning-outline {
+  color: #d87a16 !important;
+  border-color: #d87a16 !important;
 }
 
 .ant-btn.gowind-btn-warning-outline:not(:disabled):hover {
-  background: color-mix(in srgb, hsl(var(--warning)) 12%, transparent) !important;
+  color: #ffa940 !important;
+  border-color: #ffa940 !important;
+  background: #fff7e6 !important;
+}
+
+html.dark .ant-btn.gowind-btn-warning-outline:not(:disabled):hover {
+  color: #ffc069 !important;
+  border-color: #ffc069 !important;
+  background: rgba(250, 140, 22, 0.15) !important;
 }
 
 /* 枚举色相标签只改读不懂的那几个：浅色 gold 2.72 / green 3.37 / cyan 3.39 / orange 3.34

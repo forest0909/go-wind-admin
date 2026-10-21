@@ -5,7 +5,7 @@
     :loading="pageLoading"
     :config="{
       component: 'drawer',
-      drawer: { size: DRAWER_WIDTH, closeOnClickModal: false },
+      drawer: { size: 600, closeOnClickModal: false }, // 600：容纳 6 个状态按钮一行排开（对齐 react 基线）
     }"
   >
     <ElForm
@@ -184,7 +184,6 @@ import { PaginationQuery } from "@/core/transport/rest";
 import { $t } from "@/core/i18n";
 import { isFieldHidden as isFieldHiddenBase } from "@/core/access";
 import { useAccessStore } from "@/stores";
-import { DRAWER_WIDTH } from "@/constants";
 
 const emit = defineEmits<{
   success: [];

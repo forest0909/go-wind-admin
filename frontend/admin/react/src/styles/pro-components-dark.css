@@ -92,6 +92,41 @@
   background-image: none;
 }
 
+/* ========== 表格竖向分割线策略：对齐 ele/vben（vxe border--none 口径） ==========
+   三端约定表体不画任何竖线——冻结列边界也不画（vxe border--none/default 只有行底线；
+   ele ProTable 明确清掉 vxe 的列线与 border-right）。antd 冻结列的原生边界线是
+   固定单元格/容器上的 ::before/::after inset 渐变阴影（rc-table style/fixed.js，
+   需 scroll.x 才会亮），与该口径冲突，整族关闭；表头列间的短竖线由下一条自绘规则补齐。 */
+.ant-table-wrapper .ant-table-cell-fix-start-shadow::after,
+.ant-table-wrapper .ant-table-cell-fix-end-shadow::after,
+.ant-table-wrapper .ant-table-container::before,
+.ant-table-wrapper .ant-table-container::after {
+  display: none !important;
+}
+
+/* ========== 表头列间短竖线（ele ProTable 自绘款移植） ==========
+   ele：.vxe-header--column .vxe-cell::after —— right:0 / top:25% / 1px / 高 50%，末列不画；
+   色取 --el-border-color（亮 #dcdfe6 / 暗 #3a3f4a）。react 同权重 token 是 --ant-color-border
+   （亮 #d9d9d9 未覆写 / 暗 rgba(148,163,184,.28)，两态都落在同一档）。
+   position 只补给非固定 th：固定 th 已是 sticky 自带定位上下文，整体改 position 会以更高
+   特异度压过 antd 的 sticky（cssinjs 走 :where 零特异度），冻结直接失效。 */
+.ant-pro-table .ant-table-thead > tr > th:not(.ant-table-cell-fix) {
+  position: relative;
+}
+.ant-pro-table .ant-table-thead > tr > th:not(:last-child):not(.ant-table-cell-scrollbar)::after {
+  content: '';
+  position: absolute;
+  top: 25%;
+  right: 0;
+  width: 1px;
+  height: 50%;
+  background-color: var(--ant-color-border);
+}
+/* 滚动条补位 th 与表头同底色，它前面那根竖线会悬在空白里——真实末列（补位 th 的前一个）跳过 */
+.ant-pro-table .ant-table-thead > tr > th:has(+ .ant-table-cell-scrollbar)::after {
+  content: none;
+}
+
 /* 表格单元格超长文本省略号 */
 .ant-pro-table .ant-table-cell {
   overflow: hidden;

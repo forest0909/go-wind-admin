@@ -23,6 +23,7 @@ import {
 } from '#/api';
 import { deepClone, filterNumbers } from '#/utils';
 import PermissionCheckTree from '../permission/permission-check-tree.vue';
+import RoleFieldPermCard from './role-field-perm-card.vue';
 
 const { mutateAsync: createRole } = useCreateRole();
 const { mutateAsync: updateRole } = useUpdateRole();
@@ -196,16 +197,16 @@ const [BaseForm, baseFormApi] = useVbenForm({
       }),
     },
     {
-      // 字段权限：勾选 = 对该角色用户隐藏（黑名单语义）。
-      // value 与后端各资源 proto 字段 json_name 逐字一致。
-      // 多资源分组与 react 端 ROLE_FIELD_RESOURCES 登记表对齐（当前 User/Role）。
-      component: 'CheckboxGroup',
-      fieldName: 'userHiddenFields',
-      defaultValue: [],
-      label: $t('page.role.fieldPerm.userTitle'),
-      help: $t('page.role.fieldPerm.hint'),
-      componentProps: {
-        options: [
+      // 字段权限：勾选 = 对该角色用户隐藏（黑名单语义）。对齐 react 基准——
+      // 「字段权限」段头顶格 + 一张边框卡内 提示语 + User/Role 两组竖排勾选。
+      // value 与后端各资源 proto 字段 json_name 逐字一致（当前 User/Role 两资源）。
+      component: RoleFieldPermCard,
+      fieldName: 'fieldPerm',
+      hideLabel: true,
+      componentProps: () => ({
+        title: $t('page.role.fieldPerm.title'),
+        hint: $t('page.role.fieldPerm.hint'),
+        userOptions: [
           { label: $t('page.role.fieldPerm.field.email'), value: 'email' },
           { label: $t('page.role.fieldPerm.field.mobile'), value: 'mobile' },
           { label: $t('page.role.fieldPerm.field.telephone'), value: 'telephone' },
@@ -214,21 +215,13 @@ const [BaseForm, baseFormApi] = useVbenForm({
           { label: $t('page.role.fieldPerm.field.lastLoginAt'), value: 'lastLoginAt' },
           { label: $t('page.role.fieldPerm.field.lastLoginIp'), value: 'lastLoginIp' },
         ],
-      },
-    },
-    {
-      component: 'CheckboxGroup',
-      fieldName: 'roleHiddenFields',
-      defaultValue: [],
-      label: $t('page.role.fieldPerm.roleTitle'),
-      componentProps: {
-        options: [
+        roleOptions: [
           {
             label: $t('page.role.fieldPerm.field.permissions'),
             value: 'permissions',
           },
         ],
-      },
+      }),
     },
   ],
 });
@@ -276,12 +269,12 @@ const [Drawer, drawerApi] = useVbenDrawer({
     }
 
     // 字段权限始终随表单提交（含清空场景）：抽屉所见即保存后的最终态。
-    // userHiddenFields/roleHiddenFields 是表单专用中间字段，不是 Role proto
+    // fieldPerm 是表单专用中间字段（{ user, role } 两组勾选），不是 Role proto
     // 字段，提交前必须折算成 fieldPermissions 多资源数组并移除。
     finalValues.fieldPermissions = (
       [
-        ['User', finalValues.userHiddenFields],
-        ['Role', finalValues.roleHiddenFields],
+        ['User', finalValues.fieldPerm?.user],
+        ['Role', finalValues.fieldPerm?.role],
       ] as const
     )
       .filter(([, fields]) => Array.isArray(fields) && fields.length > 0)
@@ -289,8 +282,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
         resource,
         hiddenFields: fields.filter((v: unknown) => typeof v === 'string'),
       }));
-    delete finalValues.userHiddenFields;
-    delete finalValues.roleHiddenFields;
+    delete finalValues.fieldPerm;
 
 
     try {
@@ -323,7 +315,7 @@ const [Drawer, drawerApi] = useVbenDrawer({
 
       // 为表单赋值。注意：setValues 必须只调一次——连调两次时后一次会清掉
       // 前一次刚设置的值（vee-validate setValues 非合并语义），因此把字段权限
-      // 的中间态 userHiddenFields/roleHiddenFields 合并在同一次调用里。
+      // 的中间态 fieldPerm（User/Role 两组）合并在同一次调用里。
       const row = data.value?.row;
       const findHiddenFields = (resource: string) => {
         const entry = Array.isArray(row?.fieldPermissions)
@@ -335,8 +327,10 @@ const [Drawer, drawerApi] = useVbenDrawer({
       };
       await baseFormApi.setValues({
         ...(row ?? {}),
-        userHiddenFields: findHiddenFields('User'),
-        roleHiddenFields: findHiddenFields('Role'),
+        fieldPerm: {
+          user: findHiddenFields('User'),
+          role: findHiddenFields('Role'),
+        },
       });
       await closeGuard.syncBaseline();
 

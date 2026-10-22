@@ -188,6 +188,8 @@ const [BaseForm, baseFormApi] = useVbenForm({
     {
       component: PermissionCheckTree,
       fieldName: 'menuIds',
+      // hideLabel 脱离空标签列：段头（组件 title）顶格靠左、树盒通栏
+      hideLabel: true,
       componentProps: () => ({
         title: $t('page.permission.menuIds'),
         emptyText: $t('page.permission.menuIdsPlaceholder'),
@@ -198,6 +200,7 @@ const [BaseForm, baseFormApi] = useVbenForm({
     {
       component: PermissionCheckTree,
       fieldName: 'apiIds',
+      hideLabel: true,
       componentProps: () => ({
         title: $t('page.permission.apiIds'),
         emptyText: $t('page.permission.apiIdsPlaceholder'),

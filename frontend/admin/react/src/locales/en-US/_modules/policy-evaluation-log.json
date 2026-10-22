@@ -26,5 +26,12 @@
   "exportXlsx": "Excel Workbook",
   "exportServerXlsx": "Server-side full (XLSX)",
   "exportServerSuccess": "Download started",
-  "exportServerFailed": "Server-side export failed"
+  "exportServerFailed": "Server-side export failed",
+  "detail": "Detail",
+  "action": "Actions",
+  "sectionBasic": "Basic Information",
+  "sectionEval": "Evaluation Details",
+  "sectionOther": "Other Information",
+  "logHash": "Log Hash",
+  "signature": "Signature"
 }

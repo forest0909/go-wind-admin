@@ -85,8 +85,8 @@ const { isMobile } = usePreferences();
 
 /**
  * 列表工具栏默认工具（下载/刷新/全屏/列设置）：vben 化按钮 + VbenTooltip 样式化提示，
- * 替代 vxe 内建钮的原生 title；下载/全屏/列设置经 commitProxy 与原内建行为一致，
- * 刷新走 api.query()（保留搜索表单值）。
+ * 替代 vxe 内建钮的原生 title；下载经 commitProxy，全屏/列设置直调实例方法（见
+ * toggleCustomPanel 注释），刷新走 api.query()（保留搜索表单值）。
  * 沿用 vxe 内建 toolbarConfig 开关语义：对应键（export/refresh/zoom/custom）显式
  * false 即隐藏该钮；缺省全显示，存量页面不受影响。
  */
@@ -111,16 +111,30 @@ const defaultToolbarTools = computed(() => {
       code: 'zoom',
       icon: Maximize,
       label: $t('common.fullscreen'),
-      onClick: () => gridRef.value?.commitProxy('zoom'),
+      onClick: () => gridRef.value?.zoom(),
     },
     {
       code: 'custom',
       icon: SlidersHorizontal,
       label: $t('common.columnSetting'),
-      onClick: () => gridRef.value?.commitProxy('custom'),
+      onClick: () => toggleCustomPanel(),
     },
   ].filter((tool) => flags?.[tool.code] !== false);
 });
+
+/**
+ * vxe 4.22 起 grid.commitProxy 已不分发 zoom/custom 码——这两个码只活在 VxeToolbar
+ * 组件内建钮的事件处理里，commitProxy 落进 default（commands 注册表）后静默无效。
+ * 全屏走实例方法 zoom()（同内建 triggerZoomEvent 的主体行为）；列设置走 toggleCustom，
+ * 它由 vxe 运行时经 extendTableMethods 挂上 grid 实例、未进静态类型，须断言调用。
+ * 面板开着时再点按钮要能收起：vxe 全局 mousedown 只豁免带 .vxe-toolbar-custom-target
+ * 类的元素（等价内建钮记录 btnEl 的效果），模板里给该钮挂了同名类。
+ */
+function toggleCustomPanel() {
+  (
+    gridRef.value as unknown as { toggleCustom?: () => void }
+  )?.toggleCustom?.();
+}
 
 const slots = useSlots();
 
@@ -504,7 +518,12 @@ onUnmounted(() => {
             side="bottom"
           >
             <template #trigger>
-              <VbenIconButton @click="tool.onClick()">
+              <VbenIconButton
+                :class="
+                  tool.code === 'custom' ? 'vxe-toolbar-custom-target' : undefined
+                "
+                @click="tool.onClick()"
+              >
                 <component :is="tool.icon" class="size-4" />
               </VbenIconButton>
             </template>

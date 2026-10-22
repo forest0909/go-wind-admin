@@ -133,22 +133,22 @@ const [BaseForm, baseFormApi] = useVbenForm({
       component: 'Textarea',
       fieldName: 'description',
       label: $t('ui.table.description'),
-      componentProps: {
-        placeholder: $t('ui.placeholder.input'),
-        allowClear: true,
-      },
-      // AI 内容生成（表单助手）：生成结果回填 description
-      suffix: () =>
-        h(
-          'div',
-          // shrink-0：flex 行内不被 textarea 挤压换行；self-start 顶部对齐
-          { class: 'ml-1 shrink-0 self-start pt-1' },
+      // 与 react/ele 对齐：AI 生成钮进 label、textarea 占满整行（放 suffix 会把
+      // 输入框压掉约 90px 宽），3 行起步比默认的两行高（ele rows:3 同款）
+      labelRender: () =>
+        h('span', { class: 'inline-flex items-center' }, [
+          $t('ui.table.description'),
           h(AiGenerateButton, {
             scene: 'DESCRIPTION',
             onGenerate: (content: string) =>
               baseFormApi.setFieldValue('description', content),
           }),
-        ),
+        ]),
+      componentProps: {
+        placeholder: $t('ui.placeholder.input'),
+        allowClear: true,
+        rows: 3,
+      },
     },
     {
       component: 'ApiTree',

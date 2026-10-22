@@ -231,6 +231,12 @@ export interface FormSchema<
   help?: string;
   /** 表单项 */
   label?: string;
+  /**
+   * 富 label 渲染。suffix 会挤占控件行宽（AI 助手类按钮放 suffix 会把输入框压窄），
+   * 要对齐 react/ele「按钮进 label、控件占满整行」的布局时用它；必填/校验文案仍读
+   * label 文本，labelRender 只管显示。
+   */
+  labelRender?: CustomRenderType;
   // 自定义组件内部渲染
   renderComponentContent?: RenderComponentContentType;
   /** 字段规则 */

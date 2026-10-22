@@ -38,6 +38,7 @@ const {
   formFieldProps,
   label,
   labelClass,
+  labelRender,
   labelWidth,
   renderComponentContent,
   rules,
@@ -296,7 +297,10 @@ function autofocus() {
         :required="shouldRequired && !hideRequiredMark"
         :style="labelStyle"
       >
-        {{ label }}
+        <!-- labelRender 是 CustomRenderType（可返回 VNode），必须走组件渲染——
+             插值 {{ }} 会把 VNode 当数据 toDisplayString，循环引用直接抛错中断渲染 -->
+        <VbenRenderContent v-if="labelRender" :content="labelRender" />
+        <template v-else>{{ label }}</template>
       </FormLabel>
       <div :class="cn('relative flex w-full items-center', wrapperClass)">
         <FormControl :class="cn(controlClass)">

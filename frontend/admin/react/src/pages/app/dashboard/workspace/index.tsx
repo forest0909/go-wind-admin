@@ -107,7 +107,8 @@ const Workspace = () => {
     queryKey: ['inboxPreviewList', userInfo?.id],
     queryFn: async () => {
       const query = new PaginationQuery({
-        paging: { page: 1, pageSize: 5 },
+        // 7 行恰好填满等高后的卡片（与活跃会话卡等高，见下方 min-height 注释）
+        paging: { page: 1, pageSize: 7 },
         formValues: { recipient_user_id: String(userInfo?.id) },
       });
       return await fetchListUserInbox(query);
@@ -179,9 +180,14 @@ const Workspace = () => {
       </Card>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        {/* 我的站内信 */}
-        <Col xs={24} lg={12}>
+        {/* 我的站内信 / 我的活跃会话：两列等高——Col 转 flex 让 Card 纵向撑满（Row
+            默认 align-items:stretch，两 Col 高度本就相同，Card 不撑满才显参差）；
+            lg 起给共同 min-height 整体拉高（站内信 7 行正好填满），窄屏单列不设免留白 */}
+        {/* display 用内联样式：tailwind 的 .flex 会被 antd react 后注入的 cssinjs
+            列规则压回 block，等高就失效了（实测 3px 参差） */}
+        <Col xs={24} lg={12} style={{ display: 'flex' }}>
           <Card
+            className="w-full lg:min-h-[360px]"
             title={t('workspace.myMessages.title')}
             extra={
               <Button
@@ -250,8 +256,9 @@ const Workspace = () => {
         </Col>
 
         {/* 我的活跃会话 */}
-        <Col xs={24} lg={12}>
+        <Col xs={24} lg={12} style={{ display: 'flex' }}>
           <Card
+            className="w-full lg:min-h-[360px]"
             title={t('workspace.mySessions.title')}
             extra={
               <Button

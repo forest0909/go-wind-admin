@@ -35,8 +35,10 @@
     </el-card>
 
     <el-row :gutter="16">
-      <!-- 我的站内信 -->
-      <el-col :xs="24" :md="12" class="mb-5-xs">
+      <!-- 我的站内信 / 我的活跃会话：两列等高——el-col 转 flex 让 el-card 纵向撑满
+          （el-row 默认 stretch，两列高度本就相同，卡片不撑满才显参差）；md 起给共同
+           min-height 整体拉高（站内信 7 行正好填满，断点与 :md="12" 一致），窄屏单列不设免留白 -->
+      <el-col :xs="24" :md="12" class="pane-col mb-5-xs">
         <el-card shadow="hover" class="pane-card">
           <template #header>
             <div class="pane-header">
@@ -86,7 +88,7 @@
       </el-col>
 
       <!-- 我的活跃会话 -->
-      <el-col :xs="24" :md="12">
+      <el-col :xs="24" :md="12" class="pane-col">
         <el-card shadow="hover" class="pane-card">
           <template #header>
             <div class="pane-header">
@@ -213,7 +215,8 @@ const unreadCount = computed(() => unreadQuery.data.value?.total ?? 0);
 
 const inboxRecentQuery = useListUserInbox(
   new PaginationQuery({
-    paging: { page: 1, pageSize: 5 },
+    // 7 行恰好填满等高后的卡片（与活跃会话卡等高，见上方 min-height 注释）
+    paging: { page: 1, pageSize: 7 },
     formValues: { recipient_user_id: String(userStore.userInfo?.id ?? "") },
   }),
   { enabled: hasUserId }
@@ -235,6 +238,21 @@ const sessionsQuery = useListMyOnlineSessions();
 @media (min-width: 992px) {
   .mb-5-xs {
     margin-bottom: 0;
+  }
+}
+
+/* 两卡等高（见模板注释）：列转 flex 让卡片撑满列高，md 起再抬高到共同 min-height */
+.pane-col {
+  display: flex;
+}
+
+.pane-col .pane-card {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .pane-col .pane-card {
+    min-height: 360px;
   }
 }
 

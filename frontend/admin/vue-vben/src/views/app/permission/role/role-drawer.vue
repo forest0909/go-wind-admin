@@ -22,12 +22,41 @@ import {
   useUpdateRole,
 } from '#/api';
 import { deepClone, filterNumbers } from '#/utils';
+import PermissionCheckTree from '../permission/permission-check-tree.vue';
 
 const { mutateAsync: createRole } = useCreateRole();
 const { mutateAsync: updateRole } = useUpdateRole();
 
 const data = ref();
 const groups = ref<PermissionGroup[]>([]);
+
+// 分配权限勾选树：数据与装载态由抽屉 onOpenChange 拉取（对齐权限点抽屉的
+// PermissionCheckTree 用法），提交时勾选 key 数组即权限 ID。
+const permTreeData = ref<any[]>([]);
+const permTreeLoading = ref(false);
+
+async function loadPermTree() {
+  permTreeLoading.value = true;
+  try {
+    const groupData = await fetchListPermissionGroups(
+      new PaginationQuery({
+        formValues: { status: 'ON' },
+      }),
+    );
+    groups.value = groupData.items ?? [];
+    const permData = await fetchListPermissions(
+      new PaginationQuery({
+        formValues: { status: 'ON' },
+      }),
+    );
+    permTreeData.value = buildPermissionTree(groups.value, permData.items ?? []);
+  } catch (error) {
+    console.error('load permission tree failed', error);
+    permTreeData.value = [];
+  } finally {
+    permTreeLoading.value = false;
+  }
+}
 
 const getTitle = computed(() =>
   data.value?.create
@@ -42,6 +71,8 @@ const [BaseForm, baseFormApi] = useVbenForm({
   commonConfig: {
     // react 基准抽屉标签列为 120px，这里放宽到 130 容纳「字段权限（User）」整行不折行
     labelWidth: 130,
+    // 标签列内左对齐 + 常规字重（用户裁决：右对齐+medium 观感过重）
+    labelClass: 'justify-start font-normal',
     // 所有表单项
     componentProps: {
       class: 'w-full',
@@ -151,36 +182,18 @@ const [BaseForm, baseFormApi] = useVbenForm({
       },
     },
     {
-      component: 'ApiTree',
+      // 分配权限：直接复用权限点抽屉的 PermissionCheckTree（对齐 ele 权限配置
+      // 段的形态——段头顶格左对齐 + 全宽圆角边框盒内滚动 + 空态虚线占位）。
+      // hideLabel 让该行脱离 130px 标签列、通栏铺满，段头由组件 title 承担。
+      component: PermissionCheckTree,
       fieldName: 'permissions',
-      componentProps: {
+      hideLabel: true,
+      componentProps: () => ({
         title: $t('page.role.permissions'),
-        showSearch: true,
-        // 与 react 端权限树一致：数据加载完成后默认全展开
-        treeDefaultExpandAll: true,
-        loadingSlot: 'suffixIcon',
-        childrenField: 'children',
-        labelField: 'title',
-        valueField: 'key',
-        resultField: 'items',
-        api: async () => {
-          const groupData = await fetchListPermissionGroups(
-            new PaginationQuery({
-              formValues: { status: 'ON' },
-            }),
-          );
-          groups.value = groupData.items ?? [];
-
-          return await fetchListPermissions(
-            new PaginationQuery({
-              formValues: { status: 'ON' },
-            }),
-          );
-        },
-        afterFetch: (data: any) => {
-          return buildPermissionTree(groups.value, data.items);
-        },
-      },
+        treeData: permTreeData.value,
+        loading: permTreeLoading.value,
+        emptyText: $t('common.noData'),
+      }),
     },
     {
       // 字段权限：勾选 = 对该角色用户隐藏（黑名单语义）。
@@ -326,6 +339,9 @@ const [Drawer, drawerApi] = useVbenDrawer({
         roleHiddenFields: findHiddenFields('Role'),
       });
       await closeGuard.syncBaseline();
+
+      // 分配权限勾选树（打开抽屉时拉取，对齐权限点抽屉）
+      loadPermTree();
 
       // setLoading(true);
       setLoading(false);

@@ -275,3 +275,18 @@ html.dark .ant-tag.ant-tag-geekblue {
 html:not(.dark) .ant-switch[aria-checked='false'] .ant-switch-inner > span {
   color: var(--gowind-solid-ink) !important;
 }
+
+/*
+ * 多行文本框（TextArea）allowClear 的 × 清除图标与文本框自身滚动条同占右缘一条竖带：
+ * 内容溢出出现滚动条（全局 10px）时二者贴死甚至叠压（角色管理「描述」框实测图标带
+ * [右20..右8] 压着滚动条带 [右10..右0] 重叠 3px）。正文右移留出图标带，图标内缩到
+ * 滚动条带之外（14px > 10px 滚动条 + 4px 间距）。只命中 textarea-with-clear 包裹层，
+ * 单行 Input 的 affix-wrapper 不含该类，清除图标位置不变。
+ */
+.ant-input-affix-wrapper-textarea-with-clear-btn > textarea.ant-input {
+  padding-inline-end: 28px;
+}
+
+.ant-input-affix-wrapper-textarea-with-clear-btn .ant-input-clear-icon {
+  inset-inline-end: 14px;
+}

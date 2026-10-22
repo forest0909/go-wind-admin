@@ -77,7 +77,7 @@ function uncheckAll() {
 
 <template>
   <div class="w-full">
-    <div class="mb-1">{{ title }}</div>
+    <div class="mb-1 text-sm font-medium">{{ title }}</div>
     <Spin :spinning="!!loading">
       <template v-if="treeData.length > 0">
         <Space :size="4" class="mb-1">

@@ -72,8 +72,8 @@ const [BaseForm, baseFormApi] = useVbenForm({
   commonConfig: {
     // react 基准抽屉标签列为 120px，这里放宽到 130 容纳「字段权限（User）」整行不折行
     labelWidth: 130,
-    // 标签列内左对齐 + 常规字重（用户裁决：右对齐+medium 观感过重）
-    labelClass: 'justify-start font-normal',
+    // 标签列内左对齐（font 尺寸三端本就同为 14px，字重交由 FormLabel 默认）
+    labelClass: 'justify-start',
     // 所有表单项
     componentProps: {
       class: 'w-full',

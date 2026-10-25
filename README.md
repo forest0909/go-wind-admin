@@ -26,8 +26,6 @@
 - **微服务 + 单体自由切换**：基于 go-kratos 微服务框架，但支持单体架构模式开发与部署，灵活适配团队规模
 - **全栈代码生成**：Protobuf → Go API / TypeScript 客户端，Ent Schema → ORM，一键 CRUD 脚手架；配套桌面端可视化代码生成器与 CLI（[go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)，见[配套工具](#配套工具)）
 - **生产就绪**：JWT 鉴权、SSE 消息推送、异步任务调度、Swagger 文档、Docker 一键部署
-- **AI 能力开箱即用**：OpenAI 兼容多模型接入（云端/本地 Ollama）、SSE 流式对话、知识库 RAG（pgvector 向量检索 + 文件上传）、token 用量配额、脚本 `ai` 模块与定时 AI 任务，详见 [docs/ai_module.md](./docs/ai_module.md)
-
 ### 本仓库只保留 React
 
 **上游是三套并列前端；这份代码已经选定 React。**
@@ -40,7 +38,7 @@
 
 ## 从这里开始
 
-- **想系统上手**：读 [文档索引](./docs/README.md)——文档分**教程层**（[渐进教程](./docs/tutorial/README.md) 10 章：从空环境走到独立开发业务模块、AI 能力接入、安全部署上线）与**参考层**（每个子系统的唯一权威说明）两层，索引里按你的角色（全栈采用者 / 后端 / 前端 / 运维与安全）标好了推荐阅读路径。
+- **想系统上手**：读 [文档索引](./docs/README.md)——文档分**教程层**（[渐进教程](./docs/tutorial/README.md) 9 章：从空环境走到独立开发业务模块、安全部署上线）与**参考层**（每个子系统的唯一权威说明）两层，索引里按你的角色（全栈采用者 / 后端 / 前端 / 运维与安全）标好了推荐阅读路径。
 - **想先看到它跑起来**：往下依次是[演示地址](#演示地址)与[快速开始](#快速开始)。
 
 ---

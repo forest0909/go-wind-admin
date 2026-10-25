@@ -7,8 +7,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	bLogger "github.com/tx7do/kratos-bootstrap/logger"
 
-	"go-wind-admin/pkg/scripting/api"
-
 	gsEngine "github.com/tx7do/go-scripts"
 
 	"github.com/tx7do/go-utils/eventbus"
@@ -45,7 +43,6 @@ type RuntimeDeps struct {
 	Rdb             *redis.Client     // 可为 nil，nil 时跳过 cache 模块
 	EventBusManager *eventbus.Manager // 可为 nil，nil 时跳过 eventbus 模块
 	OSSClient       *oss.MinIOClient  // 可为 nil，nil 时跳过 oss 模块
-	AI              api.AICompleter   // 可为 nil，nil 时跳过 ai 模块
 	Orchestrator    *Engine           // 用于 hook.register 反向回调注册
 }
 

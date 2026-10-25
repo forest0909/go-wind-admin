@@ -19,7 +19,6 @@ import { fetchListPermissions } from '@/api/hooks/permission';
 import { fetchListOrgUnits } from '@/api/hooks/org-unit';
 import { PaginationQuery } from '@/core';
 import { getStatusOptions, getDataScopeOptions, buildPermissionTree, extractLeafIds, buildOrgUnitTree, ROLE_FIELD_RESOURCES } from '../constants';
-import AiGenerateButton from '@/components/common/AiGenerateButton';
 import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 
 interface RoleDrawerProps {
@@ -288,18 +287,7 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
 
       <ProFormTextArea
         name="description"
-        label={
-          <span className="inline-flex items-center gap-2">
-            {t('description')}
-            <AiGenerateButton
-              scene="DESCRIPTION"
-              size="small"
-              onGenerate={(content) => {
-                formRef.current?.setFieldValue('description', content);
-              }}
-            />
-          </span>
-        }
+        label={t('description')}
         placeholder={t('descriptionPlaceholder')}
         fieldProps={{ allowClear: true, rows: 2 }}
       />

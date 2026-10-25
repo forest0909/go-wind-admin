@@ -74,19 +74,3 @@ export * from './script';
 
 // 脚本执行日志
 export * from './script-log';
-
-// AI 提供商
-export * from './ai-provider';
-
-// AI 对话
-export * from './ai-chat';
-
-// AI 知识库
-export * from './ai-knowledge';
-
-// 智能问数
-export * from './ai-query';
-export * from './ai-usage';
-
-// AI 内容生成
-export * from './ai-content';

@@ -64,9 +64,6 @@ managed:
     - file_option: go_package
       path: config/service/v1
       value: go-wind-admin/api/gen/go/config/service/v1;configpb
-    - file_option: go_package
-      path: ai/service/v1
-      value: go-wind-admin/api/gen/go/ai/service/v1;aipb
 
 plugins:
   # generate go code

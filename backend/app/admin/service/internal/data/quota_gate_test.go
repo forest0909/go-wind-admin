@@ -46,7 +46,7 @@ func TestApiCallLimitFromPlanQuotas(t *testing.T) {
 	// 混合列表里挑出 API_CALL 条目
 	limit, ok := apiCallLimitFromPlanQuotas([]*ent.PlanQuota{
 		{QuotaType: ptrOf(planquota.QuotaTypeStorage), QuotaValue: ptrOf(uint64(1024))},
-		{QuotaType: ptrOf(planquota.QuotaTypeAiTokens), QuotaValue: ptrOf(uint64(999))},
+		{QuotaType: ptrOf(planquota.QuotaTypeUserLimit), QuotaValue: ptrOf(uint64(999))},
 		{QuotaType: ptrOf(planquota.QuotaTypeApiCall), QuotaValue: ptrOf(uint64(7))},
 	})
 	require.True(t, ok)

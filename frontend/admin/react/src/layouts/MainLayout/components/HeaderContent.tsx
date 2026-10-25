@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import React from 'react';
 import { Avatar, Dropdown, Badge, Tooltip, Button, Breadcrumb, Input, Popover, Modal, Empty, Spin, App as AntdApp } from 'antd';
 import type { MenuProps } from 'antd';
@@ -661,15 +661,12 @@ export const HeaderContent = ({
     </div>
   );
 
-  // ── 全局搜索（本地菜单匹配 + 语义搜索；视觉形态对齐 vben SearchPanel，
+  // ── 全局搜索（本地菜单匹配；视觉形态对齐 vben SearchPanel，
   // 规格见 docs/design-language.md「全局搜索面板」条）──
   const [semanticSearchOpen, setSemanticSearchOpen] = useState(false);
   const [semanticQuery, setSemanticQuery] = useState('');
-  const [semanticResults, setSemanticResults] = useState<{title: string; route: string}[]>([]);
-  const [semanticLoading, setSemanticLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [searchHistory, setSearchHistory] = useState<{title: string; path: string; icon?: string}[]>([]);
-  const semanticTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const SEARCH_HISTORY_KEY = 'menu_search_history';
   const SEARCH_HISTORY_MAX = 5;
@@ -713,10 +710,10 @@ export const HeaderContent = ({
     );
   }, [semanticQuery, searchableMenus]);
 
-  // 键盘导航作用于「与展示一致」的合并列表：有关键词=本地+语义，无关键词=历史
+  // 键盘导航作用于「与展示一致」的列表：有关键词=本地菜单，无关键词=历史
   const combinedResults = useMemo(
-    () => (semanticQuery.trim() ? [...localResults, ...semanticResults] : searchHistory),
-    [semanticQuery, localResults, semanticResults, searchHistory],
+    () => (semanticQuery.trim() ? localResults : searchHistory),
+    [semanticQuery, localResults, searchHistory],
   );
 
   const loadSearchHistory = () => {
@@ -746,7 +743,6 @@ export const HeaderContent = ({
 
   const closeSearch = () => {
     setSemanticSearchOpen(false);
-    setSemanticResults([]);
     setSemanticQuery('');
     setActiveIndex(-1);
   };
@@ -754,32 +750,12 @@ export const HeaderContent = ({
   const handleSemanticSearch = (query: string) => {
     setSemanticQuery(query);
     setActiveIndex(-1);
-    clearTimeout(semanticTimer.current);
-    if (!query.trim()) { setSemanticResults([]); return; }
-    semanticTimer.current = setTimeout(async () => {
-      setSemanticLoading(true);
-      try {
-        const resp = await apiClient.aiContentService.SemanticSearch({ query: query.trim(), limit: 8 });
-        setSemanticResults(
-          (resp.items ?? [])
-            .filter((item) => item?.route)
-            .map((item) => ({
-              title: item.title ?? item.route ?? '',
-              route: item.route ?? '',
-            })),
-        );
-      } catch (error) {
-        // 不吞错：带出原始错误对象；语义搜索失败降级为仅本地结果
-        console.error('semantic search failed:', error);
-        setSemanticResults([]);
-      } finally { setSemanticLoading(false); }
-    }, 500);
   };
 
   const goSearchItem = (item: { path?: string; route?: string; title?: string; icon?: string }) => {
     const path = item.path || item.route;
     if (!path) return;
-    // 写入最近搜索（去重置顶，上限 5，语义命中按 route 收敛成菜单项形态）
+    // 写入最近搜索（去重置顶，上限 5）
     const matched = searchableMenus.find((m) => m.path === path);
     const entry = {
       title: item.title || matched?.title || path,
@@ -803,7 +779,6 @@ export const HeaderContent = ({
         setSemanticSearchOpen((open) => {
           if (!open) {
             loadSearchHistory();
-            setSemanticResults([]);
             setSemanticQuery('');
             setActiveIndex(-1);
           }
@@ -1010,7 +985,7 @@ export const HeaderContent = ({
                 )}
 
                 {/* 有关键词：本地菜单命中 */}
-                {semanticQuery.trim() && !semanticLoading && localResults.length > 0 && (
+                {semanticQuery.trim() && localResults.length > 0 && (
                   <>
                     {localResults.map((item, i) => (
                       <SearchRow
@@ -1025,31 +1000,8 @@ export const HeaderContent = ({
                   </>
                 )}
 
-                {/* 有关键词：语义搜索小节（独立分区，失败降级不弹错） */}
-                {semanticQuery.trim() && (semanticLoading || semanticResults.length > 0) && (
-                  <>
-                    <div style={{ fontSize: 12, color: 'var(--ant-color-text-secondary)', padding: '6px 10px 6px', marginTop: localResults.length > 0 ? 6 : 0 }}>
-                      {t('header.semanticTitle')}
-                    </div>
-                    {semanticLoading && (
-                      <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
-                        {t('header.searching')}
-                      </div>
-                    )}
-                    {!semanticLoading && semanticResults.map((item, i) => (
-                      <SearchRow
-                        key={`${item.route}-${i}`}
-                        title={item.title}
-                        active={activeIndex === localResults.length + i}
-                        onMouseEnter={() => setActiveIndex(localResults.length + i)}
-                        onClick={() => goSearchItem(item)}
-                      />
-                    ))}
-                  </>
-                )}
-
                 {/* 有关键词且无任何结果 */}
-                {semanticQuery.trim() && !semanticLoading && combinedResults.length === 0 && (
+                {semanticQuery.trim() && combinedResults.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ant-color-text-secondary)', fontSize: 13 }}>
                     {t('header.noResults')}
                   </div>

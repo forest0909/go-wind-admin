@@ -1,11 +1,5 @@
 {
   "accessKeys": "OpenAPI 凭证",
-  "ai-agents": "Agent 编排",
-  "ai": "AI 助手",
-  "ai-knowledge": "知识库",
-  "ai-providers": "AI 提供商",
-  "ai-query": "智能问数",
-  "ai-usage": "用量统计",
   "api-audit-log": "API日志",
   "apis": "API管理",
   "auth": "认证",
@@ -124,14 +118,6 @@
       "rules": "通知路由规则",
       "deliveries": "通知投递记录",
       "templates": "通知模板"
-    },
-    "ai": {
-      "moduleName": "AI 助手",
-      "chat": "AI 助手",
-      "query": "智能问数",
-      "providers": "AI 提供商",
-      "knowledge": "知识库",
-      "usage": "用量统计"
     }
   },
   "page": {

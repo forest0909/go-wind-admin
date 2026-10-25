@@ -15,9 +15,6 @@ func TestDataExportColumnHeaders(t *testing.T) {
 		cols  []string
 		want  []string
 	}{
-		{"ai_usage", headersOf(aiUsageExportColumns()), []string{
-			"createdAt", "modelName", "promptTokens", "completionTokens", "totalTokens", "durationMs",
-		}},
 		{"notification_delivery", headersOf(notificationDeliveryExportColumns()), []string{
 			"createdAt", "sentAt", "eventType", "channel", "status", "target",
 			"attempts", "recipientUserId", "channelId", "relatedId", "requestId", "lastError",

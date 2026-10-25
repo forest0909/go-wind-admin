@@ -1,11 +1,5 @@
 {
   "accessKeys": "OpenAPI Credentials",
-  "ai-agents": "Agent Apps",
-  "ai": "AI Assistant",
-  "ai-knowledge": "Knowledge Bases",
-  "ai-providers": "AI Providers",
-  "ai-query": "AI Query",
-  "ai-usage": "Usage",
   "api-audit-log": "API Logs",
   "apis": "API Management",
   "auth": "Authentication",
@@ -124,14 +118,6 @@
       "rules": "Notification Routing Rules",
       "deliveries": "Notification Deliveries",
       "templates": "Templates"
-    },
-    "ai": {
-      "moduleName": "AI Assistant",
-      "chat": "AI Assistant",
-      "query": "AI Query",
-      "providers": "AI Providers",
-      "knowledge": "Knowledge Bases",
-      "usage": "Usage"
     }
   },
   "page": {

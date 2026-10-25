@@ -44,7 +44,7 @@
 | `sys_tenants` | 租户行：`status`（ON/OFF/EXPIRED/FREEZE，仅 ON 可用）、`type`、`audit_status`、`expired_at`、套餐关联 |
 | `sys_plans` | 套餐：`version`、`expiry_policy`（READONLY / BLOCK_LOGIN / FREEZE，默认 READONLY） |
 | `sys_plan_modules` | 套餐 → 业务模块白名单（闸门第 3 段的判定源） |
-| `sys_plan_quotas` | 套餐配额：闸门第 4 段经第 1 段预载读其 API_CALL 上限；其余类型在各资源入口与 AI 对话路径执行（[plan_billing.md](./plan_billing.md) §7.2、[ai_module.md](./ai_module.md)） |
+| `sys_plan_quotas` | 套餐配额：闸门第 4 段经第 1 段预载读其 API_CALL 上限；USER_LIMIT / STORAGE 在各资源入口执行（[plan_billing.md](./plan_billing.md) §7.2） |
 
 平台级表（无 tenant_id，跨租户可见）：`sys_tenants`/`sys_plans` 本身、`sys_apis`、菜单、权限点/权限组、
 语言等。租户表与平台表的划分**以 schema 是否装配 `mixin.TenantID[uint32]{}` 为准**，不靠命名约定。

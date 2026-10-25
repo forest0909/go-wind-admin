@@ -401,19 +401,7 @@ func (s *TaskService) startAllTask(ctx context.Context) (int32, error) {
 			s.log.Infof(ctx, "监控告警扫描定时任务已注册（cron=%s）", task.MonitorAlertScanCronSpec)
 		}
 
-		// 审计日报 AI 摘要：昨日操作审计统计 → 默认模型摘要 → 站内信投递平台用户。
-		// handler 属 AI 域（AiDigestService.AsyncAiAuditDigest），调度项在此注册（同上理由）。
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.AiAuditDigestCronSpec,
-			task.AiAuditDigestTaskType,
-			&task.AiAuditDigestTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册审计日报 AI 摘要定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "审计日报 AI 摘要定时任务已注册（cron=%s）", task.AiAuditDigestCronSpec)
-		}
-
-		// 套餐配额水位扫描：扫全部 ON 租户四类配额水位，命中租户的告警经站内信
+		// 套餐配额水位扫描：扫全部 ON 租户三类配额水位，命中租户的告警经站内信
 		// 投递其管理员。handler 属套餐计费域（PlanQuotaWatermarkService.
 		// AsyncPlanQuotaWatermarkScan），调度项在此注册（同上理由）。
 		if _, err := s.taskScheduler.NewPeriodicTask(

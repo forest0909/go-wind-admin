@@ -106,12 +106,6 @@ func (b *LuaBinder) Bind(eng gsEngine.Engine, deps *RuntimeDeps) error {
 			builder lua.LGFunction
 		}{"kratos_oss", api.LoaderOSS(deps.OSSClient, deps.Logger)})
 	}
-	if deps.AI != nil {
-		registrations = append(registrations, struct {
-			name    string
-			builder lua.LGFunction
-		}{"kratos_ai", api.LoaderAI(deps.AI, deps.Logger)})
-	}
 
 	// hook 模块（脚本自注册 hook 回调）
 	hookAdapter := &luaHookAdapter{orchestrator: deps.Orchestrator}

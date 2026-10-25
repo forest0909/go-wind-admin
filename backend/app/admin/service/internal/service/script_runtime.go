@@ -7,22 +7,16 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/sashabaranov/go-openai"
 
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
 	bLogger "github.com/tx7do/kratos-bootstrap/logger"
 
 	gsEngine "github.com/tx7do/go-scripts"
 	"github.com/tx7do/go-scripts/hostmodule"
-	"github.com/tx7do/go-utils/trans"
 
-	"github.com/tx7do/go-crud/viewer"
-	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
-	aiV1 "go-wind-admin/api/gen/go/ai/service/v1"
 	scriptV1 "go-wind-admin/api/gen/go/script/service/v1"
 
 	"go-wind-admin/app/admin/service/internal/data"
-	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/pkg/oss"
 	"go-wind-admin/pkg/scripting"
 	"go-wind-admin/pkg/scripting/api"
@@ -55,10 +49,6 @@ type ScriptRuntime struct {
 
 	// scriptLog 脚本执行日志（可选：nil 时不落审计）
 	scriptLog *data.ScriptLogRepo
-
-	// ai 脚本模块依赖（可选：nil 时引擎不注册 ai 模块）
-	aiProviderRepo *data.AiProviderRepo
-	aiUsageRepo    *data.AiUsageLogRepo
 
 	// ossClient 保存引用供 TestRun 沙箱重放依赖（与 redisClient 同理）
 	ossClient *oss.MinIOClient
@@ -97,7 +87,7 @@ func (r *ScriptRuntime) logExecution(trigger, hookPoint string, scriptName, lang
 
 // NewScriptRuntime 创建脚本运行时并为每种已注册语言实例化编排器。
 // ScriptDir 固定为空：平台脚本一律以数据库为事实源，不走文件目录。
-func NewScriptRuntime(ctx *bootstrap.Context, repo *data.ScriptRepo, redisClient *redis.Client, ossClient *oss.MinIOClient, scriptLog *data.ScriptLogRepo, aiProviderRepo *data.AiProviderRepo, aiUsageRepo *data.AiUsageLogRepo) *ScriptRuntime {
+func NewScriptRuntime(ctx *bootstrap.Context, repo *data.ScriptRepo, redisClient *redis.Client, ossClient *oss.MinIOClient, scriptLog *data.ScriptLogRepo) *ScriptRuntime {
 	r := &ScriptRuntime{
 		engines:          make(map[gsEngine.Type]*scripting.Engine),
 		cfg:              scripting.DefaultConfig(),
@@ -107,8 +97,6 @@ func NewScriptRuntime(ctx *bootstrap.Context, repo *data.ScriptRepo, redisClient
 		taskHandlerOwner: make(map[string]gsEngine.Type),
 		scriptLog:        scriptLog,
 		redisClient:      redisClient,
-		aiProviderRepo:   aiProviderRepo,
-		aiUsageRepo:      aiUsageRepo,
 		ossClient:        ossClient,
 	}
 	// http 出站护栏：域名白名单走环境变量 SCRIPT_HTTP_ALLOWED_DOMAINS
@@ -122,7 +110,6 @@ func NewScriptRuntime(ctx *bootstrap.Context, repo *data.ScriptRepo, redisClient
 		eng := scripting.NewEngine(&cfg, ctx.GetLogger())
 		eng.SetRedis(redisClient)
 		eng.SetOSS(ossClient)
-		eng.SetAICompleter(r)
 		r.engines[t] = eng
 		r.log.Infof(context.Background(), "script engine initialized (type: %s)", t)
 	}
@@ -385,15 +372,13 @@ func (r *ScriptRuntime) TestRun(ctx context.Context, language, name, source stri
 	}
 
 	// 一次性引擎：与常驻引擎同配置，独立 VM，用完即毁。
-	// 可选业务依赖（redis/oss/ai）必须在此重放，否则沙箱里对应模块缺失
-	// （此前 cache/oss 在试运行中同样缺席，属既有缺口，一并补上）。
+	// 可选业务依赖（redis/oss）必须在此重放，否则沙箱里对应模块缺失。
 	cfg := *r.cfg
 	cfg.EngineType = eng.ScriptEngine().GetType()
 	cfg.ScriptDir = ""
 	sandbox := scripting.NewEngine(&cfg, r.logger)
 	sandbox.SetRedis(r.redisClient)
 	sandbox.SetOSS(r.ossClient)
-	sandbox.SetAICompleter(r)
 	defer sandbox.Close()
 
 	if name == "" {
@@ -430,79 +415,4 @@ func (r *ScriptRuntime) Close() {
 		}
 	}
 	r.engines = make(map[gsEngine.Type]*scripting.Engine)
-}
-
-// ChatForScript 实现 scripting/api.AICompleter：脚本 ai 模块的对话入口。
-// 复用 chat 主链路的 provider 解析 / 密钥解密 / 客户端工厂；每次调用记一条
-// 用量流水（tenant/user/conversation 均为 0 = 系统脚本发起），记账失败不阻断调用。
-func (r *ScriptRuntime) ChatForScript(ctx context.Context, providerId uint32, systemPrompt, content string) (string, error) {
-	if r.aiProviderRepo == nil {
-		return "", adminV1.ErrorInternalServerError("ai module is not available")
-	}
-
-	// 解析提供商：0 = 默认启用项
-	var provider *ent.AiProvider
-	var err error
-	if providerId > 0 {
-		provider, err = r.aiProviderRepo.GetEntityByID(ctx, providerId)
-	} else {
-		provider, err = r.aiProviderRepo.GetEnabledDefault(ctx)
-	}
-	if err != nil {
-		return "", err
-	}
-	if provider.IsEnabled == nil || !*provider.IsEnabled {
-		return "", adminV1.ErrorBadRequest("ai provider is disabled")
-	}
-
-	client, err := newOpenAIClientForProvider(ctx, provider)
-	if err != nil {
-		return "", err
-	}
-
-	messages := make([]openai.ChatCompletionMessage, 0, 2)
-	if systemPrompt != "" {
-		messages = append(messages, openai.ChatCompletionMessage{Role: openai.ChatMessageRoleSystem, Content: systemPrompt})
-	}
-	messages = append(messages, openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: content})
-
-	started := time.Now()
-	resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model:    ptrStrOr(provider.ModelName, "gpt-4o-mini"),
-		Messages: messages,
-	})
-	if err != nil {
-		r.log.Errorf(ctx, "script ai chat failed: provider=%d: %v", provider.ID, err)
-		return "", err
-	}
-	durationMs := uint32(time.Since(started).Milliseconds())
-
-	reply := ""
-	if len(resp.Choices) > 0 {
-		reply = resp.Choices[0].Message.Content
-	}
-
-	// 用量记账（尽力而为：脚本调用以返回值为准，流水缺失只影响配额统计）。
-	// 走系统查看器：脚本调用无请求上下文，裸 context 过不了租户隔离 mixin 的写检查。
-	if r.aiUsageRepo != nil {
-		ctx = viewer.WithSystemContext(ctx)
-		modelName := ptrStrOr(provider.ModelName, "")
-		promptTokens := uint32(resp.Usage.PromptTokens)
-		completionTokens := uint32(resp.Usage.CompletionTokens)
-		totalTokens := uint32(resp.Usage.TotalTokens)
-		if uerr := r.aiUsageRepo.Create(ctx, &aiV1.AiUsageLog{
-			ProviderId:       &provider.ID,
-			UserId:           trans.Ptr(uint32(0)),
-			TenantId:         trans.Ptr(uint32(0)),
-			ModelName:        &modelName,
-			PromptTokens:     &promptTokens,
-			CompletionTokens: &completionTokens,
-			TotalTokens:      &totalTokens,
-			DurationMs:       &durationMs,
-		}); uerr != nil {
-			r.log.Errorf(ctx, "script ai usage log failed: %v", uerr)
-		}
-	}
-
-	return reply, nil
 }

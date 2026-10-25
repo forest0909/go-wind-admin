@@ -185,8 +185,6 @@ func mapEntQuotaTypeToProto(qt planquota.QuotaType) identityV1.PlanQuota_QuotaTy
 		return identityV1.PlanQuota_STORAGE
 	case planquota.QuotaTypeApiCall:
 		return identityV1.PlanQuota_API_CALL
-	case planquota.QuotaTypeAiTokens:
-		return identityV1.PlanQuota_AI_TOKENS
 	default:
 		return identityV1.PlanQuota_PLAN_QUOTA_TYPE_UNSPECIFIED
 	}

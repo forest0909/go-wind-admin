@@ -136,21 +136,10 @@ end, { optional = { older_than = 86400 }, timeout_secs = 60 })
 ```
 
 JavaScript 与 Lua 的模块能力一致（`log` / `crypto` / `util` / `cache` / `eventbus` / `oss` /
-`http` / `hook` / `ai` + `__get_ctx / __set_ctx / __stop`），语法差异外 API 同名。
-
-**ai 模块**（依赖注入到达时才注册；单次调用兜底 60s，注意脚本 VM 需配足超时）：
-
-| JS | Lua | 说明 |
-|---|---|---|
-| `ai.chat(content)` | `ai.chat(content)` | 用默认启用的模型提供商对话，返回回复文本 |
-| `ai.chatWith(providerId, content)` | `ai.chat_with(providerId, content)` | 显式指定提供商 |
-| `ai.chatWithSystem(pid, sys, content)` | `ai.chat_with_system(pid, sys, content)` | 带 system 提示词 |
-
-每次调用记一条 `sys_ai_usage_logs`（tenant/user/conversation 均为 0 = 系统脚本发起）；
-提供商走「AI 提供商」管理页配置（id 见列表），api_key 解密与用量记账复用对话主链路。
+`http` / `hook` + `__get_ctx / __set_ctx / __stop`），语法差异外 API 同名。
 
 > **唯一例外：`task` 是 Lua 独有的。** JS 侧的 `task` 模块只是一个**空表占位、无实现**
-> （`backend/pkg/scripting/runtime_javascript.go:107-111` 注册的是 `map[string]any{}`，注释即写明
+> （`backend/pkg/scripting/runtime_javascript.go:105` 注册的是 `map[string]any{}`，注释即写明
 > in-script 任务注册 API 尚未实现），其上没有任何 `register_handler` 可用。
 > 任务处理器当前只能用 Lua 编写；asynq 任务桥与执行链路本身与语言无关，已通。
 

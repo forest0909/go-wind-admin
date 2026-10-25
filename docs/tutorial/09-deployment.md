@@ -83,9 +83,7 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 4. 新端点做了「接口同步」、新菜单进了菜单管理（第 04/06 章）；
 5. 备份任务挂上且恢复演练过；
 6. SSE 网关与后端同网络、缓冲配置未被改动；
-7. 演示数据清理（`backend/sql/` 是演示数据，生产库别导）；
-8. 若启用 AI 模块：数据库装 pgvector 扩展、`GOWIND_CRYPTO_KEY` 密钥注入、提供商在管理页配置、目标套餐加 `AI` 模块白名单行（详见 [ai_module.md](../ai_module.md)）。
-9. 新端点做了「接口同步」已列第 4 条——AI 端点同理，租户可见性还依赖套餐白名单。
+7. 演示数据清理（`backend/sql/` 是演示数据，生产库别导）。
 
 ## 深读
 

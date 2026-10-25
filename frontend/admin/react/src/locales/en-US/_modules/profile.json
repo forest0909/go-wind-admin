@@ -110,8 +110,7 @@
     "quota": {
       "USER_LIMIT": "Users",
       "STORAGE": "Storage (MB)",
-      "API_CALL": "API calls",
-      "AI_TOKENS": "AI tokens"
+      "API_CALL": "API calls"
     }
   },
   "locale": "Preferred language",

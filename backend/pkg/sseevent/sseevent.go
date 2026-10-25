@@ -25,28 +25,3 @@ package sseevent
 // 生成的 pb.go 带 `json:"message_id,omitempty"` 一类蛇形 tag，所以键名变蛇形、
 // status 变数字、时间戳变成 {seconds,nanos} 对象。前端读 messageId/createdAt 全取到 undefined。
 const Notification = "notification"
-
-// AIChatChunk AI 对话流式片段推送。
-//
-// data: 为 ai.service.v1.ChatChunkEvent 的 protojson（camelCase 键：
-// conversationId / seq / delta）。一次对话会产生多个 chunk 帧，前端按
-// conversationId 归组、按 seq 顺序累积渲染；POST /admin/v1/ai/chat/completions
-// 的同步响应携带完整回复，以响应为准校正累积文本（chunk 尽力而为，缓冲满即丢帧）。
-const AIChatChunk = "ai_chat_chunk"
-
-// AIChatTool AI 对话的工具调用可见化推送。
-//
-// data: 为 ai.service.v1.ChatToolEvent 的 protojson（camelCase 键：
-// conversationId / name / arguments / result）。模型每发起一次本地工具调用
-// 并执行完成后推一帧；工具轮不进消息落库（落库的 assistant 消息只有最终
-// 答案），本事件是前端展示"模型正在调工具"的唯一信息源（尽力而为，丢帧可容忍）。
-const AIChatTool = "ai_chat_tool"
-
-// AgentRun AI Agent 运行实时推送（试运行流式观感）。
-//
-// data: 为 ai.service.v1.AgentRunEvent 的 protojson（camelCase 键：
-// runId / appId / seq / phase / nodeId / summary / status）。
-// 一次试运行产生多帧：每节点 node_start + node_end 各一帧，收尾 done 或 error 一帧。
-// 尽力而为丢帧可容忍：Run 同步响应携带完整 trace 与终态，以响应为准。
-// streamId 与 AI 对话同为发起用户 userId（复用既有用户流，免重复连接）。
-const AgentRun = "ai_agent_run"

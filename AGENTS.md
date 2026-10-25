@@ -68,12 +68,11 @@ gow 未覆盖的任务（三端 TS 生成 `make ts`、OpenAPI `make openapi`、`
 - 后端起在 `:7788`（`gow run admin`；启动方式见 `docs/windows-startup-guide.md` / `docs/backend_deploy.md`）；前端 dev 端口见上表，代理已配置好 API 转发。
 - 登录账号：全新环境播种为 `admin / Abcd@1234`（`pkg/constants/default_data.go` 的 `DefaultUserPassword`）；本机 `gwa` 库实测（2026-09-20）即为此值，历史备注的 `admin / admin` 已失效（登录返回 `INVALID_PASSWORD`）。图形验证码的答案可在 Redis 中按 `gowind:captcha:<captchaId>` 直接读取，便于自动化验证。
 - vue-element 若见 router-view 塌空/白屏：**别再往 vite 依赖优化/HMR 上归因**（那是早先的误判）。真因是 `<transition mode="out-in">` 叠 vue-router 5 懒加载路由的竞态，已通过去掉 `out-in` 改同帧交叉淡入淡出修掉；回归判定与保留的防御见 `frontend/admin/vue-element/AGENTS.md`「白屏（router-view 塌空）真因与处置」。
-- AI 功能本地调试：`.zcode/tmp/mock_llm.py`（OpenAI 兼容 echo + embeddings，端口 18080）可替代真实模型打通全部链路；生产需配置真实 provider（管理页）与 `pgvector` 扩展（见 `docs/ai_module.md`）。
 - `go test ./...` 偶发 `fork/exec %TEMP%\go-build...\x.test.exe: Access is denied.`（Windows 上对刚链接好的测试二进制执行被拦，疑似安全策略/杀软实时扫描）：属环境问题、**不是代码失败**。复验办法是绕开 Temp 执行——`go test -c -o <工作区内路径>/x.test.exe ./pkg/x` 后直接跑该 exe；判成"测试挂了"之前先这样确认一次。
 
 ## 文档索引
 
-- **文档总入口（两层索引：教程层 + 参考层）**：`docs/README.md`；渐进教程系列（面向采用者的 10 章学习路径）在 `docs/tutorial/`
+- **文档总入口（两层索引：教程层 + 参考层）**：`docs/README.md`；渐进教程系列（面向采用者的 9 章学习路径）在 `docs/tutorial/`
 - 各端规范：`frontend/admin/{react,vue-element,vue-vben}/AGENTS.md`
 - **表单抽屉关闭守卫**：`docs/form_drawer_close_guard.md`（遮罩/ESC/X/取消四路径脏数据确认的三端统一规范）——新做或改表单抽屉关闭行为前必读
 - 后端：`docs/backend_project_struct.md`、`docs/backend_deploy.md`、`docs/audit-log-producer-design.md`
@@ -89,5 +88,3 @@ gow 未覆盖的任务（三端 TS 生成 `make ts`、OpenAPI `make openapi`、`
 - SSE 推送架构：`docs/sse_architecture.md`（服务端配置与生命周期/流鉴权与 streamID 语义/事件生产/三端消费/部署与排障；改推送链路、加事件类型或排"收不到通知"前先读它）
 - 数据权限范围：`docs/data_scope_design.md`（角色级行数据范围：语义/聚合/接入步骤/运维边界；新表接入数据范围或改聚合规则先读它）
 - 设计语言规范：`docs/design-language.md`（三端视觉唯一权威值表，改颜色/圆角/布局尺寸先改这里再同步三端）
-- AI 模块：`docs/ai_module.md`（模型提供商/流式对话/用量配额/知识库 RAG/脚本 ai 模块/安全洞察/智能问数的架构与部署要求；改 AI 相关代码、接新模型、部署 pgvector 或排租户 AI 403 前先读它）
-- 教程第 10 章：`docs/tutorial/10-ai-module.md`（AI 功能的采用者上手路径：配置三步/使用/集成）

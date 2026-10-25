@@ -155,15 +155,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	monitorAlertRuleRepo := data.NewMonitorAlertRuleRepo(ctx, entClient)
 	accessKeyRepo := data.NewAccessKeyRepo(ctx, entClient)
 
-	// AI（提供商 / 会话 / 消息 / 用量流水）
-	aiProviderRepo := data.NewAiProviderRepo(ctx, entClient)
-	aiConversationRepo := data.NewAiConversationRepo(ctx, entClient)
-	aiMessageRepo := data.NewAiMessageRepo(ctx, entClient)
-	aiUsageLogRepo := data.NewAiUsageLogRepo(ctx, entClient)
-	aiKnowledgeRepo := data.NewAiKnowledgeRepo(ctx, entClient)
-	aiAgentAppRepo := data.NewAiAgentAppRepo(ctx, entClient)
-	aiAgentRunRepo := data.NewAiAgentRunRepo(ctx, entClient)
-
 	// ═══════════════════════ 三、认证与鉴权 ═══════════════════════
 
 	tenantAccessChecker := data.NewTenantAccessCheckerImpl(ctx, entClient)
@@ -193,7 +184,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// 审计日志服务端导出（XLSX/CSV）：手动注册二进制响应路由，见 rest_server 的 registerFileTransfer 同段
 	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, apiAuditLogRepo, operationAuditLogRepo, dataAccessAuditLogRepo, permissionAuditLogRepo, policyEvaluationLogRepo, accessTokenChecker)
 	// 非审计数据服务端导出（AI 用量流水租户视角 / 通知台账平台闸），同段手动路由
-	dataExportService := service.NewDataExportService(ctx, aiUsageLogRepo, notificationDeliveryRepo, accessTokenChecker)
+	dataExportService := service.NewDataExportService(ctx, notificationDeliveryRepo, accessTokenChecker)
 	// 系统级常驻任务监控（只读 asynq Inspector）
 	taskMonitorService := service.NewTaskMonitorService(ctx)
 
@@ -262,7 +253,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 平台脚本：运行时（多语言引擎）+ 管理服务
 	scriptLogRepo := data.NewScriptLogRepo(ctx, entClient)
-	scriptRuntime := service.NewScriptRuntime(ctx, scriptRepo, redisClient, minioClient, scriptLogRepo, aiProviderRepo, aiUsageLogRepo)
+	scriptRuntime := service.NewScriptRuntime(ctx, scriptRepo, redisClient, minioClient, scriptLogRepo)
 	cleanups = append(cleanups, scriptRuntime.Close)
 	scriptService := service.NewScriptService(ctx, scriptRepo, scriptRuntime)
 	scriptLogService := service.NewScriptLogService(ctx, scriptLogRepo)
@@ -288,33 +279,16 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		},
 	)
 
-	dashboardService := service.NewDashboardService(ctx, dashboardRepo, scriptRuntime)
+	dashboardService := service.NewDashboardService(ctx, dashboardRepo)
 
-	// 审计日报 AI 摘要：聚合审计 + AI 摘要（复用脚本 ai 模块的 ChatForScript）+ 站内信投递内核。
-	// 依赖 scriptRuntime 与 internalMessageService，故置二者之后。
-	auditDigestService := service.NewAiDigestService(ctx, operationAuditLogRepo, internalMessageService, internalMessageRepo, scriptRuntime, entClient)
-
-	// 套餐配额水位通知：用量扫描（tenantUsageRepo/aiUsageLogRepo）+ 站内信投递内核。
+	// 套餐配额水位通知：用量扫描（tenantUsageRepo）+ 站内信投递内核。
 	// 依赖 internalMessageService，故置其后。
-	planQuotaWatermarkService := service.NewPlanQuotaWatermarkService(ctx, tenantUsageRepo, aiUsageLogRepo, internalMessageService, internalMessageRepo, entClient)
-
-	// 智能问数：NL→只读 SQL→结构化结果（四重护栏）+ 定时问数任务
-	aiQueryService := service.NewAiQueryService(ctx, aiProviderRepo, aiUsageLogRepo, entClient, internalMessageService, internalMessageRepo)
-	aiContentService := service.NewAiContentService(ctx, aiProviderRepo, aiUsageLogRepo, menuRepo, roleRepo, userRepo, entClient)
+	planQuotaWatermarkService := service.NewPlanQuotaWatermarkService(ctx, tenantUsageRepo, internalMessageService, internalMessageRepo, entClient)
 
 	// ── register:service ── 新模块服务在此行后注册(make register 工具锚点,勿删)
 	notificationRuleService := service.NewNotificationRuleService(ctx, notificationRuleRepo, notificationChannelRepo, notificationService)
 	accessKeyService := service.NewAccessKeyService(ctx, accessKeyRepo, authenticator, loginRateLimiter)
 	configService := service.NewConfigService(ctx, configRepo)
-
-	// AI：CRUD 四件套 + 对话主链路（chat 持 publisher 占位，SSE 启动后注入真身）
-	aiProviderService := service.NewAiProviderService(ctx, aiProviderRepo)
-	aiConversationService := service.NewAiConversationService(ctx, aiConversationRepo)
-	aiMessageService := service.NewAiMessageService(ctx, aiMessageRepo)
-	aiUsageLogService := service.NewAiUsageLogService(ctx, aiUsageLogRepo)
-	aiKnowledgeService := service.NewAiKnowledgeService(ctx, aiKnowledgeRepo, aiProviderRepo, aiUsageLogRepo)
-	aiChatService := service.NewAiChatService(ctx, aiConversationRepo, aiMessageRepo, aiProviderRepo, aiUsageLogRepo, aiKnowledgeRepo)
-	aaAiAgentService := service.NewAiAgentService(ctx, aiAgentAppRepo, aiAgentRunRepo, aiProviderRepo, aiKnowledgeRepo, aiUsageLogRepo)
 
 	// ═══════════════════════ 五、传输层(internal/server) ═══════════════════════
 
@@ -346,28 +320,19 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		taskMonitorService,
 		accessKeyService,
 		configService,
-		aiProviderService,
-		aiConversationService,
-		aiMessageService,
-		aiUsageLogService,
-		aiKnowledgeService,
-		aiChatService,
-		aiQueryService,
-		aiContentService,
-		aaAiAgentService,
 	)
 	if err != nil {
 		rollback()
 		return nil, nil, err
 	}
 
-	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, monitorAlertService, scriptRuntime, aiKnowledgeService, auditDigestService, planQuotaWatermarkService)
+	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, monitorAlertService, scriptRuntime, planQuotaWatermarkService)
 	if err != nil {
 		rollback()
 		return nil, nil, err
 	}
 
-	sseServer := server.NewSseServer(ctx, internalMessageService, aiChatService, aaAiAgentService)
+	sseServer := server.NewSseServer(ctx, internalMessageService)
 
 	return newApp(ctx, restServer, asynqServer, sseServer), rollback, nil
 }

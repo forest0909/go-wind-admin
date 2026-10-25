@@ -6,7 +6,6 @@ require (
 	entgo.io/ent v0.14.6
 	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/envoyproxy/protoc-gen-validate v1.3.3
-	github.com/expr-lang/expr v1.17.8
 	github.com/getkin/kin-openapi v0.149.0
 	github.com/go-kratos/kratos/v2 v2.9.2
 	github.com/go-sql-driver/mysql v1.10.1
@@ -21,7 +20,6 @@ require (
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/pquerna/otp v1.5.0
 	github.com/redis/go-redis/v9 v9.22.0
-	github.com/sashabaranov/go-openai v1.41.2
 	github.com/stretchr/testify v1.12.1
 	github.com/tx7do/go-crud/api v0.0.7
 	github.com/tx7do/go-crud/entgo v0.0.57
@@ -35,7 +33,6 @@ require (
 	github.com/tx7do/go-utils/captcha v0.0.4
 	github.com/tx7do/go-utils/copierutil v0.0.8
 	github.com/tx7do/go-utils/crypto v0.0.4
-	github.com/tx7do/go-utils/doctext v0.1.0
 	github.com/tx7do/go-utils/eventbus v0.1.0
 	github.com/tx7do/go-utils/fieldperm v0.1.0
 	github.com/tx7do/go-utils/geoip v1.1.8
@@ -47,7 +44,6 @@ require (
 	github.com/tx7do/go-utils/notify v0.0.6
 	github.com/tx7do/go-utils/password v0.1.0
 	github.com/tx7do/go-utils/sqlutil v0.1.0
-	github.com/tx7do/go-wind-plugins/ai/openai v0.0.1
 	github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact v0.0.0-20260831125122-5bb4931991b2
 	github.com/tx7do/kratos-authn v1.1.11
 	github.com/tx7do/kratos-authn/engine/jwt v1.1.11
@@ -145,7 +141,6 @@ require (
 	github.com/klauspost/compress v1.20.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
-	github.com/ledongthuc/pdf v0.0.0-20260907135840-6c8c28e0e8a0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
 	github.com/lestrrat-go/dsig v1.2.1 // indirect
 	github.com/lestrrat-go/dsig-secp256k1 v1.0.0 // indirect

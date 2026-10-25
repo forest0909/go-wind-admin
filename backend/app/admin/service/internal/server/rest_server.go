@@ -188,15 +188,6 @@ func NewRestServer(
 	taskMonitorService *service.TaskMonitorService,
 	accessKeyService *service.AccessKeyService,
 	configService *service.ConfigService,
-	aiProviderService *service.AiProviderService,
-	aiConversationService *service.AiConversationService,
-	aiMessageService *service.AiMessageService,
-	aiUsageLogService *service.AiUsageLogService,
-	aiKnowledgeService *service.AiKnowledgeService,
-	aiChatService *service.AiChatService,
-	aiQueryService *service.AiQueryService,
-	aiContentService *service.AiContentService,
-	aiAgentService *service.AiAgentService,
 ) (*http.Server, error) {
 	cfg := ctx.GetConfig()
 
@@ -274,12 +265,6 @@ func NewRestServer(
 		return auditExportService.ServeExport(ctx.Response(), ctx.Request())
 	})
 
-	// AI 用量流水服务端导出（手动注册，理由同上；租户管理员按 viewer 语义导本租户，
-	// 与 /admin/v1/ai/usage-logs 列表口径一致）。
-	srv.Route("/").GET("admin/v1/ai/usage-logs:export", func(ctx http.Context) error {
-		return dataExportService.ServeAiUsageExport(ctx.Response(), ctx.Request())
-	})
-
 	// 通知投递台账服务端导出（手动注册；平台管理员专属，同台账读接口的闸）。
 	srv.Route("/").GET("admin/v1/notification-deliveries:export", func(ctx http.Context) error {
 		return dataExportService.ServeNotificationDeliveryExport(ctx.Response(), ctx.Request())
@@ -301,15 +286,6 @@ func NewRestServer(
 	adminV1.RegisterTaskMonitorServiceHTTPServer(srv, taskMonitorService)
 	adminV1.RegisterAccessKeyServiceHTTPServer(srv, accessKeyService)
 	adminV1.RegisterConfigServiceHTTPServer(srv, configService)
-	adminV1.RegisterAiProviderServiceHTTPServer(srv, aiProviderService)
-	adminV1.RegisterAiConversationServiceHTTPServer(srv, aiConversationService)
-	adminV1.RegisterAiMessageServiceHTTPServer(srv, aiMessageService)
-	adminV1.RegisterAiUsageLogServiceHTTPServer(srv, aiUsageLogService)
-	adminV1.RegisterAiKnowledgeBaseServiceHTTPServer(srv, aiKnowledgeService)
-	adminV1.RegisterAiQueryServiceHTTPServer(srv, aiQueryService)
-	adminV1.RegisterAiContentServiceHTTPServer(srv, aiContentService)
-	adminV1.RegisterAiChatServiceHTTPServer(srv, aiChatService)
-	adminV1.RegisterAiAgentServiceHTTPServer(srv, aiAgentService)
 
 	if cfg.GetServer().GetRest().GetEnableSwagger() {
 		swaggerUI.RegisterSwaggerUIServerWithOption(

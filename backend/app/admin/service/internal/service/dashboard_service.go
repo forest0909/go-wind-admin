@@ -1,10 +1,6 @@
 package service
 
 import (
-	"fmt"
-	"go-wind-admin/pkg/middleware/auth"
-	"strings"
-
 	"context"
 
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
@@ -24,17 +20,14 @@ type DashboardService struct {
 	log *bLogger.Helper
 
 	dashboardRepo *data.DashboardRepo
-	scriptRuntime *ScriptRuntime
 }
 
 func NewDashboardService(
 	ctx *bootstrap.Context,
 	dashboardRepo *data.DashboardRepo,
-	scriptRuntime *ScriptRuntime,
 ) *DashboardService {
 	return &DashboardService{
 		log:           ctx.NewLoggerHelper("dashboard/service/admin-service"),
-		scriptRuntime: scriptRuntime,
 		dashboardRepo: dashboardRepo,
 	}
 }
@@ -116,171 +109,4 @@ func (s *DashboardService) GetLoginStatusDistribution(ctx context.Context, _ *em
 		})
 	}
 	return &adminV1.StatusDistributionResponse{Items: items}, nil
-}
-
-// 异常信号阈值（24h 窗口）。
-const (
-	nightOpsAlertMin     = 1 // 深夜（本地 0-6 点）操作条数下限
-	userFailedAlertMin   = 3 // 单用户失败操作条数下限
-	loginFailAlertMin    = 3 // 单账号登录失败次数下限（疑似口令尝试）
-	sensitiveOpsAlertMin = 1 // 敏感操作（DELETE/EXPORT/ASSIGN）条数下限
-	sensitiveDetailMax   = 5 // 响应里最多携带的敏感操作明细条数
-)
-
-// 告警类型常量（前端 i18n 模板的 type 键，告警本身零文案）。
-const (
-	aiAlertBruteForce   = "BRUTE_FORCE"
-	aiAlertNightOps     = "NIGHT_OPS"
-	aiAlertFailedOps    = "FAILED_OPS"
-	aiAlertSensitiveOps = "SENSITIVE_OPS"
-)
-
-// GetAiInsights 安全与异常洞察：规则预筛审计明细里的行为模式，
-// 返回结构化告警事实（severity + type + facts），**不含任何人类文案**——
-// 文案由前端 i18n 模板按界面语言渲染；LLM 总体评估按请求语言生成。
-// 平台用户专属：明细日志为全平台数据，且会外发到模型端点。
-func (s *DashboardService) GetAiInsights(ctx context.Context, req *adminV1.AiInsightsRequest) (*adminV1.AiInsightsResponse, error) {
-	operator, err := auth.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if operator.GetTenantId() != 0 {
-		return nil, adminV1.ErrorForbidden("ai insights is platform-only")
-	}
-
-	var alerts []*adminV1.AiInsightAlert
-	addAlert := func(severity, alertType string, facts map[string]string) {
-		alerts = append(alerts, &adminV1.AiInsightAlert{
-			Severity: severity,
-			Type:     alertType,
-			Facts:    facts,
-		})
-	}
-
-	// 1. 疑似口令尝试
-	failAccounts, err := s.dashboardRepo.LoginFailAccounts(ctx, loginFailAlertMin)
-	if err != nil {
-		return nil, err
-	}
-	for _, acc := range failAccounts {
-		addAlert("HIGH", aiAlertBruteForce, map[string]string{
-			"username": acc.Username,
-			"count":    fmt.Sprintf("%d", acc.Fails),
-			"ip":       acc.LastIP,
-		})
-	}
-
-	// 2. 用户行为模式
-	behaviors, err := s.dashboardRepo.UserBehavior24h(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, b := range behaviors {
-		if b.Night >= nightOpsAlertMin {
-			addAlert("MEDIUM", aiAlertNightOps, map[string]string{
-				"username": b.Username,
-				"count":    fmt.Sprintf("%d", b.Night),
-			})
-		}
-		if b.Failed >= userFailedAlertMin {
-			addAlert("MEDIUM", aiAlertFailedOps, map[string]string{
-				"username": b.Username,
-				"count":    fmt.Sprintf("%d", b.Failed),
-				"total":    fmt.Sprintf("%d", b.Total),
-			})
-		}
-	}
-
-	// 3. 敏感操作明细
-	sensitiveOps, err := s.dashboardRepo.SensitiveOps24h(ctx, sensitiveDetailMax)
-	if err != nil {
-		return nil, err
-	}
-	if len(sensitiveOps) >= sensitiveOpsAlertMin {
-		facts := map[string]string{"count": fmt.Sprintf("%d", len(sensitiveOps))}
-		alert := &adminV1.AiInsightAlert{
-			Severity: "LOW",
-			Type:     aiAlertSensitiveOps,
-			Facts:    facts,
-		}
-		for _, op := range sensitiveOps {
-			alert.Items = append(alert.Items, &adminV1.AiSensitiveOpItem{
-				Username:     op.Username,
-				Action:       op.Action,
-				ResourceType: op.ResourceType,
-				CreatedAt:    op.CreatedAt.Format("01-02 15:04"),
-			})
-		}
-		alerts = append(alerts, alert)
-	}
-
-	// 4. 总体评估：有告警才调 LLM，并按请求语言输出；失败不阻断告警返回
-	summary := ""
-	if len(alerts) > 0 {
-		lang := req.GetLang()
-		if lang == "" {
-			lang = "zh-CN"
-		}
-		var alertFacts strings.Builder
-		for _, a := range alerts {
-			alertFacts.WriteString("- [" + a.Severity + "] " + a.Type)
-			for k, v := range a.Facts {
-				alertFacts.WriteString(fmt.Sprintf(" %s=%s", k, v))
-			}
-			alertFacts.WriteString("\n")
-		}
-		langLine := "用中文输出。"
-		if strings.HasPrefix(lang, "en") {
-			langLine = "Respond in English."
-		}
-		assessment, err := s.scriptRuntime.ChatForScript(ctx, 0,
-			"你是企业后台的安全运营助手。以下是从审计日志规则筛出的异常信号清单，"+
-				"写一段 100 字以内的总体风险评估：概括风险等级与最需要优先处置的一项，"+
-				"语气克制、只基于给定信号，不要编造未提及的信息。"+langLine,
-			alertFacts.String())
-		if err != nil {
-			// LLM 不可用不阻断告警：告警本身是确定性事实
-			s.log.Errorf(ctx, "ai insights assessment failed, alerts still returned: %v", err)
-		} else {
-			summary = assessment
-		}
-	}
-
-	return &adminV1.AiInsightsResponse{
-		Alerts:  alerts,
-		Summary: summary,
-	}, nil
-}
-
-// splitInsightPoints 把模型输出的要点文本拆成结构化条目：
-// 识别 "- "/"* "/数字序号前缀；无多行时按句号拆分。最多 5 条。
-func splitInsightPoints(summary string) []string {
-	var points []string
-	for _, line := range strings.Split(summary, "\n") {
-		line = strings.TrimSpace(line)
-		line = strings.TrimPrefix(line, "- ")
-		line = strings.TrimPrefix(line, "* ")
-		line = strings.TrimPrefix(line, "• ")
-		// 去数字序号（"1. " / "1、"）
-		if idx := strings.IndexAny(line, ".、"); idx > 0 && idx <= 2 {
-			rest := strings.TrimSpace(line[idx+1:])
-			if rest != "" {
-				line = rest
-			}
-		}
-		if line != "" {
-			points = append(points, line)
-		}
-	}
-	if len(points) <= 1 && summary != "" {
-		for _, s := range strings.Split(summary, "。") {
-			if s = strings.TrimSpace(s); s != "" {
-				points = append(points, s+"。")
-			}
-		}
-	}
-	if len(points) > 5 {
-		points = points[:5]
-	}
-	return points
 }

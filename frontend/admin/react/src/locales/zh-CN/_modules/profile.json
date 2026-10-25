@@ -110,8 +110,7 @@
     "quota": {
       "USER_LIMIT": "用户数",
       "STORAGE": "存储空间 (MB)",
-      "API_CALL": "API 调用次数",
-      "AI_TOKENS": "AI Token 用量"
+      "API_CALL": "API 调用次数"
     }
   },
   "locale": "偏好语言",

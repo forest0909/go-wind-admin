@@ -23,8 +23,8 @@ import (
 	"go-wind-admin/pkg/task"
 )
 
-// PlanQuotaWatermarkService 套餐配额水位通知：定时扫描全部 ON 租户四类配额
-// （USER_LIMIT / STORAGE / API_CALL / AI_TOKENS 月度）的用量水位（数据层
+// PlanQuotaWatermarkService 套餐配额水位通知：定时扫描全部 ON 租户三类配额
+// （USER_LIMIT / STORAGE / API_CALL）的用量水位（数据层
 // ScanQuotaWatermarks，与计量同源），对达到阈值的租户按其管理员偏好语言渲染
 // 站内信告警并投递给租户管理员（sys_tenants.admin_user_id）。
 //
@@ -34,7 +34,6 @@ type PlanQuotaWatermarkService struct {
 	log *bLogger.Helper
 
 	tenantUsageRepo  *data.TenantUsageRepo
-	aiUsageLogRepo   *data.AiUsageLogRepo
 	internalMessages *InternalMessageService
 	internalMsgRepo  *data.InternalMessageRepo
 	entClient        *entCrud.EntClient[*ent.Client]
@@ -43,7 +42,6 @@ type PlanQuotaWatermarkService struct {
 func NewPlanQuotaWatermarkService(
 	ctx *bootstrap.Context,
 	tenantUsageRepo *data.TenantUsageRepo,
-	aiUsageLogRepo *data.AiUsageLogRepo,
 	internalMessages *InternalMessageService,
 	internalMsgRepo *data.InternalMessageRepo,
 	entClient *entCrud.EntClient[*ent.Client],
@@ -51,7 +49,6 @@ func NewPlanQuotaWatermarkService(
 	return &PlanQuotaWatermarkService{
 		log:              ctx.NewLoggerHelper("plan-quota-watermark/service/admin-service"),
 		tenantUsageRepo:  tenantUsageRepo,
-		aiUsageLogRepo:   aiUsageLogRepo,
 		internalMessages: internalMessages,
 		internalMsgRepo:  internalMsgRepo,
 		entClient:        entClient,
@@ -65,10 +62,7 @@ func (s *PlanQuotaWatermarkService) AsyncPlanQuotaWatermarkScan(taskType string,
 	// asynq ctx 不带 viewer；跨租户扫描与站内信落库都需要 viewer，用系统查看器。
 	ctx := viewer.WithSystemContext(context.Background())
 
-	now := time.Now()
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-
-	hits, err := s.tenantUsageRepo.ScanQuotaWatermarks(ctx, s.aiUsageLogRepo, monthStart)
+	hits, err := s.tenantUsageRepo.ScanQuotaWatermarks(ctx)
 	if err != nil {
 		s.log.Errorf(ctx, "quota watermark: scan failed: %v", err)
 		return err

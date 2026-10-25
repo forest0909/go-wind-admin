@@ -28,7 +28,6 @@ const (
 	jsModuleTask     = "task"
 	jsModuleEventBus = "eventbus"
 	jsModuleOSS      = "oss"
-	jsModuleAI       = "ai"
 )
 
 func init() {
@@ -96,11 +95,6 @@ func (b *JSBinder) Bind(eng gsEngine.Engine, deps *RuntimeDeps) error {
 	if deps.OSSClient != nil {
 		if err := eng.RegisterModule(jsModuleOSS, api.ModuleOSS(deps.OSSClient, deps.Logger).Funcs); err != nil {
 			return fmt.Errorf("js bind module %s: %w", jsModuleOSS, err)
-		}
-	}
-	if deps.AI != nil {
-		if err := eng.RegisterModule(jsModuleAI, api.ModuleAI(deps.AI, deps.Logger).Funcs); err != nil {
-			return fmt.Errorf("js bind module %s: %w", jsModuleAI, err)
 		}
 	}
 

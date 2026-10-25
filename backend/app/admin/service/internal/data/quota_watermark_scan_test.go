@@ -3,7 +3,6 @@ package data
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	bLogger "github.com/tx7do/kratos-bootstrap/logger"
@@ -123,7 +122,7 @@ func TestScanQuotaWatermarksSqlite(t *testing.T) {
 		log:           bLogger.NewHelper(bLogger.NopLogger()),
 	}
 	// aiRepo 传 nil：AI 维度跳过；monthStart 仅喂 aiRepo，传零值即可。
-	hits, err := repo.ScanQuotaWatermarks(ctx, nil, time.Time{})
+	hits, err := repo.ScanQuotaWatermarks(ctx)
 	require.NoError(t, err)
 	require.Len(t, hits, 1, "只应命中水位租户甲（乙未达阈值、丙 OFF、丁无配额）")
 	h := hits[0]

@@ -26,8 +26,6 @@
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
 - **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM, one-click CRUD scaffolding; companion desktop GUI generator and CLI ([go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp), see [Companion Tools](#companion-tools))
 - **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
-- **AI capabilities out of the box**: OpenAI-compatible multi-model access (cloud / local Ollama), SSE streaming chat, knowledge-base RAG (pgvector retrieval + file upload), token usage quotas, a script `ai` module and scheduled AI tasks — see [docs/ai_module.md](./docs/ai_module.md)
-
 ### This checkout keeps React only
 
 **Upstream ships three parallel frontends; this tree has already chosen React.**
@@ -40,7 +38,7 @@ Ports, demo URLs, and `make ts` targets for the other two frontends do not apply
 
 ## Start Here
 
-- **Want to learn this codebase properly**: start from the [documentation index](./docs/README.md) (in Chinese). The docs split into a **tutorial layer** (a [10-chapter progressive tutorial](./docs/tutorial/README.md) taking you from an empty environment to building business modules and deploying safely) and a **reference layer** (the authoritative description of each subsystem), with recommended reading paths per role (full-stack adopter / backend / frontend / ops & security).
+- **Want to learn this codebase properly**: start from the [documentation index](./docs/README.md) (in Chinese). The docs split into a **tutorial layer** (a [9-chapter progressive tutorial](./docs/tutorial/README.md) taking you from an empty environment to building business modules and deploying safely) and a **reference layer** (the authoritative description of each subsystem), with recommended reading paths per role (full-stack adopter / backend / frontend / ops & security).
 - **Just want to see it run**: the [demo sites](#demo) and the [Quick Start](#quick-start) are right below.
 
 ---

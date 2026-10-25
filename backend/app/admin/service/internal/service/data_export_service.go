@@ -7,7 +7,6 @@ import (
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
 	bLogger "github.com/tx7do/kratos-bootstrap/logger"
 
-	aiV1 "go-wind-admin/api/gen/go/ai/service/v1"
 	notificationV1 "go-wind-admin/api/gen/go/notification/service/v1"
 
 	"go-wind-admin/app/admin/service/internal/data"
@@ -20,13 +19,10 @@ const dataExportMaxRows = 500000
 
 // DataExportService 非审计数据的服务端导出（XLSX/CSV，手动路由 + 公共内核）。
 //
-// 权限语义与各自列表接口对齐：
-//   - AI 用量流水：租户管理员可导出本租户（viewer 按操作人重建后由 mixin
-//     谓词自动收窄，平台管理员导全量）——与 AiUsageLogService.List 同口径。
+// 权限语义与列表接口对齐：
 //   - 通知投递台账：平台管理员专属（表无 tenant_id，租户可见即全平台可见，
 //     语义对齐 requirePlatformAdmin，见 notification_platform_guard.go）。
 type DataExportService struct {
-	aiUsageRepo  *data.AiUsageLogRepo
 	deliveryRepo *data.NotificationDeliveryRepo
 	log          *bLogger.Helper
 
@@ -37,47 +33,14 @@ type DataExportService struct {
 
 func NewDataExportService(
 	ctx *bootstrap.Context,
-	aiUsageRepo *data.AiUsageLogRepo,
 	deliveryRepo *data.NotificationDeliveryRepo,
 	tokenChecker auth.AccessTokenChecker,
 ) *DataExportService {
 	return &DataExportService{
-		aiUsageRepo:  aiUsageRepo,
 		deliveryRepo: deliveryRepo,
 		log:          ctx.NewLoggerHelper("data-export/service/admin-service"),
 		tokenChecker: tokenChecker,
 	}
-}
-
-// ServeAiUsageExport GET /admin/v1/ai/usage-logs:export —— AI 用量流水导出。
-// 列与用量页展示列一致（"导出的就是页面看到的"）；行范围由 viewer 收窄语义决定。
-func (s *DataExportService) ServeAiUsageExport(w http.ResponseWriter, r *http.Request) error {
-	ctx, _, ok := authorizeExportRequest(w, r, s.tokenChecker)
-	if !ok {
-		return nil
-	}
-
-	format, req, pok := parseExportRequest(w, r, dataExportMaxRows)
-	if !pok {
-		return nil
-	}
-
-	resp, listErr := s.aiUsageRepo.List(ctx, req)
-	if listErr != nil {
-		s.log.Errorf(ctx, "export [ai_usage] query failed: %s", listErr.Error())
-		http.Error(w, "query failed", http.StatusInternalServerError)
-		return nil
-	}
-
-	cols := aiUsageExportColumns()
-	headers := colHeaders(cols)
-	var rows [][]string
-	for _, row := range resp.GetItems() {
-		rows = append(rows, colValues(cols, row))
-	}
-
-	emitExportFile(w, s.log, ctx, "ai_usage", "ai-usage-logs", "ai_usage", headers, rows, format)
-	return nil
 }
 
 // ServeNotificationDeliveryExport GET /admin/v1/notification-deliveries:export
@@ -116,19 +79,6 @@ func (s *DataExportService) ServeNotificationDeliveryExport(w http.ResponseWrite
 
 // ==== 列定义（表头用英文字段名：导出文件没有运行时语言上下文）====
 
-// aiUsageExportColumns 与用量页展示列一致（模型/token 计数/耗时/时间）。
-// 页面未展示的关联 ID（provider/conversation/user/tenant）不进导出。
-func aiUsageExportColumns() []exportColumn[*aiV1.AiUsageLog] {
-	return []exportColumn[*aiV1.AiUsageLog]{
-		{header: "createdAt", value: func(r *aiV1.AiUsageLog) string { return fmtTime(r.GetCreatedAt()) }},
-		{header: "modelName", value: func(r *aiV1.AiUsageLog) string { return r.GetModelName() }},
-		{header: "promptTokens", value: func(r *aiV1.AiUsageLog) string { return strconv.FormatUint(uint64(r.GetPromptTokens()), 10) }},
-		{header: "completionTokens", value: func(r *aiV1.AiUsageLog) string { return strconv.FormatUint(uint64(r.GetCompletionTokens()), 10) }},
-		{header: "totalTokens", value: func(r *aiV1.AiUsageLog) string { return strconv.FormatUint(uint64(r.GetTotalTokens()), 10) }},
-		{header: "durationMs", value: func(r *aiV1.AiUsageLog) string { return strconv.FormatUint(uint64(r.GetDurationMs()), 10) }},
-	}
-}
-
 // notificationDeliveryExportColumns 与投递台账页展示列一致。
 func notificationDeliveryExportColumns() []exportColumn[*notificationV1.NotificationDelivery] {
 	return []exportColumn[*notificationV1.NotificationDelivery]{
@@ -138,10 +88,18 @@ func notificationDeliveryExportColumns() []exportColumn[*notificationV1.Notifica
 		{header: "channel", value: func(r *notificationV1.NotificationDelivery) string { return r.GetChannel().String() }},
 		{header: "status", value: func(r *notificationV1.NotificationDelivery) string { return r.GetStatus().String() }},
 		{header: "target", value: func(r *notificationV1.NotificationDelivery) string { return r.GetTarget() }},
-		{header: "attempts", value: func(r *notificationV1.NotificationDelivery) string { return strconv.FormatUint(uint64(r.GetAttempts()), 10) }},
-		{header: "recipientUserId", value: func(r *notificationV1.NotificationDelivery) string { return strconv.FormatUint(uint64(r.GetRecipientUserId()), 10) }},
-		{header: "channelId", value: func(r *notificationV1.NotificationDelivery) string { return strconv.FormatUint(uint64(r.GetChannelId()), 10) }},
-		{header: "relatedId", value: func(r *notificationV1.NotificationDelivery) string { return strconv.FormatUint(uint64(r.GetRelatedId()), 10) }},
+		{header: "attempts", value: func(r *notificationV1.NotificationDelivery) string {
+			return strconv.FormatUint(uint64(r.GetAttempts()), 10)
+		}},
+		{header: "recipientUserId", value: func(r *notificationV1.NotificationDelivery) string {
+			return strconv.FormatUint(uint64(r.GetRecipientUserId()), 10)
+		}},
+		{header: "channelId", value: func(r *notificationV1.NotificationDelivery) string {
+			return strconv.FormatUint(uint64(r.GetChannelId()), 10)
+		}},
+		{header: "relatedId", value: func(r *notificationV1.NotificationDelivery) string {
+			return strconv.FormatUint(uint64(r.GetRelatedId()), 10)
+		}},
 		{header: "requestId", value: func(r *notificationV1.NotificationDelivery) string { return r.GetRequestId() }},
 		{header: "lastError", value: func(r *notificationV1.NotificationDelivery) string { return r.GetLastError() }},
 	}

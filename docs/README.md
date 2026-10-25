@@ -23,8 +23,7 @@
 | [06 多租户与行级隔离](./tutorial/06-multi-tenant-isolation.md) | Api 表闸门、数据层租户谓词、数据范围五档 | 05 | 理解"行级谁的数据"与部署闸门 |
 | [07 审计与等保](./tutorial/07-audit-compliance.md) | 六类审计日志的采集与留存、口令策略/MFA/限流 | 01 | 知道审计能力怎么用、边界在哪 |
 | [08 脚本系统入门](./tutorial/08-script-system.md) | 五类扩展点、安全模型、最小示例 | 02 | 会用脚本扩展平台行为而不发版 |
-| [09 部署上线](./tutorial/09-deployment.md) | 部署形态决策、SSE 网关、生产密钥、备份 | 02 |
-| [10 AI 模块](./tutorial/10-ai-module.md) | 模型提供商配置、流式对话、知识库 RAG、用量配额、脚本/任务集成 | 02（建议先读 05/06） | 把系统安全地放到生产 |
+| [09 部署上线](./tutorial/09-deployment.md) | 部署形态决策、SSE 网关、生产密钥、备份 | 02 | 把系统安全地放到生产 |
 
 ### 按角色的推荐路线
 
@@ -66,8 +65,6 @@
 | [design-language.md](./design-language.md) | 三端视觉唯一权威值表（颜色/圆角/布局尺寸） | 改任何视觉相关代码前 |
 | [form_drawer_close_guard.md](./form_drawer_close_guard.md) | 表单抽屉关闭守卫：遮罩/ESC/X/取消四路径脏数据确认，三端实现约定 | 改表单抽屉关闭行为、新做表单抽屉前 |
 | [notify_channels_expansion.md](./notify_channels_expansion.md) | 通知渠道全量扩展：settings JSONB + schema 驱动动态表单 + 通用 Sender；39 渠道清单与 Target 语义 | 接新扩展渠道、改渠道配置表单/发送链路前 |
-| [ai_agent_orchestration.md](./ai_agent_orchestration.md) | AI Agent 编排：图 DSL（五种节点）、执行语义、数据模型、M1/M2 分期；复用 AI 模块的提供商/知识库/配额链路 | 做 Agent 编排相关改动（画布/引擎/运行台账）前 |
-| [ai_module.md](./ai_module.md) | AI 模块：流式对话语义、提供商密钥、AI_TOKENS 配额与白名单、知识库 RAG（含文件上传/重索引任务）、脚本 ai 模块、审计日报、安全洞察（告警零文案 i18n 架构）、智能问数（双白名单+租户谓词）与 pgvector 部署要求 | 改 AI 相关代码（对话/提供商/知识库/配额/脚本 ai）前 |
 | [brand/](./brand/) | 品牌资产（logo / favicon / 锁版 / wordmark） | 换品牌或引用素材时 |
 
 另：仓库级开发约定（铁律、门禁、工具链）在根 [`AGENTS.md`](../AGENTS.md) 与各端 `AGENTS.md`，属于维护层文档，不在本目录。

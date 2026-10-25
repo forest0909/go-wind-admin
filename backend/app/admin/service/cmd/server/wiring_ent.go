@@ -130,7 +130,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 任务 / 文件 / 运维观测
 	taskRepo := data.NewTaskRepo(ctx, entClient)
-	backupRepo := data.NewBackupRepo(ctx, entClient)
 	fileRepo := data.NewFileRepo(ctx, entClient)
 	redisCacheMonitorRepo := data.NewRedisCacheMonitorRepo(ctx, redisClient)
 	serverMonitorRepo := data.NewServerMonitorRepo(ctx, entClient)
@@ -220,7 +219,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// 文件与任务
 	fileService := service.NewFileService(ctx, fileRepo, minioClient)
 	fileTransferService := service.NewFileTransferService(ctx, minioClient, fileRepo, tenantUsageRepo)
-	taskService := service.NewTaskService(ctx, taskRepo, userRepo, backupRepo, tenantUsageRepo, auditLogArchiveRepo, minioClient)
+	taskService := service.NewTaskService(ctx, taskRepo, userRepo, tenantUsageRepo, auditLogArchiveRepo)
 
 	// 审计日志
 	loginAuditLogService := service.NewLoginAuditLogService(ctx, loginAuditLogRepo)

@@ -22,7 +22,7 @@
 
 - **前端只保留 React 19 + Ant Design**：后端不变。`vue-element` / `vue-vben` 已按 [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) 删除，本地只维护 `frontend/admin/react`
 - **企业级 RBAC**：支持多租户、多角色、多部门、菜单/按钮/数据级权限控制（策略引擎可切换：Casbin / OPA）
-- **安全与等保合规**：按等保 2.0 技术要求内置 180 天审计日志留存归档、口令策略三件套、TOTP MFA、口令应用层加密、动态 RBAC 与多租户隔离、定时备份轮换，详见[安全与等保合规](#安全与等保合规)
+- **安全与等保合规**：按等保 2.0 技术要求内置 180 天审计日志留存归档、口令策略三件套、TOTP MFA、口令应用层加密、动态 RBAC 与多租户隔离，详见[安全与等保合规](#安全与等保合规)
 - **微服务 + 单体自由切换**：基于 go-kratos 微服务框架，但支持单体架构模式开发与部署，灵活适配团队规模
 - **全栈代码生成**：Protobuf → Go API / TypeScript 客户端，Ent Schema → ORM，一键 CRUD 脚手架；配套桌面端可视化代码生成器与 CLI（[go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)，见[配套工具](#配套工具)）
 - **生产就绪**：JWT 鉴权、SSE 消息推送、异步任务调度、Swagger 文档、Docker 一键部署
@@ -194,7 +194,7 @@ pnpm dev                    # 端口 15888
 | **访问控制** | 动态 RBAC 权限引擎（策略引擎可切换：Casbin / OPA），角色—权限—接口映射存于数据库，权限变更即时热更新生效；菜单/按钮级权限控制，角色级行数据权限范围（V1 试点：岗位表）与字段级权限（V1 试点：用户表，黑名单字段自响应裁剪）；每次鉴权判定落策略评估日志可追溯 |
 | **多租户隔离** | ent Privacy 策略编译级数据隔离：读查询自动注入租户过滤，Create 防伪造租户、Update / Delete 注入租户谓词（跨租户变更命中 0 行）；租户请求按 `(path, method)` 经 Api 表 fail-closed 校验（缺权限点即拒绝）；套餐模块白名单与到期只读策略 |
 | **数据保密性** | 登录口令应用层 AES 加密传输、bcrypt 哈希存储；敏感任务配置 AES-256-GCM 静态加密（Ent Hook 透明加解密）；JWT RS256 非对称签名；refresh token 走 HttpOnly Cookie；传输层 TLS 由部署层启用（后端 `server.rest.tls` 配置或 nginx / 负载均衡终止） |
-| **数据备份恢复** | [`scripts/backup/pg_backup.sh`](./backend/scripts/backup/pg_backup.sh) 定时全量备份（pg_dump，默认保留 30 份自动轮换），支持 Docker 容器 / 本地直连双模式，附恢复操作文档 |
+| **数据备份恢复** | 程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练恢复 |
 | **前端安全** | 三端各自附带 `scripts/deploy/nginx.conf`，生产侧下发 X-Frame-Options / HSTS / Content-Security-Policy 响应头；react 与 vue-element 另在构建期向 `index.html` 注入 CSP `<meta>`（内联脚本按 sha256 白名单放行），换掉 web server 也仍有一层防护 |
 
 > **说明**：等保测评除技术要求外，还包含管理制度、物理环境、人员组织等非软件范畴的内容。本项目覆盖的是技术措施部分，可为私有化部署的等保测评准备提供直接支撑，但不能替代完整的等保测评流程。
@@ -281,7 +281,7 @@ go-wind-admin/
 │   │   ├── oss/                    # 对象存储（MinIO）
 │   │   ├── eventbus/               # 事件总线
 │   │   └── ...                     # 其他工具包
-│   ├── scripts/                    # 部署与备份脚本（env/docker/deploy/backup）
+│   ├── scripts/                    # 部署脚本（env/docker/deploy）
 │   └── sql/                        # 演示数据 SQL（默认数据由服务启动自动播种）
 ├── frontend/admin/                 # 前端（只保留 React）
 │   └── react/                      # React 19 + Ant Design V6

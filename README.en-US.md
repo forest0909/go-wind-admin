@@ -22,7 +22,7 @@
 
 - **Frontend kept: React 19 + Ant Design**. The backend is unchanged. `vue-element` / `vue-vben` were removed per [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) (Chinese); this tree maintains `frontend/admin/react` only
 - **Enterprise-grade RBAC**: Multi-tenant, multi-role, multi-department, menu / button / data-level permission control (switchable policy engine: Casbin / OPA)
-- **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, TOTP MFA, application-layer password encryption, dynamic RBAC and tenant isolation, scheduled backup rotation. See [Security & Compliance](#security--compliance-mlps-20)
+- **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, TOTP MFA, application-layer password encryption, dynamic RBAC and tenant isolation. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
 - **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM, one-click CRUD scaffolding; companion desktop GUI generator and CLI ([go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp), see [Companion Tools](#companion-tools))
 - **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
@@ -194,7 +194,7 @@ Security capabilities are designed with reference to the technical requirements 
 | **Access Control** | Dynamic RBAC engine (switchable policy engine: Casbin / OPA); role–permission–API mappings stored in the database with instant hot-reload on changes; menu / button level permission control, plus role-scoped row-level data scope (V1 pilot: position table) and field-level permissions (V1 pilot: user table, blacklisted fields pruned from responses); every authorization decision is logged to policy evaluation logs for traceability |
 | **Multi-Tenant Isolation** | Compile-time ent Privacy data isolation: read queries get automatic tenant filtering; Create guards against forged tenants, Update / Delete inject tenant predicates (cross-tenant mutations match 0 rows); tenant requests are fail-closed validated against the Api table by `(path, method)`; plan module whitelists and expiry read-only policy |
 | **Data Confidentiality** | Login passwords encrypted at the application layer (AES) in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
-| **Data Backup & Recovery** | [`scripts/backup/pg_backup.sh`](./backend/scripts/backup/pg_backup.sh) scheduled full backups (pg_dump, 30 copies auto-rotation by default), Docker container / local direct-connect dual modes, with recovery documentation |
+| **Data Backup & Recovery** | The program does not ship a database backup. Use the database's own tools (for example `pg_dump`) or an operations platform, and rehearse a restore |
 | **Frontend Security** | Each of the three frontends ships its own `scripts/deploy/nginx.conf`, setting X-Frame-Options / HSTS / Content-Security-Policy response headers in production; react and vue-element additionally inject a CSP `<meta>` into `index.html` at build time (inline scripts allowlisted by sha256), so one layer survives a different web server |
 
 > **Note**: MLPS evaluation covers more than technical requirements — management policies, physical environment, personnel organization, etc. This project covers the technical measures portion, providing direct support for evaluation preparation in private deployments, but it does not replace the full MLPS certification process.
@@ -281,7 +281,7 @@ go-wind-admin/
 │   │   ├── oss/                    # Object storage (MinIO)
 │   │   ├── eventbus/               # Event bus
 │   │   └── ...                     # Other utility packages
-│   ├── scripts/                    # Deployment & backup scripts (env/docker/deploy/backup)
+│   ├── scripts/                    # Deployment scripts (env/docker/deploy)
 │   └── sql/                        # Demo data SQL (default data is seeded automatically at service startup)
 ├── frontend/admin/                 # Frontend (React only)
 │   └── react/                      # React 19 + Ant Design V6

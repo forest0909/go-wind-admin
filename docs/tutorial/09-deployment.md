@@ -71,9 +71,7 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 
 ## 4. 数据备份
 
-[`scripts/backup/pg_backup.sh`](../../backend/scripts/backup/pg_backup.sh) 定时全量备份
-（pg_dump，默认保留 30 份自动轮换），支持 Docker 容器 / 本地直连双模式，附恢复操作文档。
-用 cron/计划任务挂上，并**演练一次恢复**——没验证过的备份等于没有。
+程序内不提供数据库备份。用数据库自带工具或运维平台做全量备份，并**演练一次恢复**。
 
 ## 5. 上线检查单
 
@@ -81,7 +79,7 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 2. TLS 在外层负载均衡启用，后端只听内网；
 3. authz 引擎切非 noop；审计留存天数核对；
 4. 新端点做了「接口同步」、新菜单进了菜单管理（第 04/06 章）；
-5. 备份任务挂上且恢复演练过；
+5. 库备份挂在程序外，并演练过恢复；
 6. SSE 网关与后端同网络、缓冲配置未被改动；
 7. 演示数据清理（`backend/sql/` 是演示数据，生产库别导）。
 

@@ -65,12 +65,6 @@ func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, in
 
 	var err error
 
-	// 注册任务
-	if err = asynqServer.RegisterSubscriber(srv, task.BackupTaskType, taskService.AsyncBackup); err != nil {
-		log.Error(err)
-		return nil, err
-	}
-
 	// 套餐配额水位扫描 handler（系统级常驻 cron，每日 09:00）：
 	// 扫描全部 ON 租户三类配额水位，命中租户的告警站内信投递其管理员。
 	if planQuotaWatermarkService != nil {

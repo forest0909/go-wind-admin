@@ -9,7 +9,7 @@ backend/                    Go 后端（kratos 微服务框架 + ent ORM）
 ├── api/                    proto 定义与生成物（protos/ 手写，gen/ 生成）
 ├── app/admin/service/      admin 服务本体（cmd/server 入口、configs 配置、internal/ 实现）
 ├── pkg/                    跨服务公共包（bootstrap、middleware、audit、scripting…）
-├── scripts/                部署与环境脚本（docker/ deploy/ env/ backup/）
+├── scripts/                部署与环境脚本（docker/ deploy/ env/）
 frontend/admin/
 ├── react/                  React 19 + antd 6 + ProComponents + TanStack Query + zustand
 ├── vue-element/            Vue 3 + Element Plus + vxe-table + TanStack vue-query + Pinia

@@ -380,6 +380,7 @@ gow run        # 无需先构建
 | `logger.yaml` | 日志配置                 |
 | `oss.yaml`    | 对象存储配置               |
 | `client.yaml` | 客户端配置                |
+| `mail.yaml`   | 验证码 SMTP / 短信配置。口令留空表示未配置，填了口令的副本不要提交 |
 
 ## 编码约定
 

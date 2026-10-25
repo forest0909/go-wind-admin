@@ -52,8 +52,7 @@ func (s *internalMessageServiceUserRepoStub) Get(_ context.Context, req *identit
 
 // newInternalMessageServiceForTest 白盒复刻 NewInternalMessageService 的字段初始化：
 // log 换 NopLogger，repo 用 testkit 构造器，authenticator 置 nil（HandleAuthorize 专用），
-// 默认 publisher 为 noop、taskEnqueuer 为 nil、notifier 为"未装配"占位（与生产构造器一致，
-// 供注册缝测试断言）。
+// 默认 publisher 为 noop、taskEnqueuer 为 nil（与生产构造器一致）。
 func newInternalMessageServiceForTest(t *testing.T) *InternalMessageService {
 	t.Helper()
 	entClient := enttest.NewEntClientForTest(t)
@@ -67,7 +66,6 @@ func newInternalMessageServiceForTest(t *testing.T) *InternalMessageService {
 		clientType:                   authenticationV1.ClientType_admin,
 		internalMessagePublisher:     noopInternalMessagePublisher{},
 		taskEnqueuer:                 nil,
-		notifier:                     unwiredNotifier{},
 	}
 }
 

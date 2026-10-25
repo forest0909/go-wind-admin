@@ -116,7 +116,7 @@
    三段键的两种带参数形态：`{field}__{datepart}__{op}` 为日期部件查询（下表，**第三段比较操作符必填**）；
    `{field}.{jsonfield}__{op}` 为 JSON 路径查询（点号分隔路径）。
 
-**坏列名与坏后缀是两种失败**（2026-09-25 探针实测：直调 `NotificationChannelRepo.List`、sqlite 内存库，其余参数正常，每次只写坏一处）：
+**坏列名与坏后缀是两种失败**（2026-09-25 探针实测：直调当时的 `NotificationChannelRepo.List`，该仓储已删除；sqlite 内存库，其余参数正常，每次只写坏一处）：
 
 `query` / `fieldMask` / `orderBy` 三个输入都会把字段名送去查一张列白名单，但那张表**只登记了 go-crud 自带示例 schema 的两张表**（`go-crud/entgo v0.0.55` 的 `ent/ent.go:74-82`，键是 `menus` 与 `users`，见 `ent/menu/menu.go:26`）。本仓表名一律 `sys_*`、一张都不在上面，于是三处 `columnAllowed` 全部走"表未登记 ⇒ fail-open"这一支（`filter/structured_filter.go:210-221`、`sorting/structured_sorting.go:14-23`、`field/field_selector.go:41-50`）：白名单不拦，坏列原样拼进 SQL，由数据库拒绝。
 

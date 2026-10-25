@@ -9,7 +9,6 @@ import EditPassword from './EditPassword';
 import SecureSetting from './SecureSetting';
 import AccountBind from './AccountBind';
 import MySessions from './MySessions';
-import NotificationPreference from './NotificationPreference';
 import TenantUsagePanel from './TenantUsagePanel';
 import { useGetUserProfile } from '@/api/hooks/user-profile';
 import { useMyTenantUsage } from '@/api/hooks/my-tenant-usage';
@@ -59,11 +58,6 @@ const UserProfile = () => {
       key: '5',
       label: t('tab.activeSessions'),
       children: <MySessions />,
-    },
-    {
-      key: '6',
-      label: t('tab.notification'),
-      children: <NotificationPreference />,
     },
     ...(isTenantUser
       ? [{

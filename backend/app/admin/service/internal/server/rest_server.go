@@ -165,8 +165,6 @@ func NewRestServer(
 	dataAccessAuditLogService *service.DataAccessAuditLogService,
 	redisCacheMonitorService *service.RedisCacheMonitorService,
 	serverMonitorService *service.ServerMonitorService,
-	notificationChannelService *service.NotificationChannelService,
-	notificationService *service.NotificationService,
 	onlineSessionService *service.OnlineSessionService,
 	dashboardService *service.DashboardService,
 
@@ -175,12 +173,8 @@ func NewRestServer(
 	internalMessageRecipientService *service.InternalMessageRecipientService,
 
 	// register:param ── 新模块服务形参在此行后注册(make register 工具锚点,勿删)
-	notificationRuleService *service.NotificationRuleService,
-	notificationPreferenceService *service.NotificationPreferenceService,
-	notificationTemplateService *service.NotificationTemplateService,
 	myTenantUsageService *service.MyTenantUsageService,
 	auditExportService *service.AuditExportService,
-	dataExportService *service.DataExportService,
 	taskMonitorService *service.TaskMonitorService,
 	accessKeyService *service.AccessKeyService,
 	configService *service.ConfigService,
@@ -243,8 +237,6 @@ func NewRestServer(
 	adminV1.RegisterDataAccessAuditLogServiceHTTPServer(srv, dataAccessAuditLogService)
 	adminV1.RegisterRedisCacheMonitorServiceHTTPServer(srv, redisCacheMonitorService)
 	adminV1.RegisterServerMonitorServiceHTTPServer(srv, serverMonitorService)
-	adminV1.RegisterNotificationChannelServiceHTTPServer(srv, notificationChannelService)
-	adminV1.RegisterNotificationServiceHTTPServer(srv, notificationService)
 	adminV1.RegisterOnlineSessionServiceHTTPServer(srv, onlineSessionService)
 	adminV1.RegisterDashboardServiceHTTPServer(srv, dashboardService)
 
@@ -261,19 +253,11 @@ func NewRestServer(
 		return auditExportService.ServeExport(ctx.Response(), ctx.Request())
 	})
 
-	// 通知投递台账服务端导出（手动注册；平台管理员专属，同台账读接口的闸）。
-	srv.Route("/").GET("admin/v1/notification-deliveries:export", func(ctx http.Context) error {
-		return dataExportService.ServeNotificationDeliveryExport(ctx.Response(), ctx.Request())
-	})
-
 	adminV1.RegisterInternalMessageServiceHTTPServer(srv, internalMessageService)
 	adminV1.RegisterInternalMessageCategoryServiceHTTPServer(srv, internalMessageCategoryService)
 	adminV1.RegisterInternalMessageRecipientServiceHTTPServer(srv, internalMessageRecipientService)
 
 	// register:route ── 新模块路由在此行后注册(make register 工具锚点,勿删)
-	adminV1.RegisterNotificationRuleServiceHTTPServer(srv, notificationRuleService)
-	adminV1.RegisterNotificationPreferenceServiceHTTPServer(srv, notificationPreferenceService)
-	adminV1.RegisterNotificationTemplateServiceHTTPServer(srv, notificationTemplateService)
 	adminV1.RegisterMyTenantUsageServiceHTTPServer(srv, myTenantUsageService)
 	adminV1.RegisterTaskMonitorServiceHTTPServer(srv, taskMonitorService)
 	adminV1.RegisterAccessKeyServiceHTTPServer(srv, accessKeyService)

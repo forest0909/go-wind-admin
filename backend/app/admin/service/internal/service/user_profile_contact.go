@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
-	notificationV1 "go-wind-admin/api/gen/go/notification/service/v1"
 	"go-wind-admin/pkg/mailtext"
 	"go-wind-admin/pkg/middleware/auth"
 
@@ -23,10 +23,8 @@ const (
 	contactKindPhone = "phone"
 )
 
-// sendContactVCode 向指定联系方式发送业务验证码（绑定场景），按种类分渠道。
-//
-// 手机号一路显式点名 Channel=SMS：存量库没有 PHONE_BIND_CODE 的路由规则行
-// （播种只发生 在空表时），依赖路由等于让手机绑定在老实例上必失败。
+// sendContactVCode 向指定联系方式发送业务验证码（绑定场景）。
+// 邮箱走 mail.yaml 的 SMTP，手机号走同一文件里的短信账号。
 func (s *UserProfileService) sendContactVCode(ctx context.Context, kind, contact string) error {
 	code := generateVCode()
 	if err := s.vcodeCache.Save("bind_contact", contact, code, 10*time.Minute); err != nil {
@@ -44,27 +42,17 @@ func (s *UserProfileService) sendContactVCode(ctx context.Context, kind, contact
 		}
 	}
 
-	sendReq := &notificationV1.SendDirectNotificationRequest{
-		Target:  contact,
-		Content: "",
-	}
+	var err error
 	switch kind {
 	case contactKindPhone:
-		sendReq.EventType = notificationV1.EventType_PHONE_BIND_CODE
-		sendReq.Channel = trans.Ptr(notificationV1.Channel_SMS)
-		// 短信正文由服务商审核模板渲染，code 经 params 交给渠道；台账文案只做记录。
-		sendReq.Params = map[string]string{"code": code}
-		sendReq.Title, sendReq.Content = mailtext.PhoneBindCode(ctx, code)
+		err = s.outbound.SendSMS(ctx, contact, code)
 	default:
-		sendReq.EventType = notificationV1.EventType_CONTACT_BIND_CODE
-		sendReq.Title, sendReq.Content = renderContactBindCode(ctx, s.mailer, code)
+		title, content := renderContactBindCode(ctx, s.mailer, code)
+		err = s.outbound.SendMail(ctx, contact, title, content)
 	}
-
-	resp, err := s.notifier.SendDirect(ctx, sendReq)
 	if err != nil {
-		s.log.Errorf(ctx, "bind-contact: send %s code to [%s] failed (delivery %d): %s",
-			kind, contact, resp.GetDeliveryId(), err.Error())
-		if resp.GetStatus() == notificationV1.DeliveryStatus_SKIPPED {
+		s.log.Errorf(ctx, "bind-contact: send %s code to [%s] failed: %s", kind, contact, err.Error())
+		if errors.Is(err, ErrOutboundNotConfigured) {
 			if kind == contactKindPhone {
 				return authenticationV1.ErrorInternalServerError("sms channel is not configured")
 			}
@@ -83,8 +71,7 @@ func (s *UserProfileService) BindContact(ctx context.Context, req *identityV1.Bi
 		if contact == "" {
 			return nil, authenticationV1.ErrorBadRequest("phone is required")
 		}
-		// 服务入口先做一次与投递侧同判据的格式校验：错误在第一步就回给用户，
-		// 而不是等 SendDirect 把它记成一条 SKIPPED 台账。
+		// 服务入口先做一次格式校验：错误在第一步就回给用户。
 		if _, _, err := sms.NormalizePhoneNumber(contact); err != nil {
 			return nil, authenticationV1.ErrorBadRequest("invalid phone number")
 		}

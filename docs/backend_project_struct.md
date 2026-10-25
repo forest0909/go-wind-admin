@@ -77,10 +77,9 @@
         - `cmd`：存放 Admin 服务的命令行代码
             - `server`：存放 Admin 服务的入口代码
                 - `assets`：存放 Admin 服务的静态资源文件，现在只存放了OpenAPI的静态资源文件。
-        - `configs`：存放 Admin 服务的配置文件（server.yaml、data.yaml、auth.yaml、logger.yaml、oss.yaml、client.yaml）
+        - `configs`：存放 Admin 服务的配置文件（server.yaml、data.yaml、auth.yaml、logger.yaml、oss.yaml、client.yaml、mail.yaml）
         - `internal`：存放 Admin 服务的内部代码，使用internal目录是为了避免被外部代码引用。
             - `data`：存放 Admin 服务的数据访问代码
-                - `channel`：通知渠道发送器（email / webhook / sms）
                 - `ent`：存放 Admin 服务的 Ent 数据库 ORM 代码
                 - `enttest`：Ent 测试用内存库辅助
             - `server`：存放 Admin 服务的服务端代码（HTTP/Asynq/SSE）

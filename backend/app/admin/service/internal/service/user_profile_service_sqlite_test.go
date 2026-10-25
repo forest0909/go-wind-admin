@@ -121,7 +121,7 @@ func newUserProfileServiceForTest(t *testing.T) userProfileServiceTestEnv {
 		roleRepo:           data.NewRoleRepoForTest(entClient),
 		userCredentialRepo: userCredentialRepo,
 		authenticator:      authenticator,
-		notifier:           nil,
+		outbound:           nil,
 		vcodeCache:         nil,
 		mc:                 nil,
 	}

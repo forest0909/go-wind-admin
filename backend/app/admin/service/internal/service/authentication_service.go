@@ -187,11 +187,8 @@ type AuthenticationService struct {
 	geoClient         *geolite.Client
 
 	vcodeCache *data.VCodeCache
-	// notifier 是唯一的对外通知出口（找回密码验证码邮件）。
-	// 此前这里持有 notificationChannelRepo 并直接调 mailer.SendMail——渠道选择策略
-	// 与 SMTP 细节因此散落到登录链路里，改一处漏一处。
-	notifier Notifier
-	mailer   *TransactionMailer
+	outbound   *OutboundSender
+	mailer     *TransactionMailer
 }
 
 func NewAuthenticationService(
@@ -216,7 +213,7 @@ func NewAuthenticationService(
 	geoClient *geolite.Client,
 	mailer *TransactionMailer,
 	vcodeCache *data.VCodeCache,
-	notifier Notifier,
+	outbound *OutboundSender,
 ) *AuthenticationService {
 	return &AuthenticationService{
 		log:                     ctx.NewLoggerHelper("authn/service/admin-service"),
@@ -240,7 +237,7 @@ func NewAuthenticationService(
 		geoClient:               geoClient,
 		mailer:                  mailer,
 		vcodeCache:              vcodeCache,
-		notifier:                notifier,
+		outbound:                outbound,
 	}
 }
 

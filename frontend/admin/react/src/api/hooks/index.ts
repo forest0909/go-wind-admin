@@ -57,12 +57,6 @@ export * from './online-session';
 // 服务监控
 export * from './server-monitor';
 
-// 通知渠道
-export * from './notification-channel';
-
-// 通知路由规则
-export * from './notification-rule';
-
 // 首页分析概览
 export * from './dashboard';
 

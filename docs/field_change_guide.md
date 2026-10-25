@@ -134,7 +134,7 @@ Create/Update 两处**仍然是 `SetNillable<字段>(…)`，只是实参要过�
    后缀写成不认识的名字（`name__badop`）时，转换器确实返回 error（`query_string_converter.go:282-283`），
    但泛型仓储只 `log.Error` 不上抛（`go-crud/entgo v0.0.55` 的 `repository.go:333-340`），且那份 error 让
    **整个** `FilterExpr` 变 nil ⇒ 该请求的**全部**过滤条件一起失效，**搜了等于没搜：返回全量、页面上一眼看不出不对**
-   （2026-09-25 sqlite 探针实测：`{"name__badop":"x"}` 在通知渠道表上回全量 2 行、无 error；"HTTP 200"是由"没有 error"推出来的，没打请求实测）。
+   （2026-09-25 sqlite 探针实测：`{"name__badop":"x"}` 在当时的通知渠道表上回全量 2 行、无 error；该表已删除。"HTTP 200"是由"没有 error"推出来的，没打请求实测）。
    只有 `user`/`permission` 两处手写过 filter 的 repo 会上抛：`internal/data/user_repo.go:308-312`、
    `internal/data/permission_repo.go:132-135`。
 

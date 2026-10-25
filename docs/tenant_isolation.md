@@ -190,14 +190,14 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 | **应用层自有存储**（Redis 缓存键、MinIO 对象路径、asynq 任务载荷） | ❌ 不自动注入 | 隔离谓词只存在于 ent privacy；这些路径必须业务侧显式携带/校验租户维度 |
 | **租户内跨用户**（同 tenant 下 A 读/写 B 的行） | ❌ 完全不覆盖 | 隔离谓词只有 `tenant_id` 一列，"只看自己的行"必须业务侧自己钉（收件箱读/写已钉，见下） |
 | 平台管理员上下文 | 放行 | 设计使然（tid==0 全量） |
-| 登录 / 刷新 / 找回重置 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、机器令牌交换的 AK 查询、**刷新链路**（`authentication_service.go:716`，注释 `:712-715` 说明为何必须跨租户读）、找回与重置密码两处（`authentication_forgot_password.go:29`、`:78`）——审计落库自身也经 SystemContext 写入 |
+| 登录 / 刷新 / 找回重置 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、机器令牌交换的 AK 查询、**刷新链路**（`authentication_service.go:716`，注释 `:712-715` 说明为何必须跨租户读）、找回与重置密码两处（`authentication_forgot_password.go:44`、`:101`）——审计落库自身也经 SystemContext 写入 |
 
 **"自己的行"没人钉过：收件箱越权读＋越权写（2026-09-20 实测并修）**。
 `GET /admin/v1/internal-message/inbox` 的过滤条件整个来自调用方 `query` 字符串，租户隔离只保证"读不到别租户的行"，
 同租户内换一个 `recipientUserId` 就能读到别人的收件记录（`title`/`content` 由父消息回填，一并带出）。
 三端页面各自在前端塞 `recipientUserId`，所以这个条件从来不是服务端事实。
 修法与位置见 `internal_message_recipient_repo.go` 的 `List`（非平台/非系统上下文强制
-`recipient_user_id = viewer.UserID()`）与 [notification_domain_design.md](./notification_domain_design.md) §7。
+`recipient_user_id = viewer.UserID()`）。
 **写侧同形问题同日修复**：`MarkNotificationAsRead` / `MarkNotificationsStatus` / `DeleteNotificationFromInbox`
 原先一律用请求体的 `user_id` 定作用域，后果比读侧重——`DeleteNotificationFromInbox` 在 `recipient_ids`
 为空时是"按用户维度整箱删除"，换一个 id 就是清空别人的收件箱。现收进同一个助手

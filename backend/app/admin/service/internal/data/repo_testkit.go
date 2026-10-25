@@ -111,15 +111,6 @@ func NewOrgUnitRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *OrgUnitRe
 	return repo
 }
 
-// NewNotificationPreferenceRepoForTest 逐字段复刻 notification_preference_repo.go 的
-// NewNotificationPreferenceRepo（log 换 NopLogger）。
-func NewNotificationPreferenceRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *NotificationPreferenceRepo {
-	return &NotificationPreferenceRepo{
-		log:       bLogger.NewHelper(bLogger.NopLogger()),
-		entClient: entClient,
-	}
-}
-
 // NewInternalMessageRepoForTest 逐字段复刻 internal_message_repo.go 的
 // NewInternalMessageRepo（log 换 NopLogger）。
 func NewInternalMessageRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *InternalMessageRepo {

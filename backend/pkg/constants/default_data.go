@@ -11,7 +11,6 @@ import (
 	configV1 "go-wind-admin/api/gen/go/config/service/v1"
 	dictV1 "go-wind-admin/api/gen/go/dict/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
-	notificationV1 "go-wind-admin/api/gen/go/notification/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 )
 
@@ -946,91 +945,6 @@ var DefaultMenus = []*permissionV1.Menu{
 			Authority: []string{"sys:platform_admin"},
 		},
 	},
-	// 通知域自成一级菜单。站内信只是本域的一个 INTERNAL 渠道，把渠道/规则/台账挂到
-	// /internal-message 下面等于让域挂在它自己的一个叶子渠道下，故与它平级。
-	// 组件前缀 app/notification/ 落不进 ComponentToModule 的任何 case ⇒ module 为 NULL，
-	// 这是刻意的：套餐白名单对未归类菜单直接放行（filterMenusByPlanWhitelist 的 m.Module == nil
-	// 分支），这三页只由 sys:platform_admin 权限码与「角色→权限→菜单」授权把关。
-	{
-		Id:        trans.Ptr(uint32(74)),
-		ParentId:  nil,
-		Type:      permissionV1.Menu_CATALOG.Enum(),
-		Name:      trans.Ptr("NotificationManagement"),
-		Path:      trans.Ptr("/notification"),
-		Redirect:  trans.Ptr("/notification/channels"),
-		Component: trans.Ptr("BasicLayout"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Order:     trans.Ptr(int32(2006)),
-			Title:     trans.Ptr("menu.notification.moduleName"),
-			Icon:      trans.Ptr("lucide:bell-ring"),
-			KeepAlive: trans.Ptr(true),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(68)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationChannelManagement"),
-		Path:      trans.Ptr("channels"),
-		Component: trans.Ptr("app/notification/channel/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.channels"),
-			Icon:      trans.Ptr("lucide:mail"),
-			Order:     trans.Ptr(int32(1)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 路由规则（事件 → 渠道 + 同步/异步）：投递时的唯一真相，删一行即停一条路由
-		Id:        trans.Ptr(uint32(73)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationRuleManagement"),
-		Path:      trans.Ptr("rules"),
-		Component: trans.Ptr("app/notification/rule/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.rules"),
-			Icon:      trans.Ptr("lucide:git-branch"),
-			Order:     trans.Ptr(int32(2)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 投递台账：每次投递一行，是规则 + 渠道配置跑出来的结果，故排在两者之后
-		Id:        trans.Ptr(uint32(72)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationDeliveryManagement"),
-		Path:      trans.Ptr("deliveries"),
-		Component: trans.Ptr("app/notification/delivery/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.deliveries"),
-			Icon:      trans.Ptr("lucide:send"),
-			Order:     trans.Ptr(int32(3)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 通知模板：可复用的标题/正文占位模板，发送方以 template_code 引用（P3 第二片）
-		Id:        trans.Ptr(uint32(101)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationTemplateManagement"),
-		Path:      trans.Ptr("templates"),
-		Component: trans.Ptr("app/notification/template/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.templates"),
-			Icon:      trans.Ptr("lucide:layout-template"),
-			Order:     trans.Ptr(int32(4)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
 }
 
 // DefaultConfigs 系统初始化内置平台参数（等保口令策略阈值）。
@@ -1057,48 +971,5 @@ var DefaultConfigs = []*configV1.Config{
 		Value:     trans.Ptr(strconv.Itoa(DefaultPasswordHistoryCount)),
 		ValueType: configV1.Config_INT.Enum(),
 		IsBuiltIn: trans.Ptr(true),
-	},
-}
-
-// DefaultNotificationRules 通知路由规则的初始四行。
-//
-// 它们是 docs/notification_domain_design.md §3.5 那张 Go 静态表（eventChannels +
-// asyncDispatchEvents）的平移结果：前两个验证码事件异步（SMTP 往返不该占住 HTTP），
-// 渠道测试邮件与站内信同步（前者的产物就是报错原文，后者要在同一趟里回收件行主键）。
-//
-// INTERNAL_MESSAGE 一行看起来多余（站内信本来就走 INTERNAL 渠道），但它是这条路由的
-// 唯一声明处：删掉它，站内信的生产点就会退回"自己 new 收件行、自己推 SSE、不留台账"。
-//
-// 播种只在 sys_notification_rules 为空表时执行一次（同 DefaultMenus 的 count==0 守卫）：
-// 管理员删掉一行是"这个事件不再通知"的决定，重启不该把它复活。代价写在
-// service/notification_rule_service.go 的 init 注释里。
-var DefaultNotificationRules = []*notificationV1.NotificationRule{
-	{
-		EventType: notificationV1.EventType_PASSWORD_RESET_CODE.Enum(),
-		Channel:   notificationV1.Channel_EMAIL.Enum(),
-		IsAsync:   trans.Ptr(true),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("找回密码验证码邮件：入队即回“已发送”，不等 SMTP 往返"),
-	},
-	{
-		EventType: notificationV1.EventType_CONTACT_BIND_CODE.Enum(),
-		Channel:   notificationV1.Channel_EMAIL.Enum(),
-		IsAsync:   trans.Ptr(true),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("换绑邮箱验证码邮件：同上"),
-	},
-	{
-		EventType: notificationV1.EventType_CHANNEL_TEST_EMAIL.Enum(),
-		Channel:   notificationV1.Channel_EMAIL.Enum(),
-		IsAsync:   trans.Ptr(false),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("渠道配置测试邮件：这个接口的产物就是投递结论，必须同步"),
-	},
-	{
-		EventType: notificationV1.EventType_INTERNAL_MESSAGE.Enum(),
-		Channel:   notificationV1.Channel_INTERNAL.Enum(),
-		IsAsync:   trans.Ptr(false),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("站内信：收件行主键要在同一趟里回给调用方（SSE 载荷依赖它）"),
 	},
 }

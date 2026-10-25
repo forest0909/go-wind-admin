@@ -52,7 +52,6 @@
 | [task_system.md](./task_system.md) | 任务调度系统：配置与启动链、任务数据模型、调度生命周期、系统级常驻任务、管理页、多租户语义与排障 | 加任务类型、排"任务没跑"、接新调度需求前 |
 | [sys_config.md](./sys_config.md) | 参数管理（sys_config）：平台全局动态参数的键值模型、缓存读取器（GetConfigBool/Int/String 与负缓存）、写路径与多实例 Redis 失效广播、内置参数按键补种、新参数接入步骤 | 接入新的运行时参数、改口令策略阈值链路、排"改了参数没生效"前 |
 | [sse_architecture.md](./sse_architecture.md) | SSE 推送架构：服务端配置与生命周期、流鉴权与 streamID 语义、事件生产、三端消费模块、部署拓扑与排障 | 改推送链路、加新事件类型、排"收不到通知"前 |
-| [notification_domain_design.md](./notification_domain_design.md) | 通知域：现状盘点、与 go-wind-im 的可抄性对照、运行期实测发现、移植记录与代码生成坑。各阶段（P0–P2 / C / C7 / M / N / P3 / SMS 及遗留欠账）的落地状态以文内状态标记与验收清单（§4、§7）为准，本索引不转载状态史 | 动通知相关代码前先读；推进新阶段（如给告警接短信）、改台账或路由规则语义前回来更新文内状态标记 |
 | [data_scope_design.md](./data_scope_design.md) | 角色级数据范围：五档语义、聚合、执行层、新表接入步骤 | 新表接入数据范围或改聚合规则前 |
 | [audit-log-producer-design.md](./audit-log-producer-design.md) | 六类审计日志的生产者设计与采集层实施状态 | 改审计采集、加新日志字段时 |
 | [backend_file_upload.md](./backend_file_upload.md) | 文件上传链路：MinIO 部署、`oss.yaml`、安全校验 | 涉及上传/下载/对象存储部署时 |
@@ -62,7 +61,6 @@
 | [windows-startup-guide.md](./windows-startup-guide.md) | Windows 本地从零启动全流程与常见问题 | Windows 开发机首次搭建时（含 FAQ） |
 | [design-language.md](./design-language.md) | 三端视觉唯一权威值表（颜色/圆角/布局尺寸） | 改任何视觉相关代码前 |
 | [form_drawer_close_guard.md](./form_drawer_close_guard.md) | 表单抽屉关闭守卫：遮罩/ESC/X/取消四路径脏数据确认，三端实现约定 | 改表单抽屉关闭行为、新做表单抽屉前 |
-| [notify_channels_expansion.md](./notify_channels_expansion.md) | 通知渠道全量扩展：settings JSONB + schema 驱动动态表单 + 通用 Sender；39 渠道清单与 Target 语义 | 接新扩展渠道、改渠道配置表单/发送链路前 |
 | [brand/](./brand/) | 品牌资产（logo / favicon / 锁版 / wordmark） | 换品牌或引用素材时 |
 
 另：仓库级开发约定（铁律、门禁、工具链）在根 [`AGENTS.md`](../AGENTS.md) 与各端 `AGENTS.md`，属于维护层文档，不在本目录。

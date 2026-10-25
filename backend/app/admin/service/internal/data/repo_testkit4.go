@@ -3,9 +3,9 @@
 //
 // 说明：
 //   - 本文件覆盖 repo_testkit.go / repo_testkit2.go 之外、且 repo_testkit5.go
-//     未收录批次的纯 ent repo（access_key / notification_channel），供小型带
-//     外部件依赖服务（批3a：user_profile / access_key / online_session /
-//     notification_channel 的 service 层测试）装配使用。
+//     未收录批次的纯 ent repo（access_key），供小型带
+//     外部件依赖服务（批3a：user_profile / access_key / online_session 的
+//     service 层测试）装配使用。
 //     各构造器与对应 *_repo.go 的生产构造器逐字段对齐（含 mapper/converter 初始化
 //     与 init() 调用），唯一差异是 log 一律 bLogger.NewHelper(bLogger.NopLogger())；
 //     entClient 由调用方传入（测试场景为 enttest.NewEntClientForTest 的 SQLite 内存库）。
@@ -43,10 +43,4 @@ func NewAccessKeyRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *AccessK
 	repo.init()
 
 	return repo
-}
-
-// NewNotificationChannelRepoForTest 与生产 NewNotificationChannelRepo 走同一条装配路径
-// （log 换 NopLogger），converter 清单因此不会与生产漂移。
-func NewNotificationChannelRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *NotificationChannelRepo {
-	return newNotificationChannelRepo(bLogger.NewHelper(bLogger.NopLogger()), entClient)
 }

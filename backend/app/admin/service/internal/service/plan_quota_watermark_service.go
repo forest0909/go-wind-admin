@@ -122,9 +122,7 @@ func (s *PlanQuotaWatermarkService) AsyncPlanQuotaWatermarkScan(taskType string,
 	return nil
 }
 
-// deliverOne 建一条站内信行并向单个收件人投递收件行（审计日报 deliverMessage 的
-// 单收件人形态）。静音时段由 sendNotification 内核处理（只抑制实时推送，收件行
-// 照落）。
+// deliverOne 建一条站内信行并向单个收件人投递收件行，同时推 SSE。
 func (s *PlanQuotaWatermarkService) deliverOne(ctx context.Context, recipientUserID uint32, title, content string) error {
 	now := time.Now()
 	msg, err := s.internalMsgRepo.Create(ctx, &internalMessageV1.CreateInternalMessageRequest{

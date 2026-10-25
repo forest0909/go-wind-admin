@@ -15,7 +15,7 @@ import (
 )
 
 // NewAsynqServer creates a new asynq server.
-func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, internalMessageService *service.InternalMessageService, notificationService *service.NotificationService, planQuotaWatermarkService *service.PlanQuotaWatermarkService) (*asynqServer.Server, error) {
+func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, internalMessageService *service.InternalMessageService, planQuotaWatermarkService *service.PlanQuotaWatermarkService) (*asynqServer.Server, error) {
 	cfg := ctx.GetConfig()
 
 	if cfg == nil || cfg.Server == nil || cfg.Server.Asynq == nil {
@@ -31,9 +31,6 @@ func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, in
 	// 注入 asynq 任务入队能力，使广播 fan-out 改走 asynq 任务（可重试、断点恢复）。
 	// asynq 未配置时本函数在上方 return nil，此行不会执行，internalMessageService.taskEnqueuer 保持 nil。
 	internalMessageService.RegisterTaskEnqueuer(taskService)
-	// 通知投递同样拿这份入队能力：规则行标为异步的事件（找回密码/换绑验证码）
-	// 入队后立即返回，SMTP 往返不再占住 HTTP。未配置 asynq 时保持 nil，全部事件退回同步投递。
-	notificationService.RegisterTaskEnqueuer(taskService)
 
 	var err error
 
@@ -67,23 +64,6 @@ func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, in
 	// 由 InternalMessageService.SendMessage 在消息落库后入队，handler 从 DB 取回消息本体后执行 fan-out。
 	// 重试幂等性由 (message_id, recipient_user_id) 唯一约束 + CreateBulk 的 ON CONFLICT DO NOTHING 保证。
 	if err = asynqServer.RegisterSubscriber(srv, task.BroadcastMessageTaskType, internalMessageService.AsyncBroadcastMessage); err != nil {
-		log.Error(err)
-		return nil, err
-	}
-
-	// 注册通知异步派发 handler（找回密码/换绑验证码的 SMTP 投递）。
-	// 用 WithCtx 变体：asynq 的任务 ctx 带着 asynq.Timeout 的 deadline，而 mailer 走 DialContext
-	// 拨号——只有把 ctx 传到 Send，超时才真能掐断一次卡死的 SMTP 握手（否则任务超时只杀任务不杀连接）。
-	// 重试幂等性由台账状态把关：status 已非 SENDING 即视为已处理（见 AsyncNotificationDispatch）。
-	if err = asynqServer.RegisterSubscriberWithCtx(srv, task.NotificationDispatchTaskType, notificationService.AsyncNotificationDispatch); err != nil {
-		log.Error(err)
-		return nil, err
-	}
-
-	// 通知台账超时清扫 handler（系统级常驻任务，不写入 sys_tasks 表）。
-	// 周期调度在 startAllTask 末尾注册，与其他系统级任务同构。
-	// 它结算的是"再也不会有结论"的 SENDING 行（进程死在拨号中途 / 结论回写失败 / 队列没有消费者）。
-	if err = asynqServer.RegisterSubscriber(srv, task.NotificationDeliverySweepTaskType, notificationService.AsyncDeliverySweep); err != nil {
 		log.Error(err)
 		return nil, err
 	}

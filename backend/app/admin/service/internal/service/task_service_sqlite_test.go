@@ -482,12 +482,11 @@ func TestTaskService_RestartAllTask(t *testing.T) {
 	require.Equal(t, 1, stub.removeAllCount, "RestartAllTask 应先全量注销")
 	require.Equal(t, []string{"tasksvc_delay_all_type"}, stub.newTask,
 		"DELAY 任务应经一次性投递入口")
-	require.Len(t, stub.newPeriodicTask, 5,
-		"周期注册应为 5 次：同名 PERIODIC 去重后 1 次 + 系统级常驻 4 次（到期扫描/审计归档/台账清扫/配额水位扫描）")
+	require.Len(t, stub.newPeriodicTask, 4,
+		"周期注册应为 4 次：同名 PERIODIC 去重后 1 次 + 系统级常驻 3 次（到期扫描/审计归档/配额水位扫描）")
 	require.Contains(t, stub.newPeriodicTask, "tasksvc_dup_type", "同名 PERIODIC 应恰好注册一次")
 	require.Contains(t, stub.newPeriodicTask, task.TenantExpiryScanTaskType, "系统级到期扫描应被注册")
 	require.Contains(t, stub.newPeriodicTask, task.AuditLogArchiveTaskType, "系统级审计归档应被注册")
-	require.Contains(t, stub.newPeriodicTask, task.NotificationDeliverySweepTaskType, "通知台账清扫应被注册")
 	require.Contains(t, stub.newPeriodicTask, task.PlanQuotaWatermarkTaskType, "系统级配额水位扫描应被注册")
 }
 

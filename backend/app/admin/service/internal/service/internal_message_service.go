@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -26,7 +25,6 @@ import (
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
-	notificationV1 "go-wind-admin/api/gen/go/notification/service/v1"
 
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/pkg/sseevent"
@@ -78,26 +76,11 @@ type InternalMessageService struct {
 	internalMessageCategoryRepo  *data.InternalMessageCategoryRepo
 	internalMessageRecipientRepo *data.InternalMessageRecipientRepo
 	userRepo                     data.UserRepo
-	// notificationPreferenceRepo 收件人的通知偏好（静音时段/分类退订）。
-	// 可为 nil（旧测试装配/未接线）：nil 时偏好全部跳过，行为与 P3 之前一致。
-	notificationPreferenceRepo *data.NotificationPreferenceRepo
 
 	internalMessagePublisher InternalMessagePublisher
 	taskEnqueuer             TaskEnqueuer
-	notifier                 Notifier
 	authenticator            *data.Authenticator
 	clientType               authenticationV1.ClientType
-}
-
-// unwiredNotifier 是 Notifier 的未装配占位实现。
-//
-// 与 noopInternalMessagePublisher 相反，这里不能静默返回成功：站内信一旦改走缝，
-// 缝没接上就等于消息凭空消失且无痕迹。返回 error 让既有的 per-recipient 日志与
-// failCount 把它暴露出来——装配漏注册时表现为发送日志里一行明确原因。
-type unwiredNotifier struct{}
-
-func (unwiredNotifier) SendDirect(_ context.Context, _ *notificationV1.SendDirectNotificationRequest) (*notificationV1.SendNotificationResponse, error) {
-	return nil, errors.New("notifier is not wired: internal message cannot be delivered through the notification domain")
 }
 
 func NewInternalMessageService(
@@ -106,7 +89,6 @@ func NewInternalMessageService(
 	internalMessageCategoryRepo *data.InternalMessageCategoryRepo,
 	internalMessageRecipientRepo *data.InternalMessageRecipientRepo,
 	userRepo data.UserRepo,
-	notificationPreferenceRepo *data.NotificationPreferenceRepo,
 	authenticator *data.Authenticator,
 	clientType authenticationV1.ClientType,
 ) *InternalMessageService {
@@ -116,7 +98,6 @@ func NewInternalMessageService(
 		internalMessageCategoryRepo:  internalMessageCategoryRepo,
 		internalMessageRecipientRepo: internalMessageRecipientRepo,
 		userRepo:                     userRepo,
-		notificationPreferenceRepo:   notificationPreferenceRepo,
 		authenticator:                authenticator,
 		clientType:                   clientType,
 		// 默认空操作发布者：SSE 未配置时不 panic；配置后由 RegisterInternalMessagePublisher 覆盖
@@ -124,21 +105,11 @@ func NewInternalMessageService(
 		// taskEnqueuer 默认 nil：asynq 未配置时广播回退到 goroutine；
 		// 配置后由 RegisterTaskEnqueuer 覆盖
 		taskEnqueuer: nil,
-		// notifier 默认"未装配"实现（一律报错）：装配后由 RegisterNotifier 换成 NotificationService
-		notifier: unwiredNotifier{},
 	}
 }
 
 func (s *InternalMessageService) RegisterInternalMessagePublisher(internalMessagePublisher InternalMessagePublisher) {
 	s.internalMessagePublisher = internalMessagePublisher
-}
-
-// RegisterNotifier 注入通知域的投递出口。
-// 与 RegisterInternalMessagePublisher 同模式：构造期给占位实现，装配期换成真身，
-// 因为 NotificationService 与 InternalMessageService 互为依赖（前者经 Registry 调后者的
-// 渠道实现，后者经 Notifier 走前者的缝），谁都不能作为后者的构造参数。
-func (s *InternalMessageService) RegisterNotifier(notifier Notifier) {
-	s.notifier = notifier
 }
 
 // RegisterTaskEnqueuer 注入 asynq 任务入队能力。
@@ -392,17 +363,15 @@ func (s *InternalMessageService) SendMessage(ctx context.Context, req *internalM
 			s.fanoutBroadcastGoroutine(msgId, senderId, categoryId, title, content, vc)
 		}
 	} else {
-		// 定向发送：人数少，仍同步执行，但改走通知域的缝——
-		// 路由表定渠道（INTERNAL_MESSAGE → INTERNAL），缝落台账 + 调 INTERNAL 渠道落收件行。
-		// 部分失败照旧只记日志、不影响 HTTP 结论（收件箱与台账各自留有痕迹）。
+		// 定向发送人数少，同步落收件行并推 SSE。部分失败只记日志，不影响 HTTP 结论。
 		if req.RecipientUserId != nil {
-			if err := s.deliverViaNotifier(ctx, msg.GetId(), req.GetRecipientUserId(), operator.GetUserId(), msg.GetTitle(), msg.GetContent()); err != nil {
+			if err := s.sendNotification(ctx, msg.GetId(), req.GetRecipientUserId(), operator.GetUserId(), &now, msg.GetTitle(), msg.GetContent()); err != nil {
 				s.log.Errorf(ctx, "send message [%d] to user [%d] failed: %s", msg.GetId(), req.GetRecipientUserId(), err)
 			}
 		} else {
 			var failCount int
 			for _, uid := range req.TargetUserIds {
-				if err := s.deliverViaNotifier(ctx, msg.GetId(), uid, operator.GetUserId(), msg.GetTitle(), msg.GetContent()); err != nil {
+				if err := s.sendNotification(ctx, msg.GetId(), uid, operator.GetUserId(), &now, msg.GetTitle(), msg.GetContent()); err != nil {
 					failCount++
 				}
 			}
@@ -470,38 +439,8 @@ func (s *InternalMessageService) publishNotification(ctx context.Context, recipi
 	}
 }
 
-// deliverViaNotifier 把一个定向收件人交给通知域投递：路由表决定渠道，缝负责台账与
-// INTERNAL 渠道的实际落库（见 internal_message_sender.go）。
-//
-// 站内信自此没有"绕过缝"的第二条单收件人路径——这正是 P1 结束时它还是半吊子的地方：
-// 消息发没发过、走的哪个渠道、成没成，此前只在收件箱表里有半个答案。
-//
-// 不显式传 Channel：让 sys_notification_rules 的 INTERNAL_MESSAGE 一行成为唯一声明处，
-// 路由表被绕开时测试会红。
-func (s *InternalMessageService) deliverViaNotifier(ctx context.Context, messageId, recipientUserId, operatorUserId uint32, title, content string) error {
-	// Target 是收件用户 ID 的十进制字符串：缝要求调用方自己给出投递目标，
-	// INTERNAL 渠道的"地址"就是这个人（台账里与脱敏邮箱并列时保持可读）。
-	target := strconv.FormatUint(uint64(recipientUserId), 10)
-
-	resp, err := s.notifier.SendDirect(ctx, &notificationV1.SendDirectNotificationRequest{
-		EventType:       notificationV1.EventType_INTERNAL_MESSAGE,
-		Target:          target,
-		Title:           title,
-		Content:         content,
-		RecipientUserId: trans.Ptr(recipientUserId),
-		OperatorUserId:  trans.Ptr(operatorUserId),
-		RelatedId:       trans.Ptr(messageId),
-	})
-	if err != nil {
-		s.log.Errorf(ctx, "deliver message [%d] to user [%d] via notification domain failed (delivery=%d): %s",
-			messageId, recipientUserId, resp.GetDeliveryId(), err)
-	}
-
-	return err
-}
-
-// sendNotification 单个收件人：落库 + 实时推送。这是 INTERNAL 渠道的投递内核，
-// 由 InternalMessageSender 经缝调用（全员广播的批量形态见 executeBroadcast）。
+// sendNotification 单个收件人：落库 + 实时推送。
+// 全员广播的批量形态见 executeBroadcast。
 func (s *InternalMessageService) sendNotification(ctx context.Context, messageId, recipientUserId, senderUserId uint32, now *time.Time, title, content string) error {
 	recipient := newMessageRecipient(messageId, recipientUserId, senderUserId, s.recipientTenantID(ctx, recipientUserId), now, title, content)
 
@@ -512,30 +451,8 @@ func (s *InternalMessageService) sendNotification(ctx context.Context, messageId
 		return err
 	}
 	recipient.Id = entity.Id
-
-	// 静音时段只抑制实时推送（DND）：收件行已落库，用户打开收件箱仍能看到。
-	// 偏好查询失败按"无偏好"放行推送——fail-open 只影响即时性，不影响可靠性。
-	if s.userInQuietWindow(ctx, recipientUserId, *now) {
-		s.log.Debugf(ctx, "directed notification to user [%d] suppressed by quiet hours (message %d)", recipientUserId, messageId)
-	} else {
-		s.publishNotification(ctx, recipient)
-	}
-
+	s.publishNotification(ctx, recipient)
 	return nil
-}
-
-// userInQuietWindow 判定用户当前是否处于其静音时段内。
-// 偏好仓储未接线/查询失败/用户未配置 → false（不过抑制）。
-func (s *InternalMessageService) userInQuietWindow(ctx context.Context, userID uint32, now time.Time) bool {
-	if s.notificationPreferenceRepo == nil {
-		return false
-	}
-	pref, err := s.notificationPreferenceRepo.GetByUserID(ctx, userID)
-	if err != nil {
-		s.log.Errorf(ctx, "query notification preference for user [%d] failed, push suppression skipped: %s", userID, err)
-		return false
-	}
-	return inQuietWindow(pref, now)
 }
 
 // recipientTenantID 查收件用户自己的租户，用于给收件行打标（定向路径；广播路径的受众
@@ -575,8 +492,7 @@ func viewerTenantID(ctx context.Context) uint32 {
 // 读侧的回填同因，见 internal_message_recipient_service.go 的 ListUserInbox）。
 // 租户管理员的广播不受影响：受众已被隐私层筛成本租户，逐行取值与 viewer 同值。
 //
-// categoryId 是消息本体的分类：收件人在偏好里退订了它则整行不落库也不推送
-// （点对点定向发送不走这里，不受退订约束）。
+// categoryId 保留在签名里，供调用方传入消息分类；偏好退订已随通知域删除，这里不再按它过滤。
 func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId, senderUserId, categoryId uint32, title, content string) {
 	now := time.Now()
 
@@ -599,27 +515,9 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 			break
 		}
 
-		// 一页受众的偏好一次取齐：退订的整行跳过（不落库不推送），
-		// 静音时段的照常落库但跳过实时推送。查询失败按"无人配置"处理——
-		// 偏好层永远 fail-open，只影响打扰度，不影响消息到达。
-		userIds := make([]uint32, 0, len(users.GetItems()))
-		for _, user := range users.GetItems() {
-			userIds = append(userIds, user.GetId())
-		}
-		prefs := s.broadcastPreferences(ctx, messageId, userIds)
-
 		recipients := make([]*internalMessageV1.InternalMessageRecipient, 0, len(users.GetItems()))
-		quietUserIds := make(map[uint32]struct{})
 		for _, user := range users.GetItems() {
 			userId := user.GetId()
-			if pref := prefs[userId]; pref != nil {
-				if categoryMuted(pref, categoryId) {
-					continue
-				}
-				if inQuietWindow(pref, now) {
-					quietUserIds[userId] = struct{}{}
-				}
-			}
 			userTenantId := user.GetTenantId()
 			if userTenantId == 0 && broadcastTenantId != 0 {
 				// 平台用户的租户确实是 0，所以"受众没带租户"只在广播方是租户时才可能被察觉——
@@ -650,9 +548,6 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 		}
 		for _, recipient := range recipients {
 			recipient.Id = trans.Ptr(recipientIds[recipient.GetRecipientUserId()])
-			if _, quiet := quietUserIds[recipient.GetRecipientUserId()]; quiet {
-				continue
-			}
 			s.publishNotification(ctx, recipient)
 		}
 
@@ -662,33 +557,6 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 	}
 
 	s.log.Infof(ctx, "broadcast message [%d] to %d recipients done", messageId, total)
-}
-
-// broadcastPreferences 拉一页受众的偏好，按 user_id 索引。
-// 仓储未接线或查询失败时返回空 map（偏好层 fail-open），但失败必须留下日志。
-func (s *InternalMessageService) broadcastPreferences(ctx context.Context, messageId uint32, userIds []uint32) map[uint32]*notificationV1.NotificationPreference {
-	if s.notificationPreferenceRepo == nil || len(userIds) == 0 {
-		return nil
-	}
-	prefs, err := s.notificationPreferenceRepo.ListByUserIDs(ctx, userIds)
-	if err != nil {
-		s.log.Errorf(ctx, "broadcast message [%d]: list recipient preferences failed, suppression skipped: %s", messageId, err)
-		return nil
-	}
-	return prefs
-}
-
-// categoryMuted 判定偏好是否退订了给定分类；分类为零值（未归类消息）时不退订任何人。
-func categoryMuted(pref *notificationV1.NotificationPreference, categoryId uint32) bool {
-	if pref == nil || categoryId == 0 {
-		return false
-	}
-	for _, id := range pref.GetMutedCategoryIds() {
-		if id == categoryId {
-			return true
-		}
-	}
-	return false
 }
 
 // fanoutBroadcastGoroutine 是 asynq 未配置时的回退路径：

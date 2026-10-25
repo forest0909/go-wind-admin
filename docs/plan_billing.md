@@ -278,8 +278,8 @@ SystemContext 通道。清理动作走租户模块端点，受租户闸门/权�
 |---|---|
 | 配额硬执行 | **三类全部已实现**：USER_LIMIT（用户创建入口）、STORAGE（上传入口）、API_CALL（租户闸门，2026-10-03）见第 7.2 节 |
 | 清理覆盖 | `CleanupTenantData` 少删 4 张带 `tenant_id` 的表（AK/SK、角色字段权限、角色-组织单元、用户 MFA 因子），见第 8 节 |
-| 菜单层的套餐模块白名单 | **当前不产生过滤**：`admin_portal_service.go` 的 `filterMenusByPlanWhitelist` 只遍历顶层节点（`fillRouteItem` 会递归、这个过滤器不递归），而 `sys_menus` 的根节点一条都不带 `module`——2026-09-21 本机 gwa 实测 47 行 / 根 10 条 / 根里带 `module` 0 条，带 `module` 的 31 条全是叶子、从不被检查（另有 6 条非容器叶子也是 NULL：3 条通知页是刻意留 NULL 绕过套餐，3 条站内信页是连字符组件路径 `app/internal-message/…` 归不进模块，见 [notification_domain_design.md](./notification_domain_design.md) §4 M）。真正生效的是 API 闸门（第 6 节链路），这层只影响侧边栏显示 |
-| 租户读 `plan_id` | `TenantRepo.Get`/`List` 不预载 `plan` 边，而 `plan_id` 在 ent 里是**边外键**（非字段、非导出），copier mapper 读不到 ⇒ DTO 的 `PlanId` 恒为 nil。上一行的白名单因此走 `return nil` 分支，**把该租户整个侧边栏清空**（`GET /admin/v1/routes` → `{"items":[]}`，无日志）。证据链与修法见 [notification_domain_design.md](./notification_domain_design.md) §4「欠账 2」（跨域缺陷，成因已定位、未修） |
+| 菜单层的套餐模块白名单 | **当前不产生过滤**：`admin_portal_service.go` 的 `filterMenusByPlanWhitelist` 只遍历顶层节点（`fillRouteItem` 会递归、这个过滤器不递归），而 `sys_menus` 的根节点一条都不带 `module`——2026-09-21 本机 gwa 实测 47 行 / 根 10 条 / 根里带 `module` 0 条，带 `module` 的 31 条全是叶子、从不被检查（另有 6 条非容器叶子也是 NULL：3 条通知页是刻意留 NULL 绕过套餐，3 条站内信页是连字符组件路径 `app/internal-message/…` 归不进模块。通知页已随通知域删除，这条是 2026-09-21 的实测记录）。真正生效的是 API 闸门（第 6 节链路），这层只影响侧边栏显示 |
+| 租户读 `plan_id` | `TenantRepo.Get`/`List` 不预载 `plan` 边，而 `plan_id` 在 ent 里是**边外键**（非字段、非导出），copier mapper 读不到 ⇒ DTO 的 `PlanId` 恒为 nil。上一行的白名单因此走 `return nil` 分支，**把该租户整个侧边栏清空**（`GET /admin/v1/routes` → `{"items":[]}`，无日志）。跨域缺陷，成因已定位、未修。原证据链写在已删除的通知域专题 §4「欠账 2」。 |
 | `data_retention_days` | 仅存储，无任何消费点（未接线） |
 | `subscription_plan` 字符串字段 | 遗留展示位，执行语义以 `plan` 边为准（双表示待收敛） |
 | 到期扫描的圈定条件 | 仅扫 status==ON；被人工置 OFF 的过期租户不会再被扫描改状态（行为上无差异——OFF 本就全拒） |

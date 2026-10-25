@@ -7,7 +7,6 @@ import (
 
 	"github.com/tx7do/go-utils/authorizer"
 	"go-wind-admin/app/admin/service/internal/data"
-	"go-wind-admin/app/admin/service/internal/data/channel"
 	"go-wind-admin/app/admin/service/internal/server"
 	"go-wind-admin/app/admin/service/internal/service"
 )
@@ -130,20 +129,21 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	fileRepo := data.NewFileRepo(ctx, entClient)
 	redisCacheMonitorRepo := data.NewRedisCacheMonitorRepo(ctx, redisClient)
 	serverMonitorRepo := data.NewServerMonitorRepo(ctx, entClient)
-	notificationChannelRepo := data.NewNotificationChannelRepo(ctx, entClient)
-	notificationDeliveryRepo := data.NewNotificationDeliveryRepo(ctx, entClient)
 	dashboardRepo := data.NewDashboardRepo(ctx, entClient)
 
 	// 站内信
 	internalMessageRepo := data.NewInternalMessageRepo(ctx, entClient)
 	internalMessageCategoryRepo := data.NewInternalMessageCategoryRepo(ctx, entClient)
 	internalMessageRecipientRepo := data.NewInternalMessageRecipientRepo(ctx, entClient)
-	notificationPreferenceRepo := data.NewNotificationPreferenceRepo(ctx, entClient)
 
 	// ── register:repo ── 新模块仓储在此行后注册(make register 工具锚点,勿删)
-	notificationRuleRepo := data.NewNotificationRuleRepo(ctx, entClient)
-	notificationTemplateRepo := data.NewNotificationTemplateRepo(ctx, entClient)
-	transactionalMailer := &service.TransactionMailer{TemplateRepo: notificationTemplateRepo}
+	outboundCfg, err := service.LoadOutboundConfig(service.ResolveConfigDir())
+	if err != nil {
+		rollback()
+		return nil, nil, err
+	}
+	outboundSender := service.NewOutboundSender(outboundCfg)
+	transactionalMailer := &service.TransactionMailer{}
 	myTenantUsageService := service.NewMyTenantUsageService(ctx, tenantUsageRepo)
 	accessKeyRepo := data.NewAccessKeyRepo(ctx, entClient)
 
@@ -159,32 +159,19 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// ═══════════════════════ 四、服务层(internal/service) ═══════════════════════
 
-	// 通知投递：渠道注册表（EMAIL / WEBHOOK / SMS / INTERNAL）→ NotificationService → 各业务 service 只拿 Notifier。
-	// 注册顺序即装配位置：新增一种渠道 = 在这里多 Register 一个 Sender，业务调用方不动。
-	// 路由（事件 → 渠道 + 同步/异步）读 sys_notification_rules，不在这里登记，见 resolveRoute。
-	channelRegistry := channel.NewRegistry()
-	channelRegistry.Register(channel.NewEmailSender(notificationChannelRepo))
-	channelRegistry.Register(channel.NewWebhookSender(notificationChannelRepo))
-	channelRegistry.Register(channel.NewSmsSender(notificationChannelRepo))
-	channelRegistry.Register(channel.NewSettingsSender(notificationChannelRepo))
-	notificationService := service.NewNotificationService(ctx, notificationDeliveryRepo, notificationRuleRepo, notificationTemplateRepo, channelRegistry)
-	notificationTemplateService := service.NewNotificationTemplateService(ctx, notificationTemplateRepo)
-
 	// 审计日志服务端导出（XLSX/CSV）：手动注册二进制响应路由，见 rest_server 的 registerFileTransfer 同段
 	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, apiAuditLogRepo, operationAuditLogRepo, dataAccessAuditLogRepo, permissionAuditLogRepo, policyEvaluationLogRepo, accessTokenChecker)
-	// 非审计数据服务端导出（AI 用量流水租户视角 / 通知台账平台闸），同段手动路由
-	dataExportService := service.NewDataExportService(ctx, notificationDeliveryRepo, accessTokenChecker)
 	// 系统级常驻任务监控（只读 asynq Inspector）
 	taskMonitorService := service.NewTaskMonitorService(ctx)
 
 	// 认证与登录策略
-	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter, loginPolicyRepo, userMfaFactorRepo, mfaChallengeCache, ssoStateCache, geoClient, transactionalMailer, vcodeCache, notificationService)
+	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter, loginPolicyRepo, userMfaFactorRepo, mfaChallengeCache, ssoStateCache, geoClient, transactionalMailer, vcodeCache, outboundSender)
 	mfaService := service.NewMfaService(ctx, userMfaFactorRepo, mfaChallengeCache, authenticator, loginRateLimiter, userRepo)
 	loginPolicyService := service.NewLoginPolicyService(ctx, loginPolicyRepo)
 
 	// 身份与组织
 	userService := service.NewUserService(ctx, userRepo, roleRepo, userCredentialRepo, positionRepo, orgUnitRepo, tenantRepo, tenantUsageRepo, membershipRepo, authenticator)
-	userProfileService := service.NewUserProfileService(ctx, userRepo, roleRepo, userCredentialRepo, authenticator, notificationService, vcodeCache, minioClient, transactionalMailer)
+	userProfileService := service.NewUserProfileService(ctx, userRepo, roleRepo, userCredentialRepo, authenticator, outboundSender, vcodeCache, minioClient, transactionalMailer)
 	positionService := service.NewPositionService(ctx, positionRepo, orgUnitRepo)
 	orgUnitService := service.NewOrgUnitService(ctx, orgUnitRepo, userRepo)
 
@@ -222,23 +209,13 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// 运维观测与门户
 	redisCacheMonitorService := service.NewRedisCacheMonitorService(ctx, redisCacheMonitorRepo)
 	serverMonitorService := service.NewServerMonitorService(ctx, serverMonitorRepo)
-	notificationChannelService := service.NewNotificationChannelService(ctx, notificationChannelRepo, notificationService, transactionalMailer)
 	onlineSessionService := service.NewOnlineSessionService(ctx, authenticator)
 	adminPortalService := service.NewAdminPortalService(ctx, menuRepo, roleRepo, userRepo, permissionRepo, planModuleRepo, tenantRepo)
 
 	// 站内信
-	internalMessageService := service.NewInternalMessageService(ctx, internalMessageRepo, internalMessageCategoryRepo, internalMessageRecipientRepo, userRepo, notificationPreferenceRepo, authenticator, clientType)
+	internalMessageService := service.NewInternalMessageService(ctx, internalMessageRepo, internalMessageCategoryRepo, internalMessageRecipientRepo, userRepo, authenticator, clientType)
 	internalMessageCategoryService := service.NewInternalMessageCategoryService(ctx, internalMessageCategoryRepo)
 	internalMessageRecipientService := service.NewInternalMessageRecipientService(ctx, internalMessageRepo, internalMessageRecipientRepo)
-	notificationPreferenceService := service.NewNotificationPreferenceService(ctx, notificationPreferenceRepo, internalMessageCategoryRepo)
-
-	// 站内信 ⇄ 通知域接线（两条边互为依赖，只能装配期后贴）：
-	//   NotificationService --Registry--> InternalMessageSender --> InternalMessageService（投递内核）
-	//   InternalMessageService --Notifier--> NotificationService（缝的入口）
-	// 注册放在 internalMessageService 之后是硬要求：Sender 持有服务对象本身，才能在
-	// RegisterInternalMessagePublisher（SSE 启动时）之后读到活的 publisher 而不是构造期快照。
-	channelRegistry.Register(service.NewInternalMessageSender(internalMessageService))
-	internalMessageService.RegisterNotifier(notificationService)
 
 	dashboardService := service.NewDashboardService(ctx, dashboardRepo)
 
@@ -247,7 +224,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	planQuotaWatermarkService := service.NewPlanQuotaWatermarkService(ctx, tenantUsageRepo, internalMessageService, internalMessageRepo, entClient)
 
 	// ── register:service ── 新模块服务在此行后注册(make register 工具锚点,勿删)
-	notificationRuleService := service.NewNotificationRuleService(ctx, notificationRuleRepo, notificationChannelRepo, notificationService)
 	accessKeyService := service.NewAccessKeyService(ctx, accessKeyRepo, authenticator, loginRateLimiter)
 	configService := service.NewConfigService(ctx, configRepo)
 
@@ -266,16 +242,12 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		menuService, apiService, permissionService, permissionGroupService,
 		permissionAuditLogService, policyEvaluationLogService,
 		loginAuditLogService, apiAuditLogService, operationAuditLogService, dataAccessAuditLogService,
-		redisCacheMonitorService, serverMonitorService, notificationChannelService,
-		notificationService, onlineSessionService, dashboardService,
+		redisCacheMonitorService, serverMonitorService,
+		onlineSessionService, dashboardService,
 		internalMessageService, internalMessageCategoryService, internalMessageRecipientService,
 		// register:rest-arg ── 新模块服务实参在此行后追加(make register 工具锚点,勿删)
-		notificationRuleService,
-		notificationPreferenceService,
-		notificationTemplateService,
 		myTenantUsageService,
 		auditExportService,
-		dataExportService,
 		taskMonitorService,
 		accessKeyService,
 		configService,
@@ -285,7 +257,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		return nil, nil, err
 	}
 
-	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, planQuotaWatermarkService)
+	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, planQuotaWatermarkService)
 	if err != nil {
 		rollback()
 		return nil, nil, err

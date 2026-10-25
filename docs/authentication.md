@@ -226,9 +226,9 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 ### 7.4 忘记密码（`authentication_forgot_password.go`，两白名单端点）
 
 - ForgotPassword：6 位数字 vcode（纳秒取模，一次性语义）→ `vcodeCache.Save("reset_password", identifier, code, 10min)`
-  → 经通知渠道发码；用户不存在同返回成功（防枚举）；
-  identifier 像手机号（无 `@` 且能归一）→ 查 **PHONE 凭证**走 **SMS 渠道**（显式点名，不经路由表），
-  否则查 EMAIL 凭证走 SMTP（2026-10-15 起，见通知域设计文档 §4 SMS）；
+  → 读 `configs/mail.yaml` 同步发码（SMTP 或短信，请求等到对方返回）；用户不存在同返回成功（防枚举）；
+  identifier 像手机号（无 `@` 且能归一）→ 查 **PHONE 凭证**走短信，
+  否则查 EMAIL 凭证走 SMTP。host / provider 留空时返回未配置；
 - ResetPasswordByCode：验码（消耗）→ 重置口令（AES 解密入参、bcrypt 存储）→
   **吊销该用户全部会话**；凭证查询与 ForgotPassword 同一形态判定。
 

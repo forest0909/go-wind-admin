@@ -45,24 +45,19 @@ func TestServiceTagToBusinessModuleExactMapping(t *testing.T) {
 		"PlanService":      identityV1.Module_TENANT,
 		"PlanQuotaService": identityV1.Module_TENANT,
 
-		"ApiAuditLogService":          identityV1.Module_LOG,
-		"LoginAuditLogService":        identityV1.Module_LOG,
-		"OperationAuditLogService":    identityV1.Module_LOG,
-		"DataAccessAuditLogService":   identityV1.Module_LOG,
-		"PermissionAuditLogService":   identityV1.Module_LOG,
-		"PolicyEvaluationLogService":  identityV1.Module_LOG,
-		"RedisCacheMonitorService":    identityV1.Module_LOG,
-		"ServerMonitorService":        identityV1.Module_SYSTEM,
-		"NotificationChannelService":  identityV1.Module_SYSTEM,
-		"NotificationService":         identityV1.Module_SYSTEM,
-		"NotificationRuleService":     identityV1.Module_SYSTEM,
-		"NotificationTemplateService": identityV1.Module_SYSTEM,
-		"OnlineSessionService":        identityV1.Module_SYSTEM,
+		"ApiAuditLogService":         identityV1.Module_LOG,
+		"LoginAuditLogService":       identityV1.Module_LOG,
+		"OperationAuditLogService":   identityV1.Module_LOG,
+		"DataAccessAuditLogService":  identityV1.Module_LOG,
+		"PermissionAuditLogService":  identityV1.Module_LOG,
+		"PolicyEvaluationLogService": identityV1.Module_LOG,
+		"RedisCacheMonitorService":   identityV1.Module_LOG,
+		"ServerMonitorService":       identityV1.Module_SYSTEM,
+		"OnlineSessionService":       identityV1.Module_SYSTEM,
 
 		"InternalMessageService":          identityV1.Module_INTERNAL_MESSAGE,
 		"InternalMessageCategoryService":  identityV1.Module_INTERNAL_MESSAGE,
 		"InternalMessageRecipientService": identityV1.Module_INTERNAL_MESSAGE,
-		"NotificationPreferenceService":   identityV1.Module_INTERNAL_MESSAGE,
 	}
 	assert.Equal(t, expected, ServiceTagToBusinessModule,
 		"ServiceTagToBusinessModule 内容漂移；如为有意变更请同步更新本测试")
@@ -77,12 +72,12 @@ func TestServiceTagToBusinessModuleReverseMapping(t *testing.T) {
 		identityV1.Module_OPM:              {"UserService", "OrgUnitService", "PositionService", "UserProfileService", "RoleService"},
 		identityV1.Module_PERMISSION:       {"MenuService", "ApiService", "PermissionService", "PermissionGroupService"},
 		identityV1.Module_DICT:             {"DictTypeService", "DictEntryService"},
-		identityV1.Module_SYSTEM:           {"LanguageService", "LoginPolicyService", "ConfigService", "AccessKeyService", "ServerMonitorService", "NotificationChannelService", "NotificationService", "NotificationRuleService", "NotificationTemplateService", "OnlineSessionService"},
+		identityV1.Module_SYSTEM:           {"LanguageService", "LoginPolicyService", "ConfigService", "AccessKeyService", "ServerMonitorService", "OnlineSessionService"},
 		identityV1.Module_FILE:             {"FileService", "FileTransferService"},
 		identityV1.Module_TASK:             {"TaskService", "TaskMonitorService"},
 		identityV1.Module_TENANT:           {"TenantService", "PlanService", "PlanQuotaService", "MyTenantUsageService"},
 		identityV1.Module_LOG:              {"ApiAuditLogService", "LoginAuditLogService", "OperationAuditLogService", "DataAccessAuditLogService", "PermissionAuditLogService", "PolicyEvaluationLogService", "RedisCacheMonitorService"},
-		identityV1.Module_INTERNAL_MESSAGE: {"InternalMessageService", "InternalMessageCategoryService", "InternalMessageRecipientService", "NotificationPreferenceService"},
+		identityV1.Module_INTERNAL_MESSAGE: {"InternalMessageService", "InternalMessageCategoryService", "InternalMessageRecipientService"},
 	}
 
 	actual := make(map[identityV1.Module][]string)

@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tx7do/go-utils/trans"
+	"errors"
+
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
-	notificationV1 "go-wind-admin/api/gen/go/notification/service/v1"
 
 	"go-wind-admin/pkg/mailtext"
 
@@ -38,7 +38,7 @@ func resetIdentityTypeOf(identifier string) authenticationV1.UserCredential_Iden
 }
 
 // ForgotPassword 忘记密码：向 identifier（已绑定的邮箱凭证或手机号凭证）发送
-// 重置验证码——邮箱走 SMTP，手机号走 SMS（显式点名，不经路由表）。
+// 重置验证码。邮箱和短信都读 configs/mail.yaml。
 // 用户不存在时同样返回成功，防止通过接口枚举有效账号。
 func (s *AuthenticationService) ForgotPassword(ctx context.Context, req *authenticationV1.ForgotPasswordRequest) (*emptypb.Empty, error) {
 	ctx = viewer.WithSystemContext(ctx)
@@ -73,27 +73,16 @@ func (s *AuthenticationService) ForgotPassword(ctx context.Context, req *authent
 		}
 	}
 
-	sendReq := &notificationV1.SendDirectNotificationRequest{
-		EventType:       notificationV1.EventType_PASSWORD_RESET_CODE,
-		Target:          identifier,
-		RecipientUserId: trans.Ptr(userId),
-	}
+	var sendErr error
 	if identityType == authenticationV1.UserCredential_PHONE {
-		// 短信正文由服务商审核模板渲染，code 经 params 交给渠道；台账文案只做记录。
-		sendReq.Channel = trans.Ptr(notificationV1.Channel_SMS)
-		sendReq.Params = map[string]string{"code": code}
-		sendReq.Title, sendReq.Content = mailtext.SmsPasswordResetCode(ctx, code)
+		sendErr = s.outbound.SendSMS(ctx, identifier, code)
 	} else {
-		sendReq.Title, sendReq.Content = renderPwdResetCode(ctx, s.mailer, code)
+		title, content := renderPwdResetCode(ctx, s.mailer, code)
+		sendErr = s.outbound.SendMail(ctx, identifier, title, content)
 	}
-
-	resp, err := s.notifier.SendDirect(ctx, sendReq)
-	if err != nil {
-		s.log.Errorf(ctx, "forgot-password: send code to [%s] failed (delivery %d): %s",
-			identifier, resp.GetDeliveryId(), err.Error())
-		// SKIPPED＝一条都没发出去：没配启用的对应渠道。这与"渠道报错"是两回事，
-		// 前者要管理员去渠道页配置，分开报才不用翻日志才知道差哪一步。
-		if resp.GetStatus() == notificationV1.DeliveryStatus_SKIPPED {
+	if sendErr != nil {
+		s.log.Errorf(ctx, "forgot-password: send code to [%s] failed: %s", identifier, sendErr.Error())
+		if errors.Is(sendErr, ErrOutboundNotConfigured) {
 			if identityType == authenticationV1.UserCredential_PHONE {
 				return nil, authenticationV1.ErrorInternalServerError("sms channel is not configured")
 			}

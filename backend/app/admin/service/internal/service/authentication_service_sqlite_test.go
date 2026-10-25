@@ -215,7 +215,7 @@ func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 		mfaFactorRepo:           data.NewUserMfaFactorRepoForTest(entClient),
 		mfaChallengeCache:       data.NewMfaChallengeCacheForTest(rdb),
 		vcodeCache:              nil,
-		notifier:                nil,
+		outbound:                nil,
 	}
 
 	return &authSvcEnv{

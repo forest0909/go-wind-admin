@@ -2,8 +2,7 @@
 //
 // SSE 的事件名是一条跨语言、跨部署单元的契约：Go 侧把它写进帧的 event: 行，三端前端
 // 按同名注册回调，中间没有任何编译期检查（前端各自的 SSEEventName 类型带 `| string`，
-// 等于不约束）。本包因此成为注册表（docs/sse_architecture.md 第 4 节末、第 8 节），
-// docs/notification_domain_design.md §3.6 要求新域 own 一个注册表。
+// 等于不约束）。本包因此成为注册表（docs/sse_architecture.md 第 4 节末、第 8 节）。
 //
 // 新增事件：在本包加常量，并同步三端的事件名常量表——
 // react `src/core/transport/sse/event.ts`、vue-element `src/core/transport/sse/event.ts`、

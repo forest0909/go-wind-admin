@@ -32,6 +32,35 @@ import (
 	applogging "go-wind-admin/pkg/middleware/logging"
 )
 
+// selfServiceOperations 只需登录、不走接口级鉴权（casbin）的操作。
+// 它们是每个登录用户都要用的"自己的"功能——导航、权限码、个人资料、自己的会话、退出——
+// 服务端一律按令牌里的用户 ID 取数，不接受调用方指定别人。不豁免的话，
+// 没被单独授权这些接口的角色登录后连菜单都拉不出来。
+// 新增条目前先确认该操作在服务端按当前用户收窄，否则会变成越权入口。
+var selfServiceOperations = map[string]struct{}{
+	adminV1.OperationAdminPortalServiceGetNavigation:           {},
+	adminV1.OperationAdminPortalServiceGetMyPermissionCode:     {},
+	adminV1.OperationAdminPortalServiceGetInitialContext:       {},
+	adminV1.OperationAuthenticationServiceLogout:               {},
+	adminV1.OperationUserProfileServiceGetUser:                 {},
+	adminV1.OperationUserProfileServiceUpdateUser:              {},
+	adminV1.OperationUserProfileServiceChangePassword:          {},
+	adminV1.OperationUserProfileServiceUploadAvatar:            {},
+	adminV1.OperationUserProfileServiceDeleteAvatar:            {},
+	adminV1.OperationUserProfileServiceBindContact:             {},
+	adminV1.OperationUserProfileServiceVerifyContact:           {},
+	adminV1.OperationOnlineSessionServiceListMyOnlineSession:   {},
+	adminV1.OperationOnlineSessionServiceRevokeMyOnlineSession: {},
+}
+
+// newAuthzRequiredMatcher 除 selfServiceOperations 外的操作都要过接口级鉴权。
+func newAuthzRequiredMatcher() selector.MatchFunc {
+	return func(_ context.Context, operation string) bool {
+		_, selfService := selfServiceOperations[operation]
+		return !selfService
+	}
+}
+
 // NewRestMiddleware 创建中间件
 func NewRestMiddleware(
 	ctx *bootstrap.Context,
@@ -85,7 +114,9 @@ func NewRestMiddleware(
 			auth.WithInjectMetadata(false),
 			auth.WithInjectEnt(true),
 		),
-		authz.Server(authorizer.Engine()),
+		selector.Server(authz.Server(authorizer.Engine())).
+			Match(newAuthzRequiredMatcher()).
+			Build(),
 	).
 		Match(rpc.NewRestWhiteListMatcher()).
 		Build(),

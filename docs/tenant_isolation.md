@@ -31,9 +31,9 @@
 | Create 防伪造 | 租户上下文 Create 强制覆盖 tenant_id 为 viewer.tid | 库层 `TenantPrivacy.EvalMutation` Create 分支 |
 
 **与数据范围的组合**：试点表 `sys_positions` 的 Policy 返回 `TenantAndDataScopePolicy`
-（`schema/data_scope_guard.go`，链式：租户变更防护 + 数据范围查询过滤），其余 32 张带租户表
-返回裸 `TenantMutationGuardPolicy`（含 2026-09-13 补挂的 `sys_access_keys`，见第 6 节修复记录）——
-全部 33 张带租户表均为库层+仓内双防线。
+（`schema/data_scope_guard.go`，链式：租户变更防护 + 数据范围查询过滤），其余 31 张带租户表
+返回裸 `TenantMutationGuardPolicy`——
+全部 32 张带租户表均为库层+仓内双防线。
 
 ## 2. 租户模型与表分类
 
@@ -49,7 +49,7 @@
 平台级表（无 tenant_id，跨租户可见）：`sys_tenants`/`sys_plans` 本身、`sys_apis`、菜单、权限点/权限组、
 语言等。租户表与平台表的划分**以 schema 是否装配 `mixin.TenantID[uint32]{}` 为准**，不靠命名约定。
 
-### 2.2 带租户列的表（当前 33 张，全量盘点）
+### 2.2 带租户列的表（当前 32 张，全量盘点）
 
 | 模块 | 表 |
 |---|---|
@@ -59,7 +59,7 @@
 | log（审计） | `sys_api_audit_logs`、`sys_data_access_audit_logs`、`sys_login_audit_logs`、`sys_operation_audit_logs`、`sys_permission_audit_logs`、`sys_policy_evaluation_logs` |
 | membership | `sys_memberships`、`sys_membership_org_units`、`sys_membership_positions`、`sys_membership_roles` |
 | opm | `sys_org_units`、`sys_positions`（数据范围试点，挂组合策略）、`sys_users`、`sys_user_credentials`、`sys_user_mfa_factors`、`sys_user_org_units`、`sys_user_positions`、`sys_user_roles`、`sys_roles`、`sys_role_metadata`、`sys_role_org_units`、`sys_role_permissions`、`sys_role_field_permissions` |
-| system/tenant | `sys_login_policies`、`sys_tasks`、`sys_access_keys` |
+| system/tenant | `sys_login_policies`、`sys_tasks` |
 
 > 审计日志表带 tenant_id 意味着：租户管理员只能看到本租户的审计记录；平台管理员全量。
 
@@ -169,8 +169,8 @@ EXPIRED / FREEZE 并吊销该租户全部用户令牌，随后由本闸门第 1 
 Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防伪造，优先强类型接口、
 反射兜底、都不可用则报错）；平台上下文尊重代码里的显式 `SetTenantID`。
 
-**仓内 `TenantMutationGuardPolicy`（`schema/tenant_mutation_guard.go`）**——全部 33 张带租户表
-（`sys_access_keys` 于 2026-09-13 补挂，见第 6 节修复记录）经 schema `Policy()` 追加：
+**仓内 `TenantMutationGuardPolicy`（`schema/tenant_mutation_guard.go`）**——全部 32 张带租户表
+经 schema `Policy()` 追加：
 对非 Create 变更同样经 `WhereP` 注入租户谓词，缺 viewer 拒绝、平台/系统放行。
 **历史**：该守卫诞生于库旧版本（EvalMutation 仅覆盖 Create、Update/Delete 直接放行）的时代；
 **当前库版（v0.0.55）已补齐全形态**，守卫成为与库层同谓词的**冗余第二道防线**
@@ -186,11 +186,11 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 
 | 路径 | 状态 | 说明 |
 |---|---|---|
-| ent 数据层（33 张表读写） | ✅ 隔离 | 本文档第 5 节 |
+| ent 数据层（32 张表读写） | ✅ 隔离 | 本文档第 5 节 |
 | **应用层自有存储**（Redis 缓存键、MinIO 对象路径、asynq 任务载荷） | ❌ 不自动注入 | 隔离谓词只存在于 ent privacy；这些路径必须业务侧显式携带/校验租户维度 |
 | **租户内跨用户**（同 tenant 下 A 读/写 B 的行） | ❌ 完全不覆盖 | 隔离谓词只有 `tenant_id` 一列，"只看自己的行"必须业务侧自己钉（收件箱读/写已钉，见下） |
 | 平台管理员上下文 | 放行 | 设计使然（tid==0 全量） |
-| 登录 / 刷新 / 找回重置 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、机器令牌交换的 AK 查询、**刷新链路**（`authentication_service.go:716`，注释 `:712-715` 说明为何必须跨租户读）、找回与重置密码两处（`authentication_forgot_password.go:44`、`:101`）——审计落库自身也经 SystemContext 写入 |
+| 登录 / 刷新 / 找回重置 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、**刷新链路**（`authentication_service.go:716`，注释 `:712-715` 说明为何必须跨租户读）、找回与重置密码两处（`authentication_forgot_password.go:44`、`:101`）——审计落库自身也经 SystemContext 写入 |
 
 **"自己的行"没人钉过：收件箱越权读＋越权写（2026-09-20 实测并修）**。
 `GET /admin/v1/internal-message/inbox` 的过滤条件整个来自调用方 `query` 字符串，租户隔离只保证"读不到别租户的行"，
@@ -207,18 +207,16 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 **给"按人归属"的资源接入时的教训**：凡是"这张表每行属于某个用户"的路径，归属谓词要**读写两侧**都落在
 repo 的查询/变更构造上，而不是指望调用方传对——三端各有一份前端，漏一份就是一个洞。
 
-**`sys_access_keys` 守卫缺口的修复记录（2026-09-13）**：该表曾长期是 33 张带租户表中
-唯一未挂仓内守卫的表（schema 无 `Policy()` 覆写）。补挂后与其他表一致（库层+仓内双防线），
-并新增守卫单测 `TestTenantMutationGuardAccessKey`（`tenant_guard_test.go`）钉住
-其跨租户 Update/Delete 0 行命中，防线回退会被测试捕获。当前 33 张表全部双挂。
+**`sys_access_keys` 已随机器凭证删除。** 2026-09-13 曾给这张表补过仓内守卫，并有
+`TestTenantMutationGuardAccessKey`。表、schema 和这则单测都已撤掉。
 
 ## 7. 运维与排障
 
 ### 7.1 新表/新端点接入清单
 
 1. **新表带租户**：schema `Mixin()` 加 `mixin.TenantID[uint32]{}`（库层隔离自动生效）+
-   **同时** `Policy()` 返回 `&TenantMutationGuardPolicy{}`（与其余 32 张一致的第二道，
-   见第 6 节 access_key 教训）→ `gow ent`；
+   **同时** `Policy()` 返回 `&TenantMutationGuardPolicy{}`（与其余 31 张一致的第二道；
+   机器凭证表曾缺这道守卫，见第 6 节）→ `gow ent`；
 2. **表同时接数据范围**：另见 data_scope_design 第 4 节（两列齐备 + 组合策略 + 守卫单测）；
 3. **新端点**：部署后管理页「接口同步」；
 4. **新服务（新 OpenAPI tag）**：`pkg/constants/module_mapping.go` 登记——漏登记=租户全 403。
@@ -238,8 +236,7 @@ repo 的查询/变更构造上，而不是指望调用方传对——三端各�
 `internal/data/ent/tenant_guard_test.go`：mockViewer（实现 `viewer.Context`）+
 真实 PostgreSQL `gwa_guard_test` 库 + 迁移 + TRUNCATE 复位，矩阵断言
 跨租户 Update/Delete 0 行命中/NotFound、本租户正常。当前覆盖 `sys_dict_types`
-（`TestTenantMutationGuard`）与 `sys_access_keys`
-（`TestTenantMutationGuardAccessKey`，2026-09-13 补挂守卫时同步新增）。
+（`TestTenantMutationGuard`）。
 新挂守卫的表照此补测；数据范围矩阵范式见 `data_scope_guard_test.go`。
 
 ### 7.4 会话级联动
@@ -251,7 +248,7 @@ repo 的查询/变更构造上，而不是指望调用方传对——三端各�
 
 | 项 | 现状 | 建议 |
 |---|---|---|
-| ~~`sys_access_keys` 缺仓内守卫~~ | **已修复（2026-09-13）**：schema 补挂 `Policy()` + `gow ent` 重生成 + 守卫单测钉住（第 6 节修复记录） | — |
+| ~~`sys_access_keys` 缺仓内守卫~~ | **表已删除**。2026-09-13 曾补挂守卫；机器凭证撤掉后这张表不再存在 | — |
 | ~~`tenant_mutation_guard.go` 文件头注释过时~~ | **已修复（2026-09-13）**：注释已更新为"库层已全覆盖、本守卫为冗余第二道防线"并保留历史说明 | — |
 | ~~`expiry_policy` 的 BLOCK_LOGIN/FREEZE 未实现~~ | **此前记载有误，实为已实现**：经小时级到期扫描任务的状态映射执行（[plan_billing.md](./plan_billing.md) 第 4 节）；闸门分工只承担 READONLY 即时降级 | FREEZE 与 EXPIRED 效果等价为已知设计现状（plan_billing 第 10 节），如需差异化再立项 |
 | entql feature | 守卫与库层的 `WhereP` 注入依赖 entql 生成的 `WhereP` 方法 | schema 生成配置中必须保持 entql feature 开启。**两层的失效形态并不相同**：库层拿不到 `WhereP` 时**返回错误拒写**（`go-crud/entgo v0.0.55` 的 `rule/tenant.go:73-76`，错误文案直提 "entql feature disabled?"），只有仓内守卫是 `if …, ok` 无 else 的**静默跳过**（`ent/schema/tenant_mutation_guard.go:53-60`）。所以关掉它不是"隔离静默降级"，而是**所有走库层规则的写操作直接失败**（可用性问题），第二道防线则无声消失 |

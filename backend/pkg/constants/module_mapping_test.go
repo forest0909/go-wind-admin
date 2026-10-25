@@ -39,7 +39,6 @@ func TestServiceTagToBusinessModuleExactMapping(t *testing.T) {
 		"MyTenantUsageService": identityV1.Module_TENANT,
 		"LoginPolicyService":   identityV1.Module_SYSTEM,
 		"ConfigService":        identityV1.Module_SYSTEM,
-		"AccessKeyService":     identityV1.Module_SYSTEM,
 
 		"TenantService":    identityV1.Module_TENANT,
 		"PlanService":      identityV1.Module_TENANT,
@@ -72,7 +71,7 @@ func TestServiceTagToBusinessModuleReverseMapping(t *testing.T) {
 		identityV1.Module_OPM:              {"UserService", "OrgUnitService", "PositionService", "UserProfileService", "RoleService"},
 		identityV1.Module_PERMISSION:       {"MenuService", "ApiService", "PermissionService", "PermissionGroupService"},
 		identityV1.Module_DICT:             {"DictTypeService", "DictEntryService"},
-		identityV1.Module_SYSTEM:           {"LanguageService", "LoginPolicyService", "ConfigService", "AccessKeyService", "ServerMonitorService", "OnlineSessionService"},
+		identityV1.Module_SYSTEM:           {"LanguageService", "LoginPolicyService", "ConfigService", "ServerMonitorService", "OnlineSessionService"},
 		identityV1.Module_FILE:             {"FileService", "FileTransferService"},
 		identityV1.Module_TASK:             {"TaskService", "TaskMonitorService"},
 		identityV1.Module_TENANT:           {"TenantService", "PlanService", "PlanQuotaService", "MyTenantUsageService"},

@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-wind-admin/app/admin/service/internal/data/ent/accesskey"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
 	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
@@ -118,7 +117,6 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			accesskey.Table:                accesskey.ValidColumn,
 			api.Table:                      api.ValidColumn,
 			apiauditlog.Table:              apiauditlog.ValidColumn,
 			dataaccessauditlog.Table:       dataaccessauditlog.ValidColumn,

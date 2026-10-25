@@ -1,5 +1,4 @@
 {
-  "accessKeys": "OpenAPI Credentials",
   "api-audit-log": "API Logs",
   "apis": "API Management",
   "auth": "Authentication",
@@ -96,7 +95,6 @@
       "task": "Task Management",
       "loginPolicy": "Login Policy",
       "language": "Language Management",
-      "accessKeys": "OpenAPI Credentials",
       "config": "Config Management",
       "onlineSessions": "Online Users",
       "serverMonitor": "Server Monitor"

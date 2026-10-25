@@ -90,8 +90,6 @@ func NewRestMiddleware(
 		adminV1.OperationMfaServiceVerifyMFAChallenge,
 		// 找回密码两个端点免鉴权：验证码发送与凭码重置，
 		// 重置成功后会吊销该用户全部会话。
-		// OpenAPI 令牌交换免鉴权：AK/SK 本身即为认证凭据。
-		adminV1.OperationAccessKeyServiceIssueToken,
 		adminV1.OperationAuthenticationServiceForgotPassword,
 		adminV1.OperationAuthenticationServiceResetPasswordByCode,
 		// 租户白标查询免鉴权：登录前按租户编号取名称/Logo（只暴露展示字段）
@@ -172,7 +170,6 @@ func NewRestServer(
 	myTenantUsageService *service.MyTenantUsageService,
 	auditExportService *service.AuditExportService,
 	taskMonitorService *service.TaskMonitorService,
-	accessKeyService *service.AccessKeyService,
 	configService *service.ConfigService,
 ) (*http.Server, error) {
 	cfg := ctx.GetConfig()
@@ -256,7 +253,6 @@ func NewRestServer(
 	// register:route ── 新模块路由在此行后注册(make register 工具锚点,勿删)
 	adminV1.RegisterMyTenantUsageServiceHTTPServer(srv, myTenantUsageService)
 	adminV1.RegisterTaskMonitorServiceHTTPServer(srv, taskMonitorService)
-	adminV1.RegisterAccessKeyServiceHTTPServer(srv, accessKeyService)
 	adminV1.RegisterConfigServiceHTTPServer(srv, configService)
 
 	if cfg.GetServer().GetRest().GetEnableSwagger() {

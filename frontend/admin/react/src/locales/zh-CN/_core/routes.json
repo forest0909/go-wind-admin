@@ -1,5 +1,4 @@
 {
-  "accessKeys": "OpenAPI 凭证",
   "api-audit-log": "API日志",
   "apis": "API管理",
   "auth": "认证",
@@ -96,7 +95,6 @@
       "task": "任务管理",
       "loginPolicy": "登录策略",
       "language": "语言管理",
-      "accessKeys": "OpenAPI 凭证",
       "config": "参数管理",
       "onlineSessions": "在线用户",
       "serverMonitor": "服务监控"

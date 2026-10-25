@@ -106,7 +106,7 @@
 
 ## 深读
 
-- [authentication.md](../authentication.md) —— 认证与令牌链路唯一权威：登录全流程、令牌结构与配置、刷新轮换与 Cookie、机器令牌、MFA、限流/策略/验证码、会话吊销、已知问题
+- [authentication.md](../authentication.md) —— 认证与令牌链路唯一权威：登录全流程、令牌结构与配置、刷新轮换与 Cookie、MFA、限流/策略/验证码、会话吊销、已知问题
 - [frontend_authority.md](../frontend_authority.md) —— 路由两种模式、按钮权限三端用法、字段级 V1 的权威说明
 - [data_scope_design.md](../data_scope_design.md) —— 三轴关系表（第 1 节）与数据范围全部细节
 - 根 [AGENTS.md](../../AGENTS.md) 与 [docs/frontend_authority](../frontend_authority.md) 的"项目代码"节 —— 前端权限的工程现状

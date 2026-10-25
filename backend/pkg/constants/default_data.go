@@ -886,21 +886,6 @@ var DefaultMenus = []*permissionV1.Menu{
 		},
 	},
 	{
-		Id:        trans.Ptr(uint32(70)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AccessKeyManagement"),
-		Path:      trans.Ptr("access-keys"),
-		Component: trans.Ptr("app/system/access_key/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.accessKeys"),
-			Icon:      trans.Ptr("lucide:key-round"),
-			Order:     trans.Ptr(int32(11)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
 		Id:        trans.Ptr(uint32(66)),
 		ParentId:  trans.Ptr(uint32(60)),
 		Type:      permissionV1.Menu_MENU.Enum(),

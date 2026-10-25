@@ -233,7 +233,6 @@ Security capabilities are designed with reference to the technical requirements 
 | Server Monitoring | Read-only view of runtime metrics (CPU cores, memory, goroutines, uptime, etc.) with auto refresh. |
 | Online Sessions | View currently online sessions (user, tenant, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
 | Parameter Management | Manage platform-wide system parameters as key/value pairs (distinct from business dictionaries); built-in parameters are seeded at startup and cannot be deleted; reads go through a server-side caching accessor, and in multi-instance deployments changes are broadcast over Redis pub/sub to invalidate every instance's cache. |
-| Machine Credentials (AK/SK) | Tenant-scoped AccessKey / SecretKey management: the Secret is shown exactly once at creation; enable/disable, delete, and secret rotation are supported (rotation immediately invalidates the previous Secret). An AK / Secret pair can be exchanged at the token-exchange endpoint for a tenant-scoped machine JWT (machine role, access token only); the exchange endpoint applies per-IP + per-AK failure rate limiting. |
 | Language Management | Manage supported languages: name, code, native name, enabled and default status. |
 
 ### Messaging & Logs

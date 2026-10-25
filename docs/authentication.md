@@ -1,7 +1,7 @@
 # 认证与令牌链路（Authentication & Tokens）参考文档
 
 > **定位**：本仓认证机制的唯一权威说明——登录链路全流程、令牌结构与配置、刷新轮换与 Cookie、
-> 机器令牌（AK/SK）、MFA、限流/策略/验证码等辅助闸门、会话管理与吊销、白名单端点、运维与已知问题。
+> MFA、限流/策略/验证码等辅助闸门、会话管理与吊销、白名单端点、运维与已知问题。
 > 前端权限消费侧（路由/按钮/字段黑名单）见 [frontend_authority.md](./frontend_authority.md)；
 > 租户隔离与数据范围另见 [tenant_isolation.md](./tenant_isolation.md)、[data_scope_design.md](./data_scope_design.md)。
 
@@ -18,7 +18,6 @@
   ├─ internal/data/authenticator.go —— 令牌签发/验签/吊销/轮换/缓存（engine 适配层）
   ├─ internal/service/authentication_service.go —— 登录/刷新/验证码/找回
   ├─ internal/service/mfa_service.go —— TOTP 绑定与登录挑战
-  ├─ internal/service/access_key_service.go —— AK/SK 机器令牌交换
   ├─ internal/data/login_rate_limiter.go —— Redis 双维度失败计数限流
   ├─ internal/data/login_policy_checker.go —— 登录策略匹配（纯函数+单测）
   └─ pkg/middleware/auth/auth.go —— 每请求认证（验签+缓存核对）+ ViewerContext/Operator 注入
@@ -69,7 +68,7 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 （并保留日志侧的真实原因）。
 
 `grant_type=refresh_token` 在 login 端点被拒（引导到专用刷新端点）；
-`grant_type=client_credentials` 被拒（机器令牌只走 AK/SK 交换，第 6 章）。
+`grant_type=client_credentials` 被拒。机器令牌交换已删除。
 
 ## 3. 令牌体系
 
@@ -77,11 +76,11 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 
 | claim | 字段 | 说明 |
 |---|---|---|
-| `uid` | user_id | 用户 ID（机器令牌恒 0） |
+| `uid` | user_id | 用户 ID |
 | `tid` | tenant_id | 租户 ID；0=平台上下文 |
 | `cid` / `did` | client_id / device_id | 客户端/设备标识（登录策略 DEVICE 维度用 did） |
-| `sub` | username | 机器令牌为 `ak:<AK>` |
-| `roc` | roles | 角色码列表（机器令牌 `["machine"]`） |
+| `sub` | username | 用户名 |
+| `roc` | roles | 角色码列表 |
 | `ipa` / `ita` | is_platform_admin / is_tenant_admin | 管理员旗标（fillAdminFlags 产出；MFA 重置/越权校验消费） |
 | `ds`/`dss`/`dsu` | data_scope(s)/unit_ids | 数据范围聚合（语义见 data_scope_design 第 3 节） |
 | `ouid` | org_unit_id | 当前组织单元 |
@@ -119,8 +118,7 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
   令牌不在缓存（已吊销/未入缓存）即拒。因此**吊销即时生效**（删缓存键），
   密钥轮换 + 吊销 = 全量下线；
 - 吊销面：`RevokeUserToken`（按 uid，登出用）、`RevokeTokenByJti`（单会话，在线用户强制下线用）、
-  `RevokeUserTokenAllClientTypes`（改密踢人等）；
-- `CreateMachineToken`：**只签 access**、入缓存、不进会话元数据（机器身份无用户行）。
+  `RevokeUserTokenAllClientTypes`（改密踢人等）。
 
 ## 4. 刷新链路（HttpOnly Cookie + 轮换）
 
@@ -175,21 +173,6 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
   登录审计中间件兜底（非 ASCII 过滤）；
 - 中间件探测 `HasEnabledTotp` **fail-closed**（查询失败拒登，不降级单因子）。
 
-## 6. 机器令牌（AK/SK 交换）
-
-`access_key_service.go IssueToken`（`POST`，白名单端点——AK/SK 本身即凭据）：
-
-1. 复用登录限流器（IP+AK 双维度，防爆破）；
-2. `GetByAccessKeyBySystem`（SystemContext 通道）查 AK 行；不存在/密钥错误统一文案；
-3. 状态 OFF / `expires_at` 已过 → 拒；
-4. SHA-256(secret) 摘要 `subtle.ConstantTimeCompare` 恒定时间比对（明文不落库）；
-5. 成功：清限流计数、`CreateMachineToken`（纯 access、入缓存、
-   `sub="ak:<AK>"`、`roles=["machine"]`、tid=AK 所属租户）、best-effort 刷新 last_used_at；
-6. authz 语义：subject 为 machine 角色——noop 引擎全放行；casbin 下无策略=fail-closed，
-   要给机器身份开面须显式配策略。
-
-管理面（AccessKey CRUD/ResetSecret）与隔离现状见 [tenant_isolation.md](./tenant_isolation.md) 第 6 节。
-
 ## 7. 辅助闸门
 
 ### 7.1 图形验证码（`captchaClient`，go-utils 封装）
@@ -203,7 +186,7 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 
 ### 7.2 登录限流（`login_rate_limiter.go`）
 
-- 双维度键：`gowind:login:fail:ip:<ip>` / `gowind:login:fail:user:<username>`（机器令牌交换复用，user 维度=AK）；
+- 双维度键：`gowind:login:fail:ip:<ip>` / `gowind:login:fail:user:<username>`；
 - 阈值 5 次 / 锁定窗口 15 分钟 / 计数 TTL=锁定窗口（**固定窗口，不是滑动**：Lua 只在 `INCR` 结果为 1 时
   `EXPIRE`，`login_rate_limiter.go:46-49`，所以 TTL 从**首次失败**起算、后续失败不续期——该文件 `:19-20`
   的注释写成"滑动窗口"是错的）；`CheckAndIncr` 为 Lua 原子
@@ -253,7 +236,6 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 | RefreshToken | refresh 自描述 JWT 独立鉴权 + 原子轮换 + 缓存吊销核对 |
 | MfaService.VerifyMFAChallenge | operation_id 单次有效原子消耗 + 错码限流 + 审计贯通 |
 | ForgotPassword / ResetPasswordByCode | vcode 单次 10min + 防枚举 + 重置后全吊销 |
-| AccessKeyService.IssueToken | AK/SK 恒定时间比对 + 限流 + 机器 token 最小面 |
 
 白名单**跳过的是整个 `auth.Server` 中间件**——租户闸门就在这个中间件内部
 （`pkg/middleware/auth/auth.go:120-132` 的 `CheckTenantAccess`），而 selector 的语义是
@@ -290,5 +272,5 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 
 - OIDC 企业登录已移除，不再从环境变量或 `auth.yaml` 的 oidc 节恢复；
 - 注册入口（RegisterUser）已移除，不再恢复（孤儿用户教训）；
-- login 端点不做 refresh（专用端点）、不做 client_credentials（专用 AK/SK 端点）；
+- login 端点不做 refresh（专用端点）、不做 client_credentials（机器令牌交换已删除）；
 - access token 不落 localStorage/sessionStorage（仅内存，刷新即失，靠 refresh Cookie 恢复）。

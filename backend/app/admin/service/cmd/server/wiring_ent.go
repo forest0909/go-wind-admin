@@ -144,7 +144,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	outboundSender := service.NewOutboundSender(outboundCfg)
 	transactionalMailer := &service.TransactionMailer{}
 	myTenantUsageService := service.NewMyTenantUsageService(ctx, tenantUsageRepo)
-	accessKeyRepo := data.NewAccessKeyRepo(ctx, entClient)
 
 	// ═══════════════════════ 三、认证与鉴权 ═══════════════════════
 
@@ -223,7 +222,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	planQuotaWatermarkService := service.NewPlanQuotaWatermarkService(ctx, tenantUsageRepo, internalMessageService, internalMessageRepo, entClient)
 
 	// ── register:service ── 新模块服务在此行后注册(make register 工具锚点,勿删)
-	accessKeyService := service.NewAccessKeyService(ctx, accessKeyRepo, authenticator, loginRateLimiter)
 	configService := service.NewConfigService(ctx, configRepo)
 
 	// ═══════════════════════ 五、传输层(internal/server) ═══════════════════════
@@ -248,7 +246,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		myTenantUsageService,
 		auditExportService,
 		taskMonitorService,
-		accessKeyService,
 		configService,
 	)
 	if err != nil {

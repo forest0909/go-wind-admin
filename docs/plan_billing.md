@@ -32,7 +32,7 @@
 | 用量计量 | 用户数 / 存储字节 / API 调用次数聚合 | `tenant_usage_repo.go` `GetUsage`——**只有 ent 一套是真的**；gorm 镜像是未实现脚手架（见 §4 末） |
 | 配额硬执行 | 见 §7.2：USER_LIMIT / STORAGE 在资源创建入口、API_CALL 在租户闸门第 4 段（`internal/data/quota_gate.go`） | `quota_enforcer.go`、`internal/data/quota_gate.go` |
 | 水位扫描与通知 | 见 §7.3：只读扫描（与 §7.1 计量同源）+ 站内信告警租户管理员；调度链见 [task_system.md](./task_system.md) §5.7 | `internal/data/quota_watermark_scan.go`、`plan_quota_watermark_service.go` |
-| 租户数据清理 | **29 张**带租户表事务硬删（全部 33 张里缺 4 张，见 §8） | `tenant_usage_repo.go` `CleanupTenantData` |
+| 租户数据清理 | **29 张**带租户表事务硬删（全部 32 张里缺 3 张，见 §8） | `tenant_usage_repo.go` `CleanupTenantData` |
 
 ## 2. 数据模型
 
@@ -237,7 +237,7 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
 - 投递：命中按租户归组（一租户一条消息、多维度命中合并为同一张清单），按租户
   管理员（`sys_tenants.admin_user_id`）的偏好语言（zh-CN/en-US，未设置或未识别
   回落中文）渲染并投递站内信（消息行 + 收件行、
-  静音时段只抑制实时推送、单人失败不阻断其余、全部失败才报错重试）；
+  写入后始终 SSE 推送、单人失败不阻断其余、全部失败才报错重试）；
   未设管理员的命中租户只留运维日志、不投递；
 - 告警频率上限 = 扫描频率（每日至多一条/租户），无"已通知"状态；
 - 测试：判定与百分数纯函数单测、SQLite 接线级扫描单测（四租户布局：命中 /
@@ -249,12 +249,8 @@ POST `/admin/v1/tenants/{id}/cleanup`：
 
 - 单事务内**硬删**该租户在 29 张带 `tenant_id` 业务表的数据（实现内按表逐张 `Delete`，
   `tenant_usage_repo.go:189-217`）；
-- **有 4 张不在列表里**：ent 里共 33 个包带 `TenantIDEQ` 谓词，`CleanupTenantData` 只落了 29 个，
-  缺的是 `AccessKey`、`RoleFieldPermission`、`RoleOrgUnit`、`UserMfaFactor`。
-  清理后这四种行会**留在库里**指着一个已经不存在的租户。其中影响最直接的是 AK/SK：
-  令牌交换端点在免鉴权白名单里，且只校验 AK 自身的 `status` 与 `expires_at`
-  （`access_key_service.go:180-185`），不看租户状态——所以清理动作**不会让已发出的访问密钥失效**，
-  换到的机器令牌只是过不了下游租户闸门。要真正停用密钥，须在清理前显式删除或把 AK 置 OFF；
+- **有 3 张不在列表里**：`RoleFieldPermission`、`RoleOrgUnit`、`UserMfaFactor`。
+  `AccessKey` 已随机器凭证删除。清理后这三种行会留在库里，指着一个已经不存在的租户；
 - 保留 `sys_tenants` 行，`status` 置 OFF；
 - 事务提交后吊销该租户全部用户双端令牌（用户 ID 列表在事务内先收集）。
 
@@ -277,7 +273,7 @@ SystemContext 通道。清理动作走租户模块端点，受租户闸门/权�
 | 项 | 现状 |
 |---|---|
 | 配额硬执行 | **三类全部已实现**：USER_LIMIT（用户创建入口）、STORAGE（上传入口）、API_CALL（租户闸门，2026-10-03）见第 7.2 节 |
-| 清理覆盖 | `CleanupTenantData` 少删 4 张带 `tenant_id` 的表（AK/SK、角色字段权限、角色-组织单元、用户 MFA 因子），见第 8 节 |
+| 清理覆盖 | `CleanupTenantData` 少删 3 张带 `tenant_id` 的表（角色字段权限、角色-组织单元、用户 MFA 因子），见第 8 节 |
 | 菜单层的套餐模块白名单 | **当前不产生过滤**：`admin_portal_service.go` 的 `filterMenusByPlanWhitelist` 只遍历顶层节点（`fillRouteItem` 会递归、这个过滤器不递归），而 `sys_menus` 的根节点一条都不带 `module`——2026-09-21 本机 gwa 实测 47 行 / 根 10 条 / 根里带 `module` 0 条，带 `module` 的 31 条全是叶子、从不被检查（另有 6 条非容器叶子也是 NULL：3 条通知页是刻意留 NULL 绕过套餐，3 条站内信页是连字符组件路径 `app/internal-message/…` 归不进模块。通知页已随通知域删除，这条是 2026-09-21 的实测记录）。真正生效的是 API 闸门（第 6 节链路），这层只影响侧边栏显示 |
 | 租户读 `plan_id` | `TenantRepo.Get`/`List` 不预载 `plan` 边，而 `plan_id` 在 ent 里是**边外键**（非字段、非导出），copier mapper 读不到 ⇒ DTO 的 `PlanId` 恒为 nil。上一行的白名单因此走 `return nil` 分支，**把该租户整个侧边栏清空**（`GET /admin/v1/routes` → `{"items":[]}`，无日志）。跨域缺陷，成因已定位、未修。原证据链写在已删除的通知域专题 §4「欠账 2」。 |
 | `data_retention_days` | 仅存储，无任何消费点（未接线） |

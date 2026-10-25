@@ -16,7 +16,7 @@
 后端
   ├─ AuthenticationScheme（authn）+ Authorizer（authz）引擎配置：configs/auth.yaml（authn.jwt / authz.type）
   ├─ internal/data/authenticator.go —— 令牌签发/验签/吊销/轮换/缓存（engine 适配层）
-  ├─ internal/service/authentication_service.go —— 登录/刷新/验证码/找回
+  ├─ internal/service/authentication_service.go —— 登录/刷新/验证码
   ├─ internal/service/mfa_service.go —— TOTP 绑定与登录挑战
   ├─ internal/data/login_rate_limiter.go —— Redis 双维度失败计数限流
   ├─ internal/data/login_policy_checker.go —— 登录策略匹配（纯函数+单测）
@@ -57,7 +57,7 @@ POST /admin/v1/login（grant_type=password）
 ```
 
 错误语义统一化（防枚举）：`normalizeLoginVerifyError`（`authentication_service.go:149-158`）把
-USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编号错误同文案；忘记密码对不存在邮箱同返回成功。
+USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编号错误同文案。
 真实原因保留在服务端日志与登录审计的 FailureReason。
 
 ⚠ **一处已知的归并缺口**：口令有效期到期时 `FindUserCredential` 返回的是
@@ -206,15 +206,6 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
   用户定向段在密码通过、userId 已知后；
 - 策略查询失败 → **fail-open**（仅告警——登录可用性优先，与验证码开关同取向）。
 
-### 7.4 忘记密码（`authentication_forgot_password.go`，两白名单端点）
-
-- ForgotPassword：6 位数字 vcode（纳秒取模，一次性语义）→ `vcodeCache.Save("reset_password", identifier, code, 10min)`
-  → 读 `configs/mail.yaml` 同步发码（SMTP 或短信，请求等到对方返回）；用户不存在同返回成功（防枚举）；
-  identifier 像手机号（无 `@` 且能归一）→ 查 **PHONE 凭证**走短信，
-  否则查 EMAIL 凭证走 SMTP。host / provider 留空时返回未配置；
-- ResetPasswordByCode：验码（消耗）→ 重置口令（AES 解密入参、bcrypt 存储）→
-  **吊销该用户全部会话**；凭证查询与 ForgotPassword 同一形态判定。
-
 ## 8. 会话管理与在线用户（`online_session_service.go` + `session_meta.go`）
 
 - 会话元数据（签发/刷新时记录，Redis，键 `us:{ct}:{uid}:{jti}`，`user_token_cache.go:33-34`；
@@ -235,7 +226,6 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 | GenerateCaptcha / VerifyCaptcha | 单次有效、无敏感返回 |
 | RefreshToken | refresh 自描述 JWT 独立鉴权 + 原子轮换 + 缓存吊销核对 |
 | MfaService.VerifyMFAChallenge | operation_id 单次有效原子消耗 + 错码限流 + 审计贯通 |
-| ForgotPassword / ResetPasswordByCode | vcode 单次 10min + 防枚举 + 重置后全吊销 |
 
 白名单**跳过的是整个 `auth.Server` 中间件**——租户闸门就在这个中间件内部
 （`pkg/middleware/auth/auth.go:120-132` 的 `CheckTenantAccess`），而 selector 的语义是
@@ -273,4 +263,5 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 - OIDC 企业登录已移除，不再从环境变量或 `auth.yaml` 的 oidc 节恢复；
 - 注册入口（RegisterUser）已移除，不再恢复（孤儿用户教训）；
 - login 端点不做 refresh（专用端点）、不做 client_credentials（机器令牌交换已删除）；
+- 找回密码（`/admin/v1/forgot-password`、`/admin/v1/reset-password-by-code`）已删除。个人中心换绑邮箱和手机仍读 `configs/mail.yaml` 同步发验证码；
 - access token 不落 localStorage/sessionStorage（仅内存，刷新即失，靠 refresh Cookie 恢复）。

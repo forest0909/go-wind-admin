@@ -160,8 +160,8 @@ type authSvcEnv struct {
 
 // newAuthenticationServiceForTest 白盒复刻 NewAuthenticationService 的字段初始化：
 // log 换 NopLogger，ent 仓储用 repo_testkit 构造器，redis 依赖经 miniredis 假 client
-// 注入，userRepo 用本文件桩；membershipRepo / vcodeCache / notifier
-// 仅被本批未覆盖的方法（OneToMany 分支为编译期死代码、忘记密码/换绑链路）使用，置 nil。
+// 注入，userRepo 用本文件桩；membershipRepo
+// 仅被本批未覆盖的方法（OneToMany 分支为编译期死代码）使用，置 nil。
 func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 	t.Helper()
 	entClient := enttest.NewEntClientForTest(t)
@@ -214,8 +214,6 @@ func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 		loginPolicyRepo:         data.NewLoginPolicyRepoForTest(entClient),
 		mfaFactorRepo:           data.NewUserMfaFactorRepoForTest(entClient),
 		mfaChallengeCache:       data.NewMfaChallengeCacheForTest(rdb),
-		vcodeCache:              nil,
-		outbound:                nil,
 	}
 
 	return &authSvcEnv{

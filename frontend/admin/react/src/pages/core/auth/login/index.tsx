@@ -300,21 +300,6 @@ const Login: React.FC = () => {
           </Form.Item>
         </Form>
       </div>
-
-      {/* 底部链接 */}
-      <div className="mt-6 text-center text-[13px]">
-        <span className="text-[color:var(--ant-color-text-secondary)]">
-          {t('noAccount')}{' '}
-        </span>
-        <a
-          href="/auth/forgot-password"
-          className="gowind-auth-link hover:opacity-80"
-          style={{ fontSize: 13 }}
-        >
-          {t('forgotPassword')}
-        </a>
-        
-      </div>
     </div>
   );
 };

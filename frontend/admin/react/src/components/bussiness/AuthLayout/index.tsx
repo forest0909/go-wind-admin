@@ -11,7 +11,7 @@ import { useLocale } from '@/core/preferences/hooks/useLocale';
  * 认证页面布局属性
  */
 export interface AuthLayoutProps {
-  /** 页面标题（如：欢迎回来、创建账号、找回密码） */
+  /** 页面标题（如：欢迎回来） */
   title: string;
   /** 页面副标题描述 */
   description: string;
@@ -29,7 +29,7 @@ export interface AuthLayoutProps {
 
 /**
  * 认证页面通用布局组件
- * 用于登录、注册、找回密码等页面
+ * 用于登录页
  */
 const AuthLayout: React.FC<AuthLayoutProps> = ({ title, description, children, footerLink }) => {
   const { t } = useTranslation('auth');

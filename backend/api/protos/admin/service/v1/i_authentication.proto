@@ -31,30 +31,6 @@ service AuthenticationService {
     };
   }
 
-  // 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-  rpc ForgotPassword (authentication.service.v1.ForgotPasswordRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/admin/v1/forgot-password"
-      body: "*"
-    };
-
-    option(gnostic.openapi.v3.operation) = {
-      security: {}
-    };
-  }
-
-  // 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-  rpc ResetPasswordByCode (authentication.service.v1.ResetPasswordByCodeRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/admin/v1/reset-password-by-code"
-      body: "*"
-    };
-
-    option(gnostic.openapi.v3.operation) = {
-      security: {}
-    };
-  }
-
   // 刷新认证令牌
   rpc RefreshToken (authentication.service.v1.LoginRequest) returns (authentication.service.v1.LoginResponse) {
     option (google.api.http) = {

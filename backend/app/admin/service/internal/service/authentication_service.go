@@ -184,10 +184,6 @@ type AuthenticationService struct {
 	mfaFactorRepo     *data.UserMfaFactorRepo
 	mfaChallengeCache *data.MfaChallengeCache
 	geoClient         *geolite.Client
-
-	vcodeCache *data.VCodeCache
-	outbound   *OutboundSender
-	mailer     *TransactionMailer
 }
 
 func NewAuthenticationService(
@@ -209,9 +205,6 @@ func NewAuthenticationService(
 	mfaFactorRepo *data.UserMfaFactorRepo,
 	mfaChallengeCache *data.MfaChallengeCache,
 	geoClient *geolite.Client,
-	mailer *TransactionMailer,
-	vcodeCache *data.VCodeCache,
-	outbound *OutboundSender,
 ) *AuthenticationService {
 	return &AuthenticationService{
 		log:                     ctx.NewLoggerHelper("authn/service/admin-service"),
@@ -232,9 +225,6 @@ func NewAuthenticationService(
 		mfaFactorRepo:           mfaFactorRepo,
 		mfaChallengeCache:       mfaChallengeCache,
 		geoClient:               geoClient,
-		mailer:                  mailer,
-		vcodeCache:              vcodeCache,
-		outbound:                outbound,
 	}
 }
 

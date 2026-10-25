@@ -2,8 +2,8 @@
 //
 // 文案放在这里：验证码邮件只有这一个出口。新增事件改这里，调用点不再各自拼中文字符串。
 //
-// 语言取自 HTTP 请求头 Accept-Language：三端 request-client 的请求拦截器都已注入该头，
-// 而找回密码 / 绑定邮箱走免鉴权白名单，上下文里没有 token 级的 locale 可读。
+// 语言取自 HTTP 请求头 Accept-Language：三端 request-client 的请求拦截器都已注入该头。
+// 已登录的换绑请求用 WithLocale 盖上用户偏好。
 // 非 HTTP 上下文（后台任务、测试）拿不到请求头，一律回落 defaultLocale。
 package mailtext
 
@@ -108,7 +108,7 @@ func Resolve(ctx context.Context) Locale {
 type localeContextKey struct{}
 
 // WithLocale 显式指定邮件语言（如收件用户的偏好设置），覆盖请求头判定。
-// 找回密码这类免鉴权流程在拿到用户后调用，验证码邮件即按用户偏好渲染。
+// 换绑验证码在读到用户偏好后调用，邮件即按该语言渲染。
 func WithLocale(ctx context.Context, locale Locale) context.Context {
 	return context.WithValue(ctx, localeContextKey{}, locale)
 }

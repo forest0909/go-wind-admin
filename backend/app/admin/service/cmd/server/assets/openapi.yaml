@@ -1427,24 +1427,6 @@ paths:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/forgot-password:
-        post:
-            tags:
-                - AuthenticationService
-            description: 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-            operationId: AuthenticationService_ForgotPassword
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/ForgotPasswordRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-            security:
-                - {}
     /admin/v1/initial-context:
         get:
             tags:
@@ -4176,24 +4158,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/LoginResponse'
-    /admin/v1/reset-password-by-code:
-        post:
-            tags:
-                - AuthenticationService
-            description: 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-            operationId: AuthenticationService_ResetPasswordByCode
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/ResetPasswordByCodeRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content: {}
-            security:
-                - {}
     /admin/v1/roles:
         get:
             tags:
@@ -6293,13 +6257,6 @@ components:
             type: object
             properties: {}
             description: 强制下线指定会话 - 回应
-        ForgotPasswordRequest:
-            type: object
-            properties:
-                identifier:
-                    type: string
-                    description: 登录账号或绑定邮箱
-            description: 忘记密码 - 请求（identifier 为已绑定的邮箱）
         GenerateCaptchaResponse:
             type: object
             properties:
@@ -8480,19 +8437,6 @@ components:
                     items:
                         $ref: '#/components/schemas/SlowLogEntry'
             description: Redis缓存监控信息
-        ResetPasswordByCodeRequest:
-            type: object
-            properties:
-                identifier:
-                    type: string
-                    description: 登录账号或绑定邮箱
-                code:
-                    type: string
-                    description: 邮箱验证码
-                new_password:
-                    type: string
-                    description: 新密码
-            description: 凭验证码重置密码 - 请求
         RestartAllTaskResponse:
             type: object
             properties:

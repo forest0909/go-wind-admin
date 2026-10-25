@@ -27,13 +27,6 @@ service AuthenticationService {
   // 用户登出
   rpc Logout (LogoutRequest) returns (google.protobuf.Empty) {}
 
-  // 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-  rpc ForgotPassword (ForgotPasswordRequest) returns (google.protobuf.Empty) {}
-
-  // 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-  rpc ResetPasswordByCode (ResetPasswordByCodeRequest) returns (google.protobuf.Empty) {}
-
-
   // 刷新认证令牌
   rpc RefreshToken (LoginRequest) returns (LoginResponse) {}
 
@@ -342,34 +335,6 @@ message ValidateTokenResponse {
   ]; // 令牌是否被阻塞/列入黑名单
 }
 
-
-
-// 忘记密码 - 请求（identifier 为已绑定的邮箱）
-message ForgotPasswordRequest {
-  optional string identifier = 1 [
-    json_name = "identifier",
-    (gnostic.openapi.v3.property) = { description: "登录账号或绑定邮箱" }
-  ]; // 登录账号或绑定邮箱
-}
-
-// 凭验证码重置密码 - 请求
-message ResetPasswordByCodeRequest {
-  optional string identifier = 1 [
-    json_name = "identifier",
-    (gnostic.openapi.v3.property) = { description: "登录账号或绑定邮箱" }
-  ]; // 登录账号或绑定邮箱
-
-  optional string code = 2 [
-    json_name = "code",
-    (gnostic.openapi.v3.property) = { description: "邮箱验证码" }
-  ]; // 邮箱验证码
-
-  // 新密码（AES 密文传输，与登录同规）
-  optional string new_password = 3 [
-    json_name = "new_password",
-    (gnostic.openapi.v3.property) = { description: "新密码" }
-  ]; // 新密码
-}
 
 
 // 获取当前用户身份信息 - 响应

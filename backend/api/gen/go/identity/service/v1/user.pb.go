@@ -166,7 +166,7 @@ type User struct {
 	Gender        *User_Gender           `protobuf:"varint,27,opt,name=gender,proto3,enum=identity.service.v1.User_Gender,oneof" json:"gender,omitempty"` // 性别
 	Address       *string                `protobuf:"bytes,28,opt,name=address,proto3,oneof" json:"address,omitempty"`                                     // 住址
 	Region        *string                `protobuf:"bytes,29,opt,name=region,proto3,oneof" json:"region,omitempty"`                                       // 国家地区
-	// 偏好语言：事务性邮件（找回密码/换绑验证码）按此渲染；空 = 按请求 Accept-Language。
+	// 偏好语言：换绑验证码按此渲染；空 = 按请求 Accept-Language。
 	Locale        *string                `protobuf:"bytes,32,opt,name=locale,proto3,oneof" json:"locale,omitempty"`                                       // 偏好语言
 	Description   *string                `protobuf:"bytes,30,opt,name=description,proto3,oneof" json:"description,omitempty"`                             // 个人描述
 	Remark        *string                `protobuf:"bytes,31,opt,name=remark,proto3,oneof" json:"remark,omitempty"`                                       // 备注

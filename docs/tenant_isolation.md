@@ -99,7 +99,7 @@ ViewerContext 语义（`viewer.Context` 接口实现）：
 |---|---|---|---|---|
 | `UserContext` | 令牌 tid | tid==0 | false | 请求上下文；tid==0 平台管理员全量，tid>0 租户 |
 | `SystemContext`（库 `go-crud/viewer`） | 0 | true | true | 后台任务/闸门自查询（`viewer.WithSystemContext`） |
-| `NoopContext`（库） | — | — | — | 登录/找回流程（配 `privacy.DecisionContext(Allow)` 显式绕过） |
+| `NoopContext`（库） | — | — | — | 登录流程（配 `privacy.DecisionContext(Allow)` 显式绕过） |
 
 `BuildDataScopes`（同文件）把令牌 dss/dsu/旧 ds 聚合结果转成库层数据范围结构——
 UNSPECIFIED 剔除、空集不兜底（交库规则 fail-closed），语义见 data_scope_design 第 3-4 节。
@@ -190,7 +190,7 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 | **应用层自有存储**（Redis 缓存键、MinIO 对象路径、asynq 任务载荷） | ❌ 不自动注入 | 隔离谓词只存在于 ent privacy；这些路径必须业务侧显式携带/校验租户维度 |
 | **租户内跨用户**（同 tenant 下 A 读/写 B 的行） | ❌ 完全不覆盖 | 隔离谓词只有 `tenant_id` 一列，"只看自己的行"必须业务侧自己钉（收件箱读/写已钉，见下） |
 | 平台管理员上下文 | 放行 | 设计使然（tid==0 全量） |
-| 登录 / 刷新 / 找回重置 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、**刷新链路**（`authentication_service.go:716`，注释 `:712-715` 说明为何必须跨租户读）、找回与重置密码两处（`authentication_forgot_password.go:44`、`:101`）——审计落库自身也经 SystemContext 写入 |
+| 登录 / 刷新 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、**刷新链路**（`authentication_service.go:725`，注释 `:721-724` 说明为何必须跨租户读）——审计落库自身也经 SystemContext 写入 |
 
 **"自己的行"没人钉过：收件箱越权读＋越权写（2026-09-20 实测并修）**。
 `GET /admin/v1/internal-message/inbox` 的过滤条件整个来自调用方 `query` 字符串，租户隔离只保证"读不到别租户的行"，

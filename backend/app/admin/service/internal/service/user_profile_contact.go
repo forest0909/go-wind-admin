@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -22,6 +23,13 @@ const (
 	contactKindEmail = "email"
 	contactKindPhone = "phone"
 )
+
+// generateVCode 生成 6 位数字验证码。
+// 使用纳秒时间取模：验证码仅用于一次性校验，安全强度由
+// 「单次有效 + 10 分钟 TTL + 服务端比对」保证，不依赖密码学随机。
+func generateVCode() string {
+	return fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+}
 
 // sendContactVCode 向指定联系方式发送业务验证码（绑定场景）。
 // 邮箱走 mail.yaml 的 SMTP，手机号走同一文件里的短信账号。

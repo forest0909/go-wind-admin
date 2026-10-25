@@ -236,18 +236,6 @@ func (f MenuFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MenuMutation", m)
 }
 
-// The MonitorAlertRuleFunc type is an adapter to allow the use of ordinary
-// function as MonitorAlertRule mutator.
-type MonitorAlertRuleFunc func(context.Context, *ent.MonitorAlertRuleMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f MonitorAlertRuleFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.MonitorAlertRuleMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MonitorAlertRuleMutation", m)
-}
-
 // The NotificationChannelFunc type is an adapter to allow the use of ordinary
 // function as NotificationChannel mutator.
 type NotificationChannelFunc func(context.Context, *ent.NotificationChannelMutation) (ent.Value, error)

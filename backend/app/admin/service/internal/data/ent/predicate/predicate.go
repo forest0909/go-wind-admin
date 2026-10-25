@@ -63,9 +63,6 @@ type MembershipRole func(*sql.Selector)
 // Menu is the predicate function for menu builders.
 type Menu func(*sql.Selector)
 
-// MonitorAlertRule is the predicate function for monitoralertrule builders.
-type MonitorAlertRule func(*sql.Selector)
-
 // NotificationChannel is the predicate function for notificationchannel builders.
 type NotificationChannel func(*sql.Selector)
 

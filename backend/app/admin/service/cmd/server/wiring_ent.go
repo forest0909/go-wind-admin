@@ -145,7 +145,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	notificationTemplateRepo := data.NewNotificationTemplateRepo(ctx, entClient)
 	transactionalMailer := &service.TransactionMailer{TemplateRepo: notificationTemplateRepo}
 	myTenantUsageService := service.NewMyTenantUsageService(ctx, tenantUsageRepo)
-	monitorAlertRuleRepo := data.NewMonitorAlertRuleRepo(ctx, entClient)
 	accessKeyRepo := data.NewAccessKeyRepo(ctx, entClient)
 
 	// ═══════════════════════ 三、认证与鉴权 ═══════════════════════
@@ -170,9 +169,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	channelRegistry.Register(channel.NewSettingsSender(notificationChannelRepo))
 	notificationService := service.NewNotificationService(ctx, notificationDeliveryRepo, notificationRuleRepo, notificationTemplateRepo, channelRegistry)
 	notificationTemplateService := service.NewNotificationTemplateService(ctx, notificationTemplateRepo)
-	// 监控告警：评估器依赖通知出口，装配顺序在 NotificationService 之后
-	monitorAlertService := service.NewMonitorAlertService(ctx, monitorAlertRuleRepo, serverMonitorRepo, redisCacheMonitorRepo, entClient)
-	monitorAlertService.RegisterNotifier(notificationService)
 
 	// 审计日志服务端导出（XLSX/CSV）：手动注册二进制响应路由，见 rest_server 的 registerFileTransfer 同段
 	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, apiAuditLogRepo, operationAuditLogRepo, dataAccessAuditLogRepo, permissionAuditLogRepo, policyEvaluationLogRepo, accessTokenChecker)
@@ -277,7 +273,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		notificationRuleService,
 		notificationPreferenceService,
 		notificationTemplateService,
-		monitorAlertService,
 		myTenantUsageService,
 		auditExportService,
 		dataExportService,
@@ -290,7 +285,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		return nil, nil, err
 	}
 
-	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, monitorAlertService, planQuotaWatermarkService)
+	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, planQuotaWatermarkService)
 	if err != nil {
 		rollback()
 		return nil, nil, err

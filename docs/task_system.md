@@ -13,7 +13,7 @@
 启动链    NewAsynqServer（internal/server/asynq_server.go）
           ├─ 固定类型订阅注册（handler 路由表）：tenant_expiry_scan /
           │  audit_log_archive / broadcast_message / notification_dispatch /
-          │  notification_delivery_sweep / monitor_alert_scan / plan_quota_watermark_scan
+          │  notification_delivery_sweep / plan_quota_watermark_scan
           ├─ RegisterTaskScheduler：把调度器句柄注入 TaskService（后续所有调度动作经它）
           ├─ RegisterTaskEnqueuer：站内信服务（广播 fan-out）与通知域服务（异步派发）
           │  各自获得一次性任务入队能力；未注入时两处都退回同步路径
@@ -37,7 +37,6 @@
 | `broadcast_message` | `InternalMessageService.AsyncBroadcastMessage` | 一次性、幂等（见 5.4） |
 | `notification_dispatch` | `NotificationService.AsyncNotificationDispatch` | 一次性、幂等（见 5.5） |
 | `notification_delivery_sweep` | `NotificationService.AsyncDeliverySweep` | 系统级 cron，每 5 分钟（见 5.6） |
-| `monitor_alert_scan` | `MonitorAlertService.AsyncMonitorAlertScan` | 系统级 cron，每 5 分钟（评估启用的告警规则；handler 在监控告警域） |
 | `plan_quota_watermark_scan` | `PlanQuotaWatermarkService.AsyncPlanQuotaWatermarkScan` | 系统级 cron，每日 09:00（见 5.7、[plan_billing.md](./plan_billing.md) §7.3） |
 
 订阅有两种形态：`RegisterSubscriber[T]` 的 handler 签名不带 ctx，`RegisterSubscriberWithCtx[T]`
@@ -198,6 +197,6 @@ cron `*/5 * * * *`（`pkg/task/notification_delivery_sweep.go`）。把 `sys_not
 |---|---|
 | typeName 路由/去重键合一 | 库层限制，跨租户同名互斥（第 8 节），库改造 TODO |
 | WAIT_RESULT 型 | 枚举与装载路径在，无内置消费方示范；语义同 asynq wait-result |
-| 系统级任务的可见性 | 不入 sys_tasks，管理页不可见、不可停（现共五个：到期扫描 5.1、审计归档 5.2、台账清扫 5.6、监控告警扫描 5.7、AI 日报 5.8）——监控只能靠服务日志（"系统级…定时任务已注册"/"scan done:"等前缀）。**可视化的设计权衡已备**（2026-10-03 修订，动工前先读）：**推荐 C'——asynq Inspector 只读视图，零新表**（初版推荐的 C"新表 sys_task_runs 记执行流水"过重，已否）：v0.26 的 `Inspector` 免费给出核心数据——`SchedulerEntries()` 返回各常驻任务的 cron + Next/Prev 入队时间（Prev 零值=从未跑过）、各类型队列的 active/retry/archived 状态与失败明细（`TaskInfo.LastErr/LastFailedAt/Retried`）；Inspector 用 `server.asynq` 同一 Redis 配置构造即可（队列无命名空间的坑在此自动自洽——看到的就是本实例队列）。后端加平台管理员守卫的只读服务 + 任务页"系统级任务"标签页。asynq 给不了的只有成功执行的持久历史与领域级结果（后者本就在领域台账：通知投递表/审计归档 JSONL）——前者若将来需要，配 asynq Retention 留存 completed 任务（仍零表）或再考虑执行流水表。原方案 A（静态卡片）/B（upsert 进 sys_tasks + is_system 标记、startTask 跳过）否决理由不变 |
+| 系统级任务的可见性 | 不入 sys_tasks，管理页不可见、不可停（现共四个：到期扫描 5.1、审计归档 5.2、台账清扫 5.6、配额水位 5.7）——监控只能靠服务日志（"系统级…定时任务已注册"/"scan done:"等前缀）。**可视化的设计权衡已备**（2026-10-03 修订，动工前先读）：**推荐 C'——asynq Inspector 只读视图，零新表**（初版推荐的 C"新表 sys_task_runs 记执行流水"过重，已否）：v0.26 的 `Inspector` 免费给出核心数据——`SchedulerEntries()` 返回各常驻任务的 cron + Next/Prev 入队时间（Prev 零值=从未跑过）、各类型队列的 active/retry/archived 状态与失败明细（`TaskInfo.LastErr/LastFailedAt/Retried`）；Inspector 用 `server.asynq` 同一 Redis 配置构造即可（队列无命名空间的坑在此自动自洽——看到的就是本实例队列）。后端加平台管理员守卫的只读服务 + 任务页"系统级任务"标签页。asynq 给不了的只有成功执行的持久历史与领域级结果（后者本就在领域台账：通知投递表/审计归档 JSONL）——前者若将来需要，配 asynq Retention 留存 completed 任务（仍零表）或再考虑执行流水表。原方案 A（静态卡片）/B（upsert 进 sys_tasks + is_system 标记、startTask 跳过）否决理由不变 |
 | **时间窗谓词要看驱动怎么渲染时间** | `created_at` 这类经 `timestamptz`（Postgres）存的列按"瞬间"比较，任何时区渲染都对；但同一句谓词跑在把时间渲染成**带时区文本**的驱动上（本机 sqlite 回归测试即此形）就成了字典序比较。坑的来源是写入侧：`SendDirect` 的 `created_at` 经过 `timestamppb` 往返（渲染成 UTC），而谓词参数 `time.Now()` 带本地时区（+08）—— 实测会把"一分钟前"的行判成"十五分钟前"。`SweepStaleSending` 因此把比较侧统一 `.UTC()`；**新写按时间窗筛行的任务时同样注意**（审计归档 `CreatedAtLT`、到期扫描 `ExpiredAtLTE` 目前只在 Postgres 上实测过） |
 | **asynq 队列没有命名空间** | 键形如 `asynq:{<queue>}:…`，**不带应用前缀** ⇒ "同一个 Redis DB + 同一个队列名"就是同一个队列。两个项目共库时互相抢任务，抢到的一方没有 handler 就 `handler not found` 退避重试直至归档（本机 DB 1 上实测读到过本仓 `tenant_expiry_scan` 躺在 `asynq:{default}:retry` 里，而同一 DB 里同时活着另一项目的 worker）。唯一的隔离手段是 `server.asynq.uri` 换 DB（或改 `queues` 名字），**部署时共库必须显式错开**；库层不提供"按消费者组区分"的能力 |

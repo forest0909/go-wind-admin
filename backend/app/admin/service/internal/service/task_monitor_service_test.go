@@ -32,7 +32,7 @@ func TestScheduleEntryToDTO(t *testing.T) {
 func TestScheduleEntryToDTONeverEnqueued(t *testing.T) {
 	entry := &asynq.SchedulerEntry{
 		Spec: "*/5 * * * *",
-		Task: asynq.NewTask("monitor_alert_scan", nil),
+		Task: asynq.NewTask("notification_delivery_sweep", nil),
 		// Next/Prev 零值：调度已注册但还没到第一个触发点
 	}
 

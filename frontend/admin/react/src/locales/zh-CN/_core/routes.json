@@ -26,8 +26,6 @@
   "login-policies": "登录策略",
   "menus": "菜单管理",
   "mfaChallenge": "MFA 验证",
-  "monitor-alert-rule": "监控告警",
-  "monitor-alerts": "监控告警",
   "not-found": "404",
   "notification": "通知管理",
   "notification-channels": "通知渠道",
@@ -107,8 +105,7 @@
       "accessKeys": "OpenAPI 凭证",
       "config": "参数管理",
       "onlineSessions": "在线用户",
-      "serverMonitor": "服务监控",
-      "monitorAlerts": "监控告警"
+      "serverMonitor": "服务监控"
     },
     "notification": {
       "moduleName": "通知管理",

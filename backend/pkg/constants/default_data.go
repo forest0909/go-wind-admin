@@ -1031,22 +1031,6 @@ var DefaultMenus = []*permissionV1.Menu{
 			Authority: []string{"sys:platform_admin"},
 		},
 	},
-	{
-		// 监控告警规则：指标阈值 → 触发通知（联动通知域，平台管理员）
-		Id:        trans.Ptr(uint32(102)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("MonitorAlertRule"),
-		Path:      trans.Ptr("monitor-alerts"),
-		Component: trans.Ptr("app/system/monitor_alert/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.monitorAlerts"),
-			Icon:      trans.Ptr("lucide:bell-plus"),
-			Order:     trans.Ptr(int32(8)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
 }
 
 // DefaultConfigs 系统初始化内置平台参数（等保口令策略阈值）。

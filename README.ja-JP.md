@@ -4,11 +4,11 @@
 
 # GoWind Admin｜風行
 
-**すぐに使える企業級フロントエンド・バックエンド一体型管理システムスキャフォールド**
+**すぐに使える企業級管理システムスキャフォールド（Go バックエンド + React 19）**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
-[![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vuedotjs)](https://vuejs.org/)
+[![Frontend](https://img.shields.io/badge/Frontend-React_19_only-61DAFB?logo=react)](./frontend/admin/react)
 [![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
 
@@ -20,7 +20,7 @@
 
 ## プロジェクトのハイライト
 
-- **3 フロントエンドは「3 択 1」、3 つ 1 組ではない**：`Vue3 Vben`（Ant Design Vue）、`Vue3 Element Plus`、`React19 Antd` は**同一バックエンドに対する 3 つの並列実装**です。異なるスタックのチームがそれぞれ慣れた方を選べるようにするためで、**1 チームが 1 つを取り、1 デプロイが 1 つを動かす**構成です。各エンドは独立したパッケージルートとデプロイスクリプトを持ち、相互依存はありません。選定後は他の 2 ディレクトリを削除できます（手順は [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)・中国語参照）
+- **フロントエンドは React 19 + Ant Design のみ**。バックエンドはそのまま。`vue-element` / `vue-vben` は [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)（中国語）に従って削除済みで、維持するのは `frontend/admin/react` だけ
 - **エンタープライズ級 RBAC**：マルチテナント、マルチロール、マルチ部署、メニュー / ボタン / データレベルの権限制御（ポリシーエンジン切り替え可：Casbin / OPA）
 - **セキュリティと等保コンプライアンス**：等保 2.0 の技術要求に準拠——監査ログの 180 日保持・アーカイブ、パスワードポリシー 3 点セット、TOTP MFA、パスワードのアプリケーション層暗号化、動的 RBAC とテナント分離、定時バックアップローテーション。詳しくは[セキュリティと等級保護コンプライアンス](#セキュリティと等級保護コンプライアンス等保-20) を参照
 - **マイクロサービス + モノリスの自由切替**：go-kratos マイクロサービスフレームワークベースでありながら、モノリス構成での開発・デプロイもサポートし、チーム規模に柔軟に対応
@@ -28,13 +28,13 @@
 - **本番即戦力**：JWT 認証、SSE プッシュ、非同期タスクスケジューリング、Swagger ドキュメント、Docker ワンクリックデプロイ
 - **AI 機能をすぐに使える**：OpenAI 互換のマルチモデル接続（クラウド / ローカル Ollama）、SSE ストリーミングチャット、ナレッジベース RAG（pgvector によるベクトル検索 + ファイルアップロード）、トークン使用量クォータ、スクリプト `ai` モジュール、定時 AI タスク。詳細は [docs/ai_module.md](./docs/ai_module.md)
 
-### なぜ 3 つのフロントエンドなのか
+### この作業コピーは React のみ
 
-**チームごとに使うスタックが異なるからであり、「React と Vue の両方を同時に必要とする 1 チーム」に応えるためではありません。**
+**上流は 3 つの並列フロントエンドを配る。このツリーはすでに React を選んでいる。**
 
-バックエンドは 1 つ、API 契約は 1 つ、フロントエンド実装が 3 つ。React チームは `react`、Vue チームは `vue-vben` か `vue-element` を取ります。このスキャフォールドを使うためにスタックを乗り換える必要はありません。
+`vue-element` と `vue-vben` は削除済み。バックエンド、API 契約、React ページは残っている。上流の新機能は React が先に入る。
 
-3 つすべてを使える状態に保つコストは **上流（本リポジトリ側）**が負担します。採用者は選んだ 1 つだけをメンテナンスすればよく、他の 2 ディレクトリは削除できます（調整箇所は [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)・中国語参照）。
+文書中の残り 2 系のポート、デモ URL、`make ts` の生成先はここでは使わない。手順は [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)（中国語）。
 
 ---
 
@@ -59,7 +59,7 @@
 
 ## デモ
 
-3 つの URL は同じバックエンド機能の並列デモです。**それぞれ開いて比較し、1 つだけ選べばよい**：
+下の 3 URL は上流のオンラインデモです。**このツリーのコードは React のみ**で、ローカルは最後の行に対応します：
 
 | フロントエンド版 | デモ |
 |------------------|------|
@@ -79,8 +79,8 @@
 | ツール | バージョン |
 |--------|-----------|
 | Go | 1.26+（`backend/go.mod` に従う） |
-| Node.js | `^20.19.0 \|\| >=22.12.0` — 3 系の `engines` 共通範囲は vue-element が決める（vue-vben は `>=20.10.0`、react は未宣言）。**21.x は対象外**、20.18 以下も同様 |
-| pnpm | `>= 9.12.0`（下限は vue-vben の `engines.pnpm`）。vue-vben はさらに `packageManager` で `pnpm@11.18.0` を固定：corepack を有効化（`corepack enable`）すれば自動で切り替わる。有効化しない場合は `npm i -g pnpm@11.18.0` で手動インストール、少なくとも major を合わせる |
+| Node.js | `^20.19.0 \|\| >=22.12.0`（Vite 8 の要件）。**21.x は不可**。20.18 以下も不可 |
+| pnpm | `>= 9`。React 側は pnpm のバージョンを固定していない |
 | Docker | 20.0+ |
 
 ### 環境スクリプト選択
@@ -143,28 +143,26 @@ gow run admin
 
 ### フロントエンド起動
 
-フロントエンドは `frontend/admin` ディレクトリに統一配置されています。**3 つのうち 1 つを選んで**依存関係をインストールし、他の 2 つは無視して構いません：
+このツリーは React のみ。ディレクトリは `frontend/admin/react`。リポジトリ直下と `frontend/admin/` に `package.json` は無く、そこで `pnpm install` すると ENOENT になる。
 
 | フロントエンド版 | ディレクトリ | 起動コマンド | ポート |
 |------------------|--------------|--------------|--------|
 | React | `frontend/admin/react` | `pnpm dev` | 15888 |
-| Vue Element | `frontend/admin/vue-element` | `pnpm dev` | 15777 |
-| Vue Vben | `frontend/admin/vue-vben` | `pnpm dev:antd` | 15666 |
 
 ```shell
-# 3 つのうち 1 つを選ぶ：まずそのフロントエンドへ cd してから install → 起動。
-# リポジトリ直下にも frontend/admin/ にも package.json は無いので、
-# そこで `pnpm install` を実行すると ENOENT エラーになる。
+# React ディレクトリへ入ってから install → 起動。
+# リポジトリ直下や frontend/admin/ では pnpm install しない。
+# API は http://localhost:7788 、アカウント admin / Abcd@1234
 cd frontend/admin/react
 pnpm install
 pnpm dev                    # ポート 15888
-
-# 残り 2 系：
-cd frontend/admin/vue-element && pnpm install && pnpm dev            # ポート 15777
-cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # ポート 15666
 ```
 
-> vue-vben 自体が pnpm workspace（`pnpm-workspace.yaml` + `apps/` + `packages/`）なので、依存インストールは必ず**そのルート**で行う。`pnpm dev:antd` は workspace から `@vben/web-antd` app を選んで起動するだけ。`apps/admin` で単独 install すると catalog のバージョン固定を迂回する。
+> Node.js は `^20.19.0` または `>=22.12.0`。21.x は不可。パッケージ管理は pnpm。
+>
+> 開発ポートは `frontend/admin/react/.env.development` の `VITE_SERVER_PORT`（15888）。使用中なら Vite が +1 する。バックエンド CORS は `15888` と `15889` を許可済み。
+>
+> `vue-element` と `vue-vben` は削除済み。`backend/` で `make ts` を実行すると React クライアントだけを生成する。
 
 ---
 
@@ -178,9 +176,9 @@ cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # ポート
 <tr><td><strong>認証・認可</strong></td><td><code>JWT</code>（認証） · <code>Casbin</code> / <code>OPA</code>（認可エンジン、2 択 1、デフォルトは全許可の noop）</td></tr>
 <tr><td><strong>リアルタイム通信</strong></td><td><code>SSE</code>（サーバープッシュ） · <code>Asynq</code>（非同期タスク）</td></tr>
 <tr><td><strong>スクリプトエンジン</strong></td><td><code>go-scripts</code> · <code>Lua</code>（gopher-lua） · <code>JavaScript</code>（goja） · 多言語 Hook プラグインシステム</td></tr>
-<tr><td><strong>フロントエンド</strong></td><td><strong>3 択 1</strong> — 下の 3 行は並列の選択肢で、3 つ同時に採用するものではありません</td></tr>
-<tr><td><strong>Vue Vben 版</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Ant Design Vue</code> · <code>Vben Admin</code> · <code>Tailwind CSS</code></td></tr>
-<tr><td><strong>Vue Element 版</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Element Plus</code>（軽量ピュア版） · <code>Tailwind CSS</code></td></tr>
+<tr><td><strong>フロントエンド</strong></td><td><strong>React のみ</strong>。続く 2 行は上流の選択肢で、このツリーからは削除済み</td></tr>
+<tr><td><strong>Vue Vben 版</strong></td><td>このツリーから削除済み（上流のデモサイトは残っている）</td></tr>
+<tr><td><strong>Vue Element 版</strong></td><td>このツリーから削除済み（上流のデモサイトは残っている）</td></tr>
 <tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code>（UMI 不使用） · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>デプロイ・運用</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -287,10 +285,8 @@ go-wind-admin/
 │   │   └── ...                     # その他ユーティリティパッケージ
 │   ├── scripts/                    # デプロイ・バックアップスクリプト（env/docker/deploy/backup）
 │   └── sql/                        # デモデータ SQL（デフォルトデータはサービス起動時に自動シード）
-├── frontend/admin/                 # フロントエンドプロジェクト（3 択 1、選んだ 1 つだけを維持すればよい）
-│   ├── react/                      # React 19 + Ant Design V6
-│   ├── vue-element/                # Vue 3 + Element Plus
-│   └── vue-vben/                   # Vue 3 + Ant Design Vue + Vben Admin
+├── frontend/admin/                 # フロントエンド（React のみ）
+│   └── react/                      # React 19 + Ant Design V6
 └── docs/                           # プロジェクトドキュメント
 ```
 

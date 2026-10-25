@@ -1,5 +1,7 @@
 # AGENTS.md — go-wind-admin Monorepo 开发指南（AI Agent 入口）
 
+> **本工作副本只保留 React 前端**（`frontend/admin/react`）。`vue-element` / `vue-vben` 已删除；`make ts` 与 CORS 只服务 React。下文仍按上游三端口径写的段落，只对 React 生效。文档正文没有逐处改写，避免以后跟上游同步时大面积冲突。
+
 本文件是 monorepo 总入口：定位布局、指路各端规范、声明全仓铁律。**深入开发前必读对应端的 AGENTS.md**。
 
 ## 仓库布局
@@ -12,9 +14,7 @@
 ```
 backend/                    Go + Kratos + Ent（DI 手写装配 wiring_*.go，已弃用 Wire；HTTP :7788，SSE 网关 :7789）
 frontend/admin/
-├── react/                  React 19 + antd 6 + ProComponents + TanStack Query + zustand
-├── vue-element/            Vue 3 + Element Plus + vxe-table + TanStack vue-query + Pinia
-└── vue-vben/               Vben Admin 5.x monorepo（apps/admin + packages/*）+ Ant Design Vue
+└── react/                  React 19 + antd 6 + ProComponents + TanStack Query + zustand
 docs/                       文档体系（总入口 docs/README.md：教程层 docs/tutorial/ + 参考层专题文档）
 ```
 

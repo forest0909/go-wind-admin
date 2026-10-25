@@ -4,14 +4,10 @@ on:
   push:
     paths:
       - 'frontend/admin/react/src/**'
-      - 'frontend/admin/vue-element/src/**'
-      - 'frontend/admin/vue-vben/apps/admin/src/**'
       - 'scripts/check-update-mask-allowlists.mjs'
   pull_request:
     paths:
       - 'frontend/admin/react/src/**'
-      - 'frontend/admin/vue-element/src/**'
-      - 'frontend/admin/vue-vben/apps/admin/src/**'
       - 'scripts/check-update-mask-allowlists.mjs'
 
 jobs:

@@ -5,8 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * 构建完成后将 dist 目录打包为 dist.zip，便于交付部署
- * （对齐 vue-vben 的构建产物行为，实现见 internal/vite-config/src/plugins/archiver.ts）
+ * 构建完成后将 dist 目录打包为 dist.zip，便于交付部署。
  * apply: 'build' 确保 dev server 不加载本插件，仅生产构建生效
  */
 export const archiverPlugin = (): PluginOption => {

@@ -4,11 +4,11 @@
 
 # GoWind Admin
 
-**Out-of-the-box, enterprise-grade full-stack admin scaffold (Go backend + one of three frontends)**
+**Out-of-the-box, enterprise-grade full-stack admin scaffold (Go backend + React 19 frontend)**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
-[![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vuedotjs)](https://vuejs.org/)
+[![Frontend](https://img.shields.io/badge/Frontend-React_19_only-61DAFB?logo=react)](./frontend/admin/react)
 [![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
 
@@ -20,7 +20,7 @@
 
 ## Project Highlights
 
-- **Three frontends, pick one — not three in one**: `Vue3 Vben` (Ant Design Vue), `Vue3 Element Plus` and `React19 Antd` are **three parallel implementations of the same backend**, so that teams on different stacks each get the one they are fluent in — **one team takes one, one deployment runs one**. Each has its own package root, its own deploy scripts, and they share no dependencies; once you choose, the other two directories can be deleted (steps in [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md), Chinese only)
+- **Frontend kept: React 19 + Ant Design**. The backend is unchanged. `vue-element` / `vue-vben` were removed per [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) (Chinese); this tree maintains `frontend/admin/react` only
 - **Enterprise-grade RBAC**: Multi-tenant, multi-role, multi-department, menu / button / data-level permission control (switchable policy engine: Casbin / OPA)
 - **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, TOTP MFA, application-layer password encryption, dynamic RBAC and tenant isolation, scheduled backup rotation. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
@@ -28,13 +28,13 @@
 - **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
 - **AI capabilities out of the box**: OpenAI-compatible multi-model access (cloud / local Ollama), SSE streaming chat, knowledge-base RAG (pgvector retrieval + file upload), token usage quotas, a script `ai` module and scheduled AI tasks — see [docs/ai_module.md](./docs/ai_module.md)
 
-### Why three frontends
+### This checkout keeps React only
 
-**Because teams work in different stacks — not because one team needs React and Vue at the same time.**
+**Upstream ships three parallel frontends; this tree has already chosen React.**
 
-One backend, one API contract, three frontend implementations: React teams take `react`, Vue teams take `vue-vben` or `vue-element`. Nobody has to switch stacks just to adopt this scaffold.
+`vue-element` and `vue-vben` are removed. The backend, the API contract, and the React pages remain. New upstream features land on React first.
 
-Keeping all three usable is a cost borne **upstream**; as an adopter you maintain only the one you picked and delete the other two directories (what to adjust: [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md), Chinese only).
+Ports, demo URLs, and `make ts` targets for the other two frontends do not apply here. Trim steps: [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) (Chinese).
 
 ---
 
@@ -59,7 +59,7 @@ This project is published in sync on the three platforms below — identical con
 
 ## Demo
 
-Three URLs, three parallel demos of the same backend capabilities — **open each, compare, you will want only one**:
+The three URLs below are upstream online demos. **This tree keeps React only**; locally that is the last row:
 
 | Frontend Edition | Demo |
 |------------------|------|
@@ -79,8 +79,8 @@ Three URLs, three parallel demos of the same backend capabilities — **open eac
 | Tool | Version |
 |------|---------|
 | Go | 1.26+ (follow `backend/go.mod`) |
-| Node.js | `^20.19.0 \|\| >=22.12.0` — the intersection of the three `engines` fields is set by vue-element (vue-vben only asks `>=20.10.0`, react declares none). **21.x is not covered**, nor is 20.18 and below |
-| pnpm | `>= 9.12.0` (floor from vue-vben's `engines.pnpm`). vue-vben additionally pins `pnpm@11.18.0` via `packageManager`: enable corepack (`corepack enable`) to switch automatically, otherwise `npm i -g pnpm@11.18.0` — or at least match the major version |
+| Node.js | `^20.19.0 \|\| >=22.12.0` (required by Vite 8). **Do not use 21.x**, or 20.18 and below |
+| pnpm | `>= 9`. The React app does not pin a pnpm version |
 | Docker | 20.0+ |
 
 ### Environment Scripts
@@ -143,28 +143,26 @@ gow run admin
 
 ### Frontend Startup
 
-All three live under the `frontend/admin` directory — **pick one**, install it the usual way, and ignore the other two:
+This tree keeps React only, at `frontend/admin/react`. There is no `package.json` at the repo root or under `frontend/admin/`; `pnpm install` there fails with ENOENT.
 
 | Frontend Edition | Directory | Command | Port |
 |------------------|-----------|---------|------|
 | React | `frontend/admin/react` | `pnpm dev` | 15888 |
-| Vue Element | `frontend/admin/vue-element` | `pnpm dev` | 15777 |
-| Vue Vben | `frontend/admin/vue-vben` | `pnpm dev:antd` | 15666 |
 
 ```shell
-# Pick ONE: cd into that frontend first, then install and start.
-# There is no package.json at the repo root or under frontend/admin/,
-# so running `pnpm install` there only fails with ENOENT.
+# Enter the React app, then install and start.
+# Do not run pnpm install at the repo root or under frontend/admin/.
+# API http://localhost:7788 , account admin / Abcd@1234
 cd frontend/admin/react
 pnpm install
 pnpm dev                    # port 15888
-
-# The other two ends:
-cd frontend/admin/vue-element && pnpm install && pnpm dev            # port 15777
-cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # port 15666
 ```
 
-> vue-vben is itself a pnpm workspace (`pnpm-workspace.yaml` + `apps/` + `packages/`), so dependencies must be installed at **its** root; `pnpm dev:antd` then selects the `@vben/web-antd` app from the workspace. Installing inside `apps/admin` bypasses the catalog version pins.
+> Use Node.js `^20.19.0` or `>=22.12.0`. Do not use 21.x. Package manager: pnpm.
+>
+> The dev port is `VITE_SERVER_PORT` in `frontend/admin/react/.env.development` (15888). Vite moves to the next port if it is busy; CORS already allows `15888` and `15889`.
+>
+> `vue-element` and `vue-vben` are gone. `make ts` in `backend/` generates the React client only.
 
 ---
 
@@ -178,9 +176,9 @@ cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # port 1566
 <tr><td><strong>Authentication & Authorization</strong></td><td><code>JWT</code> (authentication) · <code>Casbin</code> / <code>OPA</code> (authorization engine — choose one; defaults to allow-all noop)</td></tr>
 <tr><td><strong>Realtime</strong></td><td><code>SSE</code> (server push) · <code>Asynq</code> (async tasks)</td></tr>
 <tr><td><strong>Scripting Engine</strong></td><td><code>go-scripts</code> · <code>Lua</code> (gopher-lua) · <code>JavaScript</code> (goja) · multi-language hook plugin system</td></tr>
-<tr><td><strong>Frontend</strong></td><td><strong>Pick one</strong> — the three rows below are parallel options, not something to adopt together</td></tr>
-<tr><td><strong>Vue Vben Edition</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Ant Design Vue</code> · <code>Vben Admin</code> · <code>Tailwind CSS</code></td></tr>
-<tr><td><strong>Vue Element Edition</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Element Plus</code> (lightweight pure edition) · <code>Tailwind CSS</code></td></tr>
+<tr><td><strong>Frontend</strong></td><td><strong>React only</strong>. The next two rows are upstream options already removed from this tree</td></tr>
+<tr><td><strong>Vue Vben Edition</strong></td><td>Removed from this tree (the upstream demo is still online)</td></tr>
+<tr><td><strong>Vue Element Edition</strong></td><td>Removed from this tree (the upstream demo is still online)</td></tr>
 <tr><td><strong>React Edition</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> (no UMI) · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>Deployment & Ops</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -287,10 +285,8 @@ go-wind-admin/
 │   │   └── ...                     # Other utility packages
 │   ├── scripts/                    # Deployment & backup scripts (env/docker/deploy/backup)
 │   └── sql/                        # Demo data SQL (default data is seeded automatically at service startup)
-├── frontend/admin/                 # Frontend projects (pick one — you only maintain that one)
-│   ├── react/                      # React 19 + Ant Design V6
-│   ├── vue-element/                # Vue 3 + Element Plus
-│   └── vue-vben/                   # Vue 3 + Ant Design Vue + Vben Admin
+├── frontend/admin/                 # Frontend (React only)
+│   └── react/                      # React 19 + Ant Design V6
 └── docs/                           # Project documentation
 ```
 

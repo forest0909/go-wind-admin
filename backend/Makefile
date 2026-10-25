@@ -95,11 +95,9 @@ openapi:
 	cd api && \
 	buf generate --template buf.admin.openapi.gen.yaml
 
-# generate protobuf api Typescript code
+# generate protobuf api Typescript code (React only)
 ts:
 	cd api && \
-	buf generate --template buf.vue-vben.admin.typescript.gen.yaml && \
-	buf generate --template buf.vue-element.admin.typescript.gen.yaml && \
 	buf generate --template buf.react.admin.typescript.gen.yaml
 
 # build all service applications

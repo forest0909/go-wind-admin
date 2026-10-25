@@ -33,9 +33,7 @@
 // Sweep exclusions: api/generated/** (make-ts output whose
 // `updateMask: undefined | wellKnownFieldMask` lines are type
 // declarations, not assignments) and the makeUpdateMask identifier itself
-// (the sanctioned generic form). The vue-vben framework packages and
-// everything outside the three application source trees carry no
-// updateMask usage (verified when this check was introduced).
+// (the sanctioned generic form). This checkout scans the React tree only.
 //
 // Usage: node scripts/check-update-mask-allowlists.mjs
 
@@ -46,29 +44,22 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 // the three frontends — is pinned to the same canonical string, which is
 // what makes the three frontends' mask content comparable.
 const MASKS = {
-  // Notification channel form: the editable fields of the channel data
-  // object. The SMTP/webhook credentials ride as dedicated request fields
-  // (password / webhookSecret) with empty-means-keep server semantics and
-  // must never enter the mask.
+  // Built-in channel types. Credentials stay on dedicated request fields
+  // (password / webhookSecret / smsAccessSecret) and must not enter the mask.
   notificationChannel:
-    'name,type,smtpHost,smtpPort,smtpUsername,smtpFrom,smtpTls,webhookUrl,webhookSignStyle,webhookPayloadTemplate,enabled,remark',
-  // vben-local inline enable switch on the channel page: a narrow update
-  // that only toggles enabled. react and vue-element edit enabled through
-  // the drawer form instead. A deliberate three-frontend difference,
-  // pinned as-is.
-  notificationChannelEnabledToggle: 'enabled',
-  // Notification rule form. event_type is deliberately excluded: it is
-  // immutable after creation, and the edit form disables that column on
-  // all three frontends.
+    'name,type,smtpHost,smtpPort,smtpUsername,smtpFrom,smtpFromName,smtpTls,webhookUrl,webhookSignStyle,webhookPayloadTemplate,smsProvider,smsAccessKeyId,smsSignName,smsTemplateCode,smsAppId,smsRegion,enabled,remark',
+  // Extension channel types: the dynamic settings object replaces the
+  // built-in SMTP/webhook/SMS columns.
+  notificationChannelExt: 'name,type,settings,enabled,remark',
+  // Notification rule form. event_type is immutable after creation.
   notificationRule: 'channel,isAsync,isEnabled,remark',
-  // Notification template form. code is deliberately excluded: immutable
-  // after creation.
+  // Notification template form. code is immutable after creation.
   notificationTemplate:
     'name,titleTemplate,contentTemplate,isEnabled,remark',
-  // Monitor alert form, full editable field set, pinned as-is on all
-  // three frontends.
   monitorAlert:
     'name,metric,op,threshold,cooldownMinutes,channel,target,isEnabled,remark',
+  aiAgent: 'name,description,enabled',
+  aiAgentGraph: 'graph',
 };
 
 // Registered allowlist sites. Each entry pins, for one file, the complete
@@ -80,139 +71,48 @@ const MASKS = {
 //     their exact value (usage and definition may live in different
 //     files across the three frontends)
 const REGISTRY = [
-  // --- notification channel ---
   {
-    // react drawer form, inline literal.
+    // Ternary: extension channels write settings, built-in channels write
+    // the SMTP/webhook/SMS columns. Both branches are pinned.
     path: 'frontend/admin/react/src/pages/app/notification/channel/index.tsx',
-    expectStrings: [MASKS.notificationChannel],
+    expectStrings: [MASKS.notificationChannelExt, MASKS.notificationChannel],
     expectIdents: [],
     defs: [],
   },
   {
-    // vben drawer form (inline literal) plus the vben-local inline enable
-    // switch (narrow enabled-only update; see MASKS note).
-    path: 'frontend/admin/vue-vben/apps/admin/src/views/app/notification/channel/index.vue',
-    expectStrings: [
-      MASKS.notificationChannel,
-      MASKS.notificationChannelEnabledToggle,
-    ],
-    expectIdents: [],
-    defs: [],
-  },
-  {
-    // vue-element composable, inline literal.
-    path: 'frontend/admin/vue-element/src/api/composables/notification-channel.ts',
-    expectStrings: [MASKS.notificationChannel],
-    expectIdents: [],
-    defs: [],
-  },
-
-  // --- notification rule ---
-  {
-    // react edit form, inline literal.
     path: 'frontend/admin/react/src/pages/app/notification/rule/index.tsx',
     expectStrings: [MASKS.notificationRule],
     expectIdents: [],
     defs: [],
   },
   {
-    // vben edit form, references the constant defined in the vben
-    // composable (registered there).
-    path: 'frontend/admin/vue-vben/apps/admin/src/views/app/notification/rule/index.vue',
-    expectStrings: [],
-    expectIdents: ['NOTIFICATION_RULE_UPDATE_MASK'],
-    defs: [],
-  },
-  {
-    // vue-element composable: defines the local constant and uses it in
-    // the update call.
-    path: 'frontend/admin/vue-element/src/api/composables/notification-rule.ts',
-    expectStrings: [],
-    expectIdents: ['UPDATE_MASK'],
-    defs: [{ name: 'UPDATE_MASK', value: MASKS.notificationRule }],
-  },
-  {
-    // vben composable: defines the constant referenced by the vben edit
-    // form.
-    path: 'frontend/admin/vue-vben/apps/admin/src/api/composables/notification-rule.ts',
-    expectStrings: [],
-    expectIdents: [],
-    defs: [{ name: 'NOTIFICATION_RULE_UPDATE_MASK', value: MASKS.notificationRule }],
-  },
-
-  // --- notification template ---
-  {
-    // react edit form, inline literal.
     path: 'frontend/admin/react/src/pages/app/notification/template/index.tsx',
     expectStrings: [MASKS.notificationTemplate],
     expectIdents: [],
     defs: [],
   },
   {
-    // vben edit form, references the constant defined in the vben
-    // composable (registered there).
-    path: 'frontend/admin/vue-vben/apps/admin/src/views/app/notification/template/index.vue',
-    expectStrings: [],
-    expectIdents: ['NOTIFICATION_TEMPLATE_UPDATE_MASK'],
-    defs: [],
-  },
-  {
-    // vue-element drawer, imports the constant aliased out of the
-    // vue-element composable.
-    path: 'frontend/admin/vue-element/src/pages/app/notification/template/notification-template-drawer.vue',
-    expectStrings: [],
-    expectIdents: ['NOTIFICATION_TEMPLATE_UPDATE_MASK'],
-    defs: [],
-  },
-  {
-    // vue-element composable: defines the constant (re-exported under the
-    // NOTIFICATION_TEMPLATE_UPDATE_MASK alias). The alias re-export is
-    // wiring — a broken import fails the vue-element typecheck — so only
-    // the value is pinned here.
-    path: 'frontend/admin/vue-element/src/api/composables/notification-template.ts',
-    expectStrings: [],
-    expectIdents: [],
-    defs: [{ name: 'UPDATE_MASK', value: MASKS.notificationTemplate }],
-  },
-  {
-    // vben composable: defines the constant referenced by the vben edit
-    // form.
-    path: 'frontend/admin/vue-vben/apps/admin/src/api/composables/notification-template.ts',
-    expectStrings: [],
-    expectIdents: [],
-    defs: [{ name: 'NOTIFICATION_TEMPLATE_UPDATE_MASK', value: MASKS.notificationTemplate }],
-  },
-
-  // --- monitor alert ---
-  {
-    // react edit form, inline literal.
-    path: 'frontend/admin/react/src/pages/app/system/monitor_alert/index.tsx',
+    path: 'frontend/admin/react/src/pages/app/system/monitor-alert/index.tsx',
     expectStrings: [MASKS.monitorAlert],
     expectIdents: [],
     defs: [],
   },
   {
-    // vben edit form, inline literal.
-    path: 'frontend/admin/vue-vben/apps/admin/src/views/app/system/monitor_alert/index.vue',
-    expectStrings: [MASKS.monitorAlert],
+    path: 'frontend/admin/react/src/pages/app/ai/agent/index.tsx',
+    expectStrings: [MASKS.aiAgent],
     expectIdents: [],
     defs: [],
   },
   {
-    // vue-element drawer, inline literal.
-    path: 'frontend/admin/vue-element/src/pages/app/system/monitor_alert/monitor-alert-drawer.vue',
-    expectStrings: [MASKS.monitorAlert],
+    path: 'frontend/admin/react/src/pages/app/ai/agent/agent-canvas.tsx',
+    expectStrings: [MASKS.aiAgentGraph],
     expectIdents: [],
     defs: [],
   },
 ];
 
-// The three application source trees.
-const ROOTS = [
-  'frontend/admin/react/src',
-  'frontend/admin/vue-element/src',
-  'frontend/admin/vue-vben/apps/admin/src',
-];
+// This checkout keeps the React application tree only.
+const ROOTS = ['frontend/admin/react/src'];
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.turbo', 'coverage']);
 const SCANNABLE_RE = /\.(ts|tsx|vue|js|jsx|mjs)$/;
@@ -220,7 +120,10 @@ const SCANNABLE_RE = /\.(ts|tsx|vue|js|jsx|mjs)$/;
 // updateMask usages. \s spans newlines, so newline-wrapped literals are
 // caught too.
 const STRING_USAGE_RE = /updateMask\s*:\s*(['"`])([^'"`\n]*)\1/g;
-const IDENT_USAGE_RE = /updateMask\s*:\s*([A-Za-z_$][A-Za-z0-9_$]*)/g;
+const TERNARY_USAGE_RE =
+  /updateMask\s*:\s*[A-Za-z_$][\w$]*\([^)]*\)\s*\?\s*(['"`])([^'"`\n]*)\1\s*:\s*(['"`])([^'"`\n]*)\3/g;
+const IDENT_USAGE_RE =
+  /updateMask\s*:\s*([A-Za-z_$][A-Za-z0-9_$]*)\b(?!\s*\()/g;
 const UPDATEMASK_BINDING_RE = /\b(?:const|let|var)\s+updateMask\s*=/g;
 
 function defPattern(name) {
@@ -291,7 +194,10 @@ for (const root of ROOTS) {
       problems.push(`cannot read ${file}: ${err.message}`);
       continue;
     }
-    const stringHits = [...content.matchAll(STRING_USAGE_RE)].map((m) => m[2]);
+    const stringHits = [
+      ...[...content.matchAll(STRING_USAGE_RE)].map((m) => m[2]),
+      ...[...content.matchAll(TERNARY_USAGE_RE)].flatMap((m) => [m[2], m[4]]),
+    ];
     const identHits = [...content.matchAll(IDENT_USAGE_RE)]
       .map((m) => m[1])
       .filter((name) => name !== 'makeUpdateMask');

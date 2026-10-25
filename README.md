@@ -4,11 +4,11 @@
 
 # GoWind Admin｜风行
 
-**开箱即用的企业级前后端一体管理脚手架（Go 后端 + 三选一前端）**
+**开箱即用的企业级前后端一体管理脚手架（Go 后端 + React 19 前端）**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
-[![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vuedotjs)](https://vuejs.org/)
+[![Frontend](https://img.shields.io/badge/Frontend-React_19_only-61DAFB?logo=react)](./frontend/admin/react)
 [![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
 
@@ -20,7 +20,7 @@
 
 ## 项目亮点
 
-- **前端三选一，不是三合一**：`Vue3 Vben`（Ant Design Vue）、`Vue3 Element Plus`、`React19 Antd` 是同一套后端的**三个并列实现**，为的是让用不同技术栈的团队都能拿到自己顺手的那一套——**每个团队只取一套，一次部署只跑一套**。三端各自独立包根、独立部署脚本、互不依赖，选定后另外两个目录可以直接删（改动点见 [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)）
+- **前端只保留 React 19 + Ant Design**：后端不变。`vue-element` / `vue-vben` 已按 [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) 删除，本地只维护 `frontend/admin/react`
 - **企业级 RBAC**：支持多租户、多角色、多部门、菜单/按钮/数据级权限控制（策略引擎可切换：Casbin / OPA）
 - **安全与等保合规**：按等保 2.0 技术要求内置 180 天审计日志留存归档、口令策略三件套、TOTP MFA、口令应用层加密、动态 RBAC 与多租户隔离、定时备份轮换，详见[安全与等保合规](#安全与等保合规)
 - **微服务 + 单体自由切换**：基于 go-kratos 微服务框架，但支持单体架构模式开发与部署，灵活适配团队规模
@@ -28,13 +28,13 @@
 - **生产就绪**：JWT 鉴权、SSE 消息推送、异步任务调度、Swagger 文档、Docker 一键部署
 - **AI 能力开箱即用**：OpenAI 兼容多模型接入（云端/本地 Ollama）、SSE 流式对话、知识库 RAG（pgvector 向量检索 + 文件上传）、token 用量配额、脚本 `ai` 模块与定时 AI 任务，详见 [docs/ai_module.md](./docs/ai_module.md)
 
-### 为什么是三套前端
+### 本仓库只保留 React
 
-**因为不同团队的技术栈不一样——而不是为了服务"同时需要 React 和 Vue 的某一个团队"。**
+**上游是三套并列前端；这份代码已经选定 React。**
 
-一套后端、一份接口契约、三种前端实现：用 React 的团队拿 `react` 那套，用 Vue 的团队拿 `vue-vben` 或 `vue-element` 那套。谁都不必为了用这个脚手架去换自己熟练的技术栈。
+`vue-element` 与 `vue-vben` 已删除。后端、接口契约和 React 页面都还在。跟上游同步时，新功能以 React 为准。
 
-把三套都维护到可用，这个成本由**上游**承担；你作为采用者只维护选中的那一套，另外两个目录删掉即可（改动点见 [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)）。
+文档里另外两端的端口、演示地址和 `make ts` 目标不再适用于本仓库。裁剪步骤见 [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)。
 
 ---
 
@@ -59,7 +59,7 @@
 
 ## 演示地址
 
-三个地址是同一套后端能力的三个并列演示——**逐个点开对比，你只会要其中一套**：
+下面三个地址是上游在线演示。**本仓库代码只保留 React**，本地对应最后一行：
 
 | 前端版本 | 演示地址 |
 |---------|--------|
@@ -79,8 +79,8 @@
 | 工具 | 版本 |
 |------|------|
 | Go | 1.26+（以 `backend/go.mod` 为准） |
-| Node.js | `^20.19.0 \|\| >=22.12.0`——三端 `engines` 的交集由 vue-element 决定（vue-vben 只要求 `>=20.10.0`，react 未声明）。**21.x 不满足**，20.18 及以下也不满足 |
-| pnpm | `>= 9.12.0`（下限来自 vue-vben 的 `engines.pnpm`）。vue-vben 另用 `packageManager` 钉死 `pnpm@11.18.0`：启用 corepack（`corepack enable`）即自动切换，未启用则手动 `npm i -g pnpm@11.18.0` 或至少对齐 major |
+| Node.js | `^20.19.0 \|\| >=22.12.0`（Vite 8 需要）。**不要用 21.x**，也不要用 20.18 及以下 |
+| pnpm | `>= 9`。React 端没有钉死 pnpm 版本 |
 | Docker | 20.0+ |
 
 ### 环境脚本选型
@@ -143,28 +143,26 @@ gow run admin
 
 ### 前端启动
 
-前端统一存放于 `frontend/admin` 目录。**下表与下面的启动命令都是"三选一"**：任选你团队顺手的一套执行即可（三套的依赖安装命令都是 `pnpm install`）：
+本仓库只保留 React，目录是 `frontend/admin/react`。仓库根和 `frontend/admin/` 没有 `package.json`，在这两处安装会 ENOENT。
 
 | 前端版本 | 目录 | 启动命令 | 端口 |
 |---------|------|---------|------|
 | React | `frontend/admin/react` | `pnpm dev` | 15888 |
-| Vue Element | `frontend/admin/vue-element` | `pnpm dev` | 15777 |
-| Vue Vben | `frontend/admin/vue-vben` | `pnpm dev:antd` | 15666 |
 
 ```shell
-# 三选一：先 cd 进你选的那一端，再装依赖、再启动。
-# 仓库根目录和 frontend/admin/ 下都没有 package.json，
-# 在这两处跑 pnpm install 只会得到 ENOENT 报错。
+# 先进入 React 目录再安装、启动。
+# 不要在仓库根或 frontend/admin/ 下执行 pnpm install。
+# 接口 http://localhost:7788 ，账号 admin / Abcd@1234
 cd frontend/admin/react
 pnpm install
 pnpm dev                    # 端口 15888
-
-# 换成另外两端：
-cd frontend/admin/vue-element && pnpm install && pnpm dev            # 端口 15777
-cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # 端口 15666
 ```
 
-> vue-vben 本身是个 pnpm workspace（`pnpm-workspace.yaml` + `apps/` + `packages/`），所以必须在它的**根目录**装依赖，`pnpm dev:antd` 再从 workspace 里挑出 `@vben/web-antd` 这个 app 启动——在 `apps/admin` 下单独 `pnpm install` 会破坏 catalog 版本锁定。
+> Node.js 用 `^20.19.0` 或 `>=22.12.0`，不要用 21.x。包管理用 pnpm。
+>
+> 开发端口在 `frontend/admin/react/.env.development` 的 `VITE_SERVER_PORT`（15888）。被占用时 Vite 自动 +1；后端 CORS 已放行 `15888` 与 `15889`。
+>
+> `vue-element` 与 `vue-vben` 已删除。在 `backend/` 执行 `make ts` 只会生成 React 客户端。
 
 ---
 
@@ -178,9 +176,9 @@ cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # 端口 15
 <tr><td><strong>认证授权</strong></td><td><code>JWT</code>（认证） · <code>Casbin</code> / <code>OPA</code>（鉴权引擎，二选一，默认 noop 全放行）</td></tr>
 <tr><td><strong>实时通信</strong></td><td><code>SSE</code>（服务端推送） · <code>Asynq</code>（异步任务）</td></tr>
 <tr><td><strong>脚本引擎</strong></td><td><code>go-scripts</code> · <code>Lua</code>（gopher-lua） · <code>JavaScript</code>（goja） · 多语言 Hook 插件系统</td></tr>
-<tr><td><strong>前端</strong></td><td><strong>三选一</strong>——下面三行是并列选项，各取其一，不需要同时采用</td></tr>
-<tr><td><strong>Vue Vben 版</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Ant Design Vue</code> · <code>Vben Admin</code> · <code>Tailwind CSS</code></td></tr>
-<tr><td><strong>Vue Element 版</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Element Plus</code>（轻量纯净版） · <code>Tailwind CSS</code></td></tr>
+<tr><td><strong>前端</strong></td><td><strong>只保留 React</strong>。下面两行是已删除的上游选项，本仓库没有这两份代码</td></tr>
+<tr><td><strong>Vue Vben 版</strong></td><td>已从本仓库删除（上游演示站仍在）</td></tr>
+<tr><td><strong>Vue Element 版</strong></td><td>已从本仓库删除（上游演示站仍在）</td></tr>
 <tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code>（无 UMI） · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>部署运维</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -287,10 +285,8 @@ go-wind-admin/
 │   │   └── ...                     # 其他工具包
 │   ├── scripts/                    # 部署与备份脚本（env/docker/deploy/backup）
 │   └── sql/                        # 演示数据 SQL（默认数据由服务启动自动播种）
-├── frontend/admin/                 # 前端项目（三选一，只需维护你选中的那一套）
-│   ├── react/                      # React 19 + Ant Design V6
-│   ├── vue-element/                # Vue 3 + Element Plus
-│   └── vue-vben/                   # Vue 3 + Ant Design Vue + Vben Admin
+├── frontend/admin/                 # 前端（只保留 React）
+│   └── react/                      # React 19 + Ant Design V6
 └── docs/                           # 项目文档
 ```
 

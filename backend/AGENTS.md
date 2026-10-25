@@ -23,7 +23,6 @@ Go 模块路径: `go-wind-admin`
 | 授权     | Casbin / OPA (kratos-authz)   |
 | 异步任务   | Asynq                         |
 | 实时推送   | SSE                           |
-| 脚本引擎   | go-scripts (Lua + JavaScript) |
 | 可观测性   | OpenTelemetry                 |
 
 ## 项目目录结构
@@ -54,10 +53,6 @@ backend/
 │   ├── jwt/                      # JWT 工具
 │   ├── oss/                      # 对象存储
 │   ├── eventbus/                 # 事件总线
-│   ├── scripting/                # 多语言脚本引擎 (Lua + JavaScript)
-│   │   ├── api/                  # 业务 API 模块 (cache/eventbus/oss/crypto...)
-│   │   ├── hook/                 # Hook 注册表
-│   │   └── internal/convert/     # Go ↔ 脚本值转换
 │   └── ...
 └── scripts/                      # 部署/安装脚本
 ```

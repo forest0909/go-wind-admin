@@ -72,7 +72,7 @@ gow 未覆盖的任务（三端 TS 生成 `make ts`、OpenAPI `make openapi`、`
 
 ## 文档索引
 
-- **文档总入口（两层索引：教程层 + 参考层）**：`docs/README.md`；渐进教程系列（面向采用者的 9 章学习路径）在 `docs/tutorial/`
+- **文档总入口（两层索引：教程层 + 参考层）**：`docs/README.md`；渐进教程系列（面向采用者的 8 章学习路径）在 `docs/tutorial/`
 - 各端规范：`frontend/admin/{react,vue-element,vue-vben}/AGENTS.md`
 - **表单抽屉关闭守卫**：`docs/form_drawer_close_guard.md`（遮罩/ESC/X/取消四路径脏数据确认的三端统一规范）——新做或改表单抽屉关闭行为前必读
 - 后端：`docs/backend_project_struct.md`、`docs/backend_deploy.md`、`docs/audit-log-producer-design.md`
@@ -80,11 +80,10 @@ gow 未覆盖的任务（三端 TS 生成 `make ts`、OpenAPI `make openapi`、`
 - 查询/分页规则：`docs/list_query_rule.md`
 - **改一个字段速查**：`docs/field_change_guide.md`（给**已有**资源加字段的四档判定 + 命令数 + 文件清单，含"哪些事明确不用做"）——本仓最高频的任务，别套用 04 章的新模块流程；接到"加个字段/页面少一列"这类需求先读它
 - **新增 CRUD 模块全流程**：`docs/crud_module_guide/`（新增完整业务模块的端到端手册：README 跨端编排与通用陷阱、backend.md 后端全流程与样例镜像索引、三端各自的页面实现参考；正文为英文原稿）——接到「新增模块/新增资源/新建管理页」这类需求、动工新增整个模块前先读它；只给已有资源加字段读上面的速查，别套新模块流程
-- 脚本系统：`docs/script_system.md`（Lua/JS 脚本级插件：钩子点/定时任务/HTTP 出站/安全模型；改钩子点或模块先读它）
 - 认证与令牌链路：`docs/authentication.md`（登录全流程/令牌与刷新轮换/MFA/限流策略/会话吊销/已知问题；改登录、令牌、刷新、MFA、限流或登录策略前先读它）
 - 多租户隔离：`docs/tenant_isolation.md`（上下文链路/HTTP 闸门/数据层读写隔离/套餐联动/覆盖边界与排障；改隔离层、Api 表、套餐门禁或给新表接租户前先读它）
 - 套餐与计费管控：`docs/plan_billing.md`（三档到期策略全链路/模块白名单/配额与用量计量/租户数据清理；改套餐、配额、到期处置或排租户 403 前先读它）
-- 任务调度系统：`docs/task_system.md`（配置与启动链/任务数据模型/调度生命周期/系统级常驻任务/脚本任务桥/多租户语义与排障；加任务类型、排"任务没跑"或接新调度需求前先读它）
+- 任务调度系统：`docs/task_system.md`（配置与启动链/任务数据模型/调度生命周期/系统级常驻任务/多租户语义与排障；加任务类型、排"任务没跑"或接新调度需求前先读它）
 - SSE 推送架构：`docs/sse_architecture.md`（服务端配置与生命周期/流鉴权与 streamID 语义/事件生产/三端消费/部署与排障；改推送链路、加事件类型或排"收不到通知"前先读它）
 - 数据权限范围：`docs/data_scope_design.md`（角色级行数据范围：语义/聚合/接入步骤/运维边界；新表接入数据范围或改聚合规则先读它）
 - 设计语言规范：`docs/design-language.md`（三端视觉唯一权威值表，改颜色/圆角/布局尺寸先改这里再同步三端）

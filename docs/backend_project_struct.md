@@ -44,13 +44,11 @@
 │   ├── netutil        # 网络安全工具（SSRF 防护）
 │   ├── oss            # MinIO 对象存储封装
 │   ├── password       # 口令策略三件套（阈值经参数管理）
-│   ├── scripting      # 多语言脚本引擎（Lua / JavaScript）
 │   ├── serviceid      # 服务标识与 Redis 键前缀
 │   ├── sseevent       # SSE 事件类型注册表
 │   ├── task           # asynq 任务类型与调度常量
 │   └── utils          # 通用工具函数
 ├── scripts
-│   ├── backup
 │   ├── deploy
 │   │   ├── pm2_service.sh
 │   │   └── sse
@@ -104,7 +102,6 @@
     - `netutil`：网络安全工具（当前主要服务 SSRF 防护：内网判定、DNS rebinding 防护）
     - `oss`：MinIO 对象存储封装（上传/下载/预签名）与 MIME 嗅探、大小/目录安全校验
     - `password`：等保口令策略三件套（复杂度/有效期/历史口令），阈值经 sys_config 平台参数读取
-    - `scripting`：多语言脚本引擎（Lua / JavaScript，go-scripts 封装；HTTP 出站域名白名单等）
     - `serviceid`：服务标识与 Redis 键前缀（`gowind:captcha` 等键的 `gowind` 前缀来源）
     - `sseevent`：全仓 SSE 事件类型注册表
     - `task`：asynq 任务类型与调度常量（审计归档、租户到期扫描、通知派发等系统级任务）

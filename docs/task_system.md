@@ -2,8 +2,7 @@
 
 > **定位**：本仓 asynq 任务调度体系的唯一权威说明——配置与启动链、任务数据模型、调度
 > 生命周期、系统级常驻任务（含跨链路的到期扫描 / 审计归档 / 站内信广播 / 通知异步派发 /
-> 通知台账清扫）、脚本任务桥、管理页、多租户语义与运维排障。给任务系统加新类型、排"任务没跑"的问题、或接入新调度需求前先读它。
-> 脚本任务桥的脚本侧语义（处理器注册/代际清理）见 [script_system.md](./script_system.md)；
+> 通知台账清扫）、管理页、多租户语义与运维排障。给任务系统加新类型、排"任务没跑"的问题、或接入新调度需求前先读它。
 > 到期扫描的业务语义见 [plan_billing.md](./plan_billing.md)。数据库备份不在程序内，用数据库自带工具或运维平台。
 
 ## 1. 组件地图
@@ -14,7 +13,7 @@
 启动链    NewAsynqServer（internal/server/asynq_server.go）
           ├─ 固定类型订阅注册（handler 路由表）：tenant_expiry_scan /
           │  audit_log_archive / broadcast_message / notification_dispatch /
-          │  notification_delivery_sweep + script_task（桥，见第 6 节）
+          │  notification_delivery_sweep / monitor_alert_scan / plan_quota_watermark_scan
           ├─ RegisterTaskScheduler：把调度器句柄注入 TaskService（后续所有调度动作经它）
           ├─ RegisterTaskEnqueuer：站内信服务（广播 fan-out）与通知域服务（异步派发）
           │  各自获得一次性任务入队能力；未注入时两处都退回同步路径
@@ -29,8 +28,7 @@
 - `configs/server.yaml` 的 `server.asynq.uri`（Redis 连接串）；缺失/未配置 →
   `NewAsynqServer` 直接 `return nil, nil`，任务子系统整体不可用，`hasScheduler()` 全链路
   nil 防护（ListTaskTypeName 返回空表、ControlTask 拒绝、StartAllTask 空转）。
-- 订阅注册（启动期一次性，asynq 的 mux 拒绝 Start 之后注册 handler——这是脚本桥采用
-  固定分发类型的根因，见第 6 节）：
+- 订阅注册（启动期一次性，asynq 的 mux 拒绝 Start 之后注册 handler）：
 
 | 固定类型常量 | handler | 形态 |
 |---|---|---|
@@ -41,7 +39,6 @@
 | `notification_delivery_sweep` | `NotificationService.AsyncDeliverySweep` | 系统级 cron，每 5 分钟（见 5.6） |
 | `monitor_alert_scan` | `MonitorAlertService.AsyncMonitorAlertScan` | 系统级 cron，每 5 分钟（评估启用的告警规则；handler 在监控告警域） |
 | `plan_quota_watermark_scan` | `PlanQuotaWatermarkService.AsyncPlanQuotaWatermarkScan` | 系统级 cron，每日 09:00（见 5.7、[plan_billing.md](./plan_billing.md) §7.3） |
-| `script_task` | `ScriptRuntime.RunScriptTaskHandler`（经桥） | sys_tasks 型 PERIODIC，载荷带处理器名（见 6） |
 
 订阅有两种形态：`RegisterSubscriber[T]` 的 handler 签名不带 ctx，`RegisterSubscriberWithCtx[T]`
 带（`func(ctx, taskType, *T) error`）。**只有需要任务超时真正生效的那一类要用 WithCtx**：
@@ -168,15 +165,6 @@ cron `*/5 * * * *`（`pkg/task/notification_delivery_sweep.go`）。把 `sys_not
 该文档 §7.1 计量完全同源；达到 80% 水位的 ON 租户按其管理员偏好语言投递站内信告警（一个租户一条消息）；
 扫描频率即告警频率上限。投递复用审计日报的站内信内核（消息行 + 收件行；单收件人失败不阻断、全部失败才
 报错重试）。判定与百分数是纯函数、有单测；扫描另有 SQLite 接线级单测与文案表双语单测。
-
-## 6. 脚本任务桥（`script_task`）
-
-asynq mux 的"Start 后不能注册 handler"约束 vs 脚本处理器运行期动态增删——故启动期注册
-**一个固定分发类型**，处理器名放载荷 `handler` 字段，由 `ScriptRuntime.RunScriptTaskHandler`
-按名分发。sys_tasks 行写法：`type=PERIODIC`、`type_name="script_task"`、`task_payload=
-{"handler":"<名>","params":{...}}`。脚本删除/禁用后处理器在 Resync 时按代际清理。
-`task.register_handler` 的签名与 `opts` 默认值见 [script_system.md](./script_system.md)
-「五类扩展点 → 2. 定时任务」，沙箱与资源限制在「语言与沙箱」一节（不是同一节，别只点前者）。
 
 ## 7. 管理页（三端 `system/task`）
 

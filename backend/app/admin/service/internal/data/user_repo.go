@@ -26,7 +26,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
-	"go-wind-admin/pkg/scripting"
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
@@ -536,11 +535,6 @@ func (r *userRepo) CreateWithTx(ctx context.Context, tx *ent.Tx, data *identityV
 
 	var entity *ent.User
 	if entity, err = builder.Save(ctx); err != nil {
-		// 脚本 before 钩子否决：业务性拒绝，透传原因（400 语义）而非 500
-		if scripting.IsScriptVetoed(err) {
-			r.log.Warnf(ctx, "insert user vetoed by script: %s", err.Error())
-			return nil, identityV1.ErrorBadRequest("rejected by script hook: %s", err.Error())
-		}
 		r.log.Errorf(ctx, "insert user failed: %s", err.Error())
 		return nil, identityV1.ErrorInternalServerError("insert user failed")
 	}

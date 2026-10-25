@@ -66,8 +66,7 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 - **MinIO**：`configs/oss.yaml` 的 `endpoint`/`upload_host`/`download_host` 指向客户端可达入口，
   并替换 root 凭证（见 [backend_file_upload.md](../backend_file_upload.md)）；
 - **authz 引擎**：`configs/auth.yaml` 的 `authz.type` 从 `noop` 切到 casbin/opa（第 05 章）；
-- **审计留存**：`AUDIT_RETENTION_DAYS` 按合规要求核对（第 07 章）；
-- **脚本出站**：`SCRIPT_HTTP_ALLOWED_DOMAINS` 按需配置（第 08 章）。
+- **审计留存**：`AUDIT_RETENTION_DAYS` 按合规要求核对（第 07 章）。
 
 ## 4. 数据备份
 

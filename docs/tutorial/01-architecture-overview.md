@@ -8,7 +8,7 @@
 backend/                    Go 后端（kratos 微服务框架 + ent ORM）
 ├── api/                    proto 定义与生成物（protos/ 手写，gen/ 生成）
 ├── app/admin/service/      admin 服务本体（cmd/server 入口、configs 配置、internal/ 实现）
-├── pkg/                    跨服务公共包（bootstrap、middleware、audit、scripting…）
+├── pkg/                    跨服务公共包（bootstrap、middleware、audit…）
 ├── scripts/                部署与环境脚本（docker/ deploy/ env/）
 frontend/admin/
 ├── react/                  React 19 + antd 6 + ProComponents + TanStack Query + zustand
@@ -85,8 +85,7 @@ PostgreSQL / MySQL
 | 数据范围 | 角色级行过滤（五档），令牌承载聚合结果 | ent 隐私层（逐表 opt-in） | [data_scope_design.md](../data_scope_design.md) |
 | 字段级权限 | 角色黑名单字段，服务端响应裁剪 + 前端隐藏 | service 层切面（当前仅 `user`）+ 三端 access store | [frontend_authority.md](../frontend_authority.md) |
 | 审计日志 | 六类日志全覆盖，含 SQL 级 data access 采集与词法脱敏 | `pkg/middleware/logging`、driver 包装器 | [audit-log-producer-design.md](../audit-log-producer-design.md) |
-| 异步任务 | asynq 调度（cron/周期），Redis 队列 | `internal/service` 任务桥 | [task_system.md](../task_system.md) |
-| 脚本系统 | Lua/JS 脚本级插件：实体钩子/定时任务/事件/HTTP 出站 | `pkg/scripting` + 管理页 | [script_system.md](../script_system.md) |
+| 异步任务 | asynq 调度（cron/周期），Redis 队列 | `internal/service` 任务服务 | [task_system.md](../task_system.md) |
 | SSE 推送 | 服务端推送（站内信通知）；流 ID=userId、连接独立鉴权、事件 best-effort | `internal/service`（生产）+ 三端 `transport/sse` 模块 | [sse_architecture.md](../sse_architecture.md) |
 | 对象存储 | MinIO（S3 兼容），预签名上传下载，元数据落库 | `internal/data` 文件模块 | [backend_file_upload.md](../backend_file_upload.md) |
 

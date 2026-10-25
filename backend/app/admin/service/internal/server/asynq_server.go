@@ -1,8 +1,6 @@
 package server
 
 import (
-	"errors"
-
 	"github.com/go-kratos/kratos/v2/log"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -17,7 +15,7 @@ import (
 )
 
 // NewAsynqServer creates a new asynq server.
-func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, internalMessageService *service.InternalMessageService, notificationService *service.NotificationService, monitorAlertService *service.MonitorAlertService, scriptRuntime *service.ScriptRuntime, planQuotaWatermarkService *service.PlanQuotaWatermarkService) (*asynqServer.Server, error) {
+func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, internalMessageService *service.InternalMessageService, notificationService *service.NotificationService, monitorAlertService *service.MonitorAlertService, planQuotaWatermarkService *service.PlanQuotaWatermarkService) (*asynqServer.Server, error) {
 	cfg := ctx.GetConfig()
 
 	if cfg == nil || cfg.Server == nil || cfg.Server.Asynq == nil {
@@ -36,32 +34,6 @@ func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, in
 	// 通知投递同样拿这份入队能力：规则行标为异步的事件（找回密码/换绑验证码）
 	// 入队后立即返回，SMTP 往返不再占住 HTTP。未配置 asynq 时保持 nil，全部事件退回同步投递。
 	notificationService.RegisterTaskEnqueuer(taskService)
-
-	// 脚本任务桥：注册固定分发类型（task.ScriptTaskDispatchType）的订阅。
-	// asynq 的 mux 拒绝 Start 后注册 handler，而脚本处理器运行期动态变化，
-	// 故订阅在启动期一次注册，处理器名经消息载荷 handler 字段分发（见 ScriptRuntime.RunScriptTaskHandler）。
-	// sys_tasks 侧：type=PERIODIC，type_name="script_task"，task_payload 带 handler/params。
-	if scriptRuntime != nil {
-		if err := scriptRuntime.AttachScriptTaskRegistrar(
-			func(taskType string, fn func(string, *task.ScriptTaskData) error) error {
-				return srv.RegisterSubscriber(
-					taskType,
-					func(taskType string, payload asynqServer.MessagePayload) error {
-						data, ok := payload.(*task.ScriptTaskData)
-						if !ok {
-							return errors.New("invalid script task payload type")
-						}
-						return fn(taskType, data)
-					},
-					func() any { return &task.ScriptTaskData{} },
-				)
-			},
-		); err != nil {
-			log.Error(err)
-			return nil, err
-		}
-		scriptRuntime.RegisterScriptTaskSubscriber()
-	}
 
 	var err error
 

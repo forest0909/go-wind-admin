@@ -46,7 +46,6 @@
   "positions": "Position Management",
   "redis-cache-monitor": "Redis Cache Monitor",
   "roles": "Role Management",
-  "scripts": "Scripts",
   "server-error": "Server Error",
   "server-monitor": "Server Monitor",
   "ssoCallback": "SSO Callback",
@@ -107,7 +106,6 @@
       "language": "Language Management",
       "accessKeys": "OpenAPI Credentials",
       "config": "Config Management",
-      "scripts": "Scripts",
       "onlineSessions": "Online Users",
       "serverMonitor": "Server Monitor",
       "monitorAlerts": "Monitor Alerts"

@@ -38,7 +38,7 @@
 
 ## 从这里开始
 
-- **想系统上手**：读 [文档索引](./docs/README.md)——文档分**教程层**（[渐进教程](./docs/tutorial/README.md) 9 章：从空环境走到独立开发业务模块、安全部署上线）与**参考层**（每个子系统的唯一权威说明）两层，索引里按你的角色（全栈采用者 / 后端 / 前端 / 运维与安全）标好了推荐阅读路径。
+- **想系统上手**：读 [文档索引](./docs/README.md)——文档分**教程层**（[渐进教程](./docs/tutorial/README.md) 8 章：从空环境走到独立开发业务模块、安全部署上线）与**参考层**（每个子系统的唯一权威说明）两层，索引里按你的角色（全栈采用者 / 后端 / 前端 / 运维与安全）标好了推荐阅读路径。
 - **想先看到它跑起来**：往下依次是[演示地址](#演示地址)与[快速开始](#快速开始)。
 
 ---
@@ -173,7 +173,6 @@ pnpm dev                    # 端口 15888
 <tr><td><strong>中间件</strong></td><td><code>Redis</code>（compose 拉 <code>bitnami/redis:latest</code>，未固定版本；代码只用到 Set/Expire/Publish 一类的长期命令，未使用 Redis 8 专属命令） · <code>MinIO</code>（S3 兼容对象存储）</td></tr>
 <tr><td><strong>认证授权</strong></td><td><code>JWT</code>（认证） · <code>Casbin</code> / <code>OPA</code>（鉴权引擎，二选一，默认 noop 全放行）</td></tr>
 <tr><td><strong>实时通信</strong></td><td><code>SSE</code>（服务端推送） · <code>Asynq</code>（异步任务）</td></tr>
-<tr><td><strong>脚本引擎</strong></td><td><code>go-scripts</code> · <code>Lua</code>（gopher-lua） · <code>JavaScript</code>（goja） · 多语言 Hook 插件系统</td></tr>
 <tr><td><strong>前端</strong></td><td><strong>只保留 React</strong>。下面两行是已删除的上游选项，本仓库没有这两份代码</td></tr>
 <tr><td><strong>Vue Vben 版</strong></td><td>已从本仓库删除（上游演示站仍在）</td></tr>
 <tr><td><strong>Vue Element 版</strong></td><td>已从本仓库删除（上游演示站仍在）</td></tr>
@@ -235,7 +234,6 @@ pnpm dev                    # 端口 15888
 | 通知投递台账 | 查看每条通知对每个渠道的投递结果（状态 / 渠道 / 尝试次数 / 失败原因 / 请求号），支持按接收人与状态筛选 |
 | 服务监控 | 只读展示服务运行时指标（CPU 核数、内存、goroutine 数、运行时长等），自动刷新 |
 | 在线用户 | 查看当前在线会话（用户、租户、客户端类型、登录 IP、User-Agent、设备 ID、登录时间），支持关键词过滤、分页（登录时间倒序）与单会话强制下线，30 秒自动刷新 |
-| 脚本系统 | 脚本级插件系统（Lua / JavaScript，数据库为事实源，管理页增改即时生效）：实体生命周期钩子（before 可否决 / after 异步）、定时任务（asynq 调度）、HTTP 出站（域名白名单 fail-closed）、试运行与执行日志；详见 [docs/script_system.md](./docs/script_system.md) |
 | 参数管理 | 平台全局系统参数的键值管理（区别于业务字典），内置参数启动时播种、禁删可改；服务侧经缓存 accessor 读取，多实例部署下参数变更经 Redis 发布订阅广播失效各实例缓存 |
 | 机器凭证（AK/SK） | 租户级 AccessKey / SecretKey 管理：创建时 Secret 一次性展示，支持启停、删除与密钥轮换重置（轮换后旧 Secret 立即失效）；AK / Secret 可经令牌交换端点换取租户作用域机器 JWT（machine 角色、仅签发 access 令牌），交换端点按 IP + AK 接入尝试限流 |
 | 语言管理 | 管理系统支持的多语言，配置语言名称、语言代码、本地名称、启用与默认状态 |
@@ -277,7 +275,6 @@ go-wind-admin/
 │   │   ├── configs/                # 配置文件 (YAML)
 │   │   └── internal/               # 业务核心（data/service/server）
 │   ├── pkg/                        # 公共包
-│   │   ├── scripting/              # 多语言脚本引擎（Lua + JavaScript）
 │   │   ├── oss/                    # 对象存储（MinIO）
 │   │   ├── eventbus/               # 事件总线
 │   │   └── ...                     # 其他工具包

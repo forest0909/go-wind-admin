@@ -38,7 +38,7 @@ Ports, demo URLs, and `make ts` targets for the other two frontends do not apply
 
 ## Start Here
 
-- **Want to learn this codebase properly**: start from the [documentation index](./docs/README.md) (in Chinese). The docs split into a **tutorial layer** (a [9-chapter progressive tutorial](./docs/tutorial/README.md) taking you from an empty environment to building business modules and deploying safely) and a **reference layer** (the authoritative description of each subsystem), with recommended reading paths per role (full-stack adopter / backend / frontend / ops & security).
+- **Want to learn this codebase properly**: start from the [documentation index](./docs/README.md) (in Chinese). The docs split into a **tutorial layer** (an [8-chapter progressive tutorial](./docs/tutorial/README.md) taking you from an empty environment to building business modules and deploying safely) and a **reference layer** (the authoritative description of each subsystem), with recommended reading paths per role (full-stack adopter / backend / frontend / ops & security).
 - **Just want to see it run**: the [demo sites](#demo) and the [Quick Start](#quick-start) are right below.
 
 ---
@@ -173,7 +173,6 @@ pnpm dev                    # port 15888
 <tr><td><strong>Middleware</strong></td><td><code>Redis</code> (compose pulls <code>bitnami/redis:latest</code>, no version pin; the codebase uses only long-standing commands such as Set/Expire/Publish — nothing Redis-8-specific) · <code>MinIO</code> (S3-compatible object storage)</td></tr>
 <tr><td><strong>Authentication & Authorization</strong></td><td><code>JWT</code> (authentication) · <code>Casbin</code> / <code>OPA</code> (authorization engine — choose one; defaults to allow-all noop)</td></tr>
 <tr><td><strong>Realtime</strong></td><td><code>SSE</code> (server push) · <code>Asynq</code> (async tasks)</td></tr>
-<tr><td><strong>Scripting Engine</strong></td><td><code>go-scripts</code> · <code>Lua</code> (gopher-lua) · <code>JavaScript</code> (goja) · multi-language hook plugin system</td></tr>
 <tr><td><strong>Frontend</strong></td><td><strong>React only</strong>. The next two rows are upstream options already removed from this tree</td></tr>
 <tr><td><strong>Vue Vben Edition</strong></td><td>Removed from this tree (the upstream demo is still online)</td></tr>
 <tr><td><strong>Vue Element Edition</strong></td><td>Removed from this tree (the upstream demo is still online)</td></tr>
@@ -235,7 +234,6 @@ Security capabilities are designed with reference to the technical requirements 
 | Delivery Ledger | Inspect per-notification, per-channel delivery results (status / channel / attempts / failure reason / request ID), filterable by recipient and status. |
 | Server Monitoring | Read-only view of runtime metrics (CPU cores, memory, goroutines, uptime, etc.) with auto refresh. |
 | Online Sessions | View currently online sessions (user, tenant, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
-| Script System | Script-based plugin system (Lua / JavaScript, database as the source of truth, admin-UI changes take effect immediately): entity lifecycle hooks (before can veto / after is async), scheduled tasks (asynq), HTTP egress (domain allowlist, fail-closed), test runs and execution logs. See [docs/script_system.md](./docs/script_system.md). |
 | Parameter Management | Manage platform-wide system parameters as key/value pairs (distinct from business dictionaries); built-in parameters are seeded at startup and cannot be deleted; reads go through a server-side caching accessor, and in multi-instance deployments changes are broadcast over Redis pub/sub to invalidate every instance's cache. |
 | Machine Credentials (AK/SK) | Tenant-scoped AccessKey / SecretKey management: the Secret is shown exactly once at creation; enable/disable, delete, and secret rotation are supported (rotation immediately invalidates the previous Secret). An AK / Secret pair can be exchanged at the token-exchange endpoint for a tenant-scoped machine JWT (machine role, access token only); the exchange endpoint applies per-IP + per-AK failure rate limiting. |
 | Language Management | Manage supported languages: name, code, native name, enabled and default status. |
@@ -277,7 +275,6 @@ go-wind-admin/
 │   │   ├── configs/                # Configuration files (YAML)
 │   │   └── internal/               # Business core (data/service/server)
 │   ├── pkg/                        # Shared packages
-│   │   ├── scripting/              # Multi-language scripting engine (Lua + JavaScript)
 │   │   ├── oss/                    # Object storage (MinIO)
 │   │   ├── eventbus/               # Event bus
 │   │   └── ...                     # Other utility packages

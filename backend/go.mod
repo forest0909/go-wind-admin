@@ -25,15 +25,11 @@ require (
 	github.com/tx7do/go-crud/entgo v0.0.57
 	github.com/tx7do/go-crud/pagination v0.0.16
 	github.com/tx7do/go-crud/viewer v0.0.8
-	github.com/tx7do/go-scripts v0.0.9
-	github.com/tx7do/go-scripts/javascript v0.0.10
-	github.com/tx7do/go-scripts/lua v0.0.12
 	github.com/tx7do/go-utils v1.1.42
 	github.com/tx7do/go-utils/aggregator v0.0.5
 	github.com/tx7do/go-utils/captcha v0.0.4
 	github.com/tx7do/go-utils/copierutil v0.0.8
 	github.com/tx7do/go-utils/crypto v0.0.4
-	github.com/tx7do/go-utils/eventbus v0.1.0
 	github.com/tx7do/go-utils/fieldperm v0.1.0
 	github.com/tx7do/go-utils/geoip v1.1.8
 	github.com/tx7do/go-utils/id v0.0.6
@@ -62,7 +58,6 @@ require (
 	github.com/tx7do/kratos-transport/transport/asynq v1.3.14
 	github.com/tx7do/kratos-transport/transport/sse v1.3.8
 	github.com/xuri/excelize/v2 v2.9.1
-	github.com/yuin/gopher-lua v1.1.2
 	go.opentelemetry.io/otel/trace v1.46.0
 	google.golang.org/genproto v0.0.0-20260908043556-f8649ddbbfe6
 	google.golang.org/genproto/googleapis/api v0.0.0-20260908043556-f8649ddbbfe6
@@ -72,9 +67,11 @@ require (
 )
 
 require (
+	github.com/prometheus/client_golang v1.24.1 // indirect
 	github.com/tx7do/go-wind v0.0.2 // indirect
 	github.com/tx7do/kratos-authz/engine/casbin v1.1.12 // indirect
 	github.com/tx7do/kratos-authz/engine/opa v1.1.15 // indirect
+	github.com/yuin/gopher-lua v1.1.2 // indirect
 )
 
 require (
@@ -103,9 +100,6 @@ require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
-	github.com/dlclark/regexp2/v2 v2.6.0 // indirect
-	github.com/dop251/goja v0.0.0-20260806115107-493f22071ef6 // indirect
-	github.com/dop251/goja_nodejs v0.0.0-20260212111938-1f56ff5bcf14 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
@@ -117,14 +111,12 @@ require (
 	github.com/go-openapi/inflect v1.0.0 // indirect
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-playground/form/v4 v4.3.1 // indirect
-	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/go-test/deep v1.0.8 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 // indirect
 	github.com/google/subcommands v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
@@ -137,7 +129,6 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.20.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
@@ -157,7 +148,6 @@ require (
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mojocn/base64Captcha v1.3.8 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
@@ -196,7 +186,6 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/swaggest/swgui v1.8.5 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.3 // indirect
-	github.com/tengattack/gluacrypto v0.0.0-20240324200146-54b58c95c255 // indirect
 	github.com/tiendc/go-deepcopy v1.6.0 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
@@ -204,7 +193,6 @@ require (
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/tx7do/go-crud/audit v0.0.3 // indirect
 	github.com/tx7do/go-crud/cache v0.0.2 // indirect
-	github.com/tx7do/go-scripts/hostmodule v0.0.1
 	github.com/tx7do/go-utils/auditutil v0.1.0
 	github.com/tx7do/go-utils/authorizer v0.1.0
 	github.com/tx7do/go-utils/converter v0.1.0
@@ -218,7 +206,6 @@ require (
 	github.com/tx7do/kratos-transport/tracing v1.1.2 // indirect
 	github.com/tx7do/kratos-transport/transport v1.3.4 // indirect
 	github.com/tx7do/kratos-transport/transport/keepalive v1.3.5 // indirect
-	github.com/vadv/gopher-lua-libs v0.8.0 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/vearutop/statigz v1.5.0 // indirect
 	github.com/vektah/gqlparser/v2 v2.5.32 // indirect
@@ -228,7 +215,6 @@ require (
 	github.com/xuri/efp v0.0.1 // indirect
 	github.com/xuri/nfp v0.0.1 // indirect
 	github.com/yashtewari/glob-intersection v0.2.0 // indirect
-	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zclconf/go-cty v1.19.0 // indirect
 	github.com/zclconf/go-cty-yaml v1.2.0 // indirect
@@ -262,7 +248,6 @@ require (
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	layeh.com/gopher-luar v1.0.11 // indirect
 	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect

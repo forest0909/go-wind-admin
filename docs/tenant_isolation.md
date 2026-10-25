@@ -188,7 +188,6 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 |---|---|---|
 | ent 数据层（33 张表读写） | ✅ 隔离 | 本文档第 5 节 |
 | **应用层自有存储**（Redis 缓存键、MinIO 对象路径、asynq 任务载荷） | ❌ 不自动注入 | 隔离谓词只存在于 ent privacy；这些路径必须业务侧显式携带/校验租户维度 |
-| 跨服务出站（脚本 HTTP egress、Webhook） | ❌ | 按域名白名单管控，无租户维度（[script_system.md](./script_system.md)） |
 | **租户内跨用户**（同 tenant 下 A 读/写 B 的行） | ❌ 完全不覆盖 | 隔离谓词只有 `tenant_id` 一列，"只看自己的行"必须业务侧自己钉（收件箱读/写已钉，见下） |
 | 平台管理员上下文 | 放行 | 设计使然（tid==0 全量） |
 | 登录 / 刷新 / 找回重置 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、机器令牌交换的 AK 查询、**刷新链路**（`authentication_service.go:716`，注释 `:712-715` 说明为何必须跨租户读）、找回与重置密码两处（`authentication_forgot_password.go:29`、`:78`）——审计落库自身也经 SystemContext 写入 |

@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/go-kratos/kratos/v2"
 	"github.com/tx7do/go-utils/geoip/geolite"
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
@@ -143,9 +140,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	internalMessageRecipientRepo := data.NewInternalMessageRecipientRepo(ctx, entClient)
 	notificationPreferenceRepo := data.NewNotificationPreferenceRepo(ctx, entClient)
 
-	// 平台脚本
-	scriptRepo := data.NewScriptRepo(ctx, entClient)
-
 	// ── register:repo ── 新模块仓储在此行后注册(make register 工具锚点,勿删)
 	notificationRuleRepo := data.NewNotificationRuleRepo(ctx, entClient)
 	notificationTemplateRepo := data.NewNotificationTemplateRepo(ctx, entClient)
@@ -250,34 +244,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	channelRegistry.Register(service.NewInternalMessageSender(internalMessageService))
 	internalMessageService.RegisterNotifier(notificationService)
 
-	// 平台脚本：运行时（多语言引擎）+ 管理服务
-	scriptLogRepo := data.NewScriptLogRepo(ctx, entClient)
-	scriptRuntime := service.NewScriptRuntime(ctx, scriptRepo, redisClient, minioClient, scriptLogRepo)
-	cleanups = append(cleanups, scriptRuntime.Close)
-	scriptService := service.NewScriptService(ctx, scriptRepo, scriptRuntime)
-	scriptLogService := service.NewScriptLogService(ctx, scriptLogRepo)
-	// 启动加载已启用脚本（尽力而为：失败记日志，不阻断服务启动）
-	if err := scriptRuntime.Resync(ctx.Context()); err != nil {
-		ctx.GetLogger().Error(ctx.Context(), fmt.Sprintf("script runtime startup resync failed: %v", err))
-	}
-	// 跨实例 Resync 通知监听：其他实例变更脚本后，本实例自动重同步
-	scriptRuntime.StartResyncListener(ctx.Context())
-	cleanups = append(cleanups, scriptRuntime.StopResyncListener)
-
-	// 实体生命周期钩子：变更成功后异步触发 <entity>.after_<op> 钩子点（见 service.EntityHooksMapping）
-	service.AttachEntityHooks(entClient.Client(),
-		// after：异步旁路，失败只记日志
-		func(hookCtx context.Context, hookPoint string, payload map[string]any) {
-			if err := scriptRuntime.InvokeEntityHook(hookPoint, payload); err != nil {
-				ctx.GetLogger().Error(context.Background(), fmt.Sprintf("script entity hook %s failed: %v", hookPoint, err))
-			}
-		},
-		// before：同步可否决（ctx.stop / return false 生效），失败不阻断业务写入
-		func(hookCtx context.Context, hookPoint string, payload map[string]any) error {
-			return scriptRuntime.InvokeEntityHookVeto(hookPoint, payload)
-		},
-	)
-
 	dashboardService := service.NewDashboardService(ctx, dashboardRepo)
 
 	// 套餐配额水位通知：用量扫描（tenantUsageRepo）+ 站内信投递内核。
@@ -307,7 +273,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		redisCacheMonitorService, serverMonitorService, notificationChannelService,
 		notificationService, onlineSessionService, dashboardService,
 		internalMessageService, internalMessageCategoryService, internalMessageRecipientService,
-		scriptService, scriptLogService,
 		// register:rest-arg ── 新模块服务实参在此行后追加(make register 工具锚点,勿删)
 		notificationRuleService,
 		notificationPreferenceService,
@@ -325,7 +290,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		return nil, nil, err
 	}
 
-	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, monitorAlertService, scriptRuntime, planQuotaWatermarkService)
+	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, monitorAlertService, planQuotaWatermarkService)
 	if err != nil {
 		rollback()
 		return nil, nil, err

@@ -117,8 +117,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// 任务 / 文件 / 运维观测
 	taskRepo := data.NewTaskRepo(ctx, entClient)
 	fileRepo := data.NewFileRepo(ctx, entClient)
-	redisCacheMonitorRepo := data.NewRedisCacheMonitorRepo(ctx, redisClient)
-	serverMonitorRepo := data.NewServerMonitorRepo(ctx, entClient)
 	dashboardRepo := data.NewDashboardRepo(ctx, entClient)
 
 	// 站内信
@@ -151,8 +149,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 审计日志服务端导出（XLSX/CSV）：手动注册二进制响应路由，见 rest_server 的 registerFileTransfer 同段
 	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, operationAuditLogRepo, accessTokenChecker)
-	// 系统级常驻任务监控（只读 asynq Inspector）
-	taskMonitorService := service.NewTaskMonitorService(ctx)
 
 	// 认证与登录策略
 	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter)
@@ -191,8 +187,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	operationAuditLogService := service.NewOperationAuditLogService(ctx, operationAuditLogRepo)
 
 	// 运维观测与门户
-	redisCacheMonitorService := service.NewRedisCacheMonitorService(ctx, redisCacheMonitorRepo)
-	serverMonitorService := service.NewServerMonitorService(ctx, serverMonitorRepo)
 	onlineSessionService := service.NewOnlineSessionService(ctx, authenticator)
 	adminPortalService := service.NewAdminPortalService(ctx, menuRepo, roleRepo, userRepo, permissionRepo, planModuleRepo, tenantRepo)
 
@@ -224,13 +218,11 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		userService, userProfileService, roleService, positionService, orgUnitService,
 		menuService, apiService, permissionService, permissionGroupService,
 		loginAuditLogService, operationAuditLogService,
-		redisCacheMonitorService, serverMonitorService,
 		onlineSessionService, dashboardService,
 		internalMessageService, internalMessageCategoryService, internalMessageRecipientService,
 		// register:rest-arg ── 新模块服务实参在此行后追加(make register 工具锚点,勿删)
 		myTenantUsageService,
 		auditExportService,
-		taskMonitorService,
 		configService,
 	)
 	if err != nil {

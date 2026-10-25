@@ -29,10 +29,8 @@
   "permission": "权限管理",
   "permission-codes": "权限点管理",
   "positions": "职位管理",
-  "redis-cache-monitor": "Redis缓存监控",
   "roles": "角色管理",
   "server-error": "服务器错误",
-  "server-monitor": "服务监控",
   "system": "系统管理",
   "tasks": "任务管理",
   "tenant": "租户管理",
@@ -74,8 +72,7 @@
     "log": {
       "moduleName": "日志审计",
       "loginAuditLog": "登录日志",
-      "operationAuditLog": "操作日志",
-      "redisCacheMonitor": "Redis缓存监控"
+      "operationAuditLog": "操作日志"
     },
     "system": {
       "moduleName": "系统管理",
@@ -84,8 +81,7 @@
       "task": "任务管理",
       "language": "语言管理",
       "config": "参数管理",
-      "onlineSessions": "在线用户",
-      "serverMonitor": "服务监控"
+      "onlineSessions": "在线用户"
     }
   },
   "page": {

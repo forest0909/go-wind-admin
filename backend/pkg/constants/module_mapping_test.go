@@ -35,7 +35,6 @@ func TestServiceTagToBusinessModuleExactMapping(t *testing.T) {
 		"FileService":          identityV1.Module_FILE,
 		"FileTransferService":  identityV1.Module_FILE,
 		"TaskService":          identityV1.Module_TASK,
-		"TaskMonitorService":   identityV1.Module_TASK,
 		"MyTenantUsageService": identityV1.Module_TENANT,
 		"ConfigService":        identityV1.Module_SYSTEM,
 
@@ -45,8 +44,6 @@ func TestServiceTagToBusinessModuleExactMapping(t *testing.T) {
 
 		"LoginAuditLogService":     identityV1.Module_LOG,
 		"OperationAuditLogService": identityV1.Module_LOG,
-		"RedisCacheMonitorService": identityV1.Module_LOG,
-		"ServerMonitorService":     identityV1.Module_SYSTEM,
 		"OnlineSessionService":     identityV1.Module_SYSTEM,
 
 		"InternalMessageService":          identityV1.Module_INTERNAL_MESSAGE,
@@ -66,11 +63,11 @@ func TestServiceTagToBusinessModuleReverseMapping(t *testing.T) {
 		identityV1.Module_OPM:              {"UserService", "OrgUnitService", "PositionService", "UserProfileService", "RoleService"},
 		identityV1.Module_PERMISSION:       {"MenuService", "ApiService", "PermissionService", "PermissionGroupService"},
 		identityV1.Module_DICT:             {"DictTypeService", "DictEntryService"},
-		identityV1.Module_SYSTEM:           {"LanguageService", "ConfigService", "ServerMonitorService", "OnlineSessionService"},
+		identityV1.Module_SYSTEM:           {"LanguageService", "ConfigService", "OnlineSessionService"},
 		identityV1.Module_FILE:             {"FileService", "FileTransferService"},
-		identityV1.Module_TASK:             {"TaskService", "TaskMonitorService"},
+		identityV1.Module_TASK:             {"TaskService"},
 		identityV1.Module_TENANT:           {"TenantService", "PlanService", "PlanQuotaService", "MyTenantUsageService"},
-		identityV1.Module_LOG:              {"LoginAuditLogService", "OperationAuditLogService", "RedisCacheMonitorService"},
+		identityV1.Module_LOG:              {"LoginAuditLogService", "OperationAuditLogService"},
 		identityV1.Module_INTERNAL_MESSAGE: {"InternalMessageService", "InternalMessageCategoryService", "InternalMessageRecipientService"},
 	}
 

@@ -10,7 +10,6 @@ import { EditOutlined,
   CaretRightOutlined,
   PauseOutlined,
   ReloadOutlined,
-  CloudServerOutlined,
 } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +26,6 @@ import {
 } from '@/api/hooks/task';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
-import SystemTasksModal from './SystemTasksModal';
 import { getTaskTypeMap, getTaskTypeOptions } from './constants';
 import TaskDrawer from './components/TaskDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
@@ -46,7 +44,6 @@ const TaskManagement = () => {
   const tableScrollY = useProTableScrollY(containerRef);
 
   // Drawer 状态管理
-const [sysTasksOpen, setSysTasksOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit'>('create');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
@@ -318,13 +315,6 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
             }}
             pagination={false}
             toolBarRender={() => [
-              <Button
-                key="sysTasks"
-                icon={<CloudServerOutlined />}
-                onClick={() => setSysTasksOpen(true)}
-              >
-                {t('sysTasksButton')}
-              </Button>,
               <Popconfirm
                 key="startAll"
                 title={t('startAllConfirmTitle')}
@@ -389,10 +379,6 @@ const [sysTasksOpen, setSysTasksOpen] = useState(false);
           />
         </div>
       </ContentContainer>
-      <SystemTasksModal
-        open={sysTasksOpen}
-        onClose={() => setSysTasksOpen(false)}
-      />
 
       {/* 任务编辑/创建 Drawer */}
       <TaskDrawer

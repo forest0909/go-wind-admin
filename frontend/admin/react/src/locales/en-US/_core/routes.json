@@ -29,10 +29,8 @@
   "permission": "Permission Management",
   "permission-codes": "Permission Codes",
   "positions": "Position Management",
-  "redis-cache-monitor": "Redis Cache Monitor",
   "roles": "Role Management",
   "server-error": "Server Error",
-  "server-monitor": "Server Monitor",
   "system": "System Management",
   "tasks": "Task Management",
   "tenant": "Tenant Management",
@@ -74,8 +72,7 @@
     "log": {
       "moduleName": "Audit Logs",
       "loginAuditLog": "Login Logs",
-      "operationAuditLog": "Operation Logs",
-      "redisCacheMonitor": "Redis Cache Monitor"
+      "operationAuditLog": "Operation Logs"
     },
     "system": {
       "moduleName": "System Management",
@@ -84,8 +81,7 @@
       "task": "Task Management",
       "language": "Language Management",
       "config": "Config Management",
-      "onlineSessions": "Online Users",
-      "serverMonitor": "Server Monitor"
+      "onlineSessions": "Online Users"
     }
   },
   "page": {

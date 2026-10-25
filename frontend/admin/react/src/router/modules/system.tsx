@@ -73,17 +73,6 @@ export const systemRoutes: AppRouteObject[] = [
         },
       },
       {
-        name: 'server-monitor',
-        path: 'server-monitor', // 相对路径，最终为 /system/server-monitor
-        element: createLazyRoute(() => import('@/pages/app/system/server-monitor')),
-        meta: {
-          title: 'routes:server-monitor',
-          icon: 'lucide:activity', // Iconify 格式
-          order: 7,
-          // permission: 'sys:platform_admin', // 仅平台管理员权限（开发阶段暂时注释）
-        },
-      },
-      {
         name: 'configs',
         path: 'configs', // 相对路径，最终为 /system/configs
         element: createLazyRoute(() => import('@/pages/app/system/config')),

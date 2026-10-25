@@ -130,8 +130,6 @@ func NewRestServer(
 
 	loginAuditLogService *service.LoginAuditLogService,
 	operationAuditLogService *service.OperationAuditLogService,
-	redisCacheMonitorService *service.RedisCacheMonitorService,
-	serverMonitorService *service.ServerMonitorService,
 	onlineSessionService *service.OnlineSessionService,
 	dashboardService *service.DashboardService,
 
@@ -142,7 +140,6 @@ func NewRestServer(
 	// register:param ── 新模块服务形参在此行后注册(make register 工具锚点,勿删)
 	myTenantUsageService *service.MyTenantUsageService,
 	auditExportService *service.AuditExportService,
-	taskMonitorService *service.TaskMonitorService,
 	configService *service.ConfigService,
 ) (*http.Server, error) {
 	cfg := ctx.GetConfig()
@@ -194,8 +191,6 @@ func NewRestServer(
 
 	adminV1.RegisterLoginAuditLogServiceHTTPServer(srv, loginAuditLogService)
 	adminV1.RegisterOperationAuditLogServiceHTTPServer(srv, operationAuditLogService)
-	adminV1.RegisterRedisCacheMonitorServiceHTTPServer(srv, redisCacheMonitorService)
-	adminV1.RegisterServerMonitorServiceHTTPServer(srv, serverMonitorService)
 	adminV1.RegisterOnlineSessionServiceHTTPServer(srv, onlineSessionService)
 	adminV1.RegisterDashboardServiceHTTPServer(srv, dashboardService)
 
@@ -218,7 +213,6 @@ func NewRestServer(
 
 	// register:route ── 新模块路由在此行后注册(make register 工具锚点,勿删)
 	adminV1.RegisterMyTenantUsageServiceHTTPServer(srv, myTenantUsageService)
-	adminV1.RegisterTaskMonitorServiceHTTPServer(srv, taskMonitorService)
 	adminV1.RegisterConfigServiceHTTPServer(srv, configService)
 
 	if cfg.GetServer().GetRest().GetEnableSwagger() {

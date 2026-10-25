@@ -39,17 +39,6 @@ export const logRoutes: AppRouteObject[] = [
           // permission: 'sys:platform_admin', // 平台管理员权限（开发阶段暂时注释）
         },
       },
-      {
-        name: 'redis-cache-monitor',
-        path: 'redis-cache-monitor', // 相对路径，最终为 /log/redis-cache-monitor
-        element: createLazyRoute(() => import('@/pages/app/log/redis-cache-monitor')),
-        meta: {
-          title: 'routes:redis-cache-monitor',
-          icon: 'lucide:database',
-          order: 7,
-          // permission: 'sys:platform_admin', // 平台管理员权限（开发阶段暂时注释）
-        },
-      },
     ],
   },
 ];

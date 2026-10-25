@@ -3422,19 +3422,6 @@ paths:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/redis-cache-monitor:
-        get:
-            tags:
-                - RedisCacheMonitorService
-            description: 查询Redis缓存监控信息
-            operationId: RedisCacheMonitorService_Get
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/RedisCacheMonitorInfo'
     /admin/v1/refresh-token:
         post:
             tags:
@@ -3631,38 +3618,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListRouteResponse'
-    /admin/v1/server-monitor:
-        get:
-            tags:
-                - ServerMonitorService
-            description: 查询服务监控信息
-            operationId: ServerMonitorService_Get
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ServerMonitorInfo'
-    /admin/v1/system-tasks:inspect:
-        post:
-            tags:
-                - TaskMonitorService
-            description: 一站式巡检：调度条目（cron/上次/下次入队）+ 各任务类型的队列状态与失败明细
-            operationId: TaskMonitorService_InspectSystemTasks
-            requestBody:
-                content:
-                    application/json:
-                        schema:
-                            $ref: '#/components/schemas/InspectSystemTasksRequest'
-                required: true
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/InspectSystemTasksResponse'
     /admin/v1/tasks:
         get:
             tags:
@@ -4806,35 +4761,6 @@ components:
                     type: integer
                     format: uint32
             description: 概览统计 - 回应
-        DatabaseInfo:
-            type: object
-            properties:
-                driver:
-                    type: string
-                    description: 数据库类型
-                pingOk:
-                    type: boolean
-                    description: 连通性是否正常
-                pingError:
-                    type: string
-                    description: 连通性错误信息
-                maxOpenConnections:
-                    type: integer
-                    description: 最大打开连接数
-                    format: uint32
-                openConnections:
-                    type: integer
-                    description: 当前打开连接数
-                    format: uint32
-                inUseConnections:
-                    type: integer
-                    description: 使用中连接数
-                    format: uint32
-                idleConnections:
-                    type: integer
-                    description: 空闲连接数
-                    format: uint32
-            description: 数据库信息
         DeleteNotificationFromInboxRequest:
             type: object
             properties:
@@ -5294,69 +5220,6 @@ components:
                     type: string
                 logoUrl:
                     type: string
-        GoRuntimeInfo:
-            type: object
-            properties:
-                version:
-                    type: string
-                    description: Go 版本
-                numGoroutine:
-                    type: integer
-                    description: goroutine 数量
-                    format: uint32
-                memAllocBytes:
-                    type: string
-                    description: 堆内存分配字节数
-                memSysBytes:
-                    type: string
-                    description: 向系统申请的内存字节数
-                gcCycles:
-                    type: integer
-                    description: GC 完成次数
-                    format: uint32
-                uptimeSeconds:
-                    type: string
-                    description: 服务运行时长（秒）
-                startedAt:
-                    type: string
-                    description: 进程启动时间
-                    format: date-time
-            description: Go 运行时信息
-        HostInfo:
-            type: object
-            properties:
-                os:
-                    type: string
-                    description: 操作系统
-                arch:
-                    type: string
-                    description: CPU 架构
-                numCpu:
-                    type: integer
-                    description: CPU 逻辑核数
-                    format: uint32
-                hostname:
-                    type: string
-                    description: 主机名
-            description: 主机信息
-        InfoEntry:
-            type: object
-            properties:
-                key:
-                    type: string
-                value:
-                    type: string
-            description: INFO 输出的单个 key/value 对
-        InfoSection:
-            type: object
-            properties:
-                name:
-                    type: string
-                entries:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/InfoEntry'
-            description: INFO 输出的单个 section
         InitialContextResponse:
             type: object
             properties:
@@ -5372,25 +5235,6 @@ components:
                     type: array
                     items:
                         type: string
-        InspectSystemTasksRequest:
-            type: object
-            properties: {}
-            description: 手动触发巡检（系统级常驻任务可视化，只读 asynq，无副作用）
-        InspectSystemTasksResponse:
-            type: object
-            properties:
-                queue:
-                    type: string
-                    description: asynq 队列名（当前配置）
-                schedules:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/SystemTaskScheduleEntry'
-                summaries:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/SystemTaskStateSummary'
-                    description: 只汇总系统级常驻任务涉及的任务类型；无任何记录时不出现在结果里
         InternalMessage:
             type: object
             properties:
@@ -7126,20 +6970,6 @@ components:
                     type: string
                     description: 配额上限值
             description: 配额用量项
-        RedisCacheMonitorInfo:
-            type: object
-            properties:
-                sections:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/InfoSection'
-                dbSize:
-                    type: string
-                slowlog:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/SlowLogEntry'
-            description: Redis缓存监控信息
         RestartAllTaskResponse:
             type: object
             properties:
@@ -7332,39 +7162,6 @@ components:
                     type: integer
                     description: 消息ID
                     format: uint32
-        ServerMonitorInfo:
-            type: object
-            properties:
-                go:
-                    $ref: '#/components/schemas/GoRuntimeInfo'
-                database:
-                    $ref: '#/components/schemas/DatabaseInfo'
-                host:
-                    $ref: '#/components/schemas/HostInfo'
-                collectedAt:
-                    type: string
-                    description: 采集时间
-                    format: date-time
-            description: 服务监控聚合信息
-        SlowLogEntry:
-            type: object
-            properties:
-                id:
-                    type: string
-                createdAt:
-                    type: string
-                    format: date-time
-                durationUsec:
-                    type: string
-                args:
-                    type: array
-                    items:
-                        type: string
-                clientAddr:
-                    type: string
-                clientName:
-                    type: string
-            description: SLOWLOG GET 返回的单条慢日志
         StatusDistributionResponse:
             type: object
             properties:
@@ -7402,74 +7199,6 @@ components:
                     type: string
                     description: 同步模式，缺省为 REPLACE（兼容旧客户端）
                     format: enum
-        SystemTaskFailure:
-            type: object
-            properties:
-                taskType:
-                    type: string
-                queue:
-                    type: string
-                state:
-                    type: string
-                    description: retry 或 archived
-                lastError:
-                    type: string
-                lastFailedAt:
-                    type: string
-                    format: date-time
-                retried:
-                    type: integer
-                    format: uint32
-                maxRetry:
-                    type: integer
-                    format: uint32
-                nextProcessAt:
-                    type: string
-                    description: 下次重试时间（archived 无）
-                    format: date-time
-            description: 失败任务明细（retry/archived 里的单条）
-        SystemTaskScheduleEntry:
-            type: object
-            properties:
-                taskType:
-                    type: string
-                    description: 任务类型名（载荷里的 handler/类型，如 tenant_expiry_scan）
-                cronSpec:
-                    type: string
-                    description: cron 表达式
-                nextEnqueueAt:
-                    type: string
-                    format: date-time
-                prevEnqueueAt:
-                    type: string
-                    description: 上次入队时间；从未入队为空
-                    format: date-time
-            description: |-
-                系统级常驻任务的调度条目（asynq SchedulerEntries 的只读投影）。
-                 Prev 为零值时间表示从未入队过（调度注册后还没到第一个触发点）。
-        SystemTaskStateSummary:
-            type: object
-            properties:
-                taskType:
-                    type: string
-                active:
-                    type: integer
-                    format: uint32
-                pending:
-                    type: integer
-                    format: uint32
-                retry:
-                    type: integer
-                    format: uint32
-                archived:
-                    type: integer
-                    format: uint32
-                recentFailures:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/SystemTaskFailure'
-                    description: 最近失败明细（retry + archived 合并、按失败时间倒序、截断）
-            description: 单任务类型在队列里的状态摘要
         Task:
             type: object
             properties:
@@ -8377,14 +8106,8 @@ tags:
       description: 套餐管理服务
     - name: PositionService
       description: 职位管理服务
-    - name: RedisCacheMonitorService
-      description: Redis缓存监控管理服务（只读）
     - name: RoleService
       description: 角色管理服务
-    - name: ServerMonitorService
-      description: 服务监控管理服务（只读）
-    - name: TaskMonitorService
-      description: 系统级常驻任务监控服务（平台管理员；只读 asynq Inspector，无副作用）。
     - name: TaskService
       description: 调度任务管理服务
     - name: TenantService

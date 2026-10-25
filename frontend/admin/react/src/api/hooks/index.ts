@@ -43,13 +43,11 @@ export * from './login-audit-log';
 export * from './operation-audit-log';
 
 // 缓存监控
-export * from './redis-cache-monitor';
 
 // 在线会话
 export * from './online-session';
 
 // 服务监控
-export * from './server-monitor';
 
 // 首页分析概览
 export * from './dashboard';

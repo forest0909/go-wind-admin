@@ -31,7 +31,6 @@ var ServiceTagToBusinessModule = map[string]identityV1.Module{
 	"FileService":          identityV1.Module_FILE,
 	"FileTransferService":  identityV1.Module_FILE,
 	"TaskService":          identityV1.Module_TASK,
-	"TaskMonitorService":   identityV1.Module_TASK,
 	"MyTenantUsageService": identityV1.Module_TENANT,
 	"ConfigService":        identityV1.Module_SYSTEM,
 
@@ -41,8 +40,6 @@ var ServiceTagToBusinessModule = map[string]identityV1.Module{
 
 	"LoginAuditLogService":     identityV1.Module_LOG,
 	"OperationAuditLogService": identityV1.Module_LOG,
-	"RedisCacheMonitorService": identityV1.Module_LOG,
-	"ServerMonitorService":     identityV1.Module_SYSTEM,
 	"OnlineSessionService":     identityV1.Module_SYSTEM,
 
 	"InternalMessageService":          identityV1.Module_INTERNAL_MESSAGE,

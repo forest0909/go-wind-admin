@@ -41,7 +41,7 @@ func isPostgresDriver(driver string) bool {
 	return driver == "postgres" || driver == "pgx"
 }
 
-// driverNameOf 读取配置里的数据库驱动名（与 server_monitor_repo 同一来源）。
+// driverNameOf 读取配置里的数据库驱动名（取自 data.database.driver 配置）。
 func driverNameOf(ctx *bootstrap.Context) string {
 	if ctx == nil {
 		return ""

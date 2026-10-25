@@ -6029,61 +6029,6 @@ export type identityservicev1_DeletePositionRequest = {
   id?: number;
 };
 
-// Redis缓存监控管理服务（只读）
-export interface RedisCacheMonitorService {
-  // 查询Redis缓存监控信息
-  Get(
-    request: redis_cacheservicev1_GetRedisCacheMonitorRequest,
-  ): Promise<redis_cacheservicev1_RedisCacheMonitorInfo>;
-}
-
-export function createRedisCacheMonitorServiceClient(
-  transport: ClientTransport,
-): RedisCacheMonitorService {
-  return {
-    Get(_request) {
-      const path = `admin/v1/redis-cache-monitor`;
-      const body = null;
-      return transport.unary(path, 'GET', body, {
-        service: 'RedisCacheMonitorService',
-        method: 'Get',
-      }) as Promise<redis_cacheservicev1_RedisCacheMonitorInfo>;
-    },
-  };
-}
-// 查询Redis缓存监控信息 - 请求（空）
-export type redis_cacheservicev1_GetRedisCacheMonitorRequest = {
-};
-
-// Redis缓存监控信息
-export type redis_cacheservicev1_RedisCacheMonitorInfo = {
-  dbSize: number | undefined;
-  sections: redis_cacheservicev1_InfoSection[] | undefined;
-  slowlog: redis_cacheservicev1_SlowLogEntry[] | undefined;
-};
-
-// INFO 输出的单个 section
-export type redis_cacheservicev1_InfoSection = {
-  entries: redis_cacheservicev1_InfoEntry[] | undefined;
-  name: string | undefined;
-};
-
-// INFO 输出的单个 key/value 对
-export type redis_cacheservicev1_InfoEntry = {
-  key: string | undefined;
-  value: string | undefined;
-};
-
-// SLOWLOG GET 返回的单条慢日志
-export type redis_cacheservicev1_SlowLogEntry = {
-  args: string[] | undefined;
-  clientAddr: string | undefined;
-  clientName: string | undefined;
-  createdAt: undefined | wellKnownTimestamp;
-  durationUsec: number | undefined;
-  id: number | undefined;
-};
-
 // 角色管理服务
 export interface RoleService {
   // 查询角色列表
@@ -6367,70 +6312,6 @@ export type permissionservicev1_UpdateRoleRequest = {
 // 删除角色 - 请求
 export type permissionservicev1_DeleteRoleRequest = {
   id?: number;
-};
-
-// 服务监控管理服务（只读）
-export interface ServerMonitorService {
-  // 查询服务监控信息
-  Get(
-    request: server_monitorservicev1_GetServerMonitorRequest,
-  ): Promise<server_monitorservicev1_ServerMonitorInfo>;
-}
-
-export function createServerMonitorServiceClient(
-  transport: ClientTransport,
-): ServerMonitorService {
-  return {
-    Get(_request) {
-      const path = `admin/v1/server-monitor`;
-      const body = null;
-      return transport.unary(path, 'GET', body, {
-        service: 'ServerMonitorService',
-        method: 'Get',
-      }) as Promise<server_monitorservicev1_ServerMonitorInfo>;
-    },
-  };
-}
-// 查询服务监控信息 - 请求（空）
-export type server_monitorservicev1_GetServerMonitorRequest = {
-};
-
-// 服务监控聚合信息
-export type server_monitorservicev1_ServerMonitorInfo = {
-  collectedAt: undefined | wellKnownTimestamp;
-  database: server_monitorservicev1_DatabaseInfo | undefined;
-  go: server_monitorservicev1_GoRuntimeInfo | undefined;
-  host: server_monitorservicev1_HostInfo | undefined;
-};
-
-// Go 运行时信息
-export type server_monitorservicev1_GoRuntimeInfo = {
-  gcCycles?: number;
-  memAllocBytes?: number;
-  memSysBytes?: number;
-  numGoroutine?: number;
-  startedAt?: wellKnownTimestamp;
-  uptimeSeconds?: number;
-  version?: string;
-};
-
-// 数据库信息
-export type server_monitorservicev1_DatabaseInfo = {
-  driver?: string;
-  idleConnections?: number;
-  inUseConnections?: number;
-  maxOpenConnections?: number;
-  openConnections?: number;
-  pingError?: string;
-  pingOk?: boolean;
-};
-
-// 主机信息
-export type server_monitorservicev1_HostInfo = {
-  arch?: string;
-  hostname?: string;
-  numCpu?: number;
-  os?: string;
 };
 
 // 调度任务管理服务
@@ -6823,77 +6704,6 @@ export type taskservicev1_ControlTaskRequest_ControlType =
   | 'Restart'
   | 'Start'
   | 'Stop';
-// 系统级常驻任务监控服务（平台管理员；只读 asynq Inspector，无副作用）。
-export interface TaskMonitorService {
-  // 一站式巡检：调度条目（cron/上次/下次入队）+ 各任务类型的队列状态与失败明细
-  InspectSystemTasks(
-    request: taskservicev1_InspectSystemTasksRequest,
-  ): Promise<taskservicev1_InspectSystemTasksResponse>;
-}
-
-export function createTaskMonitorServiceClient(
-  transport: ClientTransport,
-): TaskMonitorService {
-  return {
-    InspectSystemTasks(request) {
-      const path = `admin/v1/system-tasks:inspect`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'TaskMonitorService',
-        method: 'InspectSystemTasks',
-      }) as Promise<taskservicev1_InspectSystemTasksResponse>;
-    },
-  };
-}
-// 手动触发巡检（系统级常驻任务可视化，只读 asynq，无副作用）
-export type taskservicev1_InspectSystemTasksRequest = {
-};
-
-export type taskservicev1_InspectSystemTasksResponse = {
-  // asynq 队列名（当前配置）
-  queue: string | undefined;
-  schedules: taskservicev1_SystemTaskScheduleEntry[] | undefined;
-  // 只汇总系统级常驻任务涉及的任务类型；无任何记录时不出现在结果里
-  summaries: taskservicev1_SystemTaskStateSummary[] | undefined;
-};
-
-// 系统级常驻任务的调度条目（asynq SchedulerEntries 的只读投影）。
-// Prev 为零值时间表示从未入队过（调度注册后还没到第一个触发点）。
-export type taskservicev1_SystemTaskScheduleEntry = {
-  // cron 表达式
-  cronSpec: string | undefined;
-  nextEnqueueAt: undefined | wellKnownTimestamp;
-  // 上次入队时间；从未入队为空
-  prevEnqueueAt: undefined | wellKnownTimestamp;
-  // 任务类型名（载荷里的 handler/类型，如 tenant_expiry_scan）
-  taskType: string | undefined;
-};
-
-// 单任务类型在队列里的状态摘要
-export type taskservicev1_SystemTaskStateSummary = {
-  active: number | undefined;
-  archived: number | undefined;
-  pending: number | undefined;
-  // 最近失败明细（retry + archived 合并、按失败时间倒序、截断）
-  recentFailures: taskservicev1_SystemTaskFailure[] | undefined;
-  retry: number | undefined;
-  taskType: string | undefined;
-};
-
-// 失败任务明细（retry/archived 里的单条）
-export type taskservicev1_SystemTaskFailure = {
-  lastError: string | undefined;
-  lastFailedAt: undefined | wellKnownTimestamp;
-  maxRetry: number | undefined;
-  // 下次重试时间（archived 无）
-  nextProcessAt: undefined | wellKnownTimestamp;
-  queue: string | undefined;
-  retried: number | undefined;
-  // retry 或 archived
-  state: string | undefined;
-  taskType: string | undefined;
-};
-
 // 租户管理服务
 export interface TenantService {
   // 获取租户列表
@@ -7812,10 +7622,7 @@ export class ApiClient {
   private _planQuotaService?: PlanQuotaService;
   private _planService?: PlanService;
   private _positionService?: PositionService;
-  private _redisCacheMonitorService?: RedisCacheMonitorService;
   private _roleService?: RoleService;
-  private _serverMonitorService?: ServerMonitorService;
-  private _taskMonitorService?: TaskMonitorService;
   private _taskService?: TaskService;
   private _tenantService?: TenantService;
   private readonly _transport: ClientTransport;
@@ -7926,20 +7733,8 @@ export class ApiClient {
     return this._positionService ??= createPositionServiceClient(this._transport);
   }
 
-  get redisCacheMonitorService(): RedisCacheMonitorService {
-    return this._redisCacheMonitorService ??= createRedisCacheMonitorServiceClient(this._transport);
-  }
-
   get roleService(): RoleService {
     return this._roleService ??= createRoleServiceClient(this._transport);
-  }
-
-  get serverMonitorService(): ServerMonitorService {
-    return this._serverMonitorService ??= createServerMonitorServiceClient(this._transport);
-  }
-
-  get taskMonitorService(): TaskMonitorService {
-    return this._taskMonitorService ??= createTaskMonitorServiceClient(this._transport);
   }
 
   get taskService(): TaskService {

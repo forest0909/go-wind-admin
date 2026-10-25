@@ -227,7 +227,6 @@ Security capabilities are designed with reference to the technical requirements 
 | File Management | Manage uploads: search, upload to OSS or local storage, download, copy file address, delete, and image preview (large view). |
 | Account Login | Sign in with username / email / phone number, with image captcha and login rate limiting. |
 | Verification delivery | Profile email and phone changes read SMTP and SMS credentials from `app/admin/service/configs/mail.yaml`. An empty SMTP host or SMS provider means that path is not configured. Sends are synchronous and do not enter the task queue. |
-| Server Monitoring | Read-only view of runtime metrics (CPU cores, memory, goroutines, uptime, etc.) with auto refresh. |
 | Online Sessions | View currently online sessions (user, tenant, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
 | Parameter Management | Manage platform-wide system parameters as key/value pairs (distinct from business dictionaries); built-in parameters are seeded at startup and cannot be deleted; reads go through a server-side caching accessor, and in multi-instance deployments changes are broadcast over Redis pub/sub to invalidate every instance's cache. |
 | Language Management | Manage supported languages: name, code, native name, enabled and default status. |
@@ -241,7 +240,6 @@ Security capabilities are designed with reference to the technical requirements 
 | Internal Mail | Manage internal messages: view details, delete, mark as read, mark all as read. |
 | Login Logs | Query login logs for successful and failed logins; supports IP geolocation. |
 | Operation Logs | Query operation logs for normal and abnormal operations; supports IP geolocation, resource identification, and detail view. |
-| Redis Cache Monitor | Read-only Redis monitoring displaying INFO, DBSIZE, and slowlog data; performs no write operations. |
 
 ### Personal Center
 

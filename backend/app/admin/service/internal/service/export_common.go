@@ -157,7 +157,7 @@ func authorizeExportRequest(
 	return ctx, operator, true
 }
 
-// requireExportPlatformAdmin 平台管理员闸（语义对齐 requirePlatformAdmin，
+// requireExportPlatformAdmin 平台管理员闸（
 // 手动路由拿不到 service 层 ctx，须在 operator 已解析处就地判定）。
 func requireExportPlatformAdmin(w http.ResponseWriter, operator *authenticationV1.UserTokenPayload) bool {
 	if !operator.GetIsPlatformAdmin() {

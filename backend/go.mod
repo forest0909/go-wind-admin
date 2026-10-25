@@ -38,7 +38,6 @@ require (
 	github.com/tx7do/go-utils/netutil v0.1.0
 	github.com/tx7do/go-utils/notify v0.0.6
 	github.com/tx7do/go-utils/password v0.1.0
-	github.com/tx7do/go-utils/sqlutil v0.1.0
 	github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact v0.0.0-20260831125122-5bb4931991b2
 	github.com/tx7do/kratos-authn v1.1.11
 	github.com/tx7do/kratos-authn/engine/jwt v1.1.11

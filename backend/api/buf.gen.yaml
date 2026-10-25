@@ -53,9 +53,6 @@ managed:
       path: resource/service/v1
       value: go-wind-admin/api/gen/go/permission/service/v1;resourcepb
     - file_option: go_package
-      path: redis_cache/service/v1
-      value: go-wind-admin/api/gen/go/redis_cache/service/v1;rediscachepb
-    - file_option: go_package
       path: config/service/v1
       value: go-wind-admin/api/gen/go/config/service/v1;configpb
 

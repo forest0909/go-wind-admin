@@ -24,9 +24,10 @@ const UserProfile = () => {
   const { data: userData } = useGetUserProfile();
   const user = userData as any;
 
-  // 租户自助用量：租户管理员可见本租户套餐用量与配额（平台用户不展示）
+  // 租户自助用量页签已从个人中心拿掉。组件和接口还在，把下面改回 true 即恢复。
+  const showTenantUsageTab = false;
   const accessStore = useAuthStore((st) => st.accessToken);
-  const isTenantUser = !!accessStore && (user?.tenantId ?? 0) > 0;
+  const isTenantUser = showTenantUsageTab && !!accessStore && (user?.tenantId ?? 0) > 0;
   const usageQuery = useMyTenantUsage(isTenantUser);
 
   const handleSwitchTab = (key: string) => {

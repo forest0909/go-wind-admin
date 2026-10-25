@@ -209,8 +209,8 @@ Security capabilities are designed with reference to the technical requirements 
 | Feature | Description |
 |---------|-------------|
 | User Management | Manage and query users with advanced search and department-linked users; enable/disable users, set/unset manager, reset password, configure multiple roles / departments / managers, one-click login as a specified user. |
-| Tenant Management | Manage tenants. Adding a tenant auto-initializes its departments, default roles, and admin. Supports plan configuration, enable/disable, and one-click login as the tenant admin. |
-| Plan & Quota Management | Manage tenant subscription plans and resource quotas (module whitelists, usage limits, etc.); CRUD for plans and quota items. |
+| Tenant Management | Manage tenants. Adding a tenant auto-initializes its departments, default roles, and admin. Supports plan configuration, enable/disable, and one-click login as the tenant admin. Hidden from the sidebar; the page remains at `/tenant/members`. |
+| Plan & Quota Management | Manage tenant subscription plans and resource quotas (module whitelists, usage limits, etc.); CRUD for plans and quota items. Hidden from the sidebar; the page remains at `/tenant/plans`. |
 | Role Management | Manage roles and role groups; user selection by role; menu grants, data-scope configuration (five levels / custom organization-unit sets), and field-level permissions (blacklisted field sets); batch add/remove employees. |
 | Permission Management | Manage permission groups, menus, and permission points with tree-view listing. |
 | Organization Management | Manage organizations with tree-view listing. |

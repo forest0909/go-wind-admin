@@ -33,6 +33,8 @@ const OrgList: React.FC<OrgListProps> = ({
   const { t } = useTranslation('user');
   const { message } = App.useApp();
   const isTenantUser = useUserStore((s) => s.isTenantUser());
+  // 用户页左侧的租户下拉已隐藏。改回 true 即恢复。
+  const showTenantPicker = false;
 
   // 租户下拉
   const [tenantOptions, setTenantOptions] = useState<{ label: string; value: number }[]>([]);
@@ -65,7 +67,7 @@ const OrgList: React.FC<OrgListProps> = ({
 
   // 加载租户列表（非租户用户）
   useEffect(() => {
-    if (!isTenantUser) {
+    if (showTenantPicker && !isTenantUser) {
       fetchListTenants(new PaginationQuery({ formValues: { status: 'ON' } }))
         .then((res) => {
           const opts = (res.items || []).map((item: any) => ({
@@ -76,7 +78,7 @@ const OrgList: React.FC<OrgListProps> = ({
         })
         .catch(() => setTenantOptions([]));
     }
-  }, [isTenantUser]);
+  }, [isTenantUser, showTenantPicker]);
 
   // 加载组织树（API 已返回树形结构，与 PermissionGroupList 一致）
   const fetchOrgUnits = useCallback(async () => {
@@ -216,7 +218,7 @@ const OrgList: React.FC<OrgListProps> = ({
         </div>
 
         {/* 租户选择器（仅非租户用户可见） */}
-        {!isTenantUser && (
+        {showTenantPicker && !isTenantUser && (
           <Select
             showSearch
             allowClear

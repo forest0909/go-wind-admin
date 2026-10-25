@@ -140,9 +140,10 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	tenantAccessChecker := data.NewTenantAccessCheckerImpl(ctx, entClient)
 	authorizerProvider := data.NewAuthorizerProvider(ctx, roleRepo, apiRepo)
-	var authzEngineCfg *authorizer.EngineConfig
-	if bootstrapConf := ctx.GetConfig(); bootstrapConf != nil && bootstrapConf.Authz != nil {
-		authzEngineCfg = &authorizer.EngineConfig{Type: bootstrapConf.Authz.GetType()}
+	authzEngineCfg, err := data.NewAuthorizerEngineConfig(ctx.GetConfig())
+	if err != nil {
+		rollback()
+		return nil, nil, err
 	}
 	authz := authorizer.NewAuthorizer(ctx.Context(), ctx.GetLogger(), authzEngineCfg, authorizerProvider)
 

@@ -2,10 +2,12 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
 	"github.com/tx7do/go-utils/trans"
+	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
 	bLogger "github.com/tx7do/kratos-bootstrap/logger"
 
@@ -17,6 +19,22 @@ import (
 	"github.com/tx7do/go-utils/authorizer"
 	"go-wind-admin/pkg/constants"
 )
+
+// AuthzEngineCasbin 唯一受支持的接口级鉴权引擎。
+const AuthzEngineCasbin = "casbin"
+
+// NewAuthorizerEngineConfig 校验 authz 配置并返回引擎配置。
+// 只接受 casbin：authorizer 对未知类型会静默退回放行一切的 noop，
+// 配置缺失时引擎为 nil、authz 中间件同样不拦截，两种情况都必须在启动期报错。
+func NewAuthorizerEngineConfig(cfg *conf.Bootstrap) (*authorizer.EngineConfig, error) {
+	if cfg == nil || cfg.Authz == nil {
+		return nil, fmt.Errorf("authz config is missing: authz.type must be %q", AuthzEngineCasbin)
+	}
+	if t := cfg.Authz.GetType(); t != AuthzEngineCasbin {
+		return nil, fmt.Errorf("unsupported authz.type %q: only %q is supported", t, AuthzEngineCasbin)
+	}
+	return &authorizer.EngineConfig{Type: AuthzEngineCasbin}, nil
+}
 
 // AuthorizerProvider 权限数据提供者
 type AuthorizerProvider struct {
@@ -111,8 +129,11 @@ func (p *AuthorizerProvider) ProvidePolicies(_ context.Context) (authorizer.Perm
 			}
 			authorizerDataArray = append(authorizerDataArray, data)
 		}
+		// 角色编码只在租户内唯一（uix_sys_roles_tenant_code），各租户由模板复制出的
+		// 角色编码相同；必须追加而非覆盖，否则只剩最后遍历到的租户的策略。
+		// 每条策略自带租户域，追加不会串租户。
 		if len(authorizerDataArray) > 0 {
-			result[role.GetCode()] = authorizerDataArray
+			result[role.GetCode()] = append(result[role.GetCode()], authorizerDataArray...)
 		}
 	}
 

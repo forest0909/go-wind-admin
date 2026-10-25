@@ -60,7 +60,7 @@ authn:
       - "key2"
 
 authz:
-  type: "noop" # casbin, opa, zanzibar, noop
+  type: "casbin" # 只支持 casbin；其他值或缺省都会启动报错
 
   casbin:
 

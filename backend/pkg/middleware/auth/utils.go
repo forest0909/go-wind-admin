@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"reflect"
+	"strconv"
 
 	"github.com/go-kratos/kratos/v2/transport"
 	"github.com/go-kratos/kratos/v2/transport/http"
@@ -33,10 +34,15 @@ func processAuthz(
 	//	path, action, tokenPayload.GetRoles(), tokenPayload.UserId,
 	//)
 
+	// casbin 的域即角色所属租户 ID（见 data.AuthorizerProvider.ProvidePolicies），
+	// 平台用户没有租户 ID 时取 0。不传域时引擎按通配 "*" 匹配，与按租户写入的策略对不上。
+	project := authzEngine.Project(strconv.FormatUint(uint64(tokenPayload.GetTenantId()), 10))
+
 	authzClaims := authzEngine.AuthClaims{
 		Subjects: trans.Ptr(tokenPayload.GetRoles()),
 		Action:   trans.Ptr(action),
 		Resource: trans.Ptr(path),
+		Project:  trans.Ptr(project),
 	}
 
 	ctx = authz.NewContext(ctx, &authzClaims)

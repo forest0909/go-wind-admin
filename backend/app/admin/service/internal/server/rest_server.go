@@ -96,10 +96,6 @@ func NewRestMiddleware(
 		adminV1.OperationAuthenticationServiceResetPasswordByCode,
 		// 租户白标查询免鉴权：登录前按租户编号取名称/Logo（只暴露展示字段）
 		adminV1.OperationAuthenticationServiceGetTenantBranding,
-		// OIDC SSO 三端点免鉴权：它们本身就是认证入口（未登录态使用）
-		adminV1.OperationAuthenticationServiceGetSsoLoginInfo,
-		adminV1.OperationAuthenticationServiceGetSsoLoginUrl,
-		adminV1.OperationAuthenticationServiceSsoLogin,
 		//OperationFileTransferServiceDownloadFile,
 		//OperationFileTransferServicePostUploadFile,
 		//OperationFileTransferServicePutUploadFile,

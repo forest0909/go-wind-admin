@@ -1328,18 +1328,6 @@ export interface AuthenticationService {
   VerifyCaptcha(
     request: authenticationservicev1_VerifyCaptchaRequest,
   ): Promise<authenticationservicev1_VerifyCaptchaResponse>;
-  // SSO 登录能力开关（免鉴权；登录页按钮显隐）
-  GetSsoLoginInfo(
-    request: authenticationservicev1_GetSsoLoginInfoRequest,
-  ): Promise<authenticationservicev1_GetSsoLoginInfoResponse>;
-  // 生成 OIDC 授权跳转 URL（免鉴权）
-  GetSsoLoginUrl(
-    request: authenticationservicev1_GetSsoLoginUrlRequest,
-  ): Promise<authenticationservicev1_GetSsoLoginUrlResponse>;
-  // OIDC 回调换本系统令牌（免鉴权）
-  SsoLogin(
-    request: authenticationservicev1_SsoLoginRequest,
-  ): Promise<authenticationservicev1_LoginResponse>;
   // 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
   GetTenantBranding(
     request: authenticationservicev1_GetTenantBrandingRequest,
@@ -1405,30 +1393,6 @@ export function createAuthenticationServiceClient(
         service: 'AuthenticationService',
         method: 'VerifyCaptcha',
       }) as Promise<authenticationservicev1_VerifyCaptchaResponse>;
-    },
-    GetSsoLoginInfo(_request) {
-      const path = `admin/v1/sso/login-info`;
-      const body = null;
-      return transport.unary(path, 'GET', body, {
-        service: 'AuthenticationService',
-        method: 'GetSsoLoginInfo',
-      }) as Promise<authenticationservicev1_GetSsoLoginInfoResponse>;
-    },
-    GetSsoLoginUrl(request) {
-      const path = `admin/v1/sso/login-url`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'AuthenticationService',
-        method: 'GetSsoLoginUrl',
-      }) as Promise<authenticationservicev1_GetSsoLoginUrlResponse>;
-    },
-    SsoLogin(request) {
-      const path = `admin/v1/sso/login`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'AuthenticationService',
-        method: 'SsoLogin',
-      }) as Promise<authenticationservicev1_LoginResponse>;
     },
     GetTenantBranding(request) {
       const path = `admin/v1/tenant-branding`;
@@ -1517,39 +1481,6 @@ export type authenticationservicev1_VerifyCaptchaRequest = {
 
 export type authenticationservicev1_VerifyCaptchaResponse = {
   valid: boolean | undefined;
-};
-
-// SSO 登录能力开关查询（登录页按钮显隐用；免鉴权）。
-export type authenticationservicev1_GetSsoLoginInfoRequest = {
-};
-
-export type authenticationservicev1_GetSsoLoginInfoResponse = {
-  // OIDC SSO 是否已配置（issuer/client_id/client_secret/redirect_url 齐备）
-  enabled: boolean | undefined;
-};
-
-// 生成 OIDC 授权跳转 URL（免鉴权）。state 由服务端生成并存 Redis（10 分钟
-// 单次有效），SsoLogin 时验证并取删——防 CSRF 与回调重放。
-export type authenticationservicev1_GetSsoLoginUrlRequest = {
-};
-
-export type authenticationservicev1_GetSsoLoginUrlResponse = {
-  // 完整授权跳转 URL（前端 window.location 前往）
-  authorizationUrl: string | undefined;
-  // 本次登录的 state（前端原样带到回调，SsoLogin 时一并提交）
-  state: string | undefined;
-};
-
-// OIDC 回调换令牌（免鉴权）：code+state 换本系统 JWT。
-// 流程：state 验证取删 → code 在 IdP token 端点换 access_token →
-// 拉 userinfo 取 email → 按邮箱在本系统查用户（未找到且允许预置时自动建）→
-// 签发标准 JWT 对（refresh token 走 HttpOnly Cookie，与密码登录同形）。
-// V1 边界：SSO 登录不触发本系统 TOTP MFA 闸门（认证已在 IdP 完成）。
-export type authenticationservicev1_SsoLoginRequest = {
-  // IdP 回调带回的授权码
-  code: string | undefined;
-  // GetSsoLoginUrl 返回的 state
-  state: string | undefined;
 };
 
 // 租户白标查询（免鉴权；登录前按租户编号取展示信息）。

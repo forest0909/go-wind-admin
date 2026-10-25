@@ -183,7 +183,6 @@ type AuthenticationService struct {
 
 	mfaFactorRepo     *data.UserMfaFactorRepo
 	mfaChallengeCache *data.MfaChallengeCache
-	ssoStateCache     *data.SsoStateCache
 	geoClient         *geolite.Client
 
 	vcodeCache *data.VCodeCache
@@ -209,7 +208,6 @@ func NewAuthenticationService(
 	loginPolicyRepo *data.LoginPolicyRepo,
 	mfaFactorRepo *data.UserMfaFactorRepo,
 	mfaChallengeCache *data.MfaChallengeCache,
-	ssoStateCache *data.SsoStateCache,
 	geoClient *geolite.Client,
 	mailer *TransactionMailer,
 	vcodeCache *data.VCodeCache,
@@ -233,7 +231,6 @@ func NewAuthenticationService(
 		loginPolicyRepo:         loginPolicyRepo,
 		mfaFactorRepo:           mfaFactorRepo,
 		mfaChallengeCache:       mfaChallengeCache,
-		ssoStateCache:           ssoStateCache,
 		geoClient:               geoClient,
 		mailer:                  mailer,
 		vcodeCache:              vcodeCache,

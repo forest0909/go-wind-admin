@@ -281,12 +281,14 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 |---|---|---|
 | ~~MFA 登录成功路径 refresh token 走响应体~~ | **已修复（2026-09-13）**：`VerifyMFAChallenge` 改调 `setRefreshCookies`，响应体不再携带 refresh 字段，与主登录路径一致 | 修复前：refresh 暴露在 JS 可读响应体 + MFA 用户会话静默续期丢失（前端只认 Cookie）。修复后 MFA 用户获得与其他用户一致的续期链路 |
 | ~~`LoginResponse.RefreshToken`/`RefreshExpiresIn` 字段残留~~ | **已清理（2026-10-03）**：proto 删字段 + 三端重生成；核实三端零消费方（refresh 全走 HttpOnly Cookie）。`LoginRequest.refresh_token`（授权请求入参，另一语义）保留 | 无 |
-| oidc / preshared_key 配置节 | 预留未接线（企业 OIDC 登录已由 2026-10-03 的 SSO 环境变量方案另行覆盖；preshared_key 视需求） | 接入前勿在生产配置里误以为已启用 |
-| ~~oauth proto（第三方绑定）~~ | **已移除（2026-10-03）**：OAuthService 11 个 RPC 无实现/无注册/三端生成物零引用，微信/QQ 等消费平台绑定不在产品范围。企业联邦由 SSO 覆盖；将来如需第三方绑定，git 历史可恢复，且正确路径是 OIDC 联邦而非硬编码厂商枚举 | 无 |
+| preshared_key 配置节 | 预留未接线 | 接入前勿在生产配置里误以为已启用 |
+| ~~oauth proto（第三方绑定）~~ | **已移除（2026-10-03）**：OAuthService 11 个 RPC 无实现/无注册/三端生成物零引用，微信/QQ 等消费平台绑定不在产品范围 | 无 |
+| ~~OIDC 企业登录~~ | **已移除**：环境变量 `SSO_OIDC_*`、登录页按钮、`/auth/sso/callback` 和 `auth.yaml` 的 `authn.oidc` 都已删掉。凭证枚举 `ENTERPRISE_SSO` / `SSO_TOKEN` 仍留在 `user_credential`，避免存量行扫描失败 | 无 |
 | ~~MAC / REGION 登录策略维度~~ | **REGION 已实现（2026-10-03）**：IP 经内嵌 GeoLite2 库解析归属地（取省），与策略值精确相等（大小写不敏感）即命中；解析失败不判定。**MAC 移出三端方法下拉**（HTTP 拿不到 MAC，选了永不命中；后端枚举保留兼容存量数据，存量 MAC 策略永不命中） | 无 |
 
 ## 12. 边界（明确不做）
 
+- OIDC 企业登录已移除，不再从环境变量或 `auth.yaml` 的 oidc 节恢复；
 - 注册入口（RegisterUser）已移除，不再恢复（孤儿用户教训）；
 - login 端点不做 refresh（专用端点）、不做 client_credentials（专用 AK/SK 端点）；
 - access token 不落 localStorage/sessionStorage（仅内存，刷新即失，靠 refresh Cookie 恢复）。

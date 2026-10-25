@@ -1,5 +1,5 @@
 authn:
-  type: "jwt" # jwt, oidc, preshared_key
+  type: "jwt" # jwt, preshared_key
 
   jwt:
     # 签名算法：HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, ES512, Ed25519
@@ -53,11 +53,6 @@ authn:
       DZF8vmAEa0Xynvkl3oPHmcoz57e/pfa8yilT+YMXdmqKBjEzuD9m1s41w/+W7Rk0
       8wIDAQAB
       -----END PUBLIC KEY-----
-
-  oidc:
-    issuer_url: "https://example.com"
-    audience: "your_audience"
-    method: "HS256"
 
   preshared_key:
     valid_keys:

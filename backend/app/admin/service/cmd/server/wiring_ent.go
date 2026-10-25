@@ -65,7 +65,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	accessTokenChecker := data.NewTokenChecker(ctx, authenticator, clientType)
 	loginRateLimiter := data.NewLoginRateLimiter(ctx, redisClient)
 	mfaChallengeCache := data.NewMfaChallengeCache(ctx, redisClient)
-	ssoStateCache := data.NewSsoStateCache(ctx, redisClient)
 	geoClient, _ := geolite.NewClient()
 	vcodeCache := data.NewVCodeCache(ctx, redisClient)
 
@@ -165,7 +164,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	taskMonitorService := service.NewTaskMonitorService(ctx)
 
 	// 认证与登录策略
-	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter, loginPolicyRepo, userMfaFactorRepo, mfaChallengeCache, ssoStateCache, geoClient, transactionalMailer, vcodeCache, outboundSender)
+	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter, loginPolicyRepo, userMfaFactorRepo, mfaChallengeCache, geoClient, transactionalMailer, vcodeCache, outboundSender)
 	mfaService := service.NewMfaService(ctx, userMfaFactorRepo, mfaChallengeCache, authenticator, loginRateLimiter, userRepo)
 	loginPolicyService := service.NewLoginPolicyService(ctx, loginPolicyRepo)
 

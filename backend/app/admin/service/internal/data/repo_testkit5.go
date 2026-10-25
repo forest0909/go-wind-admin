@@ -185,15 +185,6 @@ func NewMfaChallengeCacheForTest(rdb *redis.Client) *MfaChallengeCache {
 	}
 }
 
-// NewSsoStateCacheForTest 与生产 NewSsoStateCache 逐字段一致
-// （log 换 NopLogger；rdb 由调用方注入——测试场景为 miniredis 假 client）。
-func NewSsoStateCacheForTest(rdb *redis.Client) *SsoStateCache {
-	return &SsoStateCache{
-		rdb: rdb,
-		log: bLogger.NewHelper(bLogger.NopLogger()),
-	}
-}
-
 // NewAuthenticatorForTest 对齐生产 NewAuthenticator 的字段装配
 // （jwtCfg + userTokenCache + newAdminAuthenticator，log 换 NopLogger），
 // 唯一差异：省去 applyJwtKeyOverrides 环境变量密钥覆盖、构造失败改为返回 error

@@ -23,14 +23,11 @@ const _ = http.SupportPackageIsVersion1
 
 const OperationAuthenticationServiceForgotPassword = "/admin.service.v1.AuthenticationService/ForgotPassword"
 const OperationAuthenticationServiceGenerateCaptcha = "/admin.service.v1.AuthenticationService/GenerateCaptcha"
-const OperationAuthenticationServiceGetSsoLoginInfo = "/admin.service.v1.AuthenticationService/GetSsoLoginInfo"
-const OperationAuthenticationServiceGetSsoLoginUrl = "/admin.service.v1.AuthenticationService/GetSsoLoginUrl"
 const OperationAuthenticationServiceGetTenantBranding = "/admin.service.v1.AuthenticationService/GetTenantBranding"
 const OperationAuthenticationServiceLogin = "/admin.service.v1.AuthenticationService/Login"
 const OperationAuthenticationServiceLogout = "/admin.service.v1.AuthenticationService/Logout"
 const OperationAuthenticationServiceRefreshToken = "/admin.service.v1.AuthenticationService/RefreshToken"
 const OperationAuthenticationServiceResetPasswordByCode = "/admin.service.v1.AuthenticationService/ResetPasswordByCode"
-const OperationAuthenticationServiceSsoLogin = "/admin.service.v1.AuthenticationService/SsoLogin"
 const OperationAuthenticationServiceVerifyCaptcha = "/admin.service.v1.AuthenticationService/VerifyCaptcha"
 
 type AuthenticationServiceHTTPServer interface {
@@ -38,10 +35,6 @@ type AuthenticationServiceHTTPServer interface {
 	ForgotPassword(context.Context, *v1.ForgotPasswordRequest) (*emptypb.Empty, error)
 	// GenerateCaptcha 生成验证码
 	GenerateCaptcha(context.Context, *emptypb.Empty) (*v1.GenerateCaptchaResponse, error)
-	// GetSsoLoginInfo SSO 登录能力开关（免鉴权；登录页按钮显隐）
-	GetSsoLoginInfo(context.Context, *v1.GetSsoLoginInfoRequest) (*v1.GetSsoLoginInfoResponse, error)
-	// GetSsoLoginUrl 生成 OIDC 授权跳转 URL（免鉴权）
-	GetSsoLoginUrl(context.Context, *v1.GetSsoLoginUrlRequest) (*v1.GetSsoLoginUrlResponse, error)
 	// GetTenantBranding 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
 	GetTenantBranding(context.Context, *v1.GetTenantBrandingRequest) (*v1.GetTenantBrandingResponse, error)
 	// Login 登录
@@ -52,8 +45,6 @@ type AuthenticationServiceHTTPServer interface {
 	RefreshToken(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
 	// ResetPasswordByCode 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
 	ResetPasswordByCode(context.Context, *v1.ResetPasswordByCodeRequest) (*emptypb.Empty, error)
-	// SsoLogin OIDC 回调换本系统令牌（免鉴权）
-	SsoLogin(context.Context, *v1.SsoLoginRequest) (*v1.LoginResponse, error)
 	// VerifyCaptcha 验证验证码
 	VerifyCaptcha(context.Context, *v1.VerifyCaptchaRequest) (*v1.VerifyCaptchaResponse, error)
 }
@@ -67,9 +58,6 @@ func RegisterAuthenticationServiceHTTPServer(s *http.Server, srv AuthenticationS
 	r.POST("/admin/v1/refresh-token", _AuthenticationService_RefreshToken0_HTTP_Handler(srv))
 	r.GET("/admin/v1/captcha", _AuthenticationService_GenerateCaptcha0_HTTP_Handler(srv))
 	r.POST("/admin/v1/captcha/verify", _AuthenticationService_VerifyCaptcha0_HTTP_Handler(srv))
-	r.GET("/admin/v1/sso/login-info", _AuthenticationService_GetSsoLoginInfo0_HTTP_Handler(srv))
-	r.POST("/admin/v1/sso/login-url", _AuthenticationService_GetSsoLoginUrl0_HTTP_Handler(srv))
-	r.POST("/admin/v1/sso/login", _AuthenticationService_SsoLogin0_HTTP_Handler(srv))
 	r.POST("/admin/v1/tenant-branding", _AuthenticationService_GetTenantBranding0_HTTP_Handler(srv))
 }
 
@@ -224,69 +212,6 @@ func _AuthenticationService_VerifyCaptcha0_HTTP_Handler(srv AuthenticationServic
 	}
 }
 
-func _AuthenticationService_GetSsoLoginInfo0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in v1.GetSsoLoginInfoRequest
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationAuthenticationServiceGetSsoLoginInfo)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.GetSsoLoginInfo(ctx, req.(*v1.GetSsoLoginInfoRequest))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*v1.GetSsoLoginInfoResponse)
-		return ctx.Result(200, reply)
-	}
-}
-
-func _AuthenticationService_GetSsoLoginUrl0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in v1.GetSsoLoginUrlRequest
-		if err := ctx.Bind(&in); err != nil {
-			return err
-		}
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationAuthenticationServiceGetSsoLoginUrl)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.GetSsoLoginUrl(ctx, req.(*v1.GetSsoLoginUrlRequest))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*v1.GetSsoLoginUrlResponse)
-		return ctx.Result(200, reply)
-	}
-}
-
-func _AuthenticationService_SsoLogin0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in v1.SsoLoginRequest
-		if err := ctx.Bind(&in); err != nil {
-			return err
-		}
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationAuthenticationServiceSsoLogin)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.SsoLogin(ctx, req.(*v1.SsoLoginRequest))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*v1.LoginResponse)
-		return ctx.Result(200, reply)
-	}
-}
-
 func _AuthenticationService_GetTenantBranding0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.GetTenantBrandingRequest
@@ -314,10 +239,6 @@ type AuthenticationServiceHTTPClient interface {
 	ForgotPassword(ctx context.Context, req *v1.ForgotPasswordRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	// GenerateCaptcha 生成验证码
 	GenerateCaptcha(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *v1.GenerateCaptchaResponse, err error)
-	// GetSsoLoginInfo SSO 登录能力开关（免鉴权；登录页按钮显隐）
-	GetSsoLoginInfo(ctx context.Context, req *v1.GetSsoLoginInfoRequest, opts ...http.CallOption) (rsp *v1.GetSsoLoginInfoResponse, err error)
-	// GetSsoLoginUrl 生成 OIDC 授权跳转 URL（免鉴权）
-	GetSsoLoginUrl(ctx context.Context, req *v1.GetSsoLoginUrlRequest, opts ...http.CallOption) (rsp *v1.GetSsoLoginUrlResponse, err error)
 	// GetTenantBranding 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
 	GetTenantBranding(ctx context.Context, req *v1.GetTenantBrandingRequest, opts ...http.CallOption) (rsp *v1.GetTenantBrandingResponse, err error)
 	// Login 登录
@@ -328,8 +249,6 @@ type AuthenticationServiceHTTPClient interface {
 	RefreshToken(ctx context.Context, req *v1.LoginRequest, opts ...http.CallOption) (rsp *v1.LoginResponse, err error)
 	// ResetPasswordByCode 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
 	ResetPasswordByCode(ctx context.Context, req *v1.ResetPasswordByCodeRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
-	// SsoLogin OIDC 回调换本系统令牌（免鉴权）
-	SsoLogin(ctx context.Context, req *v1.SsoLoginRequest, opts ...http.CallOption) (rsp *v1.LoginResponse, err error)
 	// VerifyCaptcha 验证验证码
 	VerifyCaptcha(ctx context.Context, req *v1.VerifyCaptchaRequest, opts ...http.CallOption) (rsp *v1.VerifyCaptchaResponse, err error)
 }
@@ -364,34 +283,6 @@ func (c *AuthenticationServiceHTTPClientImpl) GenerateCaptcha(ctx context.Contex
 	opts = append(opts, http.Operation(OperationAuthenticationServiceGenerateCaptcha))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// GetSsoLoginInfo SSO 登录能力开关（免鉴权；登录页按钮显隐）
-func (c *AuthenticationServiceHTTPClientImpl) GetSsoLoginInfo(ctx context.Context, in *v1.GetSsoLoginInfoRequest, opts ...http.CallOption) (*v1.GetSsoLoginInfoResponse, error) {
-	var out v1.GetSsoLoginInfoResponse
-	pattern := "/admin/v1/sso/login-info"
-	path := binding.EncodeURL(pattern, in, true)
-	opts = append(opts, http.Operation(OperationAuthenticationServiceGetSsoLoginInfo))
-	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// GetSsoLoginUrl 生成 OIDC 授权跳转 URL（免鉴权）
-func (c *AuthenticationServiceHTTPClientImpl) GetSsoLoginUrl(ctx context.Context, in *v1.GetSsoLoginUrlRequest, opts ...http.CallOption) (*v1.GetSsoLoginUrlResponse, error) {
-	var out v1.GetSsoLoginUrlResponse
-	pattern := "/admin/v1/sso/login-url"
-	path := binding.EncodeURL(pattern, in, false)
-	opts = append(opts, http.Operation(OperationAuthenticationServiceGetSsoLoginUrl))
-	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -460,20 +351,6 @@ func (c *AuthenticationServiceHTTPClientImpl) ResetPasswordByCode(ctx context.Co
 	pattern := "/admin/v1/reset-password-by-code"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationAuthenticationServiceResetPasswordByCode))
-	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// SsoLogin OIDC 回调换本系统令牌（免鉴权）
-func (c *AuthenticationServiceHTTPClientImpl) SsoLogin(ctx context.Context, in *v1.SsoLoginRequest, opts ...http.CallOption) (*v1.LoginResponse, error) {
-	var out v1.LoginResponse
-	pattern := "/admin/v1/sso/login"
-	path := binding.EncodeURL(pattern, in, false)
-	opts = append(opts, http.Operation(OperationAuthenticationServiceSsoLogin))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {

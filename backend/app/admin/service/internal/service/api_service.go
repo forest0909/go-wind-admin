@@ -1,9 +1,7 @@
 package service
 
 import (
-	"strings"
-
-	"fmt"
+	"sort"
 
 	"context"
 
@@ -153,8 +151,6 @@ func (s *ApiService) Delete(ctx context.Context, req *permissionV1.DeleteApiRequ
 }
 
 func (s *ApiService) SyncApis(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	_ = s.repo.Truncate(ctx)
-
 	//if err := s.syncWithWalkRoute(ctx); err != nil {
 	//	return nil, err
 	//}
@@ -163,7 +159,7 @@ func (s *ApiService) SyncApis(ctx context.Context, _ *emptypb.Empty) (*emptypb.E
 		return nil, err
 	}
 
-	// 重建是 truncate + 按显式 ID 逐行写入，PG 的序列不会跟着走；不对齐的话
+	// 新接口按显式 ID 写入，PG 的序列不会跟着走；不对齐的话
 	// 之后「新建 API」必撞 sys_apis_pkey（HTTP 500）。
 	if err := s.repo.AlignIdentitySequence(ctx); err != nil {
 		s.log.Errorf(ctx, "接口 id 序列对齐失败: %v", err)
@@ -177,7 +173,17 @@ func (s *ApiService) SyncApis(ctx context.Context, _ *emptypb.Empty) (*emptypb.E
 	return &emptypb.Empty{}, nil
 }
 
-// syncWithOpenAPI 使用 OpenAPI 文档同步 API 资源
+// apiEndpointKey 接口的稳定身份：同一 (method, path) 跨多次同步保持同一个 ID。
+func apiEndpointKey(method, path string) string {
+	return method + " " + path
+}
+
+// syncWithOpenAPI 使用 OpenAPI 文档对齐 API 资源。
+//
+// 按 (method, path) 对齐而不是清空重建：已有接口保留原 ID，新接口按路径排序后
+// 接在最大 ID 之后，文档里已不存在的接口连同权限绑定一起删除。
+// sys_permission_apis 按 api_id 记录绑定，清空重建会让 ID 重新分配（文档路径表是 map，
+// 遍历顺序随机），所有角色的接口授权都会错位到无关接口上。
 func (s *ApiService) syncWithOpenAPI(ctx context.Context) error {
 	loader := openapi3.NewLoader()
 	doc, err := loader.LoadFromData(assets.OpenApiData)
@@ -197,7 +203,6 @@ func (s *ApiService) syncWithOpenAPI(ctx context.Context) error {
 		return adminV1.ErrorInternalServerError("OpenAPI document paths is nil")
 	}
 
-	var count uint32 = 0
 	var apiList []*permissionV1.Api
 
 	// 遍历所有路径和操作
@@ -220,14 +225,8 @@ func (s *ApiService) syncWithOpenAPI(ctx context.Context) error {
 					businessModule = bm
 				}
 			}
-			if strings.Contains(path, "ai/query") {
-				fmt.Printf("[sync-debug] path=%s module=%q businessModule=%v\n", path, module, businessModule)
-			}
-
-			count++
 
 			apiList = append(apiList, &permissionV1.Api{
-				Id:                trans.Ptr(count),
 				Path:              trans.Ptr(path),
 				Method:            trans.Ptr(method),
 				Module:            trans.Ptr(module),
@@ -239,22 +238,60 @@ func (s *ApiService) syncWithOpenAPI(ctx context.Context) error {
 		}
 	}
 
-	for i, res := range apiList {
-		res.Id = trans.Ptr(uint32(i + 1))
+	// 新接口的 ID 分配顺序要确定，不能随 map 遍历顺序变化
+	sort.Slice(apiList, func(i, j int) bool {
+		if apiList[i].GetPath() != apiList[j].GetPath() {
+			return apiList[i].GetPath() < apiList[j].GetPath()
+		}
+		return apiList[i].GetMethod() < apiList[j].GetMethod()
+	})
+
+	existing, err := s.repo.List(ctx, &paginationV1.PagingRequest{NoPaging: trans.Ptr(true)})
+	if err != nil {
+		s.log.Errorf(ctx, "读取现有接口失败: %v", err)
+		return err
+	}
+	existingIDs := make(map[string]uint32, len(existing.Items))
+	var maxID uint32
+	for _, a := range existing.Items {
+		existingIDs[apiEndpointKey(a.GetMethod(), a.GetPath())] = a.GetId()
+		maxID = max(maxID, a.GetId())
+	}
+
+	keepIDs := make([]uint32, 0, len(apiList))
+	for _, res := range apiList {
+		id, ok := existingIDs[apiEndpointKey(res.GetMethod(), res.GetPath())]
+		if !ok {
+			maxID++
+			id = maxID
+		}
+		res.Id = trans.Ptr(id)
+		keepIDs = append(keepIDs, id)
+
 		// 请求自身的 id 必须同步设置：repo.Update 的 id==0 守卫在
 		// AllowMissing 分支之前，缺省时整批请求被静默弹回（历史上
 		// 接口同步因此从未写入任何行）。
-		_ = s.repo.Update(ctx, &permissionV1.UpdateApiRequest{
-			Id:           res.GetId(),
+		if err = s.repo.Update(ctx, &permissionV1.UpdateApiRequest{
+			Id:           id,
 			AllowMissing: trans.Ptr(true),
 			Data:         res,
-		})
+		}); err != nil {
+			s.log.Errorf(ctx, "写入接口 [%s %s] 失败: %v", res.GetMethod(), res.GetPath(), err)
+			return err
+		}
 	}
+
+	removed, err := s.repo.DeleteExcept(ctx, keepIDs)
+	if err != nil {
+		return err
+	}
+
+	s.log.Infof(ctx, "接口同步完成：共 %d 个，新增 %d 个，删除 %d 个",
+		len(apiList), len(apiList)-(len(existing.Items)-removed), removed)
 
 	return nil
 }
 
-// GetWalkRouteData 获取通过 WalkRoute 获取的路由数据，用于调试
 func (s *ApiService) GetWalkRouteData(_ context.Context, _ *emptypb.Empty) (*permissionV1.ListApiResponse, error) {
 	if s.routeWalker == nil {
 		return nil, adminV1.ErrorInternalServerError("router walker is nil")

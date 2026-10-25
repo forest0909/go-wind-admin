@@ -194,3 +194,66 @@ func TestApiServiceSqlite_CreateGetUpdateDelete(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, cnt, "删除后 api 表计数应归零")
 }
+
+// TestApiServiceSqlite_SyncKeepsIdsAndBindings 接口同步按 (method, path) 对齐：
+// 已有接口的 ID 不变、权限上的绑定保留；文档里已没有的接口连同绑定删除；
+// 被删掉的现存接口重新同步回来时分配新 ID，不复用旧 ID。
+func TestApiServiceSqlite_SyncKeepsIdsAndBindings(t *testing.T) {
+	entClient := enttest.NewEntClientForTest(t)
+	svc := newApiServiceForTest(t, entClient)
+	ctx := enttest.NewSystemContext(context.Background())
+	client := entClient.Client()
+
+	svc.init()
+
+	snapshot := func() map[string]uint32 {
+		rows, err := client.Api.Query().All(ctx)
+		require.NoError(t, err)
+		m := make(map[string]uint32, len(rows))
+		for _, r := range rows {
+			m[apiEndpointKey(*r.Method, *r.Path)] = r.ID
+		}
+		return m
+	}
+	before := snapshot()
+	require.NotEmpty(t, before)
+
+	// 一个真实接口绑到权限上
+	kept, err := client.Api.Query().Where(entApi.PathEQ("/admin/v1/users"), entApi.MethodEQ("GET")).Only(ctx)
+	require.NoError(t, err)
+	require.NoError(t, client.PermissionApi.Create().SetPermissionID(1).SetAPIID(kept.ID).Exec(ctx))
+
+	// 一个文档里不存在的旧接口，同样有绑定
+	require.NoError(t, client.Api.Create().SetID(9999).SetPath("/admin/v1/gone").SetMethod("GET").Exec(ctx))
+	require.NoError(t, client.PermissionApi.Create().SetPermissionID(1).SetAPIID(9999).Exec(ctx))
+
+	// 删掉一个现存接口，模拟"文档里新增了接口"
+	removed, err := client.Api.Query().Where(entApi.PathEQ("/admin/v1/roles"), entApi.MethodEQ("GET")).Only(ctx)
+	require.NoError(t, err)
+	require.NoError(t, client.Api.DeleteOneID(removed.ID).Exec(ctx))
+
+	_, err = svc.SyncApis(ctx, &emptypb.Empty{})
+	require.NoError(t, err)
+
+	after := snapshot()
+	require.Len(t, after, len(before))
+	for key, id := range before {
+		if key == apiEndpointKey("GET", "/admin/v1/roles") {
+			require.Equal(t, uint32(10000), after[key], "re-added endpoint gets max(id)+1")
+			continue
+		}
+		require.Equal(t, id, after[key], "endpoint %s must keep its id", key)
+	}
+
+	exists, err := client.Api.Query().Where(entApi.IDEQ(9999)).Exist(ctx)
+	require.NoError(t, err)
+	require.False(t, exists, "stale endpoint must be deleted")
+
+	rows, err := client.PermissionApi.Query().All(ctx)
+	require.NoError(t, err)
+	var apiIDs []uint32
+	for _, r := range rows {
+		apiIDs = append(apiIDs, *r.APIID)
+	}
+	require.ElementsMatch(t, []uint32{kept.ID}, apiIDs, "binding to kept endpoint survives, binding to stale one is removed")
+}

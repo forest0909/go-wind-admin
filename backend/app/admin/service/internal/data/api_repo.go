@@ -14,6 +14,7 @@ import (
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
+	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 
 	"github.com/tx7do/go-utils/copierutil"
@@ -344,6 +345,41 @@ func (r *ApiRepo) Delete(ctx context.Context, req *permissionV1.DeleteApiRequest
 	}
 
 	return nil
+}
+
+// DeleteExcept 删除 ID 不在 keepIDs 中的接口，连同权限上对它们的绑定。
+// sys_permission_apis.api_id 没有外键，接口行删掉后绑定不会自动级联，
+// 留着的话这些 ID 将来被新接口复用时会把权限错绑到无关接口上。
+func (r *ApiRepo) DeleteExcept(ctx context.Context, keepIDs []uint32) (int, error) {
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
+		return 0, permissionV1.ErrorInternalServerError("start transaction failed")
+	}
+
+	if _, err = tx.PermissionApi.Delete().Where(permissionapi.APIIDNotIn(keepIDs...)).Exec(ctx); err != nil {
+		r.log.Errorf(ctx, "delete stale permission apis failed: %s", err.Error())
+		if rbErr := tx.Rollback(); rbErr != nil {
+			r.log.Errorf(ctx, "rollback failed: %s", rbErr.Error())
+		}
+		return 0, permissionV1.ErrorInternalServerError("delete stale permission apis failed")
+	}
+
+	n, err := tx.Api.Delete().Where(api.IDNotIn(keepIDs...)).Exec(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "delete stale apis failed: %s", err.Error())
+		if rbErr := tx.Rollback(); rbErr != nil {
+			r.log.Errorf(ctx, "rollback failed: %s", rbErr.Error())
+		}
+		return 0, permissionV1.ErrorInternalServerError("delete stale apis failed")
+	}
+
+	if err = tx.Commit(); err != nil {
+		r.log.Errorf(ctx, "commit failed: %s", err.Error())
+		return 0, permissionV1.ErrorInternalServerError("commit failed")
+	}
+
+	return n, nil
 }
 
 // Truncate 清空表数据

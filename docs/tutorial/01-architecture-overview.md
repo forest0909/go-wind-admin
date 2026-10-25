@@ -84,7 +84,7 @@ PostgreSQL / MySQL
 | 租户隔离 | 行级 `tenant_id` 谓词，读写在数据层强制；HTTP 层另有 Api 表 `(path,method)` 闸门 | ent 隐私层 + `pkg/middleware` | 第 6 章 |
 | 数据范围 | 角色级行过滤（五档），令牌承载聚合结果 | ent 隐私层（逐表 opt-in） | [data_scope_design.md](../data_scope_design.md) |
 | 字段级权限 | 角色黑名单字段，服务端响应裁剪 + 前端隐藏 | service 层切面（当前仅 `user`）+ 三端 access store | [frontend_authority.md](../frontend_authority.md) |
-| 审计日志 | 六类日志全覆盖，含 SQL 级 data access 采集与词法脱敏 | `pkg/middleware/logging`、driver 包装器 | [audit-log-producer-design.md](../audit-log-producer-design.md) |
+| 审计日志 | 登录日志与操作日志 | `pkg/middleware/logging` | [audit-log-producer-design.md](../audit-log-producer-design.md) |
 | 异步任务 | asynq 调度（cron/周期），Redis 队列 | `internal/service` 任务服务 | [task_system.md](../task_system.md) |
 | SSE 推送 | 服务端推送（站内信通知）；流 ID=userId、连接独立鉴权、事件 best-effort | `internal/service`（生产）+ 三端 `transport/sse` 模块 | [sse_architecture.md](../sse_architecture.md) |
 | 对象存储 | MinIO（S3 兼容），预签名上传下载，元数据落库 | `internal/data` 文件模块 | [backend_file_upload.md](../backend_file_upload.md) |

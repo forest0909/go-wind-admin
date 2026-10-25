@@ -79,7 +79,7 @@ cron `0 * * * *`（`pkg/task/tenant_expiry.go`）。handler 语义完整见
 
 ### 5.2 审计日志归档（`audit_log_archive`）
 
-cron `30 3 * * *`。把超过保留期的六类审计行导出 JSONL 归档文件后从库中删除
+cron `30 3 * * *`。把超过保留期的登录日志和操作日志导出 JSONL 归档文件后从库中删除
 （库瘦身 + ≥6 个月留痕的等保平衡）。环境变量：`AUDIT_ARCHIVE_DIR`（默认
 `./data/audit-archive`）、`AUDIT_RETENTION_DAYS`（默认 180）。采集与字段语义见
 [audit-log-producer-design.md](./audit-log-producer-design.md)。

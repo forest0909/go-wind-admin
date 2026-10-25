@@ -3,7 +3,6 @@
   "title": "用户详情",
   "tab": {
     "basicInfo": "基本信息",
-    "apiAuditLog": "API审计日志",
     "internalMessage": "站内信"
   },
   "desc": {

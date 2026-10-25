@@ -40,11 +40,7 @@ export * from './config';
 
 // 日志审计
 export * from './login-audit-log';
-export * from './api-audit-log';
 export * from './operation-audit-log';
-export * from './data-access-audit-log';
-export * from './permission-audit-log';
-export * from './policy-evaluation-log';
 
 // 缓存监控
 export * from './redis-cache-monitor';

@@ -72,215 +72,6 @@ var (
 			},
 		},
 	}
-	// SysAPIAuditLogsColumns holds the columns for the "sys_api_audit_logs" table.
-	SysAPIAuditLogsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
-		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
-		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
-		{Name: "user_id", Type: field.TypeUint32, Nullable: true, Comment: "操作者用户ID"},
-		{Name: "username", Type: field.TypeString, Nullable: true, Comment: "操作者账号名"},
-		{Name: "ip_address", Type: field.TypeString, Nullable: true, Comment: "IP地址"},
-		{Name: "geo_location", Type: field.TypeJSON, Nullable: true, Comment: "地理位置(来自IP库)"},
-		{Name: "device_info", Type: field.TypeJSON, Nullable: true, Comment: "设备信息"},
-		{Name: "referer", Type: field.TypeString, Nullable: true, Comment: "请求来源URL"},
-		{Name: "app_version", Type: field.TypeString, Nullable: true, Comment: "客户端版本号"},
-		{Name: "http_method", Type: field.TypeString, Nullable: true, Comment: "HTTP请求方法"},
-		{Name: "path", Type: field.TypeString, Nullable: true, Comment: "请求路径"},
-		{Name: "request_uri", Type: field.TypeString, Nullable: true, Comment: "完整请求URI"},
-		{Name: "api_module", Type: field.TypeString, Nullable: true, Comment: "API所属业务模块"},
-		{Name: "api_operation", Type: field.TypeString, Nullable: true, Comment: "API业务操作"},
-		{Name: "api_description", Type: field.TypeString, Nullable: true, Comment: "API功能描述"},
-		{Name: "request_id", Type: field.TypeString, Nullable: true, Comment: "请求ID"},
-		{Name: "trace_id", Type: field.TypeString, Nullable: true, Comment: "全局链路追踪ID"},
-		{Name: "span_id", Type: field.TypeString, Nullable: true, Comment: "当前跨度ID"},
-		{Name: "latency_ms", Type: field.TypeUint32, Nullable: true, Comment: "操作耗时"},
-		{Name: "success", Type: field.TypeBool, Nullable: true, Comment: "操作结果"},
-		{Name: "status_code", Type: field.TypeUint32, Nullable: true, Comment: "HTTP状态码"},
-		{Name: "reason", Type: field.TypeString, Nullable: true, Comment: "操作失败原因"},
-		{Name: "request_header", Type: field.TypeString, Nullable: true, Comment: "请求头"},
-		{Name: "request_body", Type: field.TypeString, Nullable: true, Comment: "请求体"},
-		{Name: "response", Type: field.TypeString, Nullable: true, Comment: "响应信息"},
-		{Name: "log_hash", Type: field.TypeString, Nullable: true, Comment: "日志内容哈希（SHA256，十六进制字符串）"},
-		{Name: "signature", Type: field.TypeBytes, Nullable: true, Comment: "日志数字签名"},
-	}
-	// SysAPIAuditLogsTable holds the schema information for the "sys_api_audit_logs" table.
-	SysAPIAuditLogsTable = &schema.Table{
-		Name:       "sys_api_audit_logs",
-		Comment:    "API审计日志表",
-		Columns:    SysAPIAuditLogsColumns,
-		PrimaryKey: []*schema.Column{SysAPIAuditLogsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "uidx_sys_api_audit_logs_tenant_request_id",
-				Unique:  true,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[16]},
-			},
-			{
-				Name:    "uidx_sys_api_audit_logs_tenant_log_hash",
-				Unique:  true,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[26]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_user_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[3], SysAPIAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_username_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[4], SysAPIAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_ip_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[5], SysAPIAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_trace_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[17]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_api_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[13], SysAPIAuditLogsColumns[14], SysAPIAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_path_method_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[11], SysAPIAuditLogsColumns[10], SysAPIAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_sys_api_audit_logs_tenant_status_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysAPIAuditLogsColumns[2], SysAPIAuditLogsColumns[21], SysAPIAuditLogsColumns[20], SysAPIAuditLogsColumns[1]},
-			},
-		},
-	}
-	// SysDataAccessAuditLogsColumns holds the columns for the "sys_data_access_audit_logs" table.
-	SysDataAccessAuditLogsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
-		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
-		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
-		{Name: "user_id", Type: field.TypeUint32, Nullable: true, Comment: "操作者用户ID"},
-		{Name: "username", Type: field.TypeString, Nullable: true, Comment: "操作者账号名"},
-		{Name: "ip_address", Type: field.TypeString, Nullable: true, Comment: "IP地址"},
-		{Name: "geo_location", Type: field.TypeJSON, Nullable: true, Comment: "地理位置(来自IP库)"},
-		{Name: "device_info", Type: field.TypeJSON, Nullable: true, Comment: "设备信息"},
-		{Name: "request_id", Type: field.TypeString, Nullable: true, Comment: "全局请求ID"},
-		{Name: "trace_id", Type: field.TypeString, Nullable: true, Comment: "全局链路追踪ID"},
-		{Name: "data_source", Type: field.TypeString, Nullable: true, Comment: "数据源类型"},
-		{Name: "table_name", Type: field.TypeString, Nullable: true, Comment: "数据表名"},
-		{Name: "data_id", Type: field.TypeString, Nullable: true, Comment: "数据主键ID"},
-		{Name: "access_type", Type: field.TypeEnum, Nullable: true, Comment: "数据访问类型", Enums: []string{"SELECT", "INSERT", "UPDATE", "DELETE", "VIEW", "BULK_READ", "EXPORT", "IMPORT", "DDL_CREATE", "DDL_ALTER", "DDL_DROP", "METADATA_READ", "SCAN", "ADMIN_OPERATION", "OTHER"}},
-		{Name: "sql_digest", Type: field.TypeString, Nullable: true, Comment: "执行的SQL语句摘要"},
-		{Name: "sql_text", Type: field.TypeString, Nullable: true, Comment: "执行的SQL语句"},
-		{Name: "affected_rows", Type: field.TypeUint32, Nullable: true, Comment: "影响行数"},
-		{Name: "latency_ms", Type: field.TypeUint32, Nullable: true, Comment: "延迟时间（毫秒）"},
-		{Name: "success", Type: field.TypeBool, Nullable: true, Comment: "操作结果"},
-		{Name: "sensitive_level", Type: field.TypeEnum, Nullable: true, Comment: "数据敏感级别", Enums: []string{"PUBLIC", "INTERNAL", "CONFIDENTIAL", "SECRET"}},
-		{Name: "data_masked", Type: field.TypeBool, Nullable: true, Comment: "是否已脱敏"},
-		{Name: "masking_rules", Type: field.TypeString, Nullable: true, Comment: "脱敏规则"},
-		{Name: "business_purpose", Type: field.TypeString, Nullable: true, Comment: "业务处理目的"},
-		{Name: "data_category", Type: field.TypeString, Nullable: true, Comment: "数据分类标签"},
-		{Name: "db_user", Type: field.TypeString, Nullable: true, Comment: "数据库用户"},
-		{Name: "log_hash", Type: field.TypeString, Nullable: true, Comment: "日志内容哈希（SHA256，十六进制字符串）"},
-		{Name: "signature", Type: field.TypeBytes, Nullable: true, Comment: "日志数字签名"},
-	}
-	// SysDataAccessAuditLogsTable holds the schema information for the "sys_data_access_audit_logs" table.
-	SysDataAccessAuditLogsTable = &schema.Table{
-		Name:       "sys_data_access_audit_logs",
-		Comment:    "数据访问审计日志表",
-		Columns:    SysDataAccessAuditLogsColumns,
-		PrimaryKey: []*schema.Column{SysDataAccessAuditLogsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "dataaccessauditlog_user_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[3]},
-			},
-			{
-				Name:    "dataaccessauditlog_username",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[4]},
-			},
-			{
-				Name:    "dataaccessauditlog_request_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[8]},
-			},
-			{
-				Name:    "dataaccessauditlog_trace_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[9]},
-			},
-			{
-				Name:    "dataaccessauditlog_ip_address",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[5]},
-			},
-			{
-				Name:    "dataaccessauditlog_ip_address_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[5], SysDataAccessAuditLogsColumns[1]},
-			},
-			{
-				Name:    "dataaccessauditlog_tenant_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[2]},
-			},
-			{
-				Name:    "dataaccessauditlog_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[1]},
-			},
-			{
-				Name:    "dataaccessauditlog_tenant_id_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[2], SysDataAccessAuditLogsColumns[1]},
-			},
-			{
-				Name:    "dataaccessauditlog_tenant_id_user_id_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[2], SysDataAccessAuditLogsColumns[3], SysDataAccessAuditLogsColumns[1]},
-			},
-			{
-				Name:    "dataaccessauditlog_data_source_table_name_data_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[10], SysDataAccessAuditLogsColumns[11], SysDataAccessAuditLogsColumns[12]},
-			},
-			{
-				Name:    "dataaccessauditlog_access_type",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[13]},
-			},
-			{
-				Name:    "dataaccessauditlog_access_type_success_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[13], SysDataAccessAuditLogsColumns[18], SysDataAccessAuditLogsColumns[1]},
-			},
-			{
-				Name:    "dataaccessauditlog_sql_digest",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[14]},
-			},
-			{
-				Name:    "dataaccessauditlog_data_masked",
-				Unique:  false,
-				Columns: []*schema.Column{SysDataAccessAuditLogsColumns[20]},
-			},
-		},
-	}
 	// SysDictEntriesColumns holds the columns for the "sys_dict_entries" table.
 	SysDictEntriesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
@@ -1610,64 +1401,6 @@ var (
 			},
 		},
 	}
-	// SysPermissionAuditLogsColumns holds the columns for the "sys_permission_audit_logs" table.
-	SysPermissionAuditLogsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
-		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
-		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
-		{Name: "operator_id", Type: field.TypeUint32, Nullable: true, Comment: "操作者 用户ID"},
-		{Name: "operator_name", Type: field.TypeString, Nullable: true, Comment: "操作者用户名"},
-		{Name: "target_type", Type: field.TypeString, Nullable: true, Comment: "目标类型"},
-		{Name: "target_id", Type: field.TypeString, Nullable: true, Comment: "目标ID"},
-		{Name: "target_name", Type: field.TypeString, Nullable: true, Comment: "目标名称"},
-		{Name: "action", Type: field.TypeEnum, Nullable: true, Comment: "动作", Enums: []string{"GRANT", "REVOKE", "UPDATE", "RESET", "CREATE", "DELETE", "ASSIGN", "UNASSIGN", "BULK_GRANT", "BULK_REVOKE", "EXPIRE", "SUSPEND", "RESUME", "ROLLBACK", "OTHER"}},
-		{Name: "old_value", Type: field.TypeString, Nullable: true, Comment: "旧值（JSON）", SchemaType: map[string]string{"mysql": "json", "postgres": "jsonb"}},
-		{Name: "new_value", Type: field.TypeString, Nullable: true, Comment: "新值（JSON）", SchemaType: map[string]string{"mysql": "json", "postgres": "jsonb"}},
-		{Name: "ip_address", Type: field.TypeString, Comment: "操作者IP地址"},
-		{Name: "request_id", Type: field.TypeString, Comment: "关联全局请求ID"},
-		{Name: "reason", Type: field.TypeString, Comment: "变更原因"},
-		{Name: "log_hash", Type: field.TypeString, Nullable: true, Comment: "日志内容哈希（SHA256，十六进制字符串）"},
-		{Name: "signature", Type: field.TypeBytes, Nullable: true, Comment: "日志数字签名"},
-	}
-	// SysPermissionAuditLogsTable holds the schema information for the "sys_permission_audit_logs" table.
-	SysPermissionAuditLogsTable = &schema.Table{
-		Name:       "sys_permission_audit_logs",
-		Comment:    "权限变更审计日志表",
-		Columns:    SysPermissionAuditLogsColumns,
-		PrimaryKey: []*schema.Column{SysPermissionAuditLogsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "idx_permission_audit_tenant_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPermissionAuditLogsColumns[2], SysPermissionAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_permission_audit_tenant_operator_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPermissionAuditLogsColumns[2], SysPermissionAuditLogsColumns[3], SysPermissionAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_permission_audit_tenant_target_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPermissionAuditLogsColumns[2], SysPermissionAuditLogsColumns[5], SysPermissionAuditLogsColumns[6], SysPermissionAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_permission_audit_target",
-				Unique:  false,
-				Columns: []*schema.Column{SysPermissionAuditLogsColumns[5], SysPermissionAuditLogsColumns[6]},
-			},
-			{
-				Name:    "idx_permission_audit_tenant_action_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPermissionAuditLogsColumns[2], SysPermissionAuditLogsColumns[8], SysPermissionAuditLogsColumns[1]},
-			},
-			{
-				Name:    "idx_permission_audit_tenant_ip",
-				Unique:  false,
-				Columns: []*schema.Column{SysPermissionAuditLogsColumns[2], SysPermissionAuditLogsColumns[11]},
-			},
-		},
-	}
 	// SysPermissionGroupsColumns holds the columns for the "sys_permission_groups" table.
 	SysPermissionGroupsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
@@ -1900,85 +1633,6 @@ var (
 				Name:    "idx_sys_plan_quotas_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{SysPlanQuotasColumns[1]},
-			},
-		},
-	}
-	// SysPolicyEvaluationLogsColumns holds the columns for the "sys_policy_evaluation_logs" table.
-	SysPolicyEvaluationLogsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
-		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
-		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
-		{Name: "user_id", Type: field.TypeUint32, Comment: "用户ID"},
-		{Name: "membership_id", Type: field.TypeUint32, Comment: "成员身份ID"},
-		{Name: "permission_id", Type: field.TypeUint32, Comment: "权限点ID"},
-		{Name: "policy_id", Type: field.TypeUint32, Nullable: true, Comment: "策略ID（可能无策略）"},
-		{Name: "request_path", Type: field.TypeString, Nullable: true, Comment: "请求API路径"},
-		{Name: "request_method", Type: field.TypeString, Nullable: true, Comment: "请求HTTP方法"},
-		{Name: "result", Type: field.TypeBool, Comment: "是否通过", Default: false},
-		{Name: "effect_details", Type: field.TypeString, Nullable: true, Comment: "评估详情/拒绝原因"},
-		{Name: "scope_sql", Type: field.TypeString, Nullable: true, Comment: "生成的SQL条件"},
-		{Name: "ip_address", Type: field.TypeString, Nullable: true, Comment: "操作者IP地址"},
-		{Name: "trace_id", Type: field.TypeString, Nullable: true, Comment: "全局链路追踪ID"},
-		{Name: "evaluation_context", Type: field.TypeString, Nullable: true, Comment: "决策上下文快照"},
-		{Name: "log_hash", Type: field.TypeString, Nullable: true, Comment: "日志内容哈希（SHA256，十六进制字符串）"},
-		{Name: "signature", Type: field.TypeBytes, Nullable: true, Comment: "日志数字签名"},
-	}
-	// SysPolicyEvaluationLogsTable holds the schema information for the "sys_policy_evaluation_logs" table.
-	SysPolicyEvaluationLogsTable = &schema.Table{
-		Name:       "sys_policy_evaluation_logs",
-		Comment:    "策略评估日志表",
-		Columns:    SysPolicyEvaluationLogsColumns,
-		PrimaryKey: []*schema.Column{SysPolicyEvaluationLogsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "idx_policy_eval_tenant_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[2], SysPolicyEvaluationLogsColumns[1]},
-			},
-			{
-				Name:    "idx_policy_eval_tenant_user_permission_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[2], SysPolicyEvaluationLogsColumns[3], SysPolicyEvaluationLogsColumns[5], SysPolicyEvaluationLogsColumns[1]},
-			},
-			{
-				Name:    "idx_policy_eval_tenant_policy_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[2], SysPolicyEvaluationLogsColumns[6], SysPolicyEvaluationLogsColumns[1]},
-			},
-			{
-				Name:    "idx_policy_eval_tenant_membership_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[2], SysPolicyEvaluationLogsColumns[4], SysPolicyEvaluationLogsColumns[1]},
-			},
-			{
-				Name:    "idx_policy_eval_tenant_permission_result_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[2], SysPolicyEvaluationLogsColumns[5], SysPolicyEvaluationLogsColumns[9], SysPolicyEvaluationLogsColumns[1]},
-			},
-			{
-				Name:    "idx_policy_eval_request_path",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[7]},
-			},
-			{
-				Name:    "idx_policy_eval_request_method",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[8]},
-			},
-			{
-				Name:    "idx_policy_eval_trace_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[13]},
-			},
-			{
-				Name:    "idx_policy_eval_ip_address_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[12], SysPolicyEvaluationLogsColumns[1]},
-			},
-			{
-				Name:    "idx_policy_eval_log_hash",
-				Unique:  false,
-				Columns: []*schema.Column{SysPolicyEvaluationLogsColumns[15]},
 			},
 		},
 	}
@@ -2989,8 +2643,6 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		SysApisTable,
-		SysAPIAuditLogsTable,
-		SysDataAccessAuditLogsTable,
 		SysDictEntriesTable,
 		SysDictEntryI18nTable,
 		SysDictTypesTable,
@@ -3009,14 +2661,12 @@ var (
 		SysOrgUnitsTable,
 		SysPermissionsTable,
 		SysPermissionApisTable,
-		SysPermissionAuditLogsTable,
 		SysPermissionGroupsTable,
 		SysPermissionMenusTable,
 		SysPermissionPoliciesTable,
 		SysPlansTable,
 		SysPlanModulesTable,
 		SysPlanQuotasTable,
-		SysPolicyEvaluationLogsTable,
 		SysPositionsTable,
 		SysRolesTable,
 		SysRoleFieldPermissionsTable,
@@ -3037,16 +2687,6 @@ var (
 func init() {
 	SysApisTable.Annotation = &entsql.Annotation{
 		Table:     "sys_apis",
-		Charset:   "utf8mb4",
-		Collation: "utf8mb4_bin",
-	}
-	SysAPIAuditLogsTable.Annotation = &entsql.Annotation{
-		Table:     "sys_api_audit_logs",
-		Charset:   "utf8mb4",
-		Collation: "utf8mb4_bin",
-	}
-	SysDataAccessAuditLogsTable.Annotation = &entsql.Annotation{
-		Table:     "sys_data_access_audit_logs",
 		Charset:   "utf8mb4",
 		Collation: "utf8mb4_bin",
 	}
@@ -3144,11 +2784,6 @@ func init() {
 		Charset:   "utf8mb4",
 		Collation: "utf8mb4_bin",
 	}
-	SysPermissionAuditLogsTable.Annotation = &entsql.Annotation{
-		Table:     "sys_permission_audit_logs",
-		Charset:   "utf8mb4",
-		Collation: "utf8mb4_bin",
-	}
 	SysPermissionGroupsTable.ForeignKeys[0].RefTable = SysPermissionGroupsTable
 	SysPermissionGroupsTable.Annotation = &entsql.Annotation{
 		Table:     "sys_permission_groups",
@@ -3179,11 +2814,6 @@ func init() {
 	SysPlanQuotasTable.ForeignKeys[0].RefTable = SysPlansTable
 	SysPlanQuotasTable.Annotation = &entsql.Annotation{
 		Table:     "sys_plan_quotas",
-		Charset:   "utf8mb4",
-		Collation: "utf8mb4_bin",
-	}
-	SysPolicyEvaluationLogsTable.Annotation = &entsql.Annotation{
-		Table:     "sys_policy_evaluation_logs",
 		Charset:   "utf8mb4",
 		Collation: "utf8mb4_bin",
 	}

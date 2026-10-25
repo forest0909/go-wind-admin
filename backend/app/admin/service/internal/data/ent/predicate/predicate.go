@@ -9,12 +9,6 @@ import (
 // Api is the predicate function for api builders.
 type Api func(*sql.Selector)
 
-// ApiAuditLog is the predicate function for apiauditlog builders.
-type ApiAuditLog func(*sql.Selector)
-
-// DataAccessAuditLog is the predicate function for dataaccessauditlog builders.
-type DataAccessAuditLog func(*sql.Selector)
-
 // DictEntry is the predicate function for dictentry builders.
 type DictEntry func(*sql.Selector)
 
@@ -69,9 +63,6 @@ type Permission func(*sql.Selector)
 // PermissionApi is the predicate function for permissionapi builders.
 type PermissionApi func(*sql.Selector)
 
-// PermissionAuditLog is the predicate function for permissionauditlog builders.
-type PermissionAuditLog func(*sql.Selector)
-
 // PermissionGroup is the predicate function for permissiongroup builders.
 type PermissionGroup func(*sql.Selector)
 
@@ -89,9 +80,6 @@ type PlanModule func(*sql.Selector)
 
 // PlanQuota is the predicate function for planquota builders.
 type PlanQuota func(*sql.Selector)
-
-// PolicyEvaluationLog is the predicate function for policyevaluationlog builders.
-type PolicyEvaluationLog func(*sql.Selector)
 
 // Position is the predicate function for position builders.
 type Position func(*sql.Selector)

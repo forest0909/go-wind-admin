@@ -119,7 +119,6 @@ func TestLoginAuditLogHandleLoginOpWithToken(t *testing.T) {
 	requireTimestampNearNow(t, rec.GetCreatedAt())
 
 	require.Len(t, env.capture.loginMeta, 1)
-	assert.True(t, env.capture.loginMeta[0].Sinking)
 	assert.True(t, env.capture.loginMeta[0].SystemContext)
 }
 
@@ -244,7 +243,6 @@ func TestLoginAuditLogHandleDirectEmptySources(t *testing.T) {
 		requireDERSig(t, rec.GetSignature())
 		requireTimestampNearNow(t, rec.GetCreatedAt())
 		assert.True(t, meta.SystemContext, "直调落库同样必须切系统 viewer")
-		assert.False(t, meta.Sinking, "直调路径无 Server 包装时无 sink 标记（由 Server 落库阶段统一植入）")
 	})
 
 	t.Run("失败错误填充", func(t *testing.T) {

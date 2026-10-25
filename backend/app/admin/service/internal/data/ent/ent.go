@@ -7,8 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
-	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentry"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentryi18n"
 	"go-wind-admin/app/admin/service/internal/data/ent/dicttype"
@@ -27,14 +25,12 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/orgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/permission"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
-	"go-wind-admin/app/admin/service/internal/data/ent/permissionauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionmenu"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/plan"
 	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
-	"go-wind-admin/app/admin/service/internal/data/ent/policyevaluationlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolefieldpermission"
@@ -116,8 +112,6 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			api.Table:                      api.ValidColumn,
-			apiauditlog.Table:              apiauditlog.ValidColumn,
-			dataaccessauditlog.Table:       dataaccessauditlog.ValidColumn,
 			dictentry.Table:                dictentry.ValidColumn,
 			dictentryi18n.Table:            dictentryi18n.ValidColumn,
 			dicttype.Table:                 dicttype.ValidColumn,
@@ -136,14 +130,12 @@ func checkColumn(t, c string) error {
 			orgunit.Table:                  orgunit.ValidColumn,
 			permission.Table:               permission.ValidColumn,
 			permissionapi.Table:            permissionapi.ValidColumn,
-			permissionauditlog.Table:       permissionauditlog.ValidColumn,
 			permissiongroup.Table:          permissiongroup.ValidColumn,
 			permissionmenu.Table:           permissionmenu.ValidColumn,
 			permissionpolicy.Table:         permissionpolicy.ValidColumn,
 			plan.Table:                     plan.ValidColumn,
 			planmodule.Table:               planmodule.ValidColumn,
 			planquota.Table:                planquota.ValidColumn,
-			policyevaluationlog.Table:      policyevaluationlog.ValidColumn,
 			position.Table:                 position.ValidColumn,
 			role.Table:                     role.ValidColumn,
 			rolefieldpermission.Table:      rolefieldpermission.ValidColumn,

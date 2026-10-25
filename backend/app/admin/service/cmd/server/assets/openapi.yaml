@@ -14,109 +14,6 @@ info:
         url: https://github.com/tx7do/go-wind-admin/blob/master/LICENSE
     version: "1.0"
 paths:
-    /admin/v1/api-audit-logs:
-        get:
-            tags:
-                - ApiAuditLogService
-            description: 查询API审计日志列表
-            operationId: ApiAuditLogService_List
-            parameters:
-                - name: page
-                  in: query
-                  description: 当前页码（从1开始，默认1）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: pageSize
-                  in: query
-                  description: 每页条数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: offset
-                  in: query
-                  description: 跳过的记录数（从0开始，默认0）
-                  schema:
-                    type: string
-                - name: limit
-                  in: query
-                  description: 最多返回的记录数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: token
-                  in: query
-                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
-                  schema:
-                    type: string
-                - name: noPaging
-                  in: query
-                  description: 是否不分页，如果为true，则page和pageSize参数无效。
-                  schema:
-                    type: boolean
-                - name: query
-                  in: query
-                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/tx7do/go-crud/tree/main/pagination/filter/README.md
-                  schema:
-                    type: string
-                - name: filter
-                  in: query
-                  description: Google AIP规范字符串过滤条件
-                  schema:
-                    type: string
-                - name: filterExpr.type
-                  in: query
-                  description: 过滤表达式类型
-                  schema:
-                    enum:
-                        - EXPR_TYPE_UNSPECIFIED
-                        - AND
-                        - OR
-                    type: string
-                    format: enum
-                - name: orderBy
-                  in: query
-                  description: 排序条件
-                  schema:
-                    type: string
-                - name: fieldMask
-                  in: query
-                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ListApiAuditLogResponse'
-    /admin/v1/api-audit-logs/{id}:
-        get:
-            tags:
-                - ApiAuditLogService
-            description: 查询API审计日志详情
-            operationId: ApiAuditLogService_Get
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: viewMask
-                  in: query
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ApiAuditLog'
     /admin/v1/apis:
         get:
             tags:
@@ -550,109 +447,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/DashboardOverviewResponse'
-    /admin/v1/data-access-audit-logs:
-        get:
-            tags:
-                - DataAccessAuditLogService
-            description: 查询数据访问审计日志列表
-            operationId: DataAccessAuditLogService_List
-            parameters:
-                - name: page
-                  in: query
-                  description: 当前页码（从1开始，默认1）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: pageSize
-                  in: query
-                  description: 每页条数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: offset
-                  in: query
-                  description: 跳过的记录数（从0开始，默认0）
-                  schema:
-                    type: string
-                - name: limit
-                  in: query
-                  description: 最多返回的记录数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: token
-                  in: query
-                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
-                  schema:
-                    type: string
-                - name: noPaging
-                  in: query
-                  description: 是否不分页，如果为true，则page和pageSize参数无效。
-                  schema:
-                    type: boolean
-                - name: query
-                  in: query
-                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/tx7do/go-crud/tree/main/pagination/filter/README.md
-                  schema:
-                    type: string
-                - name: filter
-                  in: query
-                  description: Google AIP规范字符串过滤条件
-                  schema:
-                    type: string
-                - name: filterExpr.type
-                  in: query
-                  description: 过滤表达式类型
-                  schema:
-                    enum:
-                        - EXPR_TYPE_UNSPECIFIED
-                        - AND
-                        - OR
-                    type: string
-                    format: enum
-                - name: orderBy
-                  in: query
-                  description: 排序条件
-                  schema:
-                    type: string
-                - name: fieldMask
-                  in: query
-                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ListDataAccessAuditLogResponse'
-    /admin/v1/data-access-audit-logs/{id}:
-        get:
-            tags:
-                - DataAccessAuditLogService
-            description: 查询数据访问审计日志详情
-            operationId: DataAccessAuditLogService_Get
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: viewMask
-                  in: query
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/DataAccessAuditLog'
     /admin/v1/dict/entries:
         get:
             tags:
@@ -2684,109 +2478,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ListPermissionCodeResponse'
-    /admin/v1/permission-audit-logs:
-        get:
-            tags:
-                - PermissionAuditLogService
-            description: 查询权限变更审计日志列表
-            operationId: PermissionAuditLogService_List
-            parameters:
-                - name: page
-                  in: query
-                  description: 当前页码（从1开始，默认1）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: pageSize
-                  in: query
-                  description: 每页条数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: offset
-                  in: query
-                  description: 跳过的记录数（从0开始，默认0）
-                  schema:
-                    type: string
-                - name: limit
-                  in: query
-                  description: 最多返回的记录数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: token
-                  in: query
-                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
-                  schema:
-                    type: string
-                - name: noPaging
-                  in: query
-                  description: 是否不分页，如果为true，则page和pageSize参数无效。
-                  schema:
-                    type: boolean
-                - name: query
-                  in: query
-                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/tx7do/go-crud/tree/main/pagination/filter/README.md
-                  schema:
-                    type: string
-                - name: filter
-                  in: query
-                  description: Google AIP规范字符串过滤条件
-                  schema:
-                    type: string
-                - name: filterExpr.type
-                  in: query
-                  description: 过滤表达式类型
-                  schema:
-                    enum:
-                        - EXPR_TYPE_UNSPECIFIED
-                        - AND
-                        - OR
-                    type: string
-                    format: enum
-                - name: orderBy
-                  in: query
-                  description: 排序条件
-                  schema:
-                    type: string
-                - name: fieldMask
-                  in: query
-                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ListPermissionAuditLogResponse'
-    /admin/v1/permission-audit-logs/{id}:
-        get:
-            tags:
-                - PermissionAuditLogService
-            description: 查询权限变更审计日志详情
-            operationId: PermissionAuditLogService_Get
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: viewMask
-                  in: query
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PermissionAuditLog'
     /admin/v1/permission-groups:
         get:
             tags:
@@ -3567,109 +3258,6 @@ paths:
                 "200":
                     description: OK
                     content: {}
-    /admin/v1/policy-evaluation-logs:
-        get:
-            tags:
-                - PolicyEvaluationLogService
-            description: 查询策略评估日志列表
-            operationId: PolicyEvaluationLogService_List
-            parameters:
-                - name: page
-                  in: query
-                  description: 当前页码（从1开始，默认1）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: pageSize
-                  in: query
-                  description: 每页条数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: offset
-                  in: query
-                  description: 跳过的记录数（从0开始，默认0）
-                  schema:
-                    type: string
-                - name: limit
-                  in: query
-                  description: 最多返回的记录数（默认10，建议设置上限如100）
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: token
-                  in: query
-                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
-                  schema:
-                    type: string
-                - name: noPaging
-                  in: query
-                  description: 是否不分页，如果为true，则page和pageSize参数无效。
-                  schema:
-                    type: boolean
-                - name: query
-                  in: query
-                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/tx7do/go-crud/tree/main/pagination/filter/README.md
-                  schema:
-                    type: string
-                - name: filter
-                  in: query
-                  description: Google AIP规范字符串过滤条件
-                  schema:
-                    type: string
-                - name: filterExpr.type
-                  in: query
-                  description: 过滤表达式类型
-                  schema:
-                    enum:
-                        - EXPR_TYPE_UNSPECIFIED
-                        - AND
-                        - OR
-                    type: string
-                    format: enum
-                - name: orderBy
-                  in: query
-                  description: 排序条件
-                  schema:
-                    type: string
-                - name: fieldMask
-                  in: query
-                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ListPolicyEvaluationLogResponse'
-    /admin/v1/policy-evaluation-logs/{id}:
-        get:
-            tags:
-                - PolicyEvaluationLogService
-            description: 查询策略评估日志详情
-            operationId: PolicyEvaluationLogService_Get
-            parameters:
-                - name: id
-                  in: path
-                  required: true
-                  schema:
-                    type: integer
-                    format: uint32
-                - name: viewMask
-                  in: query
-                  schema:
-                    type: string
-                    format: field-mask
-            responses:
-                "200":
-                    description: OK
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/PolicyEvaluationLog'
     /admin/v1/positions:
         get:
             tags:
@@ -4955,102 +4543,6 @@ components:
                     description: 删除时间
                     format: date-time
             description: API资源
-        ApiAuditLog:
-            type: object
-            properties:
-                id:
-                    type: integer
-                    description: 接口审计日志ID
-                    format: uint32
-                tenantId:
-                    type: integer
-                    description: 租户ID
-                    format: uint32
-                tenantName:
-                    type: string
-                    description: 租户名称
-                userId:
-                    type: integer
-                    description: 用户ID
-                    format: uint32
-                username:
-                    type: string
-                    description: 账号名
-                ipAddress:
-                    type: string
-                    description: IP地址
-                geoLocation:
-                    $ref: '#/components/schemas/GeoLocation'
-                deviceInfo:
-                    $ref: '#/components/schemas/DeviceInfo'
-                referer:
-                    type: string
-                    description: 请求来源URL
-                appVersion:
-                    type: string
-                    description: 客户端版本号
-                httpMethod:
-                    type: string
-                    description: HTTP请求方法（GET/POST/PUT/DELETE）
-                path:
-                    type: string
-                    description: 请求路径（不含参数，如/api/v1/users）
-                requestUri:
-                    type: string
-                    description: 完整请求URI（含参数，如/api/v1/users?id=1）
-                apiModule:
-                    type: string
-                    description: API所属业务模块（如user/permission/order）
-                apiOperation:
-                    type: string
-                    description: API业务操作（如查询用户/创建订单，非HTTP方法）
-                apiDescription:
-                    type: string
-                    description: API功能描述（如“根据ID查询单个用户信息”）
-                requestId:
-                    type: string
-                    description: 全局请求ID（关联网关日志）
-                traceId:
-                    type: string
-                    description: 全局链路追踪ID（符合W3C TraceContext标准）
-                spanId:
-                    type: string
-                    description: 当前跨度ID
-                latencyMs:
-                    type: integer
-                    description: API耗时（毫秒）
-                    format: uint32
-                success:
-                    type: boolean
-                    description: 操作是否成功
-                statusCode:
-                    type: integer
-                    description: HTTP状态码（200/403/500）
-                    format: uint32
-                reason:
-                    type: string
-                    description: 操作失败原因（仅success=false时填充）
-                requestHeader:
-                    type: string
-                    description: 请求头（JSON格式，敏感字段脱敏后）
-                requestBody:
-                    type: string
-                    description: 请求体（JSON格式，敏感字段脱敏后）
-                response:
-                    type: string
-                    description: 响应信息（JSON格式，敏感字段脱敏后）
-                logHash:
-                    type: string
-                    description: 日志内容哈希（SHA256，十六进制字符串）
-                signature:
-                    type: string
-                    description: 日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）
-                    format: bytes
-                createdAt:
-                    type: string
-                    description: 日志创建时间
-                    format: date-time
-            description: 接口审计日志
         BatchCreateLanguagesRequest:
             type: object
             properties:
@@ -5314,117 +4806,6 @@ components:
                     type: integer
                     format: uint32
             description: 概览统计 - 回应
-        DataAccessAuditLog:
-            type: object
-            properties:
-                id:
-                    type: integer
-                    description: API审计日志ID
-                    format: uint32
-                tenantId:
-                    type: integer
-                    description: 租户ID
-                    format: uint32
-                tenantName:
-                    type: string
-                    description: 租户名称
-                userId:
-                    type: integer
-                    description: 用户ID
-                    format: uint32
-                username:
-                    type: string
-                    description: 账号名
-                ipAddress:
-                    type: string
-                    description: 操作IP地址（IPv4/IPv6）
-                requestId:
-                    type: string
-                    description: 全局请求ID（关联网关日志）
-                dataSource:
-                    type: string
-                    description: 数据源类型（mysql/redis/mongodb/es）
-                tableName:
-                    type: string
-                    description: 数据表名（如sys_users/order_info，Redis为key前缀）
-                dataId:
-                    type: string
-                    description: 数据主键ID（如用户ID/订单ID，兼容不同表主键类型）
-                accessType:
-                    enum:
-                        - ACCESS_TYPE_UNSPECIFIED
-                        - SELECT
-                        - INSERT
-                        - UPDATE
-                        - DELETE
-                        - VIEW
-                        - BULK_READ
-                        - EXPORT
-                        - IMPORT
-                        - DDL_CREATE
-                        - DDL_ALTER
-                        - DDL_DROP
-                        - METADATA_READ
-                        - SCAN
-                        - ADMIN_OPERATION
-                        - OTHER
-                    type: string
-                    description: 数据访问类型（SELECT/INSERT/UPDATE/DELETE）
-                    format: enum
-                sqlDigest:
-                    type: string
-                    description: 执行的SQL语句摘要（MD5）
-                sqlText:
-                    type: string
-                    description: 执行的SQL语句（脱敏后，Redis为命令）
-                affectedRows:
-                    type: integer
-                    description: 影响行数（Redis为影响key数量）
-                    format: uint32
-                latencyMs:
-                    type: integer
-                    description: 延迟时间（毫秒）
-                    format: uint32
-                success:
-                    type: boolean
-                    description: 操作是否成功
-                sensitiveLevel:
-                    enum:
-                        - SENSITIVE_LEVEL_UNSPECIFIED
-                        - PUBLIC
-                        - INTERNAL
-                        - CONFIDENTIAL
-                        - SECRET
-                    type: string
-                    description: 数据敏感级别
-                    format: enum
-                dataMasked:
-                    type: boolean
-                    description: 是否已脱敏
-                maskingRules:
-                    type: string
-                    description: 脱敏规则（JSON：{"phone":"mask_last_4"}）
-                businessPurpose:
-                    type: string
-                    description: 业务处理目的
-                dataCategory:
-                    type: string
-                    description: 数据分类标签
-                dbUser:
-                    type: string
-                    description: 数据库用户
-                logHash:
-                    type: string
-                    description: 日志内容哈希（SHA256，十六进制字符串）
-                signature:
-                    type: string
-                    description: 日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）
-                    format: bytes
-                createdAt:
-                    type: string
-                    description: 日志创建时间
-                    format: date-time
-            description: 数据访问审计日志
         DatabaseInfo:
             type: object
             properties:
@@ -6282,16 +5663,6 @@ components:
                     description: 删除时间
                     format: date-time
             description: 语言
-        ListApiAuditLogResponse:
-            type: object
-            properties:
-                items:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/ApiAuditLog'
-                total:
-                    type: string
-            description: 查询API审计日志列表 - 回应
         ListApiResponse:
             type: object
             properties:
@@ -6312,16 +5683,6 @@ components:
                 total:
                     type: string
             description: 查询系统参数列表 - 回应
-        ListDataAccessAuditLogResponse:
-            type: object
-            properties:
-                items:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/DataAccessAuditLog'
-                total:
-                    type: string
-            description: 查询数据访问审计日志列表 - 回应
         ListDictEntryByTypeCodeResponse:
             type: object
             properties:
@@ -6439,16 +5800,6 @@ components:
                 total:
                     type: string
             description: 获取组织单元列表 - 答复
-        ListPermissionAuditLogResponse:
-            type: object
-            properties:
-                items:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/PermissionAuditLog'
-                total:
-                    type: string
-            description: 查询权限变更审计日志列表 - 回应
         ListPermissionCodeResponse:
             type: object
             properties:
@@ -6511,16 +5862,6 @@ components:
                 total:
                     type: string
             description: 套餐列表 - 答复
-        ListPolicyEvaluationLogResponse:
-            type: object
-            properties:
-                items:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/PolicyEvaluationLog'
-                total:
-                    type: string
-            description: 查询策略评估日志列表 - 回应
         ListPositionResponse:
             type: object
             properties:
@@ -7403,81 +6744,6 @@ components:
                     description: 删除时间
                     format: date-time
             description: 权限点
-        PermissionAuditLog:
-            type: object
-            properties:
-                id:
-                    type: integer
-                    description: 权限变更审计日志ID
-                    format: uint32
-                tenantId:
-                    type: integer
-                    description: 租户ID
-                    format: uint32
-                operatorId:
-                    type: integer
-                    description: 操作者用户ID
-                    format: uint32
-                operatorName:
-                    type: string
-                    description: 操作者用户名
-                targetType:
-                    type: string
-                    description: 目标类型
-                targetId:
-                    type: string
-                    description: 目标ID
-                targetName:
-                    type: string
-                    description: 目标名称
-                action:
-                    enum:
-                        - ACTION_TYPE_UNSPECIFIED
-                        - GRANT
-                        - REVOKE
-                        - UPDATE
-                        - RESET
-                        - CREATE
-                        - DELETE
-                        - ASSIGN
-                        - UNASSIGN
-                        - BULK_GRANT
-                        - BULK_REVOKE
-                        - EXPIRE
-                        - SUSPEND
-                        - RESUME
-                        - ROLLBACK
-                        - OTHER
-                    type: string
-                    description: 变更动作
-                    format: enum
-                oldValue:
-                    type: string
-                    description: 旧值
-                newValue:
-                    type: string
-                    description: 新值
-                ipAddress:
-                    type: string
-                    description: 操作者IP地址
-                requestId:
-                    type: string
-                    description: 关联全局请求ID
-                reason:
-                    type: string
-                    description: 变更原因
-                logHash:
-                    type: string
-                    description: 日志内容哈希（SHA256，十六进制字符串）
-                signature:
-                    type: string
-                    description: 日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）
-                    format: bytes
-                createdAt:
-                    type: string
-                    description: 日志创建时间
-                    format: date-time
-            description: 权限变更审计日志
         PermissionGroup:
             type: object
             properties:
@@ -7718,69 +6984,6 @@ components:
                     description: 删除时间
                     format: date-time
             description: 套餐配额
-        PolicyEvaluationLog:
-            type: object
-            properties:
-                id:
-                    type: integer
-                    description: 策略评估日志ID
-                    format: uint32
-                tenantId:
-                    type: integer
-                    description: 租户ID
-                    format: uint32
-                userId:
-                    type: integer
-                    description: 操作者用户ID
-                    format: uint32
-                membershipId:
-                    type: integer
-                    description: 成员身份ID
-                    format: uint32
-                permissionId:
-                    type: integer
-                    description: 权限点ID
-                    format: uint32
-                policyId:
-                    type: integer
-                    description: 策略ID（可能无策略）
-                    format: uint32
-                requestPath:
-                    type: string
-                    description: 请求API路径
-                requestMethod:
-                    type: string
-                    description: 请求HTTP方法
-                result:
-                    type: boolean
-                    description: 是否通过
-                effectDetails:
-                    type: string
-                    description: 评估详情/拒绝原因
-                scopeSql:
-                    type: string
-                    description: 生成的SQL条件
-                ipAddress:
-                    type: string
-                    description: 操作者IP地址
-                traceId:
-                    type: string
-                    description: 全局链路追踪ID（符合W3C TraceContext标准）
-                evaluationContext:
-                    type: string
-                    description: 决策上下文快照(如用户属性、环境属性)
-                logHash:
-                    type: string
-                    description: 日志内容哈希（SHA256，十六进制字符串）
-                signature:
-                    type: string
-                    description: 日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）
-                    format: bytes
-                createdAt:
-                    type: string
-                    description: 日志创建时间
-                    format: date-time
-            description: 策略评估日志
         Position:
             type: object
             properties:
@@ -9123,8 +8326,6 @@ security:
 tags:
     - name: AdminPortalService
       description: 后台前端初始化数据与配置服务
-    - name: ApiAuditLogService
-      description: API审计日志管理服务
     - name: ApiService
       description: API资源管理服务
     - name: AuthenticationService
@@ -9133,8 +8334,6 @@ tags:
       description: 系统参数管理服务
     - name: DashboardService
       description: 后台首页分析概览服务（只读聚合）
-    - name: DataAccessAuditLogService
-      description: 数据访问审计日志管理服务
     - name: DictEntryService
       description: 数据字典条目管理服务
     - name: DictTypeService
@@ -9166,8 +8365,6 @@ tags:
       description: 操作审计日志管理服务
     - name: OrgUnitService
       description: 组织单元服务
-    - name: PermissionAuditLogService
-      description: 权限变更审计日志服务
     - name: PermissionGroupService
       description: 权限组管理服务
     - name: PermissionService
@@ -9178,8 +8375,6 @@ tags:
       description: 套餐配额管理服务
     - name: PlanService
       description: 套餐管理服务
-    - name: PolicyEvaluationLogService
-      description: 策略评估日志服务
     - name: PositionService
       description: 职位管理服务
     - name: RedisCacheMonitorService

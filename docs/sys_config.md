@@ -96,7 +96,7 @@ maxAge := r.configRepo.GetConfigInt(ctx, passwordPolicy.ConfigKeyMaxAgeDays, pas
 ## 7. 边界与已知残留
 
 - **写路径前提**：失效链路假设全部写路径都经 `ConfigRepo`——绕过 repo 直改表的写入不会触发本地失效与广播；新增写路径时必须走 repo。
-- 参数变更**不是**六类审计日志中的独立类别；管理页改动落操作日志。
+- 参数变更没有单独的审计类别；管理页改动落操作日志。
 - 无变更历史/版本表，回滚靠管理员改回。
 - `sys.login.captchaEnabled` 一类键目前只出现在测试与注释示例里，**不是**已接线的生产消费方。
 

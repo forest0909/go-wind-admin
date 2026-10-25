@@ -45,11 +45,7 @@
   接口三类写操作，以及「接口同步」「权限同步」两个批量入口（各自在结束时调一次
   `authorizer.ResetPolicies`）；新建租户（连带播种管理员角色）与进程启动期也会各重建一次
   （`tenant_service.go:276`、`rest_server.go:267`）；
-- 每次判定落 **PolicyEvaluationLog**（策略评估日志，含评估上下文与一个关联用 ID）——
-  "为什么这个人能/不能调这个接口"在审计页可回溯。该行的 `trace_id` 取自请求头
-  `traceparent`，取不到则退到 `X-Request-Id`（`policy_eval_logging_engine.go:136-150`），
-  也就是前端那个 `X-Request-ID`；本仓没有接链路追踪，其余四类审计日志（API / 登录 / 操作 /
-  数据访问）的 `trace_id` 全为 NULL，权限变更审计表干脆没有这一列——跨表串查请用 `request_id`
+- 策略评估日志已删除，鉴权判定不再单独落库。登录和操作是否写了日志，用 `request_id` 对
   （见[第 7 章](./07-audit-compliance.md)第 4 节）。
 
 ## 4. 前端可见性：路由与按钮

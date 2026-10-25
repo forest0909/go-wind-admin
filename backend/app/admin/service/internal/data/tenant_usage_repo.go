@@ -10,8 +10,6 @@ import (
 	entCrud "github.com/tx7do/go-crud/entgo"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
-	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentry"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentryi18n"
 	"go-wind-admin/app/admin/service/internal/data/ent/dicttype"
@@ -26,10 +24,8 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiprole"
 	"go-wind-admin/app/admin/service/internal/data/ent/operationauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/orgunit"
-	"go-wind-admin/app/admin/service/internal/data/ent/permissionauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/plan"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
-	"go-wind-admin/app/admin/service/internal/data/ent/policyevaluationlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolemetadata"
@@ -96,13 +92,10 @@ func (r *TenantUsageRepo) SumStorageInTenant(ctx context.Context, tenantID uint3
 	return 0, nil
 }
 
-// CountApiCallsInTenant 统计租户 API 调用行数（API_CALL 配额检查与水位扫描用）。
-// 与 GetUsage 的 ApiCallCount 同源（sys_api_audit_logs 按租户 COUNT）。
+// CountApiCallsInTenant 返回 0。API 审计已删除，调用量不再计量。
+// 用量接口的 ApiCallCount 和水位扫描都走这里，所以 API_CALL 不会再命中。
 func (r *TenantUsageRepo) CountApiCallsInTenant(ctx context.Context, tenantID uint32) (uint64, error) {
-	cnt, err := r.entClient.Client().ApiAuditLog.Query().
-		Where(apiauditlog.TenantIDEQ(tenantID)).
-		Count(ctx)
-	return uint64(cnt), err
+	return 0, nil
 }
 
 func (r *TenantUsageRepo) GetUsage(ctx context.Context, tenantId uint32) (*identityV1.TenantUsage, error) {
@@ -164,13 +157,8 @@ func (r *TenantUsageRepo) GetUsage(ctx context.Context, tenantId uint32) (*ident
 	}
 	usage.StorageUsedBytes = storageSum
 
-	// 5. API 调用量统计
-	apiCount, aerr := r.CountApiCallsInTenant(sysCtx, tenantId)
-	if aerr != nil {
-		r.log.Errorf(ctx, "get usage: count api audit logs failed: %v", aerr)
-		apiCount = 0
-	}
-	usage.ApiCallCount = apiCount
+	// 5. API 调用量不再计量，固定为 0。
+	usage.ApiCallCount = 0
 
 	return usage, nil
 }
@@ -215,17 +203,9 @@ func (r *TenantUsageRepo) CleanupTenantData(ctx context.Context, tenantId uint32
 	}
 
 	// 以下每个闭包删除一张带 tenant_id 的业务表。
-	// 列表对齐 ent.Client/Tx 中所有拥有 TenantIDEQ 谓词的包（共 28 张表）。
+	// 列表对齐 ent.Client/Tx 中所有拥有 TenantIDEQ 谓词的包（共 24 张表）。
 	// 注意：Tx 层的 Delete.Exec 返回 (int, error)，需丢弃 int 仅返回 error。
 	deleteFns := []func() error{
-		func() error {
-			_, e := tx.ApiAuditLog.Delete().Where(apiauditlog.TenantIDEQ(tenantId)).Exec(sysCtx)
-			return e
-		},
-		func() error {
-			_, e := tx.DataAccessAuditLog.Delete().Where(dataaccessauditlog.TenantIDEQ(tenantId)).Exec(sysCtx)
-			return e
-		},
 		func() error {
 			_, e := tx.DictEntry.Delete().Where(dictentry.TenantIDEQ(tenantId)).Exec(sysCtx)
 			return e
@@ -273,14 +253,6 @@ func (r *TenantUsageRepo) CleanupTenantData(ctx context.Context, tenantId uint32
 			return e
 		},
 		func() error { _, e := tx.OrgUnit.Delete().Where(orgunit.TenantIDEQ(tenantId)).Exec(sysCtx); return e },
-		func() error {
-			_, e := tx.PermissionAuditLog.Delete().Where(permissionauditlog.TenantIDEQ(tenantId)).Exec(sysCtx)
-			return e
-		},
-		func() error {
-			_, e := tx.PolicyEvaluationLog.Delete().Where(policyevaluationlog.TenantIDEQ(tenantId)).Exec(sysCtx)
-			return e
-		},
 		func() error { _, e := tx.Position.Delete().Where(position.TenantIDEQ(tenantId)).Exec(sysCtx); return e },
 		func() error { _, e := tx.Role.Delete().Where(role.TenantIDEQ(tenantId)).Exec(sysCtx); return e },
 		func() error {

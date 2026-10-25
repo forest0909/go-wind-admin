@@ -41,7 +41,7 @@ Create 强制覆盖 tenant_id 防伪造；显式改 tenant_id 值仅放行"同�
 数据范围查询过滤链在一起——任一子策略拒绝即整体拒绝。
 
 **接新表**：`Mixin()` 加 `mixin.TenantID[uint32]{}`（库层全形态隔离自动生效），
-且 `Policy()` 返回 `&TenantMutationGuardPolicy{}`——现有 30 张租户表**无一例外**都挂了
+且 `Policy()` 返回 `&TenantMutationGuardPolicy{}`——现有 26 张租户表都挂了
 （其中岗位表 `position.go:188` 返的是组合策略 `TenantAndDataScopePolicy{}`，见第 4 节）。
 完整步骤与守卫单测范式见参考文档第 7 节。
 

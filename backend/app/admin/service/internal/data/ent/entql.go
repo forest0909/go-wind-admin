@@ -4,8 +4,6 @@ package ent
 
 import (
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
-	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentry"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentryi18n"
 	"go-wind-admin/app/admin/service/internal/data/ent/dicttype"
@@ -24,14 +22,12 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/orgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/permission"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
-	"go-wind-admin/app/admin/service/internal/data/ent/permissionauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionmenu"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/plan"
 	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
-	"go-wind-admin/app/admin/service/internal/data/ent/policyevaluationlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
@@ -56,7 +52,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 43)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 39)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   api.Table,
@@ -87,85 +83,6 @@ var schemaGraph = func() *sqlgraph.Schema {
 	}
 	graph.Nodes[1] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
-			Table:   apiauditlog.Table,
-			Columns: apiauditlog.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeUint32,
-				Column: apiauditlog.FieldID,
-			},
-		},
-		Type: "ApiAuditLog",
-		Fields: map[string]*sqlgraph.FieldSpec{
-			apiauditlog.FieldCreatedAt:      {Type: field.TypeTime, Column: apiauditlog.FieldCreatedAt},
-			apiauditlog.FieldTenantID:       {Type: field.TypeUint32, Column: apiauditlog.FieldTenantID},
-			apiauditlog.FieldUserID:         {Type: field.TypeUint32, Column: apiauditlog.FieldUserID},
-			apiauditlog.FieldUsername:       {Type: field.TypeString, Column: apiauditlog.FieldUsername},
-			apiauditlog.FieldIPAddress:      {Type: field.TypeString, Column: apiauditlog.FieldIPAddress},
-			apiauditlog.FieldGeoLocation:    {Type: field.TypeJSON, Column: apiauditlog.FieldGeoLocation},
-			apiauditlog.FieldDeviceInfo:     {Type: field.TypeJSON, Column: apiauditlog.FieldDeviceInfo},
-			apiauditlog.FieldReferer:        {Type: field.TypeString, Column: apiauditlog.FieldReferer},
-			apiauditlog.FieldAppVersion:     {Type: field.TypeString, Column: apiauditlog.FieldAppVersion},
-			apiauditlog.FieldHTTPMethod:     {Type: field.TypeString, Column: apiauditlog.FieldHTTPMethod},
-			apiauditlog.FieldPath:           {Type: field.TypeString, Column: apiauditlog.FieldPath},
-			apiauditlog.FieldRequestURI:     {Type: field.TypeString, Column: apiauditlog.FieldRequestURI},
-			apiauditlog.FieldAPIModule:      {Type: field.TypeString, Column: apiauditlog.FieldAPIModule},
-			apiauditlog.FieldAPIOperation:   {Type: field.TypeString, Column: apiauditlog.FieldAPIOperation},
-			apiauditlog.FieldAPIDescription: {Type: field.TypeString, Column: apiauditlog.FieldAPIDescription},
-			apiauditlog.FieldRequestID:      {Type: field.TypeString, Column: apiauditlog.FieldRequestID},
-			apiauditlog.FieldTraceID:        {Type: field.TypeString, Column: apiauditlog.FieldTraceID},
-			apiauditlog.FieldSpanID:         {Type: field.TypeString, Column: apiauditlog.FieldSpanID},
-			apiauditlog.FieldLatencyMs:      {Type: field.TypeUint32, Column: apiauditlog.FieldLatencyMs},
-			apiauditlog.FieldSuccess:        {Type: field.TypeBool, Column: apiauditlog.FieldSuccess},
-			apiauditlog.FieldStatusCode:     {Type: field.TypeUint32, Column: apiauditlog.FieldStatusCode},
-			apiauditlog.FieldReason:         {Type: field.TypeString, Column: apiauditlog.FieldReason},
-			apiauditlog.FieldRequestHeader:  {Type: field.TypeString, Column: apiauditlog.FieldRequestHeader},
-			apiauditlog.FieldRequestBody:    {Type: field.TypeString, Column: apiauditlog.FieldRequestBody},
-			apiauditlog.FieldResponse:       {Type: field.TypeString, Column: apiauditlog.FieldResponse},
-			apiauditlog.FieldLogHash:        {Type: field.TypeString, Column: apiauditlog.FieldLogHash},
-			apiauditlog.FieldSignature:      {Type: field.TypeBytes, Column: apiauditlog.FieldSignature},
-		},
-	}
-	graph.Nodes[2] = &sqlgraph.Node{
-		NodeSpec: sqlgraph.NodeSpec{
-			Table:   dataaccessauditlog.Table,
-			Columns: dataaccessauditlog.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeUint32,
-				Column: dataaccessauditlog.FieldID,
-			},
-		},
-		Type: "DataAccessAuditLog",
-		Fields: map[string]*sqlgraph.FieldSpec{
-			dataaccessauditlog.FieldCreatedAt:       {Type: field.TypeTime, Column: dataaccessauditlog.FieldCreatedAt},
-			dataaccessauditlog.FieldTenantID:        {Type: field.TypeUint32, Column: dataaccessauditlog.FieldTenantID},
-			dataaccessauditlog.FieldUserID:          {Type: field.TypeUint32, Column: dataaccessauditlog.FieldUserID},
-			dataaccessauditlog.FieldUsername:        {Type: field.TypeString, Column: dataaccessauditlog.FieldUsername},
-			dataaccessauditlog.FieldIPAddress:       {Type: field.TypeString, Column: dataaccessauditlog.FieldIPAddress},
-			dataaccessauditlog.FieldGeoLocation:     {Type: field.TypeJSON, Column: dataaccessauditlog.FieldGeoLocation},
-			dataaccessauditlog.FieldDeviceInfo:      {Type: field.TypeJSON, Column: dataaccessauditlog.FieldDeviceInfo},
-			dataaccessauditlog.FieldRequestID:       {Type: field.TypeString, Column: dataaccessauditlog.FieldRequestID},
-			dataaccessauditlog.FieldTraceID:         {Type: field.TypeString, Column: dataaccessauditlog.FieldTraceID},
-			dataaccessauditlog.FieldDataSource:      {Type: field.TypeString, Column: dataaccessauditlog.FieldDataSource},
-			dataaccessauditlog.FieldTableName:       {Type: field.TypeString, Column: dataaccessauditlog.FieldTableName},
-			dataaccessauditlog.FieldDataID:          {Type: field.TypeString, Column: dataaccessauditlog.FieldDataID},
-			dataaccessauditlog.FieldAccessType:      {Type: field.TypeEnum, Column: dataaccessauditlog.FieldAccessType},
-			dataaccessauditlog.FieldSQLDigest:       {Type: field.TypeString, Column: dataaccessauditlog.FieldSQLDigest},
-			dataaccessauditlog.FieldSQLText:         {Type: field.TypeString, Column: dataaccessauditlog.FieldSQLText},
-			dataaccessauditlog.FieldAffectedRows:    {Type: field.TypeUint32, Column: dataaccessauditlog.FieldAffectedRows},
-			dataaccessauditlog.FieldLatencyMs:       {Type: field.TypeUint32, Column: dataaccessauditlog.FieldLatencyMs},
-			dataaccessauditlog.FieldSuccess:         {Type: field.TypeBool, Column: dataaccessauditlog.FieldSuccess},
-			dataaccessauditlog.FieldSensitiveLevel:  {Type: field.TypeEnum, Column: dataaccessauditlog.FieldSensitiveLevel},
-			dataaccessauditlog.FieldDataMasked:      {Type: field.TypeBool, Column: dataaccessauditlog.FieldDataMasked},
-			dataaccessauditlog.FieldMaskingRules:    {Type: field.TypeString, Column: dataaccessauditlog.FieldMaskingRules},
-			dataaccessauditlog.FieldBusinessPurpose: {Type: field.TypeString, Column: dataaccessauditlog.FieldBusinessPurpose},
-			dataaccessauditlog.FieldDataCategory:    {Type: field.TypeString, Column: dataaccessauditlog.FieldDataCategory},
-			dataaccessauditlog.FieldDbUser:          {Type: field.TypeString, Column: dataaccessauditlog.FieldDbUser},
-			dataaccessauditlog.FieldLogHash:         {Type: field.TypeString, Column: dataaccessauditlog.FieldLogHash},
-			dataaccessauditlog.FieldSignature:       {Type: field.TypeBytes, Column: dataaccessauditlog.FieldSignature},
-		},
-	}
-	graph.Nodes[3] = &sqlgraph.Node{
-		NodeSpec: sqlgraph.NodeSpec{
 			Table:   dictentry.Table,
 			Columns: dictentry.Columns,
 			ID: &sqlgraph.FieldSpec{
@@ -188,7 +105,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			dictentry.FieldNumericValue: {Type: field.TypeInt32, Column: dictentry.FieldNumericValue},
 		},
 	}
-	graph.Nodes[4] = &sqlgraph.Node{
+	graph.Nodes[2] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   dictentryi18n.Table,
 			Columns: dictentryi18n.Columns,
@@ -212,7 +129,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			dictentryi18n.FieldEntryLabel:   {Type: field.TypeString, Column: dictentryi18n.FieldEntryLabel},
 		},
 	}
-	graph.Nodes[5] = &sqlgraph.Node{
+	graph.Nodes[3] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   dicttype.Table,
 			Columns: dicttype.Columns,
@@ -236,7 +153,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			dicttype.FieldTypeName:  {Type: field.TypeString, Column: dicttype.FieldTypeName},
 		},
 	}
-	graph.Nodes[6] = &sqlgraph.Node{
+	graph.Nodes[4] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   file.Table,
 			Columns: file.Columns,
@@ -268,7 +185,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			file.FieldContentHash:   {Type: field.TypeString, Column: file.FieldContentHash},
 		},
 	}
-	graph.Nodes[7] = &sqlgraph.Node{
+	graph.Nodes[5] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   internalmessage.Table,
 			Columns: internalmessage.Columns,
@@ -294,7 +211,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			internalmessage.FieldType:       {Type: field.TypeEnum, Column: internalmessage.FieldType},
 		},
 	}
-	graph.Nodes[8] = &sqlgraph.Node{
+	graph.Nodes[6] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   internalmessagecategory.Table,
 			Columns: internalmessagecategory.Columns,
@@ -320,7 +237,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			internalmessagecategory.FieldIconURL:   {Type: field.TypeString, Column: internalmessagecategory.FieldIconURL},
 		},
 	}
-	graph.Nodes[9] = &sqlgraph.Node{
+	graph.Nodes[7] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   internalmessagerecipient.Table,
 			Columns: internalmessagerecipient.Columns,
@@ -342,7 +259,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			internalmessagerecipient.FieldReadAt:          {Type: field.TypeTime, Column: internalmessagerecipient.FieldReadAt},
 		},
 	}
-	graph.Nodes[10] = &sqlgraph.Node{
+	graph.Nodes[8] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   language.Table,
 			Columns: language.Columns,
@@ -367,7 +284,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			language.FieldIsDefault:    {Type: field.TypeBool, Column: language.FieldIsDefault},
 		},
 	}
-	graph.Nodes[11] = &sqlgraph.Node{
+	graph.Nodes[9] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   loginauditlog.Table,
 			Columns: loginauditlog.Columns,
@@ -400,7 +317,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			loginauditlog.FieldSignature:     {Type: field.TypeBytes, Column: loginauditlog.FieldSignature},
 		},
 	}
-	graph.Nodes[12] = &sqlgraph.Node{
+	graph.Nodes[10] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   membership.Table,
 			Columns: membership.Columns,
@@ -432,7 +349,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			membership.FieldStatus:     {Type: field.TypeEnum, Column: membership.FieldStatus},
 		},
 	}
-	graph.Nodes[13] = &sqlgraph.Node{
+	graph.Nodes[11] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   membershiporgunit.Table,
 			Columns: membershiporgunit.Columns,
@@ -463,7 +380,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			membershiporgunit.FieldStatus:       {Type: field.TypeEnum, Column: membershiporgunit.FieldStatus},
 		},
 	}
-	graph.Nodes[14] = &sqlgraph.Node{
+	graph.Nodes[12] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   membershipposition.Table,
 			Columns: membershipposition.Columns,
@@ -492,7 +409,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			membershipposition.FieldStatus:       {Type: field.TypeEnum, Column: membershipposition.FieldStatus},
 		},
 	}
-	graph.Nodes[15] = &sqlgraph.Node{
+	graph.Nodes[13] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   membershiprole.Table,
 			Columns: membershiprole.Columns,
@@ -520,7 +437,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			membershiprole.FieldStatus:       {Type: field.TypeEnum, Column: membershiprole.FieldStatus},
 		},
 	}
-	graph.Nodes[16] = &sqlgraph.Node{
+	graph.Nodes[14] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   menu.Table,
 			Columns: menu.Columns,
@@ -550,7 +467,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			menu.FieldModule:    {Type: field.TypeEnum, Column: menu.FieldModule},
 		},
 	}
-	graph.Nodes[17] = &sqlgraph.Node{
+	graph.Nodes[15] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   operationauditlog.Table,
 			Columns: operationauditlog.Columns,
@@ -582,7 +499,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			operationauditlog.FieldSignature:      {Type: field.TypeBytes, Column: operationauditlog.FieldSignature},
 		},
 	}
-	graph.Nodes[18] = &sqlgraph.Node{
+	graph.Nodes[16] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   orgunit.Table,
 			Columns: orgunit.Columns,
@@ -629,7 +546,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			orgunit.FieldPermissionTags:     {Type: field.TypeJSON, Column: orgunit.FieldPermissionTags},
 		},
 	}
-	graph.Nodes[19] = &sqlgraph.Node{
+	graph.Nodes[17] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   permission.Table,
 			Columns: permission.Columns,
@@ -653,7 +570,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			permission.FieldGroupID:     {Type: field.TypeUint32, Column: permission.FieldGroupID},
 		},
 	}
-	graph.Nodes[20] = &sqlgraph.Node{
+	graph.Nodes[18] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   permissionapi.Table,
 			Columns: permissionapi.Columns,
@@ -674,35 +591,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			permissionapi.FieldAPIID:        {Type: field.TypeUint32, Column: permissionapi.FieldAPIID},
 		},
 	}
-	graph.Nodes[21] = &sqlgraph.Node{
-		NodeSpec: sqlgraph.NodeSpec{
-			Table:   permissionauditlog.Table,
-			Columns: permissionauditlog.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeUint32,
-				Column: permissionauditlog.FieldID,
-			},
-		},
-		Type: "PermissionAuditLog",
-		Fields: map[string]*sqlgraph.FieldSpec{
-			permissionauditlog.FieldCreatedAt:    {Type: field.TypeTime, Column: permissionauditlog.FieldCreatedAt},
-			permissionauditlog.FieldTenantID:     {Type: field.TypeUint32, Column: permissionauditlog.FieldTenantID},
-			permissionauditlog.FieldOperatorID:   {Type: field.TypeUint32, Column: permissionauditlog.FieldOperatorID},
-			permissionauditlog.FieldOperatorName: {Type: field.TypeString, Column: permissionauditlog.FieldOperatorName},
-			permissionauditlog.FieldTargetType:   {Type: field.TypeString, Column: permissionauditlog.FieldTargetType},
-			permissionauditlog.FieldTargetID:     {Type: field.TypeString, Column: permissionauditlog.FieldTargetID},
-			permissionauditlog.FieldTargetName:   {Type: field.TypeString, Column: permissionauditlog.FieldTargetName},
-			permissionauditlog.FieldAction:       {Type: field.TypeEnum, Column: permissionauditlog.FieldAction},
-			permissionauditlog.FieldOldValue:     {Type: field.TypeString, Column: permissionauditlog.FieldOldValue},
-			permissionauditlog.FieldNewValue:     {Type: field.TypeString, Column: permissionauditlog.FieldNewValue},
-			permissionauditlog.FieldIPAddress:    {Type: field.TypeString, Column: permissionauditlog.FieldIPAddress},
-			permissionauditlog.FieldRequestID:    {Type: field.TypeString, Column: permissionauditlog.FieldRequestID},
-			permissionauditlog.FieldReason:       {Type: field.TypeString, Column: permissionauditlog.FieldReason},
-			permissionauditlog.FieldLogHash:      {Type: field.TypeString, Column: permissionauditlog.FieldLogHash},
-			permissionauditlog.FieldSignature:    {Type: field.TypeBytes, Column: permissionauditlog.FieldSignature},
-		},
-	}
-	graph.Nodes[22] = &sqlgraph.Node{
+	graph.Nodes[19] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   permissiongroup.Table,
 			Columns: permissiongroup.Columns,
@@ -728,7 +617,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			permissiongroup.FieldModule:      {Type: field.TypeString, Column: permissiongroup.FieldModule},
 		},
 	}
-	graph.Nodes[23] = &sqlgraph.Node{
+	graph.Nodes[20] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   permissionmenu.Table,
 			Columns: permissionmenu.Columns,
@@ -749,7 +638,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			permissionmenu.FieldMenuID:       {Type: field.TypeUint32, Column: permissionmenu.FieldMenuID},
 		},
 	}
-	graph.Nodes[24] = &sqlgraph.Node{
+	graph.Nodes[21] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   permissionpolicy.Table,
 			Columns: permissionpolicy.Columns,
@@ -775,7 +664,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			permissionpolicy.FieldCacheTTL:     {Type: field.TypeUint32, Column: permissionpolicy.FieldCacheTTL},
 		},
 	}
-	graph.Nodes[25] = &sqlgraph.Node{
+	graph.Nodes[22] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   plan.Table,
 			Columns: plan.Columns,
@@ -800,7 +689,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			plan.FieldDescription:       {Type: field.TypeString, Column: plan.FieldDescription},
 		},
 	}
-	graph.Nodes[26] = &sqlgraph.Node{
+	graph.Nodes[23] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   planmodule.Table,
 			Columns: planmodule.Columns,
@@ -820,7 +709,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			planmodule.FieldModule:    {Type: field.TypeEnum, Column: planmodule.FieldModule},
 		},
 	}
-	graph.Nodes[27] = &sqlgraph.Node{
+	graph.Nodes[24] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   planquota.Table,
 			Columns: planquota.Columns,
@@ -841,36 +730,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			planquota.FieldQuotaValue: {Type: field.TypeUint64, Column: planquota.FieldQuotaValue},
 		},
 	}
-	graph.Nodes[28] = &sqlgraph.Node{
-		NodeSpec: sqlgraph.NodeSpec{
-			Table:   policyevaluationlog.Table,
-			Columns: policyevaluationlog.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeUint32,
-				Column: policyevaluationlog.FieldID,
-			},
-		},
-		Type: "PolicyEvaluationLog",
-		Fields: map[string]*sqlgraph.FieldSpec{
-			policyevaluationlog.FieldCreatedAt:         {Type: field.TypeTime, Column: policyevaluationlog.FieldCreatedAt},
-			policyevaluationlog.FieldTenantID:          {Type: field.TypeUint32, Column: policyevaluationlog.FieldTenantID},
-			policyevaluationlog.FieldUserID:            {Type: field.TypeUint32, Column: policyevaluationlog.FieldUserID},
-			policyevaluationlog.FieldMembershipID:      {Type: field.TypeUint32, Column: policyevaluationlog.FieldMembershipID},
-			policyevaluationlog.FieldPermissionID:      {Type: field.TypeUint32, Column: policyevaluationlog.FieldPermissionID},
-			policyevaluationlog.FieldPolicyID:          {Type: field.TypeUint32, Column: policyevaluationlog.FieldPolicyID},
-			policyevaluationlog.FieldRequestPath:       {Type: field.TypeString, Column: policyevaluationlog.FieldRequestPath},
-			policyevaluationlog.FieldRequestMethod:     {Type: field.TypeString, Column: policyevaluationlog.FieldRequestMethod},
-			policyevaluationlog.FieldResult:            {Type: field.TypeBool, Column: policyevaluationlog.FieldResult},
-			policyevaluationlog.FieldEffectDetails:     {Type: field.TypeString, Column: policyevaluationlog.FieldEffectDetails},
-			policyevaluationlog.FieldScopeSQL:          {Type: field.TypeString, Column: policyevaluationlog.FieldScopeSQL},
-			policyevaluationlog.FieldIPAddress:         {Type: field.TypeString, Column: policyevaluationlog.FieldIPAddress},
-			policyevaluationlog.FieldTraceID:           {Type: field.TypeString, Column: policyevaluationlog.FieldTraceID},
-			policyevaluationlog.FieldEvaluationContext: {Type: field.TypeString, Column: policyevaluationlog.FieldEvaluationContext},
-			policyevaluationlog.FieldLogHash:           {Type: field.TypeString, Column: policyevaluationlog.FieldLogHash},
-			policyevaluationlog.FieldSignature:         {Type: field.TypeBytes, Column: policyevaluationlog.FieldSignature},
-		},
-	}
-	graph.Nodes[29] = &sqlgraph.Node{
+	graph.Nodes[25] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   position.Table,
 			Columns: position.Columns,
@@ -906,7 +766,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			position.FieldEndAt:               {Type: field.TypeTime, Column: position.FieldEndAt},
 		},
 	}
-	graph.Nodes[30] = &sqlgraph.Node{
+	graph.Nodes[26] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   role.Table,
 			Columns: role.Columns,
@@ -935,7 +795,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			role.FieldDataScope:   {Type: field.TypeEnum, Column: role.FieldDataScope},
 		},
 	}
-	graph.Nodes[31] = &sqlgraph.Node{
+	graph.Nodes[27] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   rolefieldpermission.Table,
 			Columns: rolefieldpermission.Columns,
@@ -958,7 +818,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			rolefieldpermission.FieldFieldName: {Type: field.TypeString, Column: rolefieldpermission.FieldFieldName},
 		},
 	}
-	graph.Nodes[32] = &sqlgraph.Node{
+	graph.Nodes[28] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   rolemetadata.Table,
 			Columns: rolemetadata.Columns,
@@ -987,7 +847,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			rolemetadata.FieldCustomOverrides:   {Type: field.TypeJSON, Column: rolemetadata.FieldCustomOverrides},
 		},
 	}
-	graph.Nodes[33] = &sqlgraph.Node{
+	graph.Nodes[29] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   roleorgunit.Table,
 			Columns: roleorgunit.Columns,
@@ -1009,7 +869,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			roleorgunit.FieldOrgUnitID: {Type: field.TypeUint32, Column: roleorgunit.FieldOrgUnitID},
 		},
 	}
-	graph.Nodes[34] = &sqlgraph.Node{
+	graph.Nodes[30] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   rolepermission.Table,
 			Columns: rolepermission.Columns,
@@ -1034,7 +894,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			rolepermission.FieldPriority:     {Type: field.TypeInt32, Column: rolepermission.FieldPriority},
 		},
 	}
-	graph.Nodes[35] = &sqlgraph.Node{
+	graph.Nodes[31] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   sysconfig.Table,
 			Columns: sysconfig.Columns,
@@ -1058,7 +918,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			sysconfig.FieldIsBuiltIn: {Type: field.TypeBool, Column: sysconfig.FieldIsBuiltIn},
 		},
 	}
-	graph.Nodes[36] = &sqlgraph.Node{
+	graph.Nodes[32] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   task.Table,
 			Columns: task.Columns,
@@ -1085,7 +945,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			task.FieldEnable:      {Type: field.TypeBool, Column: task.FieldEnable},
 		},
 	}
-	graph.Nodes[37] = &sqlgraph.Node{
+	graph.Nodes[33] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   tenant.Table,
 			Columns: tenant.Columns,
@@ -1118,7 +978,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			tenant.FieldExpiredAt:        {Type: field.TypeTime, Column: tenant.FieldExpiredAt},
 		},
 	}
-	graph.Nodes[38] = &sqlgraph.Node{
+	graph.Nodes[34] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   user.Table,
 			Columns: user.Columns,
@@ -1155,7 +1015,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			user.FieldStatus:      {Type: field.TypeEnum, Column: user.FieldStatus},
 		},
 	}
-	graph.Nodes[39] = &sqlgraph.Node{
+	graph.Nodes[35] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   usercredential.Table,
 			Columns: usercredential.Columns,
@@ -1188,7 +1048,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usercredential.FieldResetTokenUsedAt:       {Type: field.TypeTime, Column: usercredential.FieldResetTokenUsedAt},
 		},
 	}
-	graph.Nodes[40] = &sqlgraph.Node{
+	graph.Nodes[36] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userorgunit.Table,
 			Columns: userorgunit.Columns,
@@ -1218,7 +1078,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			userorgunit.FieldStatus:     {Type: field.TypeEnum, Column: userorgunit.FieldStatus},
 		},
 	}
-	graph.Nodes[41] = &sqlgraph.Node{
+	graph.Nodes[37] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userposition.Table,
 			Columns: userposition.Columns,
@@ -1247,7 +1107,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			userposition.FieldStatus:     {Type: field.TypeEnum, Column: userposition.FieldStatus},
 		},
 	}
-	graph.Nodes[42] = &sqlgraph.Node{
+	graph.Nodes[38] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userrole.Table,
 			Columns: userrole.Columns,
@@ -1592,351 +1452,6 @@ func (f *APIFilter) WhereScope(p entql.StringP) {
 }
 
 // addPredicate implements the predicateAdder interface.
-func (_q *ApiAuditLogQuery) addPredicate(pred func(s *sql.Selector)) {
-	_q.predicates = append(_q.predicates, pred)
-}
-
-// Filter returns a Filter implementation to apply filters on the ApiAuditLogQuery builder.
-func (_q *ApiAuditLogQuery) Filter() *ApiAuditLogFilter {
-	return &ApiAuditLogFilter{config: _q.config, predicateAdder: _q}
-}
-
-// addPredicate implements the predicateAdder interface.
-func (m *ApiAuditLogMutation) addPredicate(pred func(s *sql.Selector)) {
-	m.predicates = append(m.predicates, pred)
-}
-
-// Filter returns an entql.Where implementation to apply filters on the ApiAuditLogMutation builder.
-func (m *ApiAuditLogMutation) Filter() *ApiAuditLogFilter {
-	return &ApiAuditLogFilter{config: m.config, predicateAdder: m}
-}
-
-// ApiAuditLogFilter provides a generic filtering capability at runtime for ApiAuditLogQuery.
-type ApiAuditLogFilter struct {
-	predicateAdder
-	config
-}
-
-// Where applies the entql predicate on the query filter.
-func (f *ApiAuditLogFilter) Where(p entql.P) {
-	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[1].Type, p, s); err != nil {
-			s.AddError(err)
-		}
-	})
-}
-
-// WhereID applies the entql uint32 predicate on the id field.
-func (f *ApiAuditLogFilter) WhereID(p entql.Uint32P) {
-	f.Where(p.Field(apiauditlog.FieldID))
-}
-
-// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
-func (f *ApiAuditLogFilter) WhereCreatedAt(p entql.TimeP) {
-	f.Where(p.Field(apiauditlog.FieldCreatedAt))
-}
-
-// WhereTenantID applies the entql uint32 predicate on the tenant_id field.
-func (f *ApiAuditLogFilter) WhereTenantID(p entql.Uint32P) {
-	f.Where(p.Field(apiauditlog.FieldTenantID))
-}
-
-// WhereUserID applies the entql uint32 predicate on the user_id field.
-func (f *ApiAuditLogFilter) WhereUserID(p entql.Uint32P) {
-	f.Where(p.Field(apiauditlog.FieldUserID))
-}
-
-// WhereUsername applies the entql string predicate on the username field.
-func (f *ApiAuditLogFilter) WhereUsername(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldUsername))
-}
-
-// WhereIPAddress applies the entql string predicate on the ip_address field.
-func (f *ApiAuditLogFilter) WhereIPAddress(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldIPAddress))
-}
-
-// WhereGeoLocation applies the entql json.RawMessage predicate on the geo_location field.
-func (f *ApiAuditLogFilter) WhereGeoLocation(p entql.BytesP) {
-	f.Where(p.Field(apiauditlog.FieldGeoLocation))
-}
-
-// WhereDeviceInfo applies the entql json.RawMessage predicate on the device_info field.
-func (f *ApiAuditLogFilter) WhereDeviceInfo(p entql.BytesP) {
-	f.Where(p.Field(apiauditlog.FieldDeviceInfo))
-}
-
-// WhereReferer applies the entql string predicate on the referer field.
-func (f *ApiAuditLogFilter) WhereReferer(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldReferer))
-}
-
-// WhereAppVersion applies the entql string predicate on the app_version field.
-func (f *ApiAuditLogFilter) WhereAppVersion(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldAppVersion))
-}
-
-// WhereHTTPMethod applies the entql string predicate on the http_method field.
-func (f *ApiAuditLogFilter) WhereHTTPMethod(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldHTTPMethod))
-}
-
-// WherePath applies the entql string predicate on the path field.
-func (f *ApiAuditLogFilter) WherePath(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldPath))
-}
-
-// WhereRequestURI applies the entql string predicate on the request_uri field.
-func (f *ApiAuditLogFilter) WhereRequestURI(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldRequestURI))
-}
-
-// WhereAPIModule applies the entql string predicate on the api_module field.
-func (f *ApiAuditLogFilter) WhereAPIModule(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldAPIModule))
-}
-
-// WhereAPIOperation applies the entql string predicate on the api_operation field.
-func (f *ApiAuditLogFilter) WhereAPIOperation(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldAPIOperation))
-}
-
-// WhereAPIDescription applies the entql string predicate on the api_description field.
-func (f *ApiAuditLogFilter) WhereAPIDescription(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldAPIDescription))
-}
-
-// WhereRequestID applies the entql string predicate on the request_id field.
-func (f *ApiAuditLogFilter) WhereRequestID(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldRequestID))
-}
-
-// WhereTraceID applies the entql string predicate on the trace_id field.
-func (f *ApiAuditLogFilter) WhereTraceID(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldTraceID))
-}
-
-// WhereSpanID applies the entql string predicate on the span_id field.
-func (f *ApiAuditLogFilter) WhereSpanID(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldSpanID))
-}
-
-// WhereLatencyMs applies the entql uint32 predicate on the latency_ms field.
-func (f *ApiAuditLogFilter) WhereLatencyMs(p entql.Uint32P) {
-	f.Where(p.Field(apiauditlog.FieldLatencyMs))
-}
-
-// WhereSuccess applies the entql bool predicate on the success field.
-func (f *ApiAuditLogFilter) WhereSuccess(p entql.BoolP) {
-	f.Where(p.Field(apiauditlog.FieldSuccess))
-}
-
-// WhereStatusCode applies the entql uint32 predicate on the status_code field.
-func (f *ApiAuditLogFilter) WhereStatusCode(p entql.Uint32P) {
-	f.Where(p.Field(apiauditlog.FieldStatusCode))
-}
-
-// WhereReason applies the entql string predicate on the reason field.
-func (f *ApiAuditLogFilter) WhereReason(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldReason))
-}
-
-// WhereRequestHeader applies the entql string predicate on the request_header field.
-func (f *ApiAuditLogFilter) WhereRequestHeader(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldRequestHeader))
-}
-
-// WhereRequestBody applies the entql string predicate on the request_body field.
-func (f *ApiAuditLogFilter) WhereRequestBody(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldRequestBody))
-}
-
-// WhereResponse applies the entql string predicate on the response field.
-func (f *ApiAuditLogFilter) WhereResponse(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldResponse))
-}
-
-// WhereLogHash applies the entql string predicate on the log_hash field.
-func (f *ApiAuditLogFilter) WhereLogHash(p entql.StringP) {
-	f.Where(p.Field(apiauditlog.FieldLogHash))
-}
-
-// WhereSignature applies the entql []byte predicate on the signature field.
-func (f *ApiAuditLogFilter) WhereSignature(p entql.BytesP) {
-	f.Where(p.Field(apiauditlog.FieldSignature))
-}
-
-// addPredicate implements the predicateAdder interface.
-func (_q *DataAccessAuditLogQuery) addPredicate(pred func(s *sql.Selector)) {
-	_q.predicates = append(_q.predicates, pred)
-}
-
-// Filter returns a Filter implementation to apply filters on the DataAccessAuditLogQuery builder.
-func (_q *DataAccessAuditLogQuery) Filter() *DataAccessAuditLogFilter {
-	return &DataAccessAuditLogFilter{config: _q.config, predicateAdder: _q}
-}
-
-// addPredicate implements the predicateAdder interface.
-func (m *DataAccessAuditLogMutation) addPredicate(pred func(s *sql.Selector)) {
-	m.predicates = append(m.predicates, pred)
-}
-
-// Filter returns an entql.Where implementation to apply filters on the DataAccessAuditLogMutation builder.
-func (m *DataAccessAuditLogMutation) Filter() *DataAccessAuditLogFilter {
-	return &DataAccessAuditLogFilter{config: m.config, predicateAdder: m}
-}
-
-// DataAccessAuditLogFilter provides a generic filtering capability at runtime for DataAccessAuditLogQuery.
-type DataAccessAuditLogFilter struct {
-	predicateAdder
-	config
-}
-
-// Where applies the entql predicate on the query filter.
-func (f *DataAccessAuditLogFilter) Where(p entql.P) {
-	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[2].Type, p, s); err != nil {
-			s.AddError(err)
-		}
-	})
-}
-
-// WhereID applies the entql uint32 predicate on the id field.
-func (f *DataAccessAuditLogFilter) WhereID(p entql.Uint32P) {
-	f.Where(p.Field(dataaccessauditlog.FieldID))
-}
-
-// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
-func (f *DataAccessAuditLogFilter) WhereCreatedAt(p entql.TimeP) {
-	f.Where(p.Field(dataaccessauditlog.FieldCreatedAt))
-}
-
-// WhereTenantID applies the entql uint32 predicate on the tenant_id field.
-func (f *DataAccessAuditLogFilter) WhereTenantID(p entql.Uint32P) {
-	f.Where(p.Field(dataaccessauditlog.FieldTenantID))
-}
-
-// WhereUserID applies the entql uint32 predicate on the user_id field.
-func (f *DataAccessAuditLogFilter) WhereUserID(p entql.Uint32P) {
-	f.Where(p.Field(dataaccessauditlog.FieldUserID))
-}
-
-// WhereUsername applies the entql string predicate on the username field.
-func (f *DataAccessAuditLogFilter) WhereUsername(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldUsername))
-}
-
-// WhereIPAddress applies the entql string predicate on the ip_address field.
-func (f *DataAccessAuditLogFilter) WhereIPAddress(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldIPAddress))
-}
-
-// WhereGeoLocation applies the entql json.RawMessage predicate on the geo_location field.
-func (f *DataAccessAuditLogFilter) WhereGeoLocation(p entql.BytesP) {
-	f.Where(p.Field(dataaccessauditlog.FieldGeoLocation))
-}
-
-// WhereDeviceInfo applies the entql json.RawMessage predicate on the device_info field.
-func (f *DataAccessAuditLogFilter) WhereDeviceInfo(p entql.BytesP) {
-	f.Where(p.Field(dataaccessauditlog.FieldDeviceInfo))
-}
-
-// WhereRequestID applies the entql string predicate on the request_id field.
-func (f *DataAccessAuditLogFilter) WhereRequestID(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldRequestID))
-}
-
-// WhereTraceID applies the entql string predicate on the trace_id field.
-func (f *DataAccessAuditLogFilter) WhereTraceID(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldTraceID))
-}
-
-// WhereDataSource applies the entql string predicate on the data_source field.
-func (f *DataAccessAuditLogFilter) WhereDataSource(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldDataSource))
-}
-
-// WhereTableName applies the entql string predicate on the table_name field.
-func (f *DataAccessAuditLogFilter) WhereTableName(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldTableName))
-}
-
-// WhereDataID applies the entql string predicate on the data_id field.
-func (f *DataAccessAuditLogFilter) WhereDataID(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldDataID))
-}
-
-// WhereAccessType applies the entql string predicate on the access_type field.
-func (f *DataAccessAuditLogFilter) WhereAccessType(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldAccessType))
-}
-
-// WhereSQLDigest applies the entql string predicate on the sql_digest field.
-func (f *DataAccessAuditLogFilter) WhereSQLDigest(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldSQLDigest))
-}
-
-// WhereSQLText applies the entql string predicate on the sql_text field.
-func (f *DataAccessAuditLogFilter) WhereSQLText(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldSQLText))
-}
-
-// WhereAffectedRows applies the entql uint32 predicate on the affected_rows field.
-func (f *DataAccessAuditLogFilter) WhereAffectedRows(p entql.Uint32P) {
-	f.Where(p.Field(dataaccessauditlog.FieldAffectedRows))
-}
-
-// WhereLatencyMs applies the entql uint32 predicate on the latency_ms field.
-func (f *DataAccessAuditLogFilter) WhereLatencyMs(p entql.Uint32P) {
-	f.Where(p.Field(dataaccessauditlog.FieldLatencyMs))
-}
-
-// WhereSuccess applies the entql bool predicate on the success field.
-func (f *DataAccessAuditLogFilter) WhereSuccess(p entql.BoolP) {
-	f.Where(p.Field(dataaccessauditlog.FieldSuccess))
-}
-
-// WhereSensitiveLevel applies the entql string predicate on the sensitive_level field.
-func (f *DataAccessAuditLogFilter) WhereSensitiveLevel(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldSensitiveLevel))
-}
-
-// WhereDataMasked applies the entql bool predicate on the data_masked field.
-func (f *DataAccessAuditLogFilter) WhereDataMasked(p entql.BoolP) {
-	f.Where(p.Field(dataaccessauditlog.FieldDataMasked))
-}
-
-// WhereMaskingRules applies the entql string predicate on the masking_rules field.
-func (f *DataAccessAuditLogFilter) WhereMaskingRules(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldMaskingRules))
-}
-
-// WhereBusinessPurpose applies the entql string predicate on the business_purpose field.
-func (f *DataAccessAuditLogFilter) WhereBusinessPurpose(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldBusinessPurpose))
-}
-
-// WhereDataCategory applies the entql string predicate on the data_category field.
-func (f *DataAccessAuditLogFilter) WhereDataCategory(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldDataCategory))
-}
-
-// WhereDbUser applies the entql string predicate on the db_user field.
-func (f *DataAccessAuditLogFilter) WhereDbUser(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldDbUser))
-}
-
-// WhereLogHash applies the entql string predicate on the log_hash field.
-func (f *DataAccessAuditLogFilter) WhereLogHash(p entql.StringP) {
-	f.Where(p.Field(dataaccessauditlog.FieldLogHash))
-}
-
-// WhereSignature applies the entql []byte predicate on the signature field.
-func (f *DataAccessAuditLogFilter) WhereSignature(p entql.BytesP) {
-	f.Where(p.Field(dataaccessauditlog.FieldSignature))
-}
-
-// addPredicate implements the predicateAdder interface.
 func (_q *DictEntryQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
 }
@@ -1965,7 +1480,7 @@ type DictEntryFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *DictEntryFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[3].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[1].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2088,7 +1603,7 @@ type DictEntryI18nFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *DictEntryI18nFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[4].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[2].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2197,7 +1712,7 @@ type DictTypeFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *DictTypeFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[5].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[3].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2306,7 +1821,7 @@ type FileFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *FileFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[6].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[4].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2441,7 +1956,7 @@ type InternalMessageFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *InternalMessageFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[5].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2546,7 +2061,7 @@ type InternalMessageCategoryFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *InternalMessageCategoryFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[6].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2651,7 +2166,7 @@ type InternalMessageRecipientFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *InternalMessageRecipientFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[9].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[7].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2736,7 +2251,7 @@ type LanguageFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *LanguageFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[8].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2836,7 +2351,7 @@ type LoginAuditLogFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *LoginAuditLogFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[11].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[9].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -2976,7 +2491,7 @@ type MembershipFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *MembershipFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[12].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[10].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3111,7 +2626,7 @@ type MembershipOrgUnitFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *MembershipOrgUnitFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[13].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[11].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3241,7 +2756,7 @@ type MembershipPositionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *MembershipPositionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[14].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[12].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3361,7 +2876,7 @@ type MembershipRoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *MembershipRoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[15].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[13].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3476,7 +2991,7 @@ type MenuFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *MenuFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[16].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[14].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3629,7 +3144,7 @@ type OperationAuditLogFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *OperationAuditLogFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[17].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[15].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -3764,7 +3279,7 @@ type OrgUnitFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *OrgUnitFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[18].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[16].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4002,7 +3517,7 @@ type PermissionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PermissionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[19].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[17].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4097,7 +3612,7 @@ type PermissionApiFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PermissionApiFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[20].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[18].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4149,121 +3664,6 @@ func (f *PermissionApiFilter) WhereAPIID(p entql.Uint32P) {
 }
 
 // addPredicate implements the predicateAdder interface.
-func (_q *PermissionAuditLogQuery) addPredicate(pred func(s *sql.Selector)) {
-	_q.predicates = append(_q.predicates, pred)
-}
-
-// Filter returns a Filter implementation to apply filters on the PermissionAuditLogQuery builder.
-func (_q *PermissionAuditLogQuery) Filter() *PermissionAuditLogFilter {
-	return &PermissionAuditLogFilter{config: _q.config, predicateAdder: _q}
-}
-
-// addPredicate implements the predicateAdder interface.
-func (m *PermissionAuditLogMutation) addPredicate(pred func(s *sql.Selector)) {
-	m.predicates = append(m.predicates, pred)
-}
-
-// Filter returns an entql.Where implementation to apply filters on the PermissionAuditLogMutation builder.
-func (m *PermissionAuditLogMutation) Filter() *PermissionAuditLogFilter {
-	return &PermissionAuditLogFilter{config: m.config, predicateAdder: m}
-}
-
-// PermissionAuditLogFilter provides a generic filtering capability at runtime for PermissionAuditLogQuery.
-type PermissionAuditLogFilter struct {
-	predicateAdder
-	config
-}
-
-// Where applies the entql predicate on the query filter.
-func (f *PermissionAuditLogFilter) Where(p entql.P) {
-	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[21].Type, p, s); err != nil {
-			s.AddError(err)
-		}
-	})
-}
-
-// WhereID applies the entql uint32 predicate on the id field.
-func (f *PermissionAuditLogFilter) WhereID(p entql.Uint32P) {
-	f.Where(p.Field(permissionauditlog.FieldID))
-}
-
-// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
-func (f *PermissionAuditLogFilter) WhereCreatedAt(p entql.TimeP) {
-	f.Where(p.Field(permissionauditlog.FieldCreatedAt))
-}
-
-// WhereTenantID applies the entql uint32 predicate on the tenant_id field.
-func (f *PermissionAuditLogFilter) WhereTenantID(p entql.Uint32P) {
-	f.Where(p.Field(permissionauditlog.FieldTenantID))
-}
-
-// WhereOperatorID applies the entql uint32 predicate on the operator_id field.
-func (f *PermissionAuditLogFilter) WhereOperatorID(p entql.Uint32P) {
-	f.Where(p.Field(permissionauditlog.FieldOperatorID))
-}
-
-// WhereOperatorName applies the entql string predicate on the operator_name field.
-func (f *PermissionAuditLogFilter) WhereOperatorName(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldOperatorName))
-}
-
-// WhereTargetType applies the entql string predicate on the target_type field.
-func (f *PermissionAuditLogFilter) WhereTargetType(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldTargetType))
-}
-
-// WhereTargetID applies the entql string predicate on the target_id field.
-func (f *PermissionAuditLogFilter) WhereTargetID(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldTargetID))
-}
-
-// WhereTargetName applies the entql string predicate on the target_name field.
-func (f *PermissionAuditLogFilter) WhereTargetName(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldTargetName))
-}
-
-// WhereAction applies the entql string predicate on the action field.
-func (f *PermissionAuditLogFilter) WhereAction(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldAction))
-}
-
-// WhereOldValue applies the entql string predicate on the old_value field.
-func (f *PermissionAuditLogFilter) WhereOldValue(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldOldValue))
-}
-
-// WhereNewValue applies the entql string predicate on the new_value field.
-func (f *PermissionAuditLogFilter) WhereNewValue(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldNewValue))
-}
-
-// WhereIPAddress applies the entql string predicate on the ip_address field.
-func (f *PermissionAuditLogFilter) WhereIPAddress(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldIPAddress))
-}
-
-// WhereRequestID applies the entql string predicate on the request_id field.
-func (f *PermissionAuditLogFilter) WhereRequestID(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldRequestID))
-}
-
-// WhereReason applies the entql string predicate on the reason field.
-func (f *PermissionAuditLogFilter) WhereReason(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldReason))
-}
-
-// WhereLogHash applies the entql string predicate on the log_hash field.
-func (f *PermissionAuditLogFilter) WhereLogHash(p entql.StringP) {
-	f.Where(p.Field(permissionauditlog.FieldLogHash))
-}
-
-// WhereSignature applies the entql []byte predicate on the signature field.
-func (f *PermissionAuditLogFilter) WhereSignature(p entql.BytesP) {
-	f.Where(p.Field(permissionauditlog.FieldSignature))
-}
-
-// addPredicate implements the predicateAdder interface.
 func (_q *PermissionGroupQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
 }
@@ -4292,7 +3692,7 @@ type PermissionGroupFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PermissionGroupFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[22].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[19].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4425,7 +3825,7 @@ type PermissionMenuFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PermissionMenuFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[23].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[20].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4505,7 +3905,7 @@ type PermissionPolicyFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PermissionPolicyFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[24].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[21].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4610,7 +4010,7 @@ type PlanFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PlanFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[25].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[22].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4752,7 +4152,7 @@ type PlanModuleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PlanModuleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[26].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[23].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4841,7 +4241,7 @@ type PlanQuotaFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PlanQuotaFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[27].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[24].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4907,126 +4307,6 @@ func (f *PlanQuotaFilter) WhereHasPlanWith(preds ...predicate.Plan) {
 }
 
 // addPredicate implements the predicateAdder interface.
-func (_q *PolicyEvaluationLogQuery) addPredicate(pred func(s *sql.Selector)) {
-	_q.predicates = append(_q.predicates, pred)
-}
-
-// Filter returns a Filter implementation to apply filters on the PolicyEvaluationLogQuery builder.
-func (_q *PolicyEvaluationLogQuery) Filter() *PolicyEvaluationLogFilter {
-	return &PolicyEvaluationLogFilter{config: _q.config, predicateAdder: _q}
-}
-
-// addPredicate implements the predicateAdder interface.
-func (m *PolicyEvaluationLogMutation) addPredicate(pred func(s *sql.Selector)) {
-	m.predicates = append(m.predicates, pred)
-}
-
-// Filter returns an entql.Where implementation to apply filters on the PolicyEvaluationLogMutation builder.
-func (m *PolicyEvaluationLogMutation) Filter() *PolicyEvaluationLogFilter {
-	return &PolicyEvaluationLogFilter{config: m.config, predicateAdder: m}
-}
-
-// PolicyEvaluationLogFilter provides a generic filtering capability at runtime for PolicyEvaluationLogQuery.
-type PolicyEvaluationLogFilter struct {
-	predicateAdder
-	config
-}
-
-// Where applies the entql predicate on the query filter.
-func (f *PolicyEvaluationLogFilter) Where(p entql.P) {
-	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[28].Type, p, s); err != nil {
-			s.AddError(err)
-		}
-	})
-}
-
-// WhereID applies the entql uint32 predicate on the id field.
-func (f *PolicyEvaluationLogFilter) WhereID(p entql.Uint32P) {
-	f.Where(p.Field(policyevaluationlog.FieldID))
-}
-
-// WhereCreatedAt applies the entql time.Time predicate on the created_at field.
-func (f *PolicyEvaluationLogFilter) WhereCreatedAt(p entql.TimeP) {
-	f.Where(p.Field(policyevaluationlog.FieldCreatedAt))
-}
-
-// WhereTenantID applies the entql uint32 predicate on the tenant_id field.
-func (f *PolicyEvaluationLogFilter) WhereTenantID(p entql.Uint32P) {
-	f.Where(p.Field(policyevaluationlog.FieldTenantID))
-}
-
-// WhereUserID applies the entql uint32 predicate on the user_id field.
-func (f *PolicyEvaluationLogFilter) WhereUserID(p entql.Uint32P) {
-	f.Where(p.Field(policyevaluationlog.FieldUserID))
-}
-
-// WhereMembershipID applies the entql uint32 predicate on the membership_id field.
-func (f *PolicyEvaluationLogFilter) WhereMembershipID(p entql.Uint32P) {
-	f.Where(p.Field(policyevaluationlog.FieldMembershipID))
-}
-
-// WherePermissionID applies the entql uint32 predicate on the permission_id field.
-func (f *PolicyEvaluationLogFilter) WherePermissionID(p entql.Uint32P) {
-	f.Where(p.Field(policyevaluationlog.FieldPermissionID))
-}
-
-// WherePolicyID applies the entql uint32 predicate on the policy_id field.
-func (f *PolicyEvaluationLogFilter) WherePolicyID(p entql.Uint32P) {
-	f.Where(p.Field(policyevaluationlog.FieldPolicyID))
-}
-
-// WhereRequestPath applies the entql string predicate on the request_path field.
-func (f *PolicyEvaluationLogFilter) WhereRequestPath(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldRequestPath))
-}
-
-// WhereRequestMethod applies the entql string predicate on the request_method field.
-func (f *PolicyEvaluationLogFilter) WhereRequestMethod(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldRequestMethod))
-}
-
-// WhereResult applies the entql bool predicate on the result field.
-func (f *PolicyEvaluationLogFilter) WhereResult(p entql.BoolP) {
-	f.Where(p.Field(policyevaluationlog.FieldResult))
-}
-
-// WhereEffectDetails applies the entql string predicate on the effect_details field.
-func (f *PolicyEvaluationLogFilter) WhereEffectDetails(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldEffectDetails))
-}
-
-// WhereScopeSQL applies the entql string predicate on the scope_sql field.
-func (f *PolicyEvaluationLogFilter) WhereScopeSQL(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldScopeSQL))
-}
-
-// WhereIPAddress applies the entql string predicate on the ip_address field.
-func (f *PolicyEvaluationLogFilter) WhereIPAddress(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldIPAddress))
-}
-
-// WhereTraceID applies the entql string predicate on the trace_id field.
-func (f *PolicyEvaluationLogFilter) WhereTraceID(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldTraceID))
-}
-
-// WhereEvaluationContext applies the entql string predicate on the evaluation_context field.
-func (f *PolicyEvaluationLogFilter) WhereEvaluationContext(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldEvaluationContext))
-}
-
-// WhereLogHash applies the entql string predicate on the log_hash field.
-func (f *PolicyEvaluationLogFilter) WhereLogHash(p entql.StringP) {
-	f.Where(p.Field(policyevaluationlog.FieldLogHash))
-}
-
-// WhereSignature applies the entql []byte predicate on the signature field.
-func (f *PolicyEvaluationLogFilter) WhereSignature(p entql.BytesP) {
-	f.Where(p.Field(policyevaluationlog.FieldSignature))
-}
-
-// addPredicate implements the predicateAdder interface.
 func (_q *PositionQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
 }
@@ -5055,7 +4335,7 @@ type PositionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *PositionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[29].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[25].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5210,7 +4490,7 @@ type RoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[30].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[26].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5330,7 +4610,7 @@ type RoleFieldPermissionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RoleFieldPermissionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[31].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[27].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5420,7 +4700,7 @@ type RoleMetadataFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RoleMetadataFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[32].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[28].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5540,7 +4820,7 @@ type RoleOrgUnitFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RoleOrgUnitFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[33].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[29].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5625,7 +4905,7 @@ type RolePermissionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *RolePermissionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[34].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[30].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5725,7 +5005,7 @@ type SysConfigFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *SysConfigFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[35].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[31].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5820,7 +5100,7 @@ type TaskFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *TaskFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[36].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[32].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -5930,7 +5210,7 @@ type TenantFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *TenantFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[37].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[33].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -6084,7 +5364,7 @@ type UserFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[38].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[34].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -6244,7 +5524,7 @@ type UserCredentialFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserCredentialFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[39].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[35].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -6384,7 +5664,7 @@ type UserOrgUnitFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserOrgUnitFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[40].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[36].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -6509,7 +5789,7 @@ type UserPositionFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserPositionFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[41].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[37].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -6629,7 +5909,7 @@ type UserRoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserRoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[42].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[38].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})

@@ -14,12 +14,8 @@ import (
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
-	apiauditlog "go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
-	dataaccessauditlog "go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
 	loginauditlog "go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
 	operationauditlog "go-wind-admin/app/admin/service/internal/data/ent/operationauditlog"
-	permissionauditlog "go-wind-admin/app/admin/service/internal/data/ent/permissionauditlog"
-	policyevaluationlog "go-wind-admin/app/admin/service/internal/data/ent/policyevaluationlog"
 
 	"github.com/tx7do/go-crud/viewer"
 )
@@ -61,26 +57,6 @@ func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Ti
 
 	jobs := []tableJob{
 		{
-			name: "sys_api_audit_logs",
-			query: func() ([]any, []uint32, error) {
-				rows, err := client.ApiAuditLog.Query().
-					Where(apiauditlog.CreatedAtLT(before)).Limit(archiveBatch).All(ctx)
-				if err != nil {
-					return nil, nil, err
-				}
-				ids := make([]uint32, 0, len(rows))
-				out := make([]any, 0, len(rows))
-				for _, e := range rows {
-					ids = append(ids, e.ID)
-					out = append(out, e)
-				}
-				return out, ids, nil
-			},
-			del: func(ids []uint32) (int, error) {
-				return client.ApiAuditLog.Delete().Where(apiauditlog.IDIn(ids...)).Exec(ctx)
-			},
-		},
-		{
 			name: "sys_login_audit_logs",
 			query: func() ([]any, []uint32, error) {
 				rows, err := client.LoginAuditLog.Query().
@@ -118,66 +94,6 @@ func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Ti
 			},
 			del: func(ids []uint32) (int, error) {
 				return client.OperationAuditLog.Delete().Where(operationauditlog.IDIn(ids...)).Exec(ctx)
-			},
-		},
-		{
-			name: "sys_permission_audit_logs",
-			query: func() ([]any, []uint32, error) {
-				rows, err := client.PermissionAuditLog.Query().
-					Where(permissionauditlog.CreatedAtLT(before)).Limit(archiveBatch).All(ctx)
-				if err != nil {
-					return nil, nil, err
-				}
-				ids := make([]uint32, 0, len(rows))
-				out := make([]any, 0, len(rows))
-				for _, e := range rows {
-					ids = append(ids, e.ID)
-					out = append(out, e)
-				}
-				return out, ids, nil
-			},
-			del: func(ids []uint32) (int, error) {
-				return client.PermissionAuditLog.Delete().Where(permissionauditlog.IDIn(ids...)).Exec(ctx)
-			},
-		},
-		{
-			name: "sys_data_access_audit_logs",
-			query: func() ([]any, []uint32, error) {
-				rows, err := client.DataAccessAuditLog.Query().
-					Where(dataaccessauditlog.CreatedAtLT(before)).Limit(archiveBatch).All(ctx)
-				if err != nil {
-					return nil, nil, err
-				}
-				ids := make([]uint32, 0, len(rows))
-				out := make([]any, 0, len(rows))
-				for _, e := range rows {
-					ids = append(ids, e.ID)
-					out = append(out, e)
-				}
-				return out, ids, nil
-			},
-			del: func(ids []uint32) (int, error) {
-				return client.DataAccessAuditLog.Delete().Where(dataaccessauditlog.IDIn(ids...)).Exec(ctx)
-			},
-		},
-		{
-			name: "sys_policy_evaluation_logs",
-			query: func() ([]any, []uint32, error) {
-				rows, err := client.PolicyEvaluationLog.Query().
-					Where(policyevaluationlog.CreatedAtLT(before)).Limit(archiveBatch).All(ctx)
-				if err != nil {
-					return nil, nil, err
-				}
-				ids := make([]uint32, 0, len(rows))
-				out := make([]any, 0, len(rows))
-				for _, e := range rows {
-					ids = append(ids, e.ID)
-					out = append(out, e)
-				}
-				return out, ids, nil
-			},
-			del: func(ids []uint32) (int, error) {
-				return client.PolicyEvaluationLog.Delete().Where(policyevaluationlog.IDIn(ids...)).Exec(ctx)
 			},
 		},
 	}

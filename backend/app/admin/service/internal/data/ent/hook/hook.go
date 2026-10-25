@@ -20,30 +20,6 @@ func (f ApiFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.APIMutation", m)
 }
 
-// The ApiAuditLogFunc type is an adapter to allow the use of ordinary
-// function as ApiAuditLog mutator.
-type ApiAuditLogFunc func(context.Context, *ent.ApiAuditLogMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f ApiAuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.ApiAuditLogMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ApiAuditLogMutation", m)
-}
-
-// The DataAccessAuditLogFunc type is an adapter to allow the use of ordinary
-// function as DataAccessAuditLog mutator.
-type DataAccessAuditLogFunc func(context.Context, *ent.DataAccessAuditLogMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f DataAccessAuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.DataAccessAuditLogMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DataAccessAuditLogMutation", m)
-}
-
 // The DictEntryFunc type is an adapter to allow the use of ordinary
 // function as DictEntry mutator.
 type DictEntryFunc func(context.Context, *ent.DictEntryMutation) (ent.Value, error)
@@ -260,18 +236,6 @@ func (f PermissionApiFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Valu
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PermissionApiMutation", m)
 }
 
-// The PermissionAuditLogFunc type is an adapter to allow the use of ordinary
-// function as PermissionAuditLog mutator.
-type PermissionAuditLogFunc func(context.Context, *ent.PermissionAuditLogMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f PermissionAuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.PermissionAuditLogMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PermissionAuditLogMutation", m)
-}
-
 // The PermissionGroupFunc type is an adapter to allow the use of ordinary
 // function as PermissionGroup mutator.
 type PermissionGroupFunc func(context.Context, *ent.PermissionGroupMutation) (ent.Value, error)
@@ -342,18 +306,6 @@ func (f PlanQuotaFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, e
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PlanQuotaMutation", m)
-}
-
-// The PolicyEvaluationLogFunc type is an adapter to allow the use of ordinary
-// function as PolicyEvaluationLog mutator.
-type PolicyEvaluationLogFunc func(context.Context, *ent.PolicyEvaluationLogMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f PolicyEvaluationLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.PolicyEvaluationLogMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PolicyEvaluationLogMutation", m)
 }
 
 // The PositionFunc type is an adapter to allow the use of ordinary

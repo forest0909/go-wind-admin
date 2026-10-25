@@ -11,7 +11,6 @@ import (
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
-	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/plan"
 	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
 	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
@@ -45,11 +44,10 @@ func NewTenantAccessCheckerImpl(
 func (c *TenantAccessCheckerImpl) CheckTenantAccess(ctx context.Context, tenantId uint32, path string, method string) error {
 	sysCtx := viewer.WithSystemContext(ctx)
 
-	// 1. 查租户状态与到期时间（WithPlan(WithQuotas) 预载套餐及其配额边：
-	// expiry_policy 供第 2 步，API_CALL 上限供第 4 步——与 GetUsage 同一预载形态）
+	// 1. 查租户状态与到期时间（WithPlan 预载套餐：expiry_policy 供第 2 步）
 	t, err := c.entClient.Tenant.Query().
 		Where(tenant.IDEQ(tenantId)).
-		WithPlan(func(q *ent.PlanQuery) { q.WithQuotas() }).
+		WithPlan().
 		Only(sysCtx)
 	if err != nil || t == nil {
 		c.log.Errorf(ctx, "tenant access check: tenant %d not found: %v", tenantId, err)
@@ -114,27 +112,7 @@ func (c *TenantAccessCheckerImpl) CheckTenantAccess(ctx context.Context, tenantI
 		return adminV1.ErrorForbidden("module not allowed")
 	}
 
-	// 4. 套餐配额：API_CALL 调用量（plan_billing.md §7.2）。上限取自第 1 步预载的
-	// 套餐配额边，当前计数与 §7.1 ApiCallCount 同源（sys_api_audit_logs 按租户
-	// COUNT，活表现存行数即口径）。判定函数与 fail-open 语义见 quota_gate.go。
-	if t.Edges.Plan != nil {
-		limit, hasLimit := apiCallLimitFromPlanQuotas(t.Edges.Plan.Edges.Quotas)
-		if hasLimit {
-			cnt, cerr := c.entClient.ApiAuditLog.Query().
-				Where(apiauditlog.TenantIDEQ(tenantId)).
-				Count(sysCtx)
-			if cerr != nil {
-				// 计量查询失败 fail-open：配额基础设施抖动不阻断租户业务。
-				c.log.Errorf(ctx, "tenant access check: api call metering for tenant %d failed: %v", tenantId, cerr)
-				return nil
-			}
-			if qerr := checkApiCallQuota(limit, true, cnt); qerr != nil {
-				c.log.Warnf(ctx, "tenant access check: tenant %d request %s %s blocked by API_CALL quota (limit %d, current %d)", tenantId, method, path, limit, cnt)
-				return qerr
-			}
-		}
-	}
-
+	// API_CALL 不再计量，这一段直接放行。USER_LIMIT 和 STORAGE 仍在各自的创建入口执行。
 	return nil
 }
 

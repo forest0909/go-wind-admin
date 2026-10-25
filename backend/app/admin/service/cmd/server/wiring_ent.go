@@ -99,12 +99,8 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	menuRepo := data.NewMenuRepo(ctx, entClient)
 
 	// 审计日志
-	apiAuditLogRepo := data.NewApiAuditLogRepo(ctx, entClient)
 	loginAuditLogRepo := data.NewLoginAuditLogRepo(ctx, entClient)
 	operationAuditLogRepo := data.NewOperationAuditLogRepo(ctx, entClient)
-	permissionAuditLogRepo := data.NewPermissionAuditLogRepo(ctx, entClient)
-	dataAccessAuditLogRepo := data.NewDataAccessAuditLogRepo(ctx, entClient)
-	policyEvaluationLogRepo := data.NewPolicyEvaluationLogRepo(ctx, entClient)
 	auditLogArchiveRepo := data.NewAuditLogArchiveRepo(ctx, entClient)
 
 	// 字典与多语言
@@ -153,7 +149,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// ═══════════════════════ 四、服务层(internal/service) ═══════════════════════
 
 	// 审计日志服务端导出（XLSX/CSV）：手动注册二进制响应路由，见 rest_server 的 registerFileTransfer 同段
-	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, apiAuditLogRepo, operationAuditLogRepo, dataAccessAuditLogRepo, permissionAuditLogRepo, policyEvaluationLogRepo, accessTokenChecker)
+	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, operationAuditLogRepo, accessTokenChecker)
 	// 系统级常驻任务监控（只读 asynq Inspector）
 	taskMonitorService := service.NewTaskMonitorService(ctx)
 
@@ -191,11 +187,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 审计日志
 	loginAuditLogService := service.NewLoginAuditLogService(ctx, loginAuditLogRepo)
-	apiAuditLogService := service.NewApiAuditLogService(ctx, apiAuditLogRepo, apiRepo)
 	operationAuditLogService := service.NewOperationAuditLogService(ctx, operationAuditLogRepo)
-	dataAccessAuditLogService := service.NewDataAccessAuditLogService(ctx, dataAccessAuditLogRepo)
-	permissionAuditLogService := service.NewPermissionAuditLogService(ctx, permissionAuditLogRepo)
-	policyEvaluationLogService := service.NewPolicyEvaluationLogService(ctx, policyEvaluationLogRepo)
 
 	// 运维观测与门户
 	redisCacheMonitorService := service.NewRedisCacheMonitorService(ctx, redisCacheMonitorRepo)
@@ -220,7 +212,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// ═══════════════════════ 五、传输层(internal/server) ═══════════════════════
 
 	restMiddlewares := server.NewRestMiddleware(ctx, accessTokenChecker, tenantAccessChecker, authz,
-		apiAuditLogRepo, loginAuditLogRepo, operationAuditLogRepo, permissionAuditLogRepo, dataAccessAuditLogRepo, policyEvaluationLogRepo)
+		loginAuditLogRepo, operationAuditLogRepo)
 
 	restServer, err := server.NewRestServer(ctx, restMiddlewares, authz,
 		authenticationService,
@@ -230,8 +222,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		tenantService, planService, planQuotaService, planModuleService,
 		userService, userProfileService, roleService, positionService, orgUnitService,
 		menuService, apiService, permissionService, permissionGroupService,
-		permissionAuditLogService, policyEvaluationLogService,
-		loginAuditLogService, apiAuditLogService, operationAuditLogService, dataAccessAuditLogService,
+		loginAuditLogService, operationAuditLogService,
 		redisCacheMonitorService, serverMonitorService,
 		onlineSessionService, dashboardService,
 		internalMessageService, internalMessageCategoryService, internalMessageRecipientService,

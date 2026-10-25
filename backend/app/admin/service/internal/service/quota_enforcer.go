@@ -9,9 +9,7 @@ import (
 // 与计量（GetUsage，只读展示）不同，检查器在**资源创建入口**拒绝超限操作：
 //   - USER_LIMIT：创建用户前，当前租户用户数 >= 上限 → 拒绝；
 //   - STORAGE：文件上传前，当前占用 + 本次大小 > 上限 → 拒绝；
-//   - API_CALL：调用入口在网关侧（租户闸门中间件 → data 层
-//     TenantAccessCheckerImpl.CheckTenantAccess 第 4 步），判定函数在 data 包
-//     quota_gate.go（闸门实现所在包）——与本文件同一套 fail-open 语义。
+//   - API_CALL：不再计量，租户闸门不按调用次数拒绝。用量接口里的次数固定为 0。
 //
 // fail-open 语义：租户无套餐 / 无该类型配额条目 / 计量失败 → 放行（仅告警）。
 // 配额缺失 = 未限售该资源，与登录策略的 fail-open 容错取向一致；

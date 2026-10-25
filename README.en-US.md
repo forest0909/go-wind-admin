@@ -188,9 +188,9 @@ Security capabilities are designed with reference to the technical requirements 
 
 | Requirement | Implementation |
 |------------|----------------|
-| **Security Audit** | Full coverage of six audit log types: login / operation / API / data access / permission change / policy evaluation, recording the client IP (login / operation / API additionally resolve geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
+| **Security Audit** | Login logs and operation logs, recording the client IP (with geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
 | **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); image captcha; Redis login failure rate limiting (IP + username dual dimensions) |
-| **Access Control** | Dynamic RBAC engine (switchable policy engine: Casbin / OPA); role–permission–API mappings stored in the database with instant hot-reload on changes; menu / button level permission control, plus role-scoped row-level data scope (V1 pilot: position table) and field-level permissions (V1 pilot: user table, blacklisted fields pruned from responses); every authorization decision is logged to policy evaluation logs for traceability |
+| **Access Control** | Dynamic RBAC engine (switchable policy engine: Casbin / OPA); role–permission–API mappings stored in the database with instant hot-reload on changes; menu / button level permission control, plus role-scoped row-level data scope (V1 pilot: position table) and field-level permissions (V1 pilot: user table, blacklisted fields pruned from responses) |
 | **Multi-Tenant Isolation** | Compile-time ent Privacy data isolation: read queries get automatic tenant filtering; Create guards against forged tenants, Update / Delete inject tenant predicates (cross-tenant mutations match 0 rows); tenant requests are fail-closed validated against the Api table by `(path, method)`; plan module whitelists and expiry read-only policy |
 | **Data Confidentiality** | Login passwords encrypted at the application layer (AES) in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
 | **Data Backup & Recovery** | The program does not ship a database backup. Use the database's own tools (for example `pg_dump`) or an operations platform, and rehearse a restore |
@@ -241,10 +241,6 @@ Security capabilities are designed with reference to the technical requirements 
 | Internal Mail | Manage internal messages: view details, delete, mark as read, mark all as read. |
 | Login Logs | Query login logs for successful and failed logins; supports IP geolocation. |
 | Operation Logs | Query operation logs for normal and abnormal operations; supports IP geolocation, resource identification, and detail view. |
-| API Logs | Query API audit logs recording operator, path, method, and success status; supports IP geolocation. |
-| Data Logs | Query data access audit logs; SQL is lexically masked, with involved table names and data categories extracted automatically. |
-| Permission Logs | Query permission change audit logs recording operator, target object, and reason, with request snapshots retained. |
-| Policy Evaluation Logs | Query policy evaluation logs recording each authorization decision with its evaluation context; supports trace_id correlation for troubleshooting. |
 | Redis Cache Monitor | Read-only Redis monitoring displaying INFO, DBSIZE, and slowlog data; performs no write operations. |
 
 ### Personal Center

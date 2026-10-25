@@ -1,5 +1,4 @@
 {
-  "api-audit-log": "API Logs",
   "apis": "API Management",
   "auth": "Authentication",
   "coming-soon": "Coming Soon",
@@ -7,7 +6,6 @@
   "dashboard": "Overview",
   "dashboard-analytics": "Analytics",
   "dashboard-workspace": "Workbench",
-  "data-access-audit-log": "Data Logs",
   "dict": "Dictionary Management",
   "error-pages": "Error",
   "files": "File Management",
@@ -29,9 +27,7 @@
   "opm": "Organization & Personnel",
   "org-units": "Organization Structure",
   "permission": "Permission Management",
-  "permission-audit-log": "Permission Logs",
   "permission-codes": "Permission Codes",
-  "policy-evaluation-log": "Policy Evaluation Logs",
   "positions": "Position Management",
   "redis-cache-monitor": "Redis Cache Monitor",
   "roles": "Role Management",
@@ -78,11 +74,7 @@
     "log": {
       "moduleName": "Audit Logs",
       "loginAuditLog": "Login Logs",
-      "apiAuditLog": "API Logs",
       "operationAuditLog": "Operation Logs",
-      "dataAccessAuditLog": "Data Logs",
-      "permissionAuditLog": "Permission Logs",
-      "policyEvaluationLog": "Policy Evaluation Logs",
       "redisCacheMonitor": "Redis Cache Monitor"
     },
     "system": {

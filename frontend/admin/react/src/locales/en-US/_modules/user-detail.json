@@ -3,7 +3,6 @@
   "title": "User Detail",
   "tab": {
     "basicInfo": "Basic Info",
-    "apiAuditLog": "API Audit Log",
     "internalMessage": "Internal Messages"
   },
   "desc": {

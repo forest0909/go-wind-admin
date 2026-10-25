@@ -6,8 +6,6 @@ import (
 	"context"
 	permissionpb "go-wind-admin/api/gen/go/permission/service/v1"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
-	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentry"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentryi18n"
 	"go-wind-admin/app/admin/service/internal/data/ent/dicttype"
@@ -26,14 +24,12 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/orgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/permission"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
-	"go-wind-admin/app/admin/service/internal/data/ent/permissionauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionmenu"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/plan"
 	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
-	"go-wind-admin/app/admin/service/internal/data/ent/policyevaluationlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolefieldpermission"
@@ -69,54 +65,6 @@ func init() {
 	apiDescID := apiMixinFields0[0].Descriptor()
 	// api.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	api.IDValidator = apiDescID.Validators[0].(func(uint32) error)
-	apiauditlogMixin := schema.ApiAuditLog{}.Mixin()
-	apiauditlog.Policy = privacy.NewPolicies(apiauditlogMixin[2], schema.ApiAuditLog{})
-	apiauditlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := apiauditlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	apiauditlogMixinFields0 := apiauditlogMixin[0].Fields()
-	_ = apiauditlogMixinFields0
-	apiauditlogMixinFields2 := apiauditlogMixin[2].Fields()
-	_ = apiauditlogMixinFields2
-	apiauditlogFields := schema.ApiAuditLog{}.Fields()
-	_ = apiauditlogFields
-	// apiauditlogDescTenantID is the schema descriptor for tenant_id field.
-	apiauditlogDescTenantID := apiauditlogMixinFields2[0].Descriptor()
-	// apiauditlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	apiauditlog.DefaultTenantID = apiauditlogDescTenantID.Default.(uint32)
-	// apiauditlogDescID is the schema descriptor for id field.
-	apiauditlogDescID := apiauditlogMixinFields0[0].Descriptor()
-	// apiauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	apiauditlog.IDValidator = apiauditlogDescID.Validators[0].(func(uint32) error)
-	dataaccessauditlogMixin := schema.DataAccessAuditLog{}.Mixin()
-	dataaccessauditlog.Policy = privacy.NewPolicies(dataaccessauditlogMixin[2], schema.DataAccessAuditLog{})
-	dataaccessauditlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := dataaccessauditlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	dataaccessauditlogMixinFields0 := dataaccessauditlogMixin[0].Fields()
-	_ = dataaccessauditlogMixinFields0
-	dataaccessauditlogMixinFields2 := dataaccessauditlogMixin[2].Fields()
-	_ = dataaccessauditlogMixinFields2
-	dataaccessauditlogFields := schema.DataAccessAuditLog{}.Fields()
-	_ = dataaccessauditlogFields
-	// dataaccessauditlogDescTenantID is the schema descriptor for tenant_id field.
-	dataaccessauditlogDescTenantID := dataaccessauditlogMixinFields2[0].Descriptor()
-	// dataaccessauditlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	dataaccessauditlog.DefaultTenantID = dataaccessauditlogDescTenantID.Default.(uint32)
-	// dataaccessauditlogDescID is the schema descriptor for id field.
-	dataaccessauditlogDescID := dataaccessauditlogMixinFields0[0].Descriptor()
-	// dataaccessauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	dataaccessauditlog.IDValidator = dataaccessauditlogDescID.Validators[0].(func(uint32) error)
 	dictentryMixin := schema.DictEntry{}.Mixin()
 	dictentry.Policy = privacy.NewPolicies(dictentryMixin[5], schema.DictEntry{})
 	dictentry.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -641,30 +589,6 @@ func init() {
 	permissionapiDescID := permissionapiMixinFields0[0].Descriptor()
 	// permissionapi.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	permissionapi.IDValidator = permissionapiDescID.Validators[0].(func(uint32) error)
-	permissionauditlogMixin := schema.PermissionAuditLog{}.Mixin()
-	permissionauditlog.Policy = privacy.NewPolicies(permissionauditlogMixin[2], schema.PermissionAuditLog{})
-	permissionauditlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := permissionauditlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	permissionauditlogMixinFields0 := permissionauditlogMixin[0].Fields()
-	_ = permissionauditlogMixinFields0
-	permissionauditlogMixinFields2 := permissionauditlogMixin[2].Fields()
-	_ = permissionauditlogMixinFields2
-	permissionauditlogFields := schema.PermissionAuditLog{}.Fields()
-	_ = permissionauditlogFields
-	// permissionauditlogDescTenantID is the schema descriptor for tenant_id field.
-	permissionauditlogDescTenantID := permissionauditlogMixinFields2[0].Descriptor()
-	// permissionauditlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	permissionauditlog.DefaultTenantID = permissionauditlogDescTenantID.Default.(uint32)
-	// permissionauditlogDescID is the schema descriptor for id field.
-	permissionauditlogDescID := permissionauditlogMixinFields0[0].Descriptor()
-	// permissionauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	permissionauditlog.IDValidator = permissionauditlogDescID.Validators[0].(func(uint32) error)
 	permissiongroupMixin := schema.PermissionGroup{}.Mixin()
 	permissiongroupMixinFields0 := permissiongroupMixin[0].Fields()
 	_ = permissiongroupMixinFields0
@@ -755,34 +679,6 @@ func init() {
 	planquotaDescID := planquotaMixinFields0[0].Descriptor()
 	// planquota.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	planquota.IDValidator = planquotaDescID.Validators[0].(func(uint32) error)
-	policyevaluationlogMixin := schema.PolicyEvaluationLog{}.Mixin()
-	policyevaluationlog.Policy = privacy.NewPolicies(policyevaluationlogMixin[2], schema.PolicyEvaluationLog{})
-	policyevaluationlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := policyevaluationlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	policyevaluationlogMixinFields0 := policyevaluationlogMixin[0].Fields()
-	_ = policyevaluationlogMixinFields0
-	policyevaluationlogMixinFields2 := policyevaluationlogMixin[2].Fields()
-	_ = policyevaluationlogMixinFields2
-	policyevaluationlogFields := schema.PolicyEvaluationLog{}.Fields()
-	_ = policyevaluationlogFields
-	// policyevaluationlogDescTenantID is the schema descriptor for tenant_id field.
-	policyevaluationlogDescTenantID := policyevaluationlogMixinFields2[0].Descriptor()
-	// policyevaluationlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	policyevaluationlog.DefaultTenantID = policyevaluationlogDescTenantID.Default.(uint32)
-	// policyevaluationlogDescResult is the schema descriptor for result field.
-	policyevaluationlogDescResult := policyevaluationlogFields[6].Descriptor()
-	// policyevaluationlog.DefaultResult holds the default value on creation for the result field.
-	policyevaluationlog.DefaultResult = policyevaluationlogDescResult.Default.(bool)
-	// policyevaluationlogDescID is the schema descriptor for id field.
-	policyevaluationlogDescID := policyevaluationlogMixinFields0[0].Descriptor()
-	// policyevaluationlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	policyevaluationlog.IDValidator = policyevaluationlogDescID.Validators[0].(func(uint32) error)
 	positionMixin := schema.Position{}.Mixin()
 	position.Policy = privacy.NewPolicies(positionMixin[5], schema.Position{})
 	position.Hooks[0] = func(next ent.Mutator) ent.Mutator {

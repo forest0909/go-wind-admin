@@ -1,6 +1,6 @@
 // harness_test.go —— 审计中间件测试的公共假件与进程内 server 挂具。
 //
-// 为什么需要这层挂具：五个审计中间件的 Handle 均以 kratos 的
+// 为什么需要这层挂具：登录和操作审计中间件的 Handle 均以 kratos 的
 // *http.Transport（字段全部未导出、无包外构造器）为入参，包外无法直接构造。
 // 这里走 kratos 官方的服务端构造路径：
 //
@@ -13,9 +13,7 @@
 // ctx.Middleware），中间件因此按生产语义完整执行。
 //
 // 桩写入函数（write*Func）经 With* 选项注入，记录每次调用与字段供断言；
-// 同时记录写入时 ctx 的审计落库标记（audit.SinkKey，防递归采集）与系统
-// viewer 状态——审计写入必须以系统 viewer（绕过租户隔离）+ sink 标记执行，
-// 这是审计链路的关键不变量。
+// 同时记录写入时 ctx 是否为系统 viewer——审计写入必须绕过租户隔离。
 package logging
 
 import (
@@ -38,7 +36,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
-	"go-wind-admin/pkg/audit"
 	pkgjwt "go-wind-admin/pkg/jwt"
 )
 
@@ -48,37 +45,28 @@ import (
 
 // auditCallMeta 记录单次写入发生时的上下文特征。
 type auditCallMeta struct {
-	Sinking       bool // ctx 是否带审计落库标记（防递归采集）
 	SystemContext bool // ctx 是否为系统 viewer（审计写入须绕过租户隔离）
 }
 
-// auditCapture 以桩 write 函数身份记录每一条被落库的审计记录及其调用上下文，
-// 供测试断言字段来源映射与写入链路不变量。
+// auditCapture 以桩 write 函数身份记录每一条被落库的审计记录及其调用上下文。
 type auditCapture struct {
-	api            []*auditV1.ApiAuditLog
-	login          []*auditV1.LoginAuditLog
-	operation      []*auditV1.OperationAuditLog
-	permission     []*auditV1.PermissionAuditLog
-	dataAccess     []*auditV1.DataAccessAuditLog
-	apiMeta        []auditCallMeta
-	loginMeta      []auditCallMeta
-	operationMeta  []auditCallMeta
-	permissionMeta []auditCallMeta
-	dataAccessMeta []auditCallMeta
+	login         []*auditV1.LoginAuditLog
+	operation     []*auditV1.OperationAuditLog
+	loginMeta     []auditCallMeta
+	operationMeta []auditCallMeta
 }
 
-// metaOf 提取写入时刻 ctx 的 sink 标记与系统 viewer 状态。
+// metaOf 提取写入时刻 ctx 的系统 viewer 状态。
 func (c *auditCapture) metaOf(ctx context.Context) auditCallMeta {
 	v, _ := crudviewer.FromContext(ctx)
 	return auditCallMeta{
-		Sinking:       audit.IsSinking(ctx),
 		SystemContext: v != nil && v.IsSystemContext(),
 	}
 }
 
 // total 返回全部桩写入总数，用于"零写入"断言。
 func (c *auditCapture) total() int {
-	return len(c.api) + len(c.login) + len(c.operation) + len(c.permission) + len(c.dataAccess)
+	return len(c.login) + len(c.operation)
 }
 
 // ---------------------------------------------------------------------------
@@ -90,22 +78,13 @@ type auditServerEnv struct {
 	t       *testing.T
 	srv     *khttp.Server
 	capture *auditCapture
-	// acc 记录业务闭包注入 SQL 事件时的 accumulator 指针，
-	// 请求结束后验证其被 data_access 审计清空（防复用 ctx 重复落库）。
-	acc *[]audit.AuditEvent
 }
 
-// newAuditServer 构造挂具：五个写入桩默认全部注入（后续 opts 可覆盖，
-// 例如显式传 WithWriteApiLogFunc(nil) 以验证空函数分支）。
+// newAuditServer 构造挂具：登录和操作写入桩默认注入（后续 opts 可覆盖）。
 func newAuditServer(t *testing.T, opts ...Option) *auditServerEnv {
 	t.Helper()
 	env := &auditServerEnv{t: t, capture: &auditCapture{}}
 	all := []Option{
-		WithWriteApiLogFunc(func(ctx context.Context, d *auditV1.ApiAuditLog) error {
-			env.capture.api = append(env.capture.api, d)
-			env.capture.apiMeta = append(env.capture.apiMeta, env.capture.metaOf(ctx))
-			return nil
-		}),
 		WithWriteLoginLogFunc(func(ctx context.Context, d *auditV1.LoginAuditLog) error {
 			env.capture.login = append(env.capture.login, d)
 			env.capture.loginMeta = append(env.capture.loginMeta, env.capture.metaOf(ctx))
@@ -114,16 +93,6 @@ func newAuditServer(t *testing.T, opts ...Option) *auditServerEnv {
 		WithWriteOperationAuditLogFunc(func(ctx context.Context, d *auditV1.OperationAuditLog) error {
 			env.capture.operation = append(env.capture.operation, d)
 			env.capture.operationMeta = append(env.capture.operationMeta, env.capture.metaOf(ctx))
-			return nil
-		}),
-		WithWritePermissionAuditLogFunc(func(ctx context.Context, d *auditV1.PermissionAuditLog) error {
-			env.capture.permission = append(env.capture.permission, d)
-			env.capture.permissionMeta = append(env.capture.permissionMeta, env.capture.metaOf(ctx))
-			return nil
-		}),
-		WithWriteDataAccessAuditLogFunc(func(ctx context.Context, d *auditV1.DataAccessAuditLog) error {
-			env.capture.dataAccess = append(env.capture.dataAccess, d)
-			env.capture.dataAccessMeta = append(env.capture.dataAccessMeta, env.capture.metaOf(ctx))
 			return nil
 		}),
 	}
@@ -145,9 +114,8 @@ func newAuditServer(t *testing.T, opts ...Option) *auditServerEnv {
 
 // chainHandler 返回与 protoc 生成代码同形的路由 handler：
 // 先按 X-Test-Operation 设置 operation，再把业务闭包挂进中间件链。
-// 业务闭包按 X-Test-Error 返回错误（kratos 错误 / 普通错误），
-// 按 X-Test-Data-Access 向 accumulator 注入 SQL 事件（模拟 driver wrapper
-// 的采集行为）；X-Test-Reply-Username 模拟 handler 通过响应头回传用户名，
+// 业务闭包按 X-Test-Error 返回错误（kratos 错误 / 普通错误）。
+// X-Test-Reply-Username 模拟 handler 通过响应头回传用户名，
 // 供登录审计在请求上下文没有用户名时回退。
 func (e *auditServerEnv) chainHandler() func(ctx khttp.Context) error {
 	return func(ctx khttp.Context) error {
@@ -165,16 +133,7 @@ func (e *auditServerEnv) chainHandler() func(ctx khttp.Context) error {
 		case "plain":
 			innerErr = errors.New("plain test error")
 		}
-		da := req.Header.Get("X-Test-Data-Access")
 		h := ctx.Middleware(func(c context.Context, reqIn interface{}) (interface{}, error) {
-			if da == "all" || da == "empty" {
-				if acc, ok := audit.FromContext(c); ok {
-					e.acc = acc
-					if da == "all" {
-						*acc = append(*acc, testDAEvents()...)
-					}
-				}
-			}
 			return nil, innerErr
 		})
 		_, _ = h(ctx, nil)
@@ -205,34 +164,6 @@ func (e *auditServerEnv) fire(method, path string, headers map[string]string, bo
 // ---------------------------------------------------------------------------
 // 测试数据构造
 // ---------------------------------------------------------------------------
-
-// testDAEvents 构造四类典型 SQL 事件：读用户表、写角色表、JOIN 双表、
-// 无表引用；覆盖 TableName 多表斜线连接、首表数据分类与 AffectedRows
-// 取值边界（-1 不落库 / 0 与正数落库）。
-func testDAEvents() []audit.AuditEvent {
-	return []audit.AuditEvent{
-		{
-			SqlText:   "SELECT id, username FROM sys_users WHERE id = $1",
-			SqlDigest: "digest-select-users", Latency: 12, Dialect: "postgres",
-			AffectedRows: -1, DataMasked: true, MaskingRules: "rule-a",
-		},
-		{
-			SqlText:   "INSERT INTO sys_roles (name) VALUES ('x')",
-			SqlDigest: "digest-insert-roles", Latency: 34, Dialect: "mysql",
-			AffectedRows: 2, DataMasked: false, MaskingRules: "",
-		},
-		{
-			SqlText:   "SELECT * FROM sys_users a JOIN sys_plan_quotas b ON a.id = b.user_id",
-			SqlDigest: "digest-join", Latency: 56, Dialect: "postgres",
-			AffectedRows: 0, DataMasked: false, MaskingRules: "",
-		},
-		{
-			SqlText:   "SELECT 1",
-			SqlDigest: "digest-constant", Latency: 7, Dialect: "postgres",
-			AffectedRows: 0, DataMasked: false, MaskingRules: "",
-		},
-	}
-}
 
 // mintTestToken 铸造测试 JWT。解析侧（jwtutil.ParseJWTPayload）不校验签名，
 // 任意 HS256 密钥签出的载荷即可映射出 UserTokenPayload

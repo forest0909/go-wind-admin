@@ -23,12 +23,12 @@ import (
 	"go-wind-admin/pkg/task"
 )
 
-// PlanQuotaWatermarkService 套餐配额水位通知：定时扫描全部 ON 租户三类配额
-// （USER_LIMIT / STORAGE / API_CALL）的用量水位（数据层
-// ScanQuotaWatermarks，与计量同源），对达到阈值的租户按其管理员偏好语言渲染
+// PlanQuotaWatermarkService 套餐配额水位通知：定时扫描全部 ON 租户的用量水位
+// （数据层 ScanQuotaWatermarks，与计量同源），对达到阈值的租户按其管理员偏好语言渲染
 // 站内信告警并投递给租户管理员（sys_tenants.admin_user_id）。
+// USER_LIMIT 与 STORAGE 仍计量。API_CALL 计数恒为 0，这一维不会命中。
 //
-// 与硬执行（quota_enforcer / quota_gate，超限拒绝）互补：这里是到达上限之前的
+// 与硬执行（quota_enforcer，超限拒绝）互补：这里是到达上限之前的
 // 提前告警。扫描频率即告警频率上限（每日一条，无状态：不记录"已通知"）。
 type PlanQuotaWatermarkService struct {
 	log *bLogger.Helper

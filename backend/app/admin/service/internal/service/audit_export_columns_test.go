@@ -12,17 +12,20 @@ func headersOf[T any](cols []exportColumn[T]) []string {
 }
 
 // 审计日志导出列必须与列表页展示列一致（"导出的就是页面看到的"）。
-// 策略评估日志的 logHash/signature 是完整性校验字段，页面不展示，不进导出。
 func TestAuditExportColumnHeaders(t *testing.T) {
 	cases := []struct {
 		name string
 		cols []string
 		want []string
 	}{
-		{"policy_evaluation", headersOf(policyEvaluationExportColumns()), []string{
-			"id", "createdAt", "tenantId", "userId", "membershipId", "permissionId",
-			"policyId", "requestPath", "requestMethod", "result", "effectDetails",
-			"scopeSql", "ipAddress", "traceId", "evaluationContext",
+		{"login", headersOf(loginExportColumns()), []string{
+			"id", "createdAt", "username", "tenantName", "actionType", "status",
+			"loginMethod", "mfaStatus", "failureReason", "ipAddress", "deviceInfo",
+			"requestId", "traceId",
+		}},
+		{"operation", headersOf(operationExportColumns()), []string{
+			"id", "createdAt", "username", "tenantName", "resourceType", "resourceId",
+			"action", "success", "sensitiveLevel", "requestId",
 		}},
 	}
 	for _, c := range cases {

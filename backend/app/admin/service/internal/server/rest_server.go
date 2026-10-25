@@ -38,12 +38,8 @@ func NewRestMiddleware(
 	accessTokenChecker auth.AccessTokenChecker,
 	tenantAccessChecker auth.TenantAccessChecker,
 	authorizer *authorizer.Authorizer,
-	apiAuditLogRepo *data.ApiAuditLogRepo,
 	loginLogRepo *data.LoginAuditLogRepo,
 	operationAuditLogRepo *data.OperationAuditLogRepo,
-	permissionAuditLogRepo *data.PermissionAuditLogRepo,
-	dataAccessAuditLogRepo *data.DataAccessAuditLogRepo,
-	policyEvaluationLogRepo *data.PolicyEvaluationLogRepo,
 ) []middleware.Middleware {
 	var ms []middleware.Middleware
 	// recovery 必须置于链首：任何中间件/handler 的 panic（如审计日志解析畸形 JWT）
@@ -52,10 +48,6 @@ func NewRestMiddleware(
 	ms = append(ms, logging.Server(bLogger.AsKratosLogger(ctx.GetLogger())))
 
 	ms = append(ms, applogging.Server(
-		applogging.WithWriteApiLogFunc(func(ctx context.Context, data *auditV1.ApiAuditLog) error {
-			// TODO 如果系统的负载比较小，可以同步写入数据库，否则，建议使用异步方式，即投递进队列。
-			return apiAuditLogRepo.Create(ctx, &auditV1.CreateApiAuditLogRequest{Data: data})
-		}),
 		applogging.WithWriteLoginLogFunc(func(ctx context.Context, data *auditV1.LoginAuditLog) error {
 			// TODO 如果系统的负载比较小，可以同步写入数据库，否则，建议使用异步方式，即投递进队列。
 			return loginLogRepo.Create(ctx, &auditV1.CreateLoginAuditLogRequest{Data: data})
@@ -63,15 +55,9 @@ func NewRestMiddleware(
 		applogging.WithWriteOperationAuditLogFunc(func(ctx context.Context, data *auditV1.OperationAuditLog) error {
 			return operationAuditLogRepo.Create(ctx, &auditV1.CreateOperationAuditLogRequest{Data: data})
 		}),
-		applogging.WithWritePermissionAuditLogFunc(func(ctx context.Context, data *auditV1.PermissionAuditLog) error {
-			return permissionAuditLogRepo.Create(ctx, &auditV1.CreatePermissionAuditLogRequest{Data: data})
-		}),
-		applogging.WithWriteDataAccessAuditLogFunc(func(ctx context.Context, data *auditV1.DataAccessAuditLog) error {
-			return dataAccessAuditLogRepo.Create(ctx, &auditV1.CreateDataAccessAuditLogRequest{Data: data})
-		}),
 	))
 
-	// 输入校验：对所有 RPC（含白名单内的 login/register/refresh/MFA）调用生成代码的
+	// 输入校验：对所有 RPC（含白名单内的 login/refresh）调用生成代码的
 	// Validate()。放 selector 外，否则白名单路由会被跳过——而它们恰是最需要校验入参的。
 	// 当前业务 proto 尚未补 (validate.rules)，多数 Validate() 返回 nil；补规则后再生效。
 	ms = append(ms, validate.Validator())
@@ -99,7 +85,7 @@ func NewRestMiddleware(
 			auth.WithInjectMetadata(false),
 			auth.WithInjectEnt(true),
 		),
-		authz.Server(newEvalLoggingEngine(authorizer.Engine(), policyEvaluationLogRepo)),
+		authz.Server(authorizer.Engine()),
 	).
 		Match(rpc.NewRestWhiteListMatcher()).
 		Build(),
@@ -141,13 +127,9 @@ func NewRestServer(
 	apiService *service.ApiService,
 	permissionService *service.PermissionService,
 	permissionGroupService *service.PermissionGroupService,
-	permissionAuditLogService *service.PermissionAuditLogService,
-	policyEvaluationLogService *service.PolicyEvaluationLogService,
 
 	loginAuditLogService *service.LoginAuditLogService,
-	apiAuditLogService *service.ApiAuditLogService,
 	operationAuditLogService *service.OperationAuditLogService,
-	dataAccessAuditLogService *service.DataAccessAuditLogService,
 	redisCacheMonitorService *service.RedisCacheMonitorService,
 	serverMonitorService *service.ServerMonitorService,
 	onlineSessionService *service.OnlineSessionService,
@@ -193,8 +175,6 @@ func NewRestServer(
 	adminV1.RegisterMenuServiceHTTPServer(srv, menuService)
 	adminV1.RegisterPermissionServiceHTTPServer(srv, permissionService)
 	adminV1.RegisterPermissionGroupServiceHTTPServer(srv, permissionGroupService)
-	adminV1.RegisterPolicyEvaluationLogServiceHTTPServer(srv, policyEvaluationLogService)
-	adminV1.RegisterPermissionAuditLogServiceHTTPServer(srv, permissionAuditLogService)
 
 	// 字段权限装饰器在最内层（紧贴业务实现），静态脱敏 redact 在外层兜底；
 	// 两者都按"清值"裁剪，protojson 默认不输出未填充字段，效果等价于移除字段。
@@ -213,9 +193,7 @@ func NewRestServer(
 	adminV1.RegisterPlanModuleServiceHTTPServer(srv, planModuleService)
 
 	adminV1.RegisterLoginAuditLogServiceHTTPServer(srv, loginAuditLogService)
-	adminV1.RegisterApiAuditLogServiceHTTPServer(srv, apiAuditLogService)
 	adminV1.RegisterOperationAuditLogServiceHTTPServer(srv, operationAuditLogService)
-	adminV1.RegisterDataAccessAuditLogServiceHTTPServer(srv, dataAccessAuditLogService)
 	adminV1.RegisterRedisCacheMonitorServiceHTTPServer(srv, redisCacheMonitorService)
 	adminV1.RegisterServerMonitorServiceHTTPServer(srv, serverMonitorService)
 	adminV1.RegisterOnlineSessionServiceHTTPServer(srv, onlineSessionService)

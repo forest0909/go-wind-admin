@@ -13,8 +13,8 @@
                         ├─ auth.NewContext（operator，业务层读）
                         ├─ viewer.WithContext(UserContext)   ← 隔离层的判定依据
                         └─ metadata（OperatorMetadata）
-                [租户闸门]   tid>0 时：租户状态 → 到期只读 → 套餐模块白名单 → API_CALL 配额
-                             （前三段 fail-closed；配额段 fail-open——无配额条目/计量失败放行）
+                [租户闸门]   tid>0 时：租户状态 → 到期只读 → 套餐模块白名单
+                             （三段均 fail-closed）
                 [authz 引擎] 接口级授权（见 frontend_authority/教程05）
                         │
                         ▼
@@ -25,15 +25,15 @@
 
 | 层 | 拦什么 | 实现位置 |
 |---|---|---|
-| HTTP 闸门 | 租户身份下的**接口可达性**（状态/到期/套餐白名单/API_CALL 配额） | `pkg/middleware/auth/auth.go`（调用方）+ `internal/data/tenant_access_checker.go`（实现） |
+| HTTP 闸门 | 租户身份下的**接口可达性**（状态/到期/套餐白名单） | `pkg/middleware/auth/auth.go`（调用方）+ `internal/data/tenant_access_checker.go`（实现） |
 | ent 读隔离 | 查询行的 **tenant_id 归属** | go-crud `rule.TenantPrivacy.EvalQuery`（v0.0.55，经 `mixin.TenantID` 编译） |
 | ent 写隔离 | 变更行（Update/UpdateOne/Delete/DeleteOne）的 tenant_id 归属 + tenant_id 改值防护 | 库层 `TenantPrivacy.EvalMutation`（v0.0.55 起）+ 仓内 `schema/tenant_mutation_guard.go`（全部带租户表的冗余层） |
 | Create 防伪造 | 租户上下文 Create 强制覆盖 tenant_id 为 viewer.tid | 库层 `TenantPrivacy.EvalMutation` Create 分支 |
 
 **与数据范围的组合**：试点表 `sys_positions` 的 Policy 返回 `TenantAndDataScopePolicy`
-（`schema/data_scope_guard.go`，链式：租户变更防护 + 数据范围查询过滤），其余 29 张带租户表
+（`schema/data_scope_guard.go`，链式：租户变更防护 + 数据范围查询过滤），其余 25 张带租户表
 返回裸 `TenantMutationGuardPolicy`——
-全部 30 张带租户表均为库层+仓内双防线。
+全部 26 张带租户表均为库层+仓内双防线。
 
 ## 2. 租户模型与表分类
 
@@ -44,19 +44,19 @@
 | `sys_tenants` | 租户行：`status`（ON/OFF/EXPIRED/FREEZE，仅 ON 可用）、`type`、`audit_status`、`expired_at`、套餐关联 |
 | `sys_plans` | 套餐：`version`、`expiry_policy`（READONLY / BLOCK_LOGIN / FREEZE，默认 READONLY） |
 | `sys_plan_modules` | 套餐 → 业务模块白名单（闸门第 3 段的判定源） |
-| `sys_plan_quotas` | 套餐配额：闸门第 4 段经第 1 段预载读其 API_CALL 上限；USER_LIMIT / STORAGE 在各资源入口执行（[plan_billing.md](./plan_billing.md) §7.2） |
+| `sys_plan_quotas` | 套餐配额：USER_LIMIT / STORAGE 在各资源入口执行。API_CALL 枚举仍可入库，但不再计量、闸门不拦截（[plan_billing.md](./plan_billing.md) §7.2） |
 
 平台级表（无 tenant_id，跨租户可见）：`sys_tenants`/`sys_plans` 本身、`sys_apis`、菜单、权限点/权限组、
 语言等。租户表与平台表的划分**以 schema 是否装配 `mixin.TenantID[uint32]{}` 为准**，不靠命名约定。
 
-### 2.2 带租户列的表（当前 30 张，全量盘点）
+### 2.2 带租户列的表（当前 26 张，全量盘点）
 
 | 模块 | 表 |
 |---|---|
 | dict | `sys_dict_types`、`sys_dict_entries`、`sys_dict_entry_i18n` |
 | file | `files`（同样没有 `sys_` 前缀） |
 | internal_message | `internal_messages`、`internal_message_categories`、`internal_message_recipients`（**没有 `sys_` 前缀**，2026-09-20 按 `information_schema.tables` 核对；写探针 SQL 时别照 ent schema 名加前缀） |
-| log（审计） | `sys_api_audit_logs`、`sys_data_access_audit_logs`、`sys_login_audit_logs`、`sys_operation_audit_logs`、`sys_permission_audit_logs`、`sys_policy_evaluation_logs` |
+| log（审计） | `sys_login_audit_logs`、`sys_operation_audit_logs` |
 | membership | `sys_memberships`、`sys_membership_org_units`、`sys_membership_positions`、`sys_membership_roles` |
 | opm | `sys_org_units`、`sys_positions`（数据范围试点，挂组合策略）、`sys_users`、`sys_user_credentials`、`sys_user_org_units`、`sys_user_positions`、`sys_user_roles`、`sys_roles`、`sys_role_metadata`、`sys_role_org_units`、`sys_role_permissions`、`sys_role_field_permissions` |
 | system/tenant | `sys_tasks` |
@@ -117,14 +117,15 @@ UNSPECIFIED 剔除、空集不兜底（交库规则 fail-closed），语义见 d
 - 匹配键是 **`htr.PathTemplate()`（路由模板）+ HTTP method**，不是原始 path——
   Api 表存的是 OpenAPI 文档里的路由模板（如 `/admin/v1/users/{id}`），带路径参数的请求按模板命中。
 
-### 4.2 四段检查（`tenant_access_checker.go`；第 1–3 段 fail-closed，第 4 段 fail-open）
+### 4.2 三段检查（`tenant_access_checker.go`；三段均 fail-closed）
+
+API 调用次数不再计量。闸门在模块白名单通过后直接放行，不读 `sys_plan_quotas` 的 API_CALL。用量接口里的 `ApiCallCount` 固定为 0。USER_LIMIT / STORAGE 仍在各自的创建入口执行，见 [plan_billing.md](./plan_billing.md) §7.2。
 
 | 段 | 检查 | 拒绝条件 |
 |---|---|---|
-| 1 | 租户行 + WithPlan(WithQuotas) 预载（expiry_policy 供第 2 段、API_CALL 上限供第 4 段） | 查不到 / `status != ON` → 403（OFF/EXPIRED/FREEZE 一律拒）。边界：判定是 `t.Status != nil && *t.Status != On`（`internal/data/tenant_access_checker.go:59`），**status 为 NULL 的租户行放行** |
+| 1 | 租户行 + WithPlan 预载（expiry_policy 供第 2 段） | 查不到 / `status != ON` → 403（OFF/EXPIRED/FREEZE 一律拒）。边界：判定是 `t.Status != nil && *t.Status != On`（`internal/data/tenant_access_checker.go`），**status 为 NULL 的租户行放行** |
 | 2 | 到期只读判定 | `expired_at` 已过 **且** 套餐 `expiry_policy == READONLY` 时：非 GET/HEAD/OPTIONS → 403 |
 | 3 | Api 表 `(path, method)` → `business_module` → 套餐白名单 | Api 表缺行 → 403；模块 UNSPECIFIED（未归类）→ 403；租户未挂套餐 → 拒全部业务模块；白名单 `sys_plan_modules` 计数为 0 → 403 |
-| 4 | 套餐配额（API_CALL 调用量）：上限取自第 1 段预载的配额边，当前计数 = `sys_api_audit_logs` 按租户 COUNT（与 [plan_billing.md](./plan_billing.md) §7.1 `ApiCallCount` 同源同语义，含被闸门拒绝的请求） | 上限存在且计数已达上限 → 403 `plan quota exceeded: API_CALL ...`。**fail-open**：无套餐配额条目 / 计量查询失败 → 放行——与第 1–3 段的 fail-closed 取向相反（配额缺失 = 未限售），语义见 [plan_billing.md](./plan_billing.md) §7.2 |
 
 枚举映射：ent `api.BusinessModule` ↔ proto `identityV1.Module`（checker 内两张 switch 表）。
 白名单查询用 `SystemContext`（闸门自身跨租户查询的合法通道）。
@@ -169,7 +170,7 @@ EXPIRED / FREEZE 并吊销该租户全部用户令牌，随后由本闸门第 1 
 Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防伪造，优先强类型接口、
 反射兜底、都不可用则报错）；平台上下文尊重代码里的显式 `SetTenantID`。
 
-**仓内 `TenantMutationGuardPolicy`（`schema/tenant_mutation_guard.go`）**——全部 30 张带租户表
+**仓内 `TenantMutationGuardPolicy`（`schema/tenant_mutation_guard.go`）**——全部 26 张带租户表
 经 schema `Policy()` 追加：
 对非 Create 变更同样经 `WhereP` 注入租户谓词，缺 viewer 拒绝、平台/系统放行。
 **历史**：该守卫诞生于库旧版本（EvalMutation 仅覆盖 Create、Update/Delete 直接放行）的时代；
@@ -186,7 +187,7 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 
 | 路径 | 状态 | 说明 |
 |---|---|---|
-| ent 数据层（30 张表读写） | ✅ 隔离 | 本文档第 5 节 |
+| ent 数据层（26 张表读写） | ✅ 隔离 | 本文档第 5 节 |
 | **应用层自有存储**（Redis 缓存键、MinIO 对象路径、asynq 任务载荷） | ❌ 不自动注入 | 隔离谓词只存在于 ent privacy；这些路径必须业务侧显式携带/校验租户维度 |
 | **租户内跨用户**（同 tenant 下 A 读/写 B 的行） | ❌ 完全不覆盖 | 隔离谓词只有 `tenant_id` 一列，"只看自己的行"必须业务侧自己钉（收件箱读/写已钉，见下） |
 | 平台管理员上下文 | 放行 | 设计使然（tid==0 全量） |

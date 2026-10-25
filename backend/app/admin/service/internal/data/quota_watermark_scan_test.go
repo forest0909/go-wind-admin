@@ -65,7 +65,7 @@ func TestScanQuotaWatermarksSqlite(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, client.PlanQuota.Create().
 		SetPlanID(planWithQuota.ID).
-		SetQuotaType(planquota.QuotaTypeApiCall).
+		SetQuotaType(planquota.QuotaTypeUserLimit).
 		SetQuotaValue(2).
 		Exec(ctx))
 	planNoQuota, err := client.Plan.Create().Save(ctx)
@@ -80,8 +80,8 @@ func TestScanQuotaWatermarksSqlite(t *testing.T) {
 		SetPlanID(planWithQuota.ID).
 		Save(ctx)
 	require.NoError(t, err)
-	require.NoError(t, client.ApiAuditLog.Create().SetTenantID(tenantHit.ID).Exec(ctx))
-	require.NoError(t, client.ApiAuditLog.Create().SetTenantID(tenantHit.ID).Exec(ctx))
+	require.NoError(t, client.User.Create().SetUsername("wm_hit_1").SetTenantID(tenantHit.ID).Exec(ctx))
+	require.NoError(t, client.User.Create().SetUsername("wm_hit_2").SetTenantID(tenantHit.ID).Exec(ctx))
 
 	// 未达水位：1 行（1/2 = 50% < 80%）
 	tenantHalf, err := client.Tenant.Create().
@@ -92,7 +92,7 @@ func TestScanQuotaWatermarksSqlite(t *testing.T) {
 		SetPlanID(planWithQuota.ID).
 		Save(ctx)
 	require.NoError(t, err)
-	require.NoError(t, client.ApiAuditLog.Create().SetTenantID(tenantHalf.ID).Exec(ctx))
+	require.NoError(t, client.User.Create().SetUsername("wm_half_1").SetTenantID(tenantHalf.ID).Exec(ctx))
 
 	// OFF 租户：状态过滤，不进扫描
 	tenantOff, err := client.Tenant.Create().
@@ -103,18 +103,17 @@ func TestScanQuotaWatermarksSqlite(t *testing.T) {
 		SetPlanID(planWithQuota.ID).
 		Save(ctx)
 	require.NoError(t, err)
-	require.NoError(t, client.ApiAuditLog.Create().SetTenantID(tenantOff.ID).Exec(ctx))
-	require.NoError(t, client.ApiAuditLog.Create().SetTenantID(tenantOff.ID).Exec(ctx))
+	require.NoError(t, client.User.Create().SetUsername("wm_off_1").SetTenantID(tenantOff.ID).Exec(ctx))
+	require.NoError(t, client.User.Create().SetUsername("wm_off_2").SetTenantID(tenantOff.ID).Exec(ctx))
 
 	// 无配额套餐租户：套餐无边，跳过
-	tenantNoQuota, err := client.Tenant.Create().
+	_, err = client.Tenant.Create().
 		SetName("水位租户丁").
 		SetCode("WM_NOQUOTA").
 		SetStatus(tenant.StatusOn).
 		SetPlanID(planNoQuota.ID).
 		Save(ctx)
 	require.NoError(t, err)
-	require.NoError(t, client.ApiAuditLog.Create().SetTenantID(tenantNoQuota.ID).Exec(ctx))
 
 	repo := &TenantUsageRepo{
 		entClient:     entClient,
@@ -129,7 +128,7 @@ func TestScanQuotaWatermarksSqlite(t *testing.T) {
 	require.Equal(t, tenantHit.ID, h.TenantID)
 	require.Equal(t, "水位租户甲", h.TenantName)
 	require.Equal(t, uint32(77), h.AdminUserID)
-	require.Equal(t, "API_CALL", h.QuotaType)
+	require.Equal(t, "USER_LIMIT", h.QuotaType)
 	require.Equal(t, uint64(2), h.Used)
 	require.Equal(t, uint64(2), h.Limit)
 	require.Equal(t, uint64(100), h.RatioPct)

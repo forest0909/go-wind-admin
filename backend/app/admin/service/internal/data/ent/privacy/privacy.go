@@ -135,54 +135,6 @@ func (f ApiMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) e
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.APIMutation", m)
 }
 
-// The ApiAuditLogQueryRuleFunc type is an adapter to allow the use of ordinary
-// functions as a query rule.
-type ApiAuditLogQueryRuleFunc func(context.Context, *ent.ApiAuditLogQuery) error
-
-// EvalQuery return f(ctx, q).
-func (f ApiAuditLogQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
-	if q, ok := q.(*ent.ApiAuditLogQuery); ok {
-		return f(ctx, q)
-	}
-	return Denyf("ent/privacy: unexpected query type %T, expect *ent.ApiAuditLogQuery", q)
-}
-
-// The ApiAuditLogMutationRuleFunc type is an adapter to allow the use of ordinary
-// functions as a mutation rule.
-type ApiAuditLogMutationRuleFunc func(context.Context, *ent.ApiAuditLogMutation) error
-
-// EvalMutation calls f(ctx, m).
-func (f ApiAuditLogMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
-	if m, ok := m.(*ent.ApiAuditLogMutation); ok {
-		return f(ctx, m)
-	}
-	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ApiAuditLogMutation", m)
-}
-
-// The DataAccessAuditLogQueryRuleFunc type is an adapter to allow the use of ordinary
-// functions as a query rule.
-type DataAccessAuditLogQueryRuleFunc func(context.Context, *ent.DataAccessAuditLogQuery) error
-
-// EvalQuery return f(ctx, q).
-func (f DataAccessAuditLogQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
-	if q, ok := q.(*ent.DataAccessAuditLogQuery); ok {
-		return f(ctx, q)
-	}
-	return Denyf("ent/privacy: unexpected query type %T, expect *ent.DataAccessAuditLogQuery", q)
-}
-
-// The DataAccessAuditLogMutationRuleFunc type is an adapter to allow the use of ordinary
-// functions as a mutation rule.
-type DataAccessAuditLogMutationRuleFunc func(context.Context, *ent.DataAccessAuditLogMutation) error
-
-// EvalMutation calls f(ctx, m).
-func (f DataAccessAuditLogMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
-	if m, ok := m.(*ent.DataAccessAuditLogMutation); ok {
-		return f(ctx, m)
-	}
-	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.DataAccessAuditLogMutation", m)
-}
-
 // The DictEntryQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type DictEntryQueryRuleFunc func(context.Context, *ent.DictEntryQuery) error
@@ -615,30 +567,6 @@ func (f PermissionApiMutationRuleFunc) EvalMutation(ctx context.Context, m ent.M
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PermissionApiMutation", m)
 }
 
-// The PermissionAuditLogQueryRuleFunc type is an adapter to allow the use of ordinary
-// functions as a query rule.
-type PermissionAuditLogQueryRuleFunc func(context.Context, *ent.PermissionAuditLogQuery) error
-
-// EvalQuery return f(ctx, q).
-func (f PermissionAuditLogQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
-	if q, ok := q.(*ent.PermissionAuditLogQuery); ok {
-		return f(ctx, q)
-	}
-	return Denyf("ent/privacy: unexpected query type %T, expect *ent.PermissionAuditLogQuery", q)
-}
-
-// The PermissionAuditLogMutationRuleFunc type is an adapter to allow the use of ordinary
-// functions as a mutation rule.
-type PermissionAuditLogMutationRuleFunc func(context.Context, *ent.PermissionAuditLogMutation) error
-
-// EvalMutation calls f(ctx, m).
-func (f PermissionAuditLogMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
-	if m, ok := m.(*ent.PermissionAuditLogMutation); ok {
-		return f(ctx, m)
-	}
-	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PermissionAuditLogMutation", m)
-}
-
 // The PermissionGroupQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type PermissionGroupQueryRuleFunc func(context.Context, *ent.PermissionGroupQuery) error
@@ -781,30 +709,6 @@ func (f PlanQuotaMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutat
 		return f(ctx, m)
 	}
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PlanQuotaMutation", m)
-}
-
-// The PolicyEvaluationLogQueryRuleFunc type is an adapter to allow the use of ordinary
-// functions as a query rule.
-type PolicyEvaluationLogQueryRuleFunc func(context.Context, *ent.PolicyEvaluationLogQuery) error
-
-// EvalQuery return f(ctx, q).
-func (f PolicyEvaluationLogQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
-	if q, ok := q.(*ent.PolicyEvaluationLogQuery); ok {
-		return f(ctx, q)
-	}
-	return Denyf("ent/privacy: unexpected query type %T, expect *ent.PolicyEvaluationLogQuery", q)
-}
-
-// The PolicyEvaluationLogMutationRuleFunc type is an adapter to allow the use of ordinary
-// functions as a mutation rule.
-type PolicyEvaluationLogMutationRuleFunc func(context.Context, *ent.PolicyEvaluationLogMutation) error
-
-// EvalMutation calls f(ctx, m).
-func (f PolicyEvaluationLogMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
-	if m, ok := m.(*ent.PolicyEvaluationLogMutation); ok {
-		return f(ctx, m)
-	}
-	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.PolicyEvaluationLogMutation", m)
 }
 
 // The PositionQueryRuleFunc type is an adapter to allow the use of ordinary
@@ -1180,10 +1084,6 @@ func queryFilter(q ent.Query) (Filter, error) {
 	switch q := q.(type) {
 	case *ent.APIQuery:
 		return q.Filter(), nil
-	case *ent.ApiAuditLogQuery:
-		return q.Filter(), nil
-	case *ent.DataAccessAuditLogQuery:
-		return q.Filter(), nil
 	case *ent.DictEntryQuery:
 		return q.Filter(), nil
 	case *ent.DictEntryI18nQuery:
@@ -1220,8 +1120,6 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.PermissionApiQuery:
 		return q.Filter(), nil
-	case *ent.PermissionAuditLogQuery:
-		return q.Filter(), nil
 	case *ent.PermissionGroupQuery:
 		return q.Filter(), nil
 	case *ent.PermissionMenuQuery:
@@ -1233,8 +1131,6 @@ func queryFilter(q ent.Query) (Filter, error) {
 	case *ent.PlanModuleQuery:
 		return q.Filter(), nil
 	case *ent.PlanQuotaQuery:
-		return q.Filter(), nil
-	case *ent.PolicyEvaluationLogQuery:
 		return q.Filter(), nil
 	case *ent.PositionQuery:
 		return q.Filter(), nil
@@ -1273,10 +1169,6 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	switch m := m.(type) {
 	case *ent.APIMutation:
 		return m.Filter(), nil
-	case *ent.ApiAuditLogMutation:
-		return m.Filter(), nil
-	case *ent.DataAccessAuditLogMutation:
-		return m.Filter(), nil
 	case *ent.DictEntryMutation:
 		return m.Filter(), nil
 	case *ent.DictEntryI18nMutation:
@@ -1313,8 +1205,6 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 		return m.Filter(), nil
 	case *ent.PermissionApiMutation:
 		return m.Filter(), nil
-	case *ent.PermissionAuditLogMutation:
-		return m.Filter(), nil
 	case *ent.PermissionGroupMutation:
 		return m.Filter(), nil
 	case *ent.PermissionMenuMutation:
@@ -1326,8 +1216,6 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.PlanModuleMutation:
 		return m.Filter(), nil
 	case *ent.PlanQuotaMutation:
-		return m.Filter(), nil
-	case *ent.PolicyEvaluationLogMutation:
 		return m.Filter(), nil
 	case *ent.PositionMutation:
 		return m.Filter(), nil

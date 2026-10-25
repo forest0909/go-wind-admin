@@ -15,8 +15,8 @@ import (
 //
 // 与 §7.2 的硬执行（超限拒绝）互补：这里是只读扫描 + 提前告警——在用量到达
 // 上限之前把水位事实通知租户管理员，让租户有机会提前扩容。扫描与计量同源：
-// USER_LIMIT / STORAGE / API_CALL 复用 CountUsersInTenant / SumStorageInTenant /
-// CountApiCallsInTenant（与 GetUsage 同一查询）。
+// USER_LIMIT / STORAGE 复用 CountUsersInTenant / SumStorageInTenant。
+// API_CALL 不再计量，CountApiCallsInTenant 恒为 0，这一维不会命中。
 //
 // 阈值是运维口径常量（非套餐数据、当前无配置面）：用量/上限达到 80% 即命中。
 // 单维度计量查询失败记日志后跳过该维度——扫描不因计量抖动中断，也不因

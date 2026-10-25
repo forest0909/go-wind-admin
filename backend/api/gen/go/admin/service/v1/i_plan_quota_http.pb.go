@@ -40,13 +40,13 @@ type PlanQuotaServiceHTTPServer interface {
 
 func RegisterPlanQuotaServiceHTTPServer(s *http.Server, srv PlanQuotaServiceHTTPServer) {
 	r := s.Route("/")
-	r.GET("/admin/v1/plan-quotas", _PlanQuotaService_List18_HTTP_Handler(srv))
+	r.GET("/admin/v1/plan-quotas", _PlanQuotaService_List15_HTTP_Handler(srv))
 	r.POST("/admin/v1/plan-quotas", _PlanQuotaService_Create13_HTTP_Handler(srv))
 	r.PUT("/admin/v1/plan-quotas/{id}", _PlanQuotaService_Update13_HTTP_Handler(srv))
 	r.DELETE("/admin/v1/plan-quotas", _PlanQuotaService_Delete13_HTTP_Handler(srv))
 }
 
-func _PlanQuotaService_List18_HTTP_Handler(srv PlanQuotaServiceHTTPServer) func(ctx http.Context) error {
+func _PlanQuotaService_List15_HTTP_Handler(srv PlanQuotaServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.PagingRequest
 		if err := ctx.BindQuery(&in); err != nil {

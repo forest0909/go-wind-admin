@@ -29,14 +29,9 @@ func newAuditLogArchiveRepoSqlite(t *testing.T) *AuditLogArchiveRepo {
 	}
 }
 
-// seedOneRowPerAuditTable 往六张审计表各直插一行（created_at 由 ent 默认取当前时间），
-// 返回各表直插后的行数（应全为 1）。
+// seedOneRowPerAuditTable 往登录日志和操作日志各直插一行。
 func seedOneRowPerAuditTable(t *testing.T, client *ent.Client, ctx context.Context, suffix string) {
 	t.Helper()
-	require.NoError(t, client.ApiAuditLog.Create().
-		SetCreatedAt(time.Now()).
-		SetNillableUsername(trans.Ptr("archive_user_"+suffix)).
-		Exec(ctx), "直插 sys_api_audit_logs 应成功")
 	require.NoError(t, client.LoginAuditLog.Create().
 		SetCreatedAt(time.Now()).
 		SetNillableUsername(trans.Ptr("archive_user_"+suffix)).
@@ -45,87 +40,46 @@ func seedOneRowPerAuditTable(t *testing.T, client *ent.Client, ctx context.Conte
 		SetCreatedAt(time.Now()).
 		SetNillableResourceType(trans.Ptr("archive_res_"+suffix)).
 		Exec(ctx), "直插 sys_operation_audit_logs 应成功")
-	require.NoError(t, client.PermissionAuditLog.Create().
-		SetCreatedAt(time.Now()).
-		SetIPAddress("10.9.9.9").
-		SetRequestID("req-archive-"+suffix).
-		SetReason("archive reason "+suffix).
-		SetNillableTargetType(trans.Ptr("archive_tgt_"+suffix)).
-		Exec(ctx), "直插 sys_permission_audit_logs 应成功")
-	require.NoError(t, client.DataAccessAuditLog.Create().
-		SetCreatedAt(time.Now()).
-		SetNillableDataSource(trans.Ptr("archive_ds_"+suffix)).
-		Exec(ctx), "直插 sys_data_access_audit_logs 应成功")
-	require.NoError(t, client.PolicyEvaluationLog.Create().
-		SetCreatedAt(time.Now()).
-		SetUserID(1).
-		SetMembershipID(1).
-		SetPermissionID(1).
-		SetIPAddress("10.9.9.9").
-		SetNillableRequestPath(trans.Ptr("/archive/"+suffix)).
-		Exec(ctx), "直插 sys_policy_evaluation_logs 应成功")
 }
 
-// auditTableCounts 直查六张审计表的当前行数。
+// auditTableCounts 直查登录日志和操作日志的当前行数。
 func auditTableCounts(t *testing.T, client *ent.Client, ctx context.Context) map[string]int {
 	t.Helper()
 	counts := map[string]int{}
 	var err error
-	counts["sys_api_audit_logs"], err = client.ApiAuditLog.Query().Count(ctx)
-	require.NoError(t, err)
 	counts["sys_login_audit_logs"], err = client.LoginAuditLog.Query().Count(ctx)
 	require.NoError(t, err)
 	counts["sys_operation_audit_logs"], err = client.OperationAuditLog.Query().Count(ctx)
-	require.NoError(t, err)
-	counts["sys_permission_audit_logs"], err = client.PermissionAuditLog.Query().Count(ctx)
-	require.NoError(t, err)
-	counts["sys_data_access_audit_logs"], err = client.DataAccessAuditLog.Query().Count(ctx)
-	require.NoError(t, err)
-	counts["sys_policy_evaluation_logs"], err = client.PolicyEvaluationLog.Query().Count(ctx)
 	require.NoError(t, err)
 	return counts
 }
 
 // TestAuditLogArchiveRepoSqlite_ArchiveExpiredBeforeNow 验证：
-// before 取未来时间时，六张审计表的行（created_at 为当前时间，均早于 before）
+// before 取未来时间时，登录日志和操作日志（created_at 为当前时间，均早于 before）
 // 全部导出为 JSONL 后从库内删除，返回各表归档行数；落盘文件逐表一份、
-// 行数与导出一致；库内六表计数归零。
+// 行数与导出一致；库内两表计数归零。
 func TestAuditLogArchiveRepoSqlite_ArchiveExpiredBeforeNow(t *testing.T) {
 	repo := newAuditLogArchiveRepoSqlite(t)
 	client := repo.client
 	ctx := enttest.NewSystemContext(context.Background())
 
 	seedOneRowPerAuditTable(t, client, ctx, "future")
-	require.Equal(t, map[string]int{
-		"sys_api_audit_logs":         1,
-		"sys_login_audit_logs":       1,
-		"sys_operation_audit_logs":   1,
-		"sys_permission_audit_logs":  1,
-		"sys_data_access_audit_logs": 1,
-		"sys_policy_evaluation_logs": 1,
-	}, auditTableCounts(t, client, ctx), "六张审计表应各含 1 行")
+	kept := map[string]int{
+		"sys_login_audit_logs":     1,
+		"sys_operation_audit_logs": 1,
+	}
+	require.Equal(t, kept, auditTableCounts(t, client, ctx), "两张审计表应各含 1 行")
 
 	outDir := filepath.Join(t.TempDir(), "archive")
 	results, err := repo.ArchiveExpired(ctx, time.Now().Add(1*time.Hour), outDir)
 	require.NoError(t, err, "归档应成功")
 	require.NoError(t, err, "归档应成功")
-	require.Equal(t, map[string]int{
-		"sys_api_audit_logs":         1,
-		"sys_login_audit_logs":       1,
-		"sys_operation_audit_logs":   1,
-		"sys_permission_audit_logs":  1,
-		"sys_data_access_audit_logs": 1,
-		"sys_policy_evaluation_logs": 1,
-	}, results, "六张表各归档 1 行")
+	require.Equal(t, kept, results, "两张表各归档 1 行")
 
 	require.Equal(t, map[string]int{
-		"sys_api_audit_logs":         0,
-		"sys_login_audit_logs":       0,
-		"sys_operation_audit_logs":   0,
-		"sys_permission_audit_logs":  0,
-		"sys_data_access_audit_logs": 0,
-		"sys_policy_evaluation_logs": 0,
-	}, auditTableCounts(t, client, ctx), "归档后六张表计数应归零")
+		"sys_login_audit_logs":     0,
+		"sys_operation_audit_logs": 0,
+	}, auditTableCounts(t, client, ctx), "归档后两张表计数应归零")
 
 	// 落盘校验：每张表一份 JSONL，各含 1 行合法 JSON。
 	// 文件名为 <表名>-<stamp>.jsonl（stamp 形如 20060102-150405，自带连字符）。
@@ -138,20 +92,19 @@ func TestAuditLogArchiveRepoSqlite_ArchiveExpiredBeforeNow(t *testing.T) {
 		}
 		files[e.Name()] = filepath.Join(outDir, e.Name())
 	}
-	require.Len(t, files, 6, "应落盘 6 份 JSONL 文件")
+	require.Len(t, files, 2, "应落盘 2 份 JSONL 文件")
 	tables := map[string]bool{}
 	for name, path := range files {
 		table := ""
 		for _, tbl := range []string{
-			"sys_api_audit_logs", "sys_login_audit_logs", "sys_operation_audit_logs",
-			"sys_permission_audit_logs", "sys_data_access_audit_logs", "sys_policy_evaluation_logs",
+			"sys_login_audit_logs", "sys_operation_audit_logs",
 		} {
 			if strings.HasPrefix(name, tbl+"-") {
 				table = tbl
 				break
 			}
 		}
-		require.NotEmpty(t, table, "文件 %s 应以六张审计表之一的表名为前缀", name)
+		require.NotEmpty(t, table, "文件 %s 应以登录或操作日志表名为前缀", name)
 		tables[table] = true
 		data, err := os.ReadFile(path)
 		require.NoError(t, err)
@@ -159,7 +112,7 @@ func TestAuditLogArchiveRepoSqlite_ArchiveExpiredBeforeNow(t *testing.T) {
 		require.Len(t, lines, 1, "文件 %s 应恰含 1 行（导出行数与删除行数一致）", name)
 		require.True(t, json.Valid([]byte(lines[0])), "归档行应为合法 JSON")
 	}
-	require.Len(t, tables, 6, "六张审计表应各落盘一份")
+	require.Len(t, tables, 2, "两张审计表应各落盘一份")
 }
 
 // TestAuditLogArchiveRepoSqlite_ArchiveExpiredAfterNow 验证：
@@ -178,13 +131,9 @@ func TestAuditLogArchiveRepoSqlite_ArchiveExpiredAfterNow(t *testing.T) {
 	require.Empty(t, results, "过去时间阈值应无归档行")
 
 	require.Equal(t, map[string]int{
-		"sys_api_audit_logs":         1,
-		"sys_login_audit_logs":       1,
-		"sys_operation_audit_logs":   1,
-		"sys_permission_audit_logs":  1,
-		"sys_data_access_audit_logs": 1,
-		"sys_policy_evaluation_logs": 1,
-	}, auditTableCounts(t, client, ctx), "空跑后六张表行数应保留")
+		"sys_login_audit_logs":     1,
+		"sys_operation_audit_logs": 1,
+	}, auditTableCounts(t, client, ctx), "空跑后两张表行数应保留")
 
 	entries, err := os.ReadDir(outDir)
 	require.NoError(t, err)

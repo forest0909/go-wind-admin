@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/tx7do/go-utils/authorizer"
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
 	authzEngine "github.com/tx7do/kratos-authz/engine"
+	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
 	bLogger "github.com/tx7do/kratos-bootstrap/logger"
 )
 

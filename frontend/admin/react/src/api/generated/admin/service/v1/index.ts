@@ -698,7 +698,6 @@ export type permissionservicev1_Api = {
 
 // 业务功能模块
 export type identityservicev1_Module =
-  | 'AI'
   | 'DASHBOARD'
   | 'DICT'
   | 'FILE'

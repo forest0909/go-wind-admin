@@ -199,11 +199,6 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
   该计数自 2026-10-03 起同时是 API_CALL 配额的执行依据（§7.2）——
   展示与拦截读同一张表、同一个 COUNT，两边永远一致。
 
-**gorm 那套不是"同构实现"，是没接线的脚手架**：`internal/data/gorm/tenant_usage_repo.go` 由
-`//go:build gorm_backend` 圈住，`GetUsage` / `CleanupTenantData` / `EnforceExpiryPolicies` 三个方法
-各返回 `ErrorInternalServerError("gorm scaffold: … not implemented")`，文件头自述"仅由 wiring_gorm.go
-（ORM 切换 Phase 4 占位）装配，服务层尚未接入"。也就是说**一旦真切到 gorm 后端，用量、清理、到期扫描
-三件都会直接报错**——包括 BLOCK_LOGIN/FREEZE 依赖的那条到期扫描，它没有 gorm 路径。
 用途：租户详情页的用量/配额对照展示（计量）。GetUsage 这条通道本身不做超限拦截——
 拦截在各入口（§7.2）；API_CALL 一项的计数表另被租户闸门直读（§7.2）。
 

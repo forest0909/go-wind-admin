@@ -39,12 +39,11 @@ backend/
 │   └── gen/go/                   # buf 生成的 Go 代码
 ├── app/
 │   └── admin/service/            # Admin 服务应用
-│       ├── cmd/server/           # 入口 (main.go, wiring_ent.go / wiring_gorm.go 依赖装配)
+│       ├── cmd/server/           # 入口 (main.go, wiring_ent.go 依赖装配)
 │       ├── configs/              # 配置文件 (YAML)
 │       └── internal/
 │           ├── data/             # 数据层 (Repository)
 │           │   ├── ent/          # Ent 生成代码 & schema [禁止手动修改]
-│           │   ├── gorm/         # GORM 平行后端 (gorm_backend 标签，与 ent 仓储互斥)
 │           │   └── *_repo.go     # 各资源 Repository
 │           ├── server/           # 传输层 (HTTP/Asynq/SSE)
 │           └── service/          # 业务逻辑层 (Service)
@@ -95,9 +94,8 @@ Proto (API 定义) → Service (业务逻辑) → Data/Repo (数据访问)
 ### 3. Data 层 - 数据访问
 
 - 位置: `app/admin/service/internal/data/*_repo.go`
-- 使用自封装的 `go-crud` 库，**支持 Ent 和 GORM 两种 ORM，二选一**（构建标签 `gorm_backend` 切换，默认构建 Ent）:
-  - **Ent**（默认）: `go-crud/entgo` 泛型 Repository，用于所有 CRUD 操作
-  - **GORM**（平行后端）: `data/gorm/` 仓储实现（仅 `gorm_backend` 标签下编译，与 ent 仓储互斥），服务层待 ORM 切换 Phase 4 接线
+- 使用自封装的 `go-crud` 库，ORM 只用 Ent:
+  - **Ent**: `go-crud/entgo` 泛型 Repository，用于所有 CRUD 操作
 - 通过 `go-utils/mapper.CopierMapper` 做 Entity ↔ DTO 自动转换（注册 copierutil 转换器处理类型差异）
 - Repository 泛型签名包含 **10** 个类型参数，顺序固定：Query, Select, Create, CreateBulk, Update, UpdateOne, Delete, Predicate, **DTO**, Entity（照 `internal/data/api_repo.go:36-46` 抄）
 - 必须注册时间转换器: `copierutil.NewTimeStringConverterPair()` + `copierutil.NewTimeTimestamppbConverterPair()`（注意是 **Converter** Pair，不是 Converted）
@@ -114,11 +112,8 @@ Proto (API 定义) → Service (业务逻辑) → Data/Repo (数据访问)
 
 ## 依赖装配 (手写 wiring)
 
-依赖注入不使用框架,由 `cmd/server/wiring_ent.go`(!gorm_backend)的 `initApp` 手写构造注入,
+依赖注入不使用框架,由 `cmd/server/wiring_ent.go` 的 `initApp` 手写构造注入,
 自上而下单向分层:基础设施 → 仓储层(data) → 认证与鉴权 → 服务层(service) → 传输层(server)。
-GORM 后端为平行文件 `cmd/server/wiring_gorm.go`(gorm_backend):其仓储层(`newGormRepos`)已是
-可编译的真实代码,服务层待 repo 接口抽取(ORM 切换 Phase 4)后接通,当前 tag 构建仅剩预期错误
-`undefined: initApp`。
 
 **新增 CRUD 模块的登记(推荐自动化):**
 

@@ -60,7 +60,7 @@ Create 强制覆盖 tenant_id 防伪造；显式改 tenant_id 值仅放行"同�
 - 应用层自有缓存（Redis key 构造）；
 - 对象存储路径（OSS / MinIO 对象 key）；
 - 异步任务载荷（asynq 任务体）；
-- 任何绕过 ent 的直连 SQL / GORM 路径。
+- 任何绕过 ent 的直连 SQL 路径。
 
 接入新存储或新队列时，先想清楚租户维度怎么进 key / 路径 / 载荷，再写代码。
 

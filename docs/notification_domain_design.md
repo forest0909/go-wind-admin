@@ -633,10 +633,6 @@ DB 12 的 asynq 键逐个 `DEL`；mailpit 容器 `gwa-mailpit` 为本轮新起�
 **没一起动的姊妹问题**：`RevokeMessage` / `RevokeMessageWithMessage` 是**发件方/管理员**撤销语义
 （含 `user_id == 0` 的全局撤销分支），不属于"按人归属的收件箱写口"，本次未动；它引出的是一个更大的
 独立问题——撤销消息这条路径到底有没有对调用方做过对象级授权，记在 §7 末尾的"已知未修"里。
-另一处**刻意没有对齐**：`internal/data/gorm/` 那份镜像仓（build tag `gorm_backend`，服务层尚未接入）
-读侧写侧**都没有**归属谓词，`List` 直接跑 `r.client.DB`、连租户过滤也没有（`tenant_id` 在 gorm 版 `List` 里
-根本不出现）—— 那不是"漏同步"，而是该层文件头自述的"不做租户隔离、采用者须自行加 scope/plugin"。
-在它接进服务之前，不要把 ent 侧的这两次归属修复（读侧 P2-2、写侧 P2-6）当成已经在两份实现里都成立。
 
 回归测试：`TestInternalMessageRecipientInboxWritesSqlite`（`internal_message_recipient_repo_sqlite_test.go`，
 七个子测试，每个子测试一个干净的 sqlite 内存库、同租户 5 下两个用户 201/202）。

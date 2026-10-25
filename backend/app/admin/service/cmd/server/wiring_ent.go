@@ -1,6 +1,3 @@
-//go:build !gorm_backend
-// +build !gorm_backend
-
 package main
 
 import (
@@ -18,9 +15,8 @@ import (
 	"go-wind-admin/app/admin/service/internal/service"
 )
 
-// initApp 手写装配整个应用,是 Ent 后端构建(!gorm_backend)的依赖注入点。
-// GORM 后端见平行文件 wiring_gorm.go(gorm_backend),两者仅仓储层互斥,其余小节同构。
-// initApp assembles the whole application by hand — the wiring point of the Ent build.
+// initApp 手写装配整个应用,是依赖注入点。
+// initApp assembles the whole application by hand.
 //
 // 装配严格单向分层,自上而下的阅读顺序即依赖方向:
 // The wiring is strictly layered; reading top-down follows the dependency direction:

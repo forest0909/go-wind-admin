@@ -85,7 +85,6 @@
                 - `channel`：通知渠道发送器（email / webhook / sms）
                 - `ent`：存放 Admin 服务的 Ent 数据库 ORM 代码
                 - `enttest`：Ent 测试用内存库辅助
-                - `gorm`：GORM 平行后端仓储（`gorm_backend` 构建标签下编译，与 ent 仓储互斥二选一，服务层待 ORM 切换 Phase 4 接线）
             - `server`：存放 Admin 服务的服务端代码（HTTP/Asynq/SSE）
             - `service`：存放 Admin 服务的业务逻辑代码
         - 注：中间件不在 `internal` 下，公共中间件位于 `pkg/middleware/`（`auth` / `ent` / `logging`）。

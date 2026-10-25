@@ -95,6 +95,18 @@ func (p *AuthorizerProvider) ProvidePolicies(_ context.Context) (authorizer.Perm
 			continue
 		}
 
+		// 平台管理员放行全部接口：它的语义就是"拥有所有功能"，不能依赖逐条接口绑定——
+		// 种子里的接口 ID 清单是按位置写死的，新增接口也不会自动绑给它，
+		// 逐条绑定迟早漏掉接口，把平台管理员自己锁在门外。
+		if role.GetTenantId() == 0 && role.GetCode() == constants.PlatformAdminRoleCode {
+			result[role.GetCode()] = append(result[role.GetCode()], authorizer.PermissionData{
+				Domain: "0",
+				Path:   "/*",
+				Method: "ANY",
+			})
+			continue
+		}
+
 		apiIDs, err = p.roleRepo.GetRolePermissionApiIDs(ctx, role.GetId())
 		if err != nil {
 			p.log.Errorf(context.Background(), "failed to get role [%d] permission api ids: %v", role.GetId(), err)

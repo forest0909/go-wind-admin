@@ -69,3 +69,29 @@ func TestCasbinTenantDomain(t *testing.T) {
 	require.False(t, check("tenant_manager", "GET", "/admin/v1/roles", "5"), "tenant 5 must not inherit tenant 6's grant")
 	require.False(t, check("tenant_manager", "GET", "/admin/v1/users", "0"))
 }
+
+// TestCasbinPlatformAdminWildcard 平台管理员的通配策略放行所有路径和方法，但只限平台域。
+func TestCasbinPlatformAdminWildcard(t *testing.T) {
+	ctx := context.Background()
+	a := authorizer.NewAuthorizer(ctx, bLogger.NopLogger(), &authorizer.EngineConfig{Type: "casbin"}, staticPolicyProvider{
+		data: authorizer.PermissionDataMap{
+			"platform:admin": {{Domain: "0", Path: "/*", Method: "ANY"}},
+		},
+	})
+	require.NoError(t, a.ResetPolicies(ctx))
+	e := a.Engine()
+
+	for _, c := range []struct {
+		method, path, dom string
+		want              bool
+	}{
+		{"GET", "/admin/v1/users", "0", true},
+		{"DELETE", "/admin/v1/roles/{id}", "0", true},
+		{"POST", "/admin/v1/apis/sync", "0", true},
+		{"GET", "/admin/v1/users", "5", false},
+	} {
+		ok, err := e.IsAuthorized(ctx, "platform:admin", authzEngine.Action(c.method), authzEngine.Resource(c.path), authzEngine.Project(c.dom))
+		require.NoError(t, err)
+		require.Equal(t, c.want, ok, "%s %s dom=%s", c.method, c.path, c.dom)
+	}
+}

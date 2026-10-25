@@ -66,7 +66,7 @@
 string email = 11 [(validate.rules).string.max_len = 254];  // 见 api/protos/authentication/service/v1/authentication.proto:149
 ```
 
-生成的 `*.pb.validate.go` 由 REST 服务在**鉴权之前**调用（kratos `validate.Validator()` 中间件，`backend/app/admin/service/internal/server/rest_server.go:77`），所以白名单路由（登录 / 刷新令牌 / MFA 验证）的入参同样被校验——这几个接口恰恰最没人管却最该管。
+生成的 `*.pb.validate.go` 由 REST 服务在**鉴权之前**调用（kratos `validate.Validator()` 中间件，`backend/app/admin/service/internal/server/rest_server.go:77`），所以白名单路由（登录 / 刷新令牌）的入参同样被校验——这几个接口恰恰最没人管却最该管。
 
 > 不要写成 `buf.validate.field`：那是 buf 的新一代 protovalidate 扩展，本仓 `api/buf.yaml` 的依赖里只有 `buf.build/envoyproxy/protoc-gen-validate`，没有 protovalidate 模块，那种写法连编译都过不去。
 >

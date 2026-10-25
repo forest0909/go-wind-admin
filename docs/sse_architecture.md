@@ -8,7 +8,7 @@
 ## 1. 组件地图
 
 ```
-生产方    InternalMessageService（当前唯一，但 P2 起它是"被通知域调用"的一方，见第 4 节）
+生产方    InternalMessageService（当前唯一；通知域已删除，不再有被它调用的一方）
           └─ publishNotification：收件记录落库后 TryPublish（非阻塞、best-effort）
                      │ 事件 { id: GUIDv4, event: "notification", data: <收件记录 JSON> }
                      ▼

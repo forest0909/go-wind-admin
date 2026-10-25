@@ -204,8 +204,8 @@ func TestPlanRepoSqlite_Update(t *testing.T) {
 // （*plan.Version / *plan.ExpiryPolicy），DTO 侧为可选指针字段。mapper 的
 // 枚举转换对（EnumTypeConverter.NewConverterPair → NewGenericTypeConverterPair，
 // 经 &srcType/&dstType 取址注册）恰为指针↔指针形态的键，指针对字段能被
-// copier 直接转换赋值——与值型实体枚举列（如 position.type、
-// notification_channel.type，带列默认、无指针）读侧被丢弃的情形不同。
+// copier 直接转换赋值——与值型实体枚举列（如 position.type，
+// 带列默认、无指针）读侧被丢弃的情形不同。
 // 本测试将该读视图行为钉死：若日后注册形态或 copier 匹配语义变化导致
 // 读丢弃，此处会立即翻红。
 func TestPlanRepoSqlite_EnumReadView(t *testing.T) {

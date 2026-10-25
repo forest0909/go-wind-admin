@@ -42,12 +42,8 @@ export * from './config';
 export * from './login-audit-log';
 export * from './operation-audit-log';
 
-// 缓存监控
-
 // 在线会话
 export * from './online-session';
-
-// 服务监控
 
 // 首页分析概览
 export * from './dashboard';

@@ -3,7 +3,7 @@ import { createLazyRoute } from '@/core/router';
 
 /**
  * 系统管理路由配置
- * 包括菜单管理、API管理、字典管理、文件管理、任务管理、登录策略、语言管理等页面
+ * 包括菜单管理、API管理、字典管理、文件管理、任务管理、语言管理等页面
  */
 export const systemRoutes: AppRouteObject[] = [
   {

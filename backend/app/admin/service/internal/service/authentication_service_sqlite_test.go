@@ -13,9 +13,9 @@
 //     （netutil.HeaderFromContext / CookieFromContext 走接口断言可命中）。
 //
 // 覆盖目标：authentication_service.go 的 Login / doGrantTypePassword（限流预检、
-// 验证码闸门、租户解析、登录策略双段闸门、凭证校验与防枚举归一、租户纵深校验、
+// 验证码闸门、租户解析、凭证校验与防枚举归一、租户纵深校验、
 // 授权链（角色→权限→后台访问→角色码/管理员标志）、数据范围与字段权限聚合（协作文件）、
-// MFA 闸门、令牌签发、会话元数据、最后登录记录、限流清零）、Logout、RefreshToken
+// 令牌签发、会话元数据、最后登录记录、限流清零）、Logout、RefreshToken
 // （cookie 注入 + 轮换 + 旧令牌对失效 + 会话元数据继承）、ValidateToken、WhoAmI、
 // GenerateCaptcha / VerifyCaptcha，以及纯函数 normalizeLoginVerifyError /
 // containsPermission / fillAdminFlags 与 cookie 助手的无传输守卫段。
@@ -88,8 +88,6 @@ type authSvcUserRepoStub struct {
 	roleIDsByUser     map[uint32][]uint32
 	updates           []*identityV1.UpdateUserRequest
 	findIdentifierErr error
-	// emailToUserID SSO 测试用：email → userID 映射（nil = 走默认 identifier 直返）
-	emailToUserID map[string]uint32
 }
 
 func (s *authSvcUserRepoStub) Get(_ context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
@@ -106,16 +104,6 @@ func (s *authSvcUserRepoStub) ListRoleIDsByUserID(_ context.Context, userID uint
 func (s *authSvcUserRepoStub) FindUsernameByIdentifier(_ context.Context, _ uint32, identifier string) (string, uint32, error) {
 	if s.findIdentifierErr != nil {
 		return "", 0, s.findIdentifierErr
-	}
-	if s.emailToUserID != nil {
-		if uid, ok := s.emailToUserID[identifier]; ok {
-			// 与生产一致：返回 username + userID（非 0 即命中）
-			if u, ok := s.usersByID[uid]; ok {
-				return u.GetUsername(), uid, nil
-			}
-			return identifier, uid, nil
-		}
-		return identifier, 0, nil
 	}
 	return identifier, 0, nil
 }

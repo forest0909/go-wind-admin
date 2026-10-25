@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // 在线会话管理（只读列表 + 强制下线）
-// 会话以 Redis 中的令牌对（access+refresh）为粒度：每次登录 / 刷新轮换 / MFA 验证通过
+// 会话以 Redis 中的令牌对（access+refresh）为粒度：每次登录 / 刷新轮换
 // 都会产生一个新会话记录，随 refresh token 一同过期或被吊销。
 type OnlineSessionServiceClient interface {
 	// 查询在线会话列表
@@ -70,7 +70,7 @@ func (c *onlineSessionServiceClient) ForceLogout(ctx context.Context, in *ForceL
 // for forward compatibility.
 //
 // 在线会话管理（只读列表 + 强制下线）
-// 会话以 Redis 中的令牌对（access+refresh）为粒度：每次登录 / 刷新轮换 / MFA 验证通过
+// 会话以 Redis 中的令牌对（access+refresh）为粒度：每次登录 / 刷新轮换
 // 都会产生一个新会话记录，随 refresh token 一同过期或被吊销。
 type OnlineSessionServiceServer interface {
 	// 查询在线会话列表

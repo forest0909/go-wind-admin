@@ -176,10 +176,9 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
      vue-element / vue-vben 用下划线，同类页面就能正常归类成 `INTERNAL_MESSAGE`。
    - **枚举里没有这个模块**：`identity.service.v1.Module`（`api/protos/identity/service/v1/module.proto:7-21`）
      只有 DASHBOARD/OPM/SYSTEM/DICT/TENANT/PERMISSION/LOG/INTERNAL_MESSAGE/FILE/TASK 十档，
-     **没有 NOTIFICATION**（`menu.go:81-96` 的 `NamedValues` 同）→ 通知域 3 个页面菜单
-     无处可归，也只能落 nil。补这一档要同时动 proto + `menu.go` 枚举 + `ComponentToModule` +
-     `ServiceTagOrBusinessModule`，再 `gow api && gow ent` 重生成——属需要产品确认的契约变更，
-     未擅自落地。
+     **没有 NOTIFICATION**（`menu.go` 的 `NamedValues` 同）。通知域页面已随该域删除，
+     这一条现在只剩历史意义；以后新增模块要同时动 proto + `menu.go` 枚举 + `ComponentToModule` +
+     `ServiceTagOrBusinessModule`，再 `gow api && gow ent` 重生成。
    排障口径：`SELECT name, component FROM sys_menus WHERE module IS NULL AND component <> 'BasicLayout' AND deleted_at IS NULL;`
    列出的就是"当前不受模块白名单约束"的页面。
 

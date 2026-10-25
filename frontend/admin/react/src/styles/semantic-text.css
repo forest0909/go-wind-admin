@@ -50,13 +50,6 @@
      antd 默认 colorTextDescription 浅色 rgba(0,0,0,.45) 实测 3.35:1。
      Descriptions 的标签列不吃全局 token（实测 7 处未跟着变），只能在这里补。 */
   --gowind-secondary-text: #676e7c;
-
-  /* AI 用量页汇总数字的强调色（24px/600，大字号门槛 3.0:1；与 vue-element 端同值）
-     浅色原值实测不可读：cyan-500 对白底 2.37:1，故降到 cyan-700 5.36:1 */
-  /* #3b82f6：白底 3.68 / 暗底 L1 4.82（24px 大字号档） */
-  --metric-blue: #3b82f6;
-  --metric-cyan: #0e7490;
-  --metric-violet: #7c3aed;
 }
 
 html[data-theme='dark'] {
@@ -68,25 +61,6 @@ html[data-theme='dark'] {
   --gowind-secondary-text: #8b949e;
   --gowind-text-primary: #f8fafc;
   --gowind-text-regular: #dce3ed;
-
-  /* 暗色侧数字保持亮色：#22d3ee 在 L1 上 9.82:1 */
-  --metric-cyan: #22d3ee;
-  --metric-violet: #a78bfa;
-
-  /* AI Agent 画布节点类型色（同 --metric-* 的理由：节点图标是「文字前景」，
-     不能用色板 -7 的填充档）：暗底取 -5 提亮。 */
-  --gowind-node-start: #73d13d;
-  --gowind-node-knowledge: #9254de;
-  --gowind-node-condition: #ffa940;
-  --gowind-node-end: #8b949e;
-}
-
-/* 浅色侧节点档：亮底用色板 -7，对应暗色块的 -5 */
-html[data-theme='light'] {
-  --gowind-node-start: #389e0d;
-  --gowind-node-knowledge: #722ed1;
-  --gowind-node-condition: #d46b08;
-  --gowind-node-end: #676e7c;
 }
 
 /* ---------- Tag（filled 软底状态标签）：前景走文字档 ----------

@@ -23,7 +23,7 @@ import (
 )
 
 // exportColumn 一列的定义：表头 + 从行 DTO 取值的取值器（返回已格式化的字符串）。
-// 各导出资源（审计五类 / AI 用量流水 / 通知投递台账）共用此形态。
+// 各导出资源（登录日志 / 操作日志）共用此形态。
 type exportColumn[T any] struct {
 	header string
 	value  func(row T) string

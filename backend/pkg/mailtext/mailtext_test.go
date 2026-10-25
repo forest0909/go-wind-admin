@@ -80,41 +80,17 @@ func TestRender(t *testing.T) {
 	title, body = ContactBindCode(en, "654321")
 	assert.Equal(t, "GoWind Admin email binding code", title)
 	assert.Contains(t, body, "654321")
-
-	title, body = ChannelTestEmail(zh, 7, 1)
-	assert.Equal(t, "GoWind Admin 通知渠道测试邮件", title)
-	assert.Contains(t, body, "渠道 [7]")
-	assert.Contains(t, body, "操作人用户 ID: 1")
-
-	title, body = ChannelTestEmail(en, 7, 1)
-	assert.Equal(t, "GoWind Admin notification channel test email", title)
-	assert.Contains(t, body, "channel [7]")
-	assert.Contains(t, body, "Operator user ID: 1")
-
-	title, body = RuleTestNotification(zh, 3, "PASSWORD_RESET_CODE")
-	assert.Equal(t, "GoWind Admin 通知路由测试投递", title)
-	assert.Contains(t, body, "规则 [3]")
-	assert.Contains(t, body, "PASSWORD_RESET_CODE")
-
-	title, body = RuleTestNotification(en, 3, "CONTACT_BIND_CODE")
-	assert.Equal(t, "GoWind Admin notification routing test delivery", title)
-	assert.Contains(t, body, "rule [3]")
-	assert.Contains(t, body, "CONTACT_BIND_CODE")
 }
 
 // TestTablesAreComplete 守住"新增语言/新增事件不会静默漏文案"：
-// 每个 locale 的八个字段都得有值，且正文渲染后不残留占位符（漏参数会原样带出 %s/%d）。
+// 每个 locale 的四个字段都得有值，且正文渲染后不残留占位符（漏参数会原样带出 %s/%d）。
 func TestTablesAreComplete(t *testing.T) {
 	for locale, table := range tables {
 		for name, field := range map[string]string{
 			"passwordResetTitle": table.passwordResetTitle,
 			"contactBindTitle":   table.contactBindTitle,
-			"channelTestTitle":   table.channelTestTitle,
-			"ruleTestTitle":      table.ruleTestTitle,
 			"passwordResetBody":  table.passwordResetBody,
 			"contactBindBody":    table.contactBindBody,
-			"channelTestBody":    table.channelTestBody,
-			"ruleTestBody":       table.ruleTestBody,
 		} {
 			require.NotEmpty(t, field, "locale %s 的 %s 为空", locale, name)
 		}
@@ -123,8 +99,6 @@ func TestTablesAreComplete(t *testing.T) {
 		rendered := map[string][]string{
 			"password_reset": pair(PasswordResetCode(ctx, "123456")),
 			"contact_bind":   pair(ContactBindCode(ctx, "123456")),
-			"channel_test":   pair(ChannelTestEmail(ctx, 3, 9)),
-			"rule_test":      pair(RuleTestNotification(ctx, 3, "PASSWORD_RESET_CODE")),
 		}
 		for name, fields := range rendered {
 			assert.NotEmpty(t, fields[0], "%s.%s 主题为空", locale, name)

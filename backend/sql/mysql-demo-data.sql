@@ -9,7 +9,6 @@ START TRANSACTION;
 TRUNCATE TABLE sys_org_units AUTO_INCREMENT = 1;
 TRUNCATE TABLE sys_positions AUTO_INCREMENT = 1;
 TRUNCATE TABLE sys_tasks AUTO_INCREMENT = 1;
-TRUNCATE TABLE sys_login_policies AUTO_INCREMENT = 1;
 TRUNCATE TABLE sys_dict_types AUTO_INCREMENT = 1;
 TRUNCATE TABLE sys_dict_entries AUTO_INCREMENT = 1;
 TRUNCATE TABLE internal_message_categories AUTO_INCREMENT = 1;
@@ -98,18 +97,6 @@ ALTER TABLE sys_memberships AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FR
 INSERT INTO sys_membership_roles (id, membership_id, tenant_id, role_id, is_primary, status)
 VALUES (2, 2, 1, 2, true, 'ACTIVE');
 ALTER TABLE sys_membership_roles AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_membership_roles);
-
--- 调度任务（JSON字段直接保留字符串，MySQL5.7+支持）
-INSERT INTO sys_tasks(type, type_name, task_payload, cron_spec, enable, created_at)
-VALUES ('PERIODIC', 'backup', '{ "name": "test"}', '0 * * * *', true, NOW());
-ALTER TABLE sys_tasks AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_tasks);
-
--- 登录策略
-INSERT INTO sys_login_policies(id, target_id, type, method, value, reason, created_at)
-VALUES
-    (1, 1, 'BLACKLIST', 'IP', '127.0.0.1', '无理由', NOW()),
-    (2, 1, 'WHITELIST', 'MAC', '00:1B:44:11:3A:B7 ', '无理由', NOW());
-ALTER TABLE sys_login_policies AUTO_INCREMENT = (SELECT COALESCE(MAX(id) + 1, 1) FROM sys_login_policies);
 
 -- 字典类型（移除PG的序列重置指令，MySQL TRUNCATE已重置）
 INSERT INTO sys_dict_types(id, type_code, type_name, sort_order, description, is_enabled, created_at)

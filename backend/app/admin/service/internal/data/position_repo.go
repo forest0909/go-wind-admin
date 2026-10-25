@@ -172,7 +172,7 @@ func (r *PositionRepo) Get(ctx context.Context, req *identityV1.GetPositionReque
 // 读路径本就如实流通，无需回填。被丢弃的是**混合形态**：实体侧为值型
 // 枚举列（带 Default 且无 Nillable，如本仓 type）而 DTO 侧为可选指针
 // 字段——值型源与指针对键失配，copier 转而给 DTO 指针分配零值。故此处
-// 只对 type 做二次查询回填（对齐 notification_channel 的 Type 同型修复）。
+// 只对 type 做二次查询回填（同型问题）。
 func (r *PositionRepo) queryEnumsAndBackfill(ctx context.Context, items []*identityV1.Position) {
 	if len(items) == 0 {
 		return

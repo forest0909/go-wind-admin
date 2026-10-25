@@ -578,7 +578,7 @@ func recordUserLastLogin(ctx context.Context, log *bLogger.Helper, userRepo data
 
 // fillAdminFlags 按角色码填充 token 的平台/租户管理员标志。
 // 该标志此前从未被赋值（全仓库仅消费无生产），导致下游
-// GetIsPlatformAdmin 判定（MFA 重置、用户管理越权校验等）形同虚设。
+// GetIsPlatformAdmin 判定（用户管理越权校验等）形同虚设。
 func fillAdminFlags(tokenPayload *authenticationV1.UserTokenPayload, roleCodes []string) {
 	for _, rc := range roleCodes {
 		if rc == constants.PlatformAdminRoleCode {

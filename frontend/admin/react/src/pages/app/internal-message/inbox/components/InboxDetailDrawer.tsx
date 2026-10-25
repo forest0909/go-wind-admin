@@ -41,7 +41,7 @@ export const InboxDetailDrawer = ({ open, record, onClose }: InboxDetailDrawerPr
 
   // 正文格式自适应（仿 cms ContentViewer）：
   // - 富文本编辑器产出 → HTML 标签特征 → DOMPurify 净化渲染
-  // - 纯文本 / Markdown（AI 日报等）→ react-markdown（gfm 表格/列表，
+  // - 纯文本 / Markdown→ react-markdown（gfm 表格/列表，
   //   v10 默认不渲染裸 HTML，路径本身安全；换行/段落由 markdown 语义保留）
   const content = record?.content ? String(record.content) : '';
   const isHtml = /<\/?[a-z][\s\S]*>/i.test(content);
@@ -86,7 +86,7 @@ export const InboxDetailDrawer = ({ open, record, onClose }: InboxDetailDrawerPr
                 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
               ) : (
                 // 纯文本的孤立换行在 markdown 语义里是软换行（会折叠）——
-                // 升格为段落换行，AI 多段报告不再挤成一坨
+                // 升格为段落换行，多段文本不再挤成一坨
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {content.replace(/(?<!\n)\n(?!\n)/g, '\n\n')}
                 </ReactMarkdown>

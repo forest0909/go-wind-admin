@@ -8,7 +8,6 @@
     "securitySettings": "安全设置",
     "sessions": "活跃会话",
     "activeSessions": "活跃会话",
-    "notification": "通知偏好",
     "tenantUsage": "套餐用量",
     "accountBind": "账号绑定"
   },
@@ -59,26 +58,6 @@
     "FEMALE": "女",
     "SECRET": "保密"
   },
-  "notification": {
-    "quietTitle": "静音时段",
-    "quietDesc": "静音时段内不实时推送站内信通知（桌面通知与角标不再即时弹出），消息仍会进入收件箱，随时可查。",
-    "quietEnable": "启用静音时段",
-    "quietTimeRange": "静音窗口（支持跨零点，如 22:00 至 08:00）",
-    "startTime": "开始时间",
-    "endTime": "结束时间",
-    "quietTimeRequired": "请选择静音时段",
-    "quietZeroWidth": "静音开始与结束时间不能相同",
-    "muteTitle": "分类退订",
-    "muteDesc": "退订后不再接收该分类的全员广播消息；点对点直接发给你的消息不受影响。",
-    "noCategories": "当前租户暂无可选分类",
-    "save": "保存偏好",
-    "saving": "保存中…",
-    "saveSuccess": "通知偏好已保存",
-    "saveFailed": "保存通知偏好失败",
-    "transactionalNote": "验证码等事务性邮件不受本页配置影响，始终照常发送。",
-    "on": "开",
-    "off": "关"
-  },
   "tenantUsage": {
     "plan": "当前套餐：",
     "noPlan": "未订阅套餐",
@@ -127,7 +106,7 @@
   "avatarDeleteFailed": "头像删除失败",
   "secureSetting": {
     "password": "登录密码",
-    "passwordDesc": "建议定期修改密码，可搭配两步验证提升账户安全性",
+    "passwordDesc": "建议定期修改密码，提升账户安全性",
     "modify": "修改"
   },
   "accountBind": {

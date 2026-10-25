@@ -45,7 +45,7 @@ vue-element `.env.development` 的 `VITE_APP_PORT`、vue-vben `.env.development`
   ▼
 Kratos HTTP transport（:7788）
   │  1. 路由匹配：由 BFF proto 的 google.api.http 注解生成的路由表
-  │  2. 中间件链：JWT 验签与认证上下文注入、操作/API 审计日志、请求日志
+  │  2. 中间件链：JWT 验签与认证上下文注入、登录/操作审计日志、请求日志
   │  3. 生成的 handler：Register*HTTPServer 系列函数，解参、调 service 方法
   ▼
 Service 层（internal/service/）

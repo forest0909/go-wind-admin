@@ -208,9 +208,9 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 （`pkg/middleware/auth/auth.go:120-132` 的 `CheckTenantAccess`），而 selector 的语义是
 "命中白名单 ⇒ 返回 false ⇒ 不执行该中间件"（`kratos-bootstrap/rpc v0.1.3` 的
 `whitelist.go:132-144`，装配点 `rest_server.go:110`）。所以**白名单端点不过租户闸门**，
-机器 token（tid>0）在该类端点上也不例外——它后续访问的业务端点才过。
+租户用户（tid>0）在该类端点上也不例外——它后续访问的业务端点才过。
 
-不受影响的两项：**参数校验中间件对所有路由生效**（`validate.Validator()` 放在 selector 之外，`rest_server.go:77`，注释写明了理由），**登录/API 审计照记**（`applogging.Server` 在 selector 之前）。
+不受影响的两项：**参数校验中间件对所有路由生效**（`validate.Validator()` 放在 selector 之外，`rest_server.go:77`，注释写明了理由），**登录/操作审计照记**（`applogging.Server` 在 selector 之前）。
 
 ## 10. 运维
 

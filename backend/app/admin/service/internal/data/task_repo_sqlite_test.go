@@ -205,7 +205,7 @@ func TestTaskRepoSqlite_Update(t *testing.T) {
 // 枚举字段读视图机制注记：实体侧 type 为可空指针枚举列（*task.Type），
 // DTO 侧为可选指针字段。mapper 的枚举转换对（经 &srcType/&dstType 取址
 // 注册）恰为指针↔指针形态的键，指针对字段能被 copier 直接转换赋值——与
-// 值型实体枚举列（如 position.type、notification_channel.type）读侧被
+// 值型实体枚举列（如 position.type）读侧被
 // 丢弃的情形不同。type_name 为普通字符串列、无枚举转换参与，不在本测试
 // 范围。本测试将该读视图行为钉死。
 func TestTaskRepoSqlite_TypeReadView(t *testing.T) {

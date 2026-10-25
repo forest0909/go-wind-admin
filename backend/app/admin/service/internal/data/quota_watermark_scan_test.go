@@ -55,7 +55,6 @@ func TestRatioPct(t *testing.T) {
 // TestScanQuotaWatermarksSqlite 接线级（SQLite 内存库，白盒）：
 // 命中租户（计数=上限=2 → 100%）产出一条命中并逐字段传播（含 admin_user_id 与
 // 租户名）；未达水位租户（1/2）、OFF 租户（状态过滤）、无配额套餐租户均不命中。
-// aiRepo 传 nil（AI 维度跳过，其余三维度照常）。
 func TestScanQuotaWatermarksSqlite(t *testing.T) {
 	entClient := enttest.NewEntClientForTest(t)
 	ctx := enttest.NewSystemContext(context.Background())
@@ -120,7 +119,6 @@ func TestScanQuotaWatermarksSqlite(t *testing.T) {
 		authenticator: nil,
 		log:           bLogger.NewHelper(bLogger.NopLogger()),
 	}
-	// aiRepo 传 nil：AI 维度跳过；monthStart 仅喂 aiRepo，传零值即可。
 	hits, err := repo.ScanQuotaWatermarks(ctx)
 	require.NoError(t, err)
 	require.Len(t, hits, 1, "只应命中水位租户甲（乙未达阈值、丙 OFF、丁无配额）")

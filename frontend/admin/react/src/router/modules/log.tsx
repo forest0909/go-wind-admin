@@ -3,7 +3,7 @@ import { createLazyRoute } from '@/core/router';
 
 /**
  * 日志审计管理路由配置
- * 包括登录审计、操作审计、Redis 缓存监控
+ * 包括登录审计、操作审计
  */
 export const logRoutes: AppRouteObject[] = [
   {

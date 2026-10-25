@@ -602,7 +602,7 @@ func (a *Authenticator) UnblockToken(
 // ==============================
 
 // SaveSessionMeta 记录会话元数据，TTL 与 refresh token 对齐。
-// 在登录 / 刷新轮换 / MFA 验证通过签发新令牌对后由 service 层调用。
+// 在登录 / 刷新轮换签发新令牌对后由 service 层调用。
 func (a *Authenticator) SaveSessionMeta(
 	ctx context.Context,
 	clientType authenticationV1.ClientType,

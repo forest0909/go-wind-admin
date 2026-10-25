@@ -30,7 +30,7 @@ func TestComponentToModule(t *testing.T) {
 		{"dict page", "app/dict/entry/index.vue", identityV1.Module_DICT},
 		{"tenant page", "app/tenant/tenant/index.vue", identityV1.Module_TENANT},
 		{"permission page", "app/permission/menu/index.vue", identityV1.Module_PERMISSION},
-		{"log page", "app/log/api_audit_log/index.vue", identityV1.Module_LOG},
+		{"log page", "app/log/login_audit_log/index.vue", identityV1.Module_LOG},
 		{"log bare prefix", "app/log/", identityV1.Module_LOG},
 		{"internal message page", "app/internal_message/inbox/index.vue", identityV1.Module_INTERNAL_MESSAGE},
 		{"internal message bare prefix", "app/internal_message/", identityV1.Module_INTERNAL_MESSAGE},

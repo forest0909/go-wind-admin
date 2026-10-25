@@ -210,7 +210,7 @@ func TestPlanModuleRepoSqlite_Get(t *testing.T) {
 // 枚举字段读视图机制注记：实体侧 module 为可空指针枚举列（*planmodule.Module），
 // DTO 侧为可选指针字段。mapper 的枚举转换对（经 &srcType/&dstType 取址注册）
 // 恰为指针↔指针形态的键，指针对字段能被 copier 直接转换赋值——与值型实体
-// 枚举列（如 position.type、notification_channel.type）读侧被丢弃的情形不同。
+// 枚举列（如 position.type）读侧被丢弃的情形不同。
 // 本测试将该读视图行为钉死。
 func TestPlanModuleRepoSqlite_ModuleReadView(t *testing.T) {
 	entClient := enttest.NewEntClientForTest(t)

@@ -6,16 +6,12 @@ SET LOCAL search_path = public, pg_catalog;
 TRUNCATE TABLE public.sys_org_units,
                public.sys_positions,
                public.sys_tasks,
-               public.sys_login_policies,
                public.sys_dict_types,
                public.sys_dict_entries,
                public.internal_message_categories,
                public.sys_plan_modules,
                public.sys_plan_quotas,
                public.sys_plans,
-               public.sys_notification_channels,
-               public.sys_scripts,
-               public.sys_access_keys,
                public.internal_messages,
                public.internal_message_recipients,
                public.sys_memberships,
@@ -113,21 +109,6 @@ VALUES
     (2, 2, 1, 2, true, 'ACTIVE')
 ;
 SELECT setval('sys_membership_roles_id_seq', (SELECT MAX(id) FROM sys_membership_roles));
-
--- 调度任务
-INSERT INTO public.sys_tasks(type, type_name, task_payload, cron_spec, enable, created_at)
-VALUES
-    ('PERIODIC', 'backup', '{ "name": "test"}', '0 * * * *', true, now())
-;
-SELECT setval('sys_tasks_id_seq', (SELECT MAX(id) FROM sys_tasks));
-
--- 登录策略
-INSERT INTO public.sys_login_policies(id, target_id, type, method, value, reason, created_at)
-VALUES
-    (1, 1, 'BLACKLIST', 'IP', '127.0.0.1', '无理由', now()),
-    (2, 1, 'WHITELIST', 'MAC', '00:1B:44:11:3A:B7 ', '无理由', now())
-;
-SELECT setval('sys_login_policies_id_seq', (SELECT MAX(id) FROM sys_login_policies));
 
 -- 插入字典类型
 INSERT INTO public.sys_dict_types (
@@ -317,32 +298,9 @@ VALUES
 ;
 
 -- ============================================================
--- 增补：通知渠道 / 脚本 / 访问密钥 / 站内信（含收件人）
+-- 增补：站内信（含收件人）
 -- （tenant_admin 的登录凭证已由上方 sys_user_credentials 段 provisioning）
 -- ============================================================
-
--- 通知渠道（类型 tag：EMAIL；状态 tag：ON/OFF）
--- smtp_tls 值域只有 NONE / START_TLS / SSL（ent 枚举 + mailer 拨号 switch 同一份表），
--- 写宽了不会被库拦下（列是 varchar），但投递时会被判成"配置不可用"→ 台账 SKIPPED。
-INSERT INTO public.sys_notification_channels (status, name, type, smtp_host, smtp_port, smtp_username, smtp_password, smtp_from, smtp_tls, remark) VALUES
-    ('ON', '运维告警邮箱', 'EMAIL', 'smtp.example.com', 465, 'ops@example.com', 'demo-pass-1', 'ops@example.com', 'SSL', '生产告警主通道'),
-    ('ON', '市场活动通知', 'EMAIL', 'smtp.example.com', 587, 'mkt@example.com', 'demo-pass-2', 'mkt@example.com', 'START_TLS', '市场推广通知'),
-    ('OFF', '备用邮箱通道', 'EMAIL', 'smtp.backup.com', 25, 'bak@example.com', 'demo-pass-3', 'bak@example.com', 'NONE', '灾备备用，停用中')
-;
-
--- 脚本（语言 tag：LUA/JAVASCRIPT；启用状态；关键脚本 tag）
-INSERT INTO public.sys_scripts (is_enabled, name, language, hook_point, source, priority, description, critical) VALUES
-    (true, '租户创建审计钩子', 'LUA', 'entity.after_create', 'function on_after_create(ctx) log("tenant created") end', 10, '租户创建后写审计日志', true),
-    (true, '用户敏感字段脱敏', 'JAVASCRIPT', 'entity.after_query', 'function afterQuery(ctx) { mask(ctx.user.mobile); }', 5, '查询返回前脱敏手机号', false),
-    (false, '订单校验规则（停用）', 'LUA', 'entity.before_update', 'function before_update(ctx) end', 0, '旧版校验规则，已停用', false)
-;
-
--- 访问密钥（状态 tag：ON/OFF；含过期时间演示）
-INSERT INTO public.sys_access_keys (status, tenant_id, name, access_key, secret_hash, expires_at) VALUES
-    ('ON', 0, '监控平台接入', 'AK-demo-monitor-001', 'demo-hash-monitor', now() + interval '365 days'),
-    ('ON', 1, '测试租户数据同步', 'AK-demo-tenant-sync', 'demo-hash-sync', now() + interval '90 days'),
-    ('OFF', 0, '已停用的CI密钥', 'AK-demo-ci-old', 'demo-hash-ci', now() - interval '30 days')
-;
 
 -- 站内信（状态 tag：DRAFT/PUBLISHED/SCHEDULED/ARCHIVED；类型 tag：NOTIFICATION）
 INSERT INTO public.internal_messages (tenant_id, title, content, sender_id, category_id, status, type) VALUES

@@ -143,7 +143,7 @@ func (s *PlanQuotaWatermarkService) deliverOne(ctx context.Context, recipientUse
 
 // ---- 水位告警文案（站内信，按租户管理员偏好语言渲染） ----
 //
-// 与 ai_digest_service.go 的日报文案同一条链：站内信不是事务性邮件，文案不进
+// 站内信不是事务性邮件，文案不进
 // pkg/mailtext；语言标签归一复用 mailtext.Locale/LocaleOfTag，文案表留在本
 // 服务内、是其唯一出口，未设置或未识别回落中文。配额类型名不做翻译
 // （USER_LIMIT 等技术名与用量页 / 闸门报错口径一致）。

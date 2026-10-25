@@ -129,7 +129,7 @@
 
 两件事要分清楚：
 
-- 上表"结果"只写到仓储层为止。error 会经 service 原样上抛（如 `internal/service/notification_channel_service.go:52` 是 `return s.repo.List(...)`，不吞错），HTTP 状态码由"有没有 error"推出来（坏列 ⇒ 5xx、坏后缀 ⇒ 200 + 全量），**这一格没逐个打 HTTP 请求实测**。
+- 上表"结果"只写到仓储层为止。error 会经 service 原样上抛（service 层的 List 一般就是 `return s.repo.List(...)`，不吞错），HTTP 状态码由"有没有 error"推出来（坏列 ⇒ 5xx、坏后缀 ⇒ 200 + 全量），**这一格没逐个打 HTTP 请求实测**。
 - 只有当表**在** go-crud 那张白名单上、而列不在时，条件才会被静默丢弃：`getField` 拿空串让 `Process` 跳过这一条（`filter/structured_filter.go:122-128`、`:184-206`）。本仓的 `sys_menus` / `sys_users` 都不在那张表上，**别把这条当成通用行为**。另外含 SQL 元字符的字段名会被硬性标识符校验无条件拒掉（`filter/structured_filter.go:191-193`、`field/field_selector.go:20`），那是防注入、与列白名单无关。
 
 **大小写与驼峰：`query` 与 `fieldMask` 一律归一，`orderBy` 看传形**（同一探针实测）：

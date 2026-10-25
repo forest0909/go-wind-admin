@@ -8,7 +8,7 @@ import type { PaginationQuery } from '@/core';
  * 搜索看到的。
  */
 export async function exportAuditLogsServer(
-  type: 'api' | 'data_access' | 'login' | 'operation' | 'permission' | 'policy_evaluation',
+  type: 'login' | 'operation',
   query: PaginationQuery,
 ): Promise<void> {
   const token = useAuthStore.getState().accessToken;

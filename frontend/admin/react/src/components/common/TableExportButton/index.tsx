@@ -16,7 +16,7 @@ import { serverExportFile } from '@/utils/server-export';
  * 仅接入与该列表读接口同权限语义的 :export 锚点（平台闸/租户视角由后端定）。
  */
 export interface TableExportServerExport {
-  /** 后端 :export 锚点（如 'admin/v1/ai/usage-logs:export'） */
+  /** 后端 :export 锚点（如 'admin/v1/audit-logs:export'） */
   url: string
   /** 构造带当前搜索条件的查询（分页缺省=后端统一控行数） */
   buildQuery: () => PaginationQuery

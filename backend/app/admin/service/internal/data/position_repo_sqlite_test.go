@@ -207,7 +207,7 @@ func TestPositionRepoSqlite_Update(t *testing.T) {
 // 本测试对全部 6 值逐一断言如实落库。
 //
 // 第二处历史缺陷：读路径（Get/List）DTO 的 type/status 为指针字段，mapper
-// 的枚举转换对无法赋入指针字段而丢弃（与通知渠道 Type 读丢失同型），仓内
+// 的枚举转换对无法赋入指针字段而丢弃，仓内
 // 现经 converter 统一回填——落库断言走 ent 行值，回填断言走 DTO 读视图。
 func TestPositionRepoSqlite_TypeAllValuesLand(t *testing.T) {
 	repo := newPositionRepoSqlite(t)

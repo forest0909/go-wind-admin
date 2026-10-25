@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"sort"
+	"strings"
 
 	"github.com/tx7do/go-utils/ossutil"
 	"github.com/tx7do/go-utils/trans"
@@ -20,6 +22,33 @@ import (
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/pkg/oss"
 )
+
+// profileEditableFields 个人资料页可以自行修改的字段（与 BaseSetting 表单一致）。
+// 键为去掉下划线后的小写形式，兼容 snake_case 与 camelCase 两种 mask 写法。
+var profileEditableFields = map[string]struct{}{
+	"id": {}, "nickname": {}, "realname": {}, "email": {}, "mobile": {}, "telephone": {},
+	"gender": {}, "region": {}, "address": {}, "description": {}, "locale": {}, "avatar": {},
+}
+
+// profileUpdatablePaths 只保留 profileEditableFields 内的路径；mask 为空时不做全量更新，
+// 而是限定为全部可编辑字段，避免"无 mask = 全量"把其他字段一并写入。
+func profileUpdatablePaths(paths []string) []string {
+	if len(paths) == 0 {
+		paths = make([]string, 0, len(profileEditableFields))
+		for k := range profileEditableFields {
+			paths = append(paths, k)
+		}
+		sort.Strings(paths)
+		return paths
+	}
+	kept := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if _, ok := profileEditableFields[strings.ToLower(strings.ReplaceAll(p, "_", ""))]; ok {
+			kept = append(kept, p)
+		}
+	}
+	return kept
+}
 
 type UserProfileService struct {
 	adminV1.UserProfileServiceHTTPServer
@@ -95,8 +124,15 @@ func (s *UserProfileService) UpdateUser(ctx context.Context, req *identityV1.Upd
 		return nil, err
 	}
 
+	if req.Data == nil {
+		return nil, adminV1.ErrorBadRequest("invalid parameter")
+	}
+
 	req.Data.Id = trans.Ptr(operator.UserId)
 	req.Id = operator.UserId
+	// 个人资料只允许改资料字段。userRepo.Update 会按 mask 写角色、组织、岗位、状态等，
+	// 不收窄的话任何登录用户都能把自己的 roleIds 改成管理员角色。
+	req.UpdateMask = &field_mask.FieldMask{Paths: profileUpdatablePaths(req.GetUpdateMask().GetPaths())}
 
 	if err = s.userRepo.Update(ctx, req); err != nil {
 		return nil, err

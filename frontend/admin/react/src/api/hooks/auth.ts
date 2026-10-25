@@ -38,16 +38,6 @@ export const loginMutation = queryClient.getMutationCache().build(queryClient, {
 });
 
 // ------------------------------
-// MFA 挑战验证（Mutation）
-// 提交 operation_id + TOTP 码，后端校验通过后返回 LoginResponse（含真 access_token）。
-// ------------------------------
-export const verifyMfaMutation = queryClient.getMutationCache().build(queryClient, {
-  mutationKey: ['mfa-verify'],
-  mutationFn: apiClient.mfaService.VerifyMFAChallenge,
-  retry: 0,
-});
-
-// ------------------------------
 // 登出（Mutation）
 // ------------------------------
 export function useLogout(options?: UseMutationOptions<{}, Error, {}>) {

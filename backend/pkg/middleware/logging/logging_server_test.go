@@ -194,11 +194,6 @@ func TestServerDispatchMatrix(t *testing.T) {
 			expectLogin: 1,
 		},
 		{
-			name: "MFA验证端点仅登录审计", method: nethttp.MethodPost, path: "/case/5",
-			op:          adminV1.OperationMfaServiceVerifyMFAChallenge,
-			expectLogin: 1,
-		},
-		{
 			name: "登出端点进API与登录审计", method: nethttp.MethodPost, path: "/case/5",
 			op:        adminV1.OperationAuthenticationServiceLogout,
 			expectAPI: 1, expectLogin: 1,

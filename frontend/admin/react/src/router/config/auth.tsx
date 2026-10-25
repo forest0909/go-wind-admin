@@ -5,7 +5,6 @@ import UserLayout from '@/layouts/UserLayout';
 import RouteErrorFallback from '@/layouts/components/ErrorFallback/RouteErrorFallback.tsx';
 
 import Login from '@/pages/core/auth/login';
-import MfaChallenge from '@/pages/core/auth/mfa-challenge';
 
 /**
  * 认证相关路由配置
@@ -29,12 +28,6 @@ export const authRoutes: AppRouteObject[] = [
           </GuestGuard>
         ),
         meta: { title: 'routes:login', ignoreAccess: true },
-      },
-      {
-        name: 'mfa-challenge',
-        path: 'mfa-challenge',
-        element: <MfaChallenge />,
-        meta: { title: 'routes:mfaChallenge', ignoreAccess: true, hideInMenu: true },
       },
     ],
   },

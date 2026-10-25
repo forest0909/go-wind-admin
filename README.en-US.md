@@ -22,7 +22,7 @@
 
 - **Frontend kept: React 19 + Ant Design**. The backend is unchanged. `vue-element` / `vue-vben` were removed per [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) (Chinese); this tree maintains `frontend/admin/react` only
 - **Enterprise-grade RBAC**: Multi-tenant, multi-role, multi-department, menu / button / data-level permission control (switchable policy engine: Casbin / OPA)
-- **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, TOTP MFA, application-layer password encryption, dynamic RBAC and tenant isolation. See [Security & Compliance](#security--compliance-mlps-20)
+- **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, image captcha and login rate limiting, application-layer password encryption, dynamic RBAC and tenant isolation. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
 - **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM, one-click CRUD scaffolding; companion desktop GUI generator and CLI ([go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp), see [Companion Tools](#companion-tools))
 - **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
@@ -189,7 +189,7 @@ Security capabilities are designed with reference to the technical requirements 
 | Requirement | Implementation |
 |------------|----------------|
 | **Security Audit** | Full coverage of six audit log types: login / operation / API / data access / permission change / policy evaluation, recording the client IP (login / operation / API additionally resolve geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
-| **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); TOTP multi-factor authentication (MFA); image captcha; Redis login failure rate limiting (IP + username dual dimensions); configurable login restriction policies |
+| **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); image captcha; Redis login failure rate limiting (IP + username dual dimensions) |
 | **Access Control** | Dynamic RBAC engine (switchable policy engine: Casbin / OPA); role–permission–API mappings stored in the database with instant hot-reload on changes; menu / button level permission control, plus role-scoped row-level data scope (V1 pilot: position table) and field-level permissions (V1 pilot: user table, blacklisted fields pruned from responses); every authorization decision is logged to policy evaluation logs for traceability |
 | **Multi-Tenant Isolation** | Compile-time ent Privacy data isolation: read queries get automatic tenant filtering; Create guards against forged tenants, Update / Delete inject tenant predicates (cross-tenant mutations match 0 rows); tenant requests are fail-closed validated against the Api table by `(path, method)`; plan module whitelists and expiry read-only policy |
 | **Data Confidentiality** | Login passwords encrypted at the application layer (AES) in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
@@ -225,9 +225,7 @@ Security capabilities are designed with reference to the technical requirements 
 | Dictionary Management | Manage dictionary categories and entries; category-linked entries, server-side multi-column sorting, import/export. |
 | Task Scheduler | Manage tasks and task run logs; create, update, delete, start, pause, and run immediately. |
 | File Management | Manage uploads: search, upload to OSS or local storage, download, copy file address, delete, and image preview (large view). |
-| Login Policy | Manage login restriction policies; configure restriction type, method, value, and reason for target users. |
-| Account Login | Sign in with username / email / phone number, combinable with image captcha, login policies, and TOTP MFA. |
-| Multi-Factor Authentication (MFA) | TOTP-based MFA: login challenge, personal binding management, and admin rescue reset of a user's MFA. |
+| Account Login | Sign in with username / email / phone number, with image captcha and login rate limiting. |
 | Verification delivery | Profile email and phone changes read SMTP and SMS credentials from `app/admin/service/configs/mail.yaml`. An empty SMTP host or SMS provider means that path is not configured. Sends are synchronous and do not enter the task queue. |
 | Server Monitoring | Read-only view of runtime metrics (CPU cores, memory, goroutines, uptime, etc.) with auto refresh. |
 | Online Sessions | View currently online sessions (user, tenant, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
@@ -329,10 +327,6 @@ go-wind-admin/
     <tr>
         <td><img src="./docs/images/admin_internal_message_list.png" alt="Backend internal message list page"/></td>
         <td><img src="./docs/images/admin_internal_message_publish.png" alt="Backend publish internal message page"/></td>
-    </tr>
-    <tr>
-        <td><img src="./docs/images/admin_login_policy_list.png" alt="Login policy list page"/></td>
-        <td><img src="./docs/images/admin_login_policy_create.png" alt="Login policy create page"/></td>
     </tr>
     <tr>
         <td><img src="./docs/images/admin_login_audit_log_list.png" alt="Backend login audit log page"/></td>

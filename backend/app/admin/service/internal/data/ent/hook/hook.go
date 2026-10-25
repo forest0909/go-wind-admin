@@ -152,18 +152,6 @@ func (f LoginAuditLogFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Valu
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LoginAuditLogMutation", m)
 }
 
-// The LoginPolicyFunc type is an adapter to allow the use of ordinary
-// function as LoginPolicy mutator.
-type LoginPolicyFunc func(context.Context, *ent.LoginPolicyMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f LoginPolicyFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.LoginPolicyMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LoginPolicyMutation", m)
-}
-
 // The MembershipFunc type is an adapter to allow the use of ordinary
 // function as Membership mutator.
 type MembershipFunc func(context.Context, *ent.MembershipMutation) (ent.Value, error)
@@ -498,18 +486,6 @@ func (f UserCredentialFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Val
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserCredentialMutation", m)
-}
-
-// The UserMfaFactorFunc type is an adapter to allow the use of ordinary
-// function as UserMfaFactor mutator.
-type UserMfaFactorFunc func(context.Context, *ent.UserMfaFactorMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f UserMfaFactorFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.UserMfaFactorMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMfaFactorMutation", m)
 }
 
 // The UserOrgUnitFunc type is an adapter to allow the use of ordinary

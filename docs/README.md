@@ -21,7 +21,7 @@
 | [04 第一个业务模块](./tutorial/04-first-crud-module.md) | 端到端新增一个 CRUD 模块（后端+前端） | 03 | 亲手跑通一遍完整开发闭环 |
 | [05 权限模型](./tutorial/05-permission-model.md) | 认证与令牌、路由/按钮/字段可见性、authz 引擎 | 04 | 理解"谁能看到什么、调到什么" |
 | [06 多租户与行级隔离](./tutorial/06-multi-tenant-isolation.md) | Api 表闸门、数据层租户谓词、数据范围五档 | 05 | 理解"行级谁的数据"与部署闸门 |
-| [07 审计与等保](./tutorial/07-audit-compliance.md) | 六类审计日志的采集与留存、口令策略/MFA/限流 | 01 | 知道审计能力怎么用、边界在哪 |
+| [07 审计与等保](./tutorial/07-audit-compliance.md) | 六类审计日志的采集与留存、口令策略/限流/验证码 | 01 | 知道审计能力怎么用、边界在哪 |
 | [09 部署上线](./tutorial/09-deployment.md) | 部署形态决策、SSE 网关、生产密钥、备份 | 02 | 把系统安全地放到生产 |
 
 ### 按角色的推荐路线
@@ -46,7 +46,7 @@
 | [crud_module_guide/](./crud_module_guide/) | 新增完整 CRUD 业务模块的端到端手册：README 跨端编排与通用陷阱、backend.md 后端全流程与样例镜像索引、三端各自的页面实现参考（正文为英文原稿） | 接到「新增模块/新增资源/新建管理页」需求、动工新增整个模块之前；只给已有资源加字段先看 field_change_guide.md |
 | [frontend_authority.md](./frontend_authority.md) | 前端权限：路由访问模式、按钮权限码/角色、字段级权限 V1 | 改路由/按钮可见性/受控字段时 |
 | [adopt-one-frontend.md](./adopt-one-frontend.md) | 只保留一个前端的裁剪：三端独立性实测、`make ts` 回流、CORS、菜单表无"端"维度的后果 | 决定只用 react / vue-element / vue-vben 之一、要删掉另外两端之前 |
-| [authentication.md](./authentication.md) | 认证与令牌链路：登录全流程、令牌结构与配置、刷新轮换与 Cookie、MFA、限流/策略/验证码、会话吊销 | 改登录/令牌/刷新/MFA/限流/策略前 |
+| [authentication.md](./authentication.md) | 认证与令牌链路：登录全流程、令牌结构与配置、刷新轮换与 Cookie、限流与验证码、会话吊销 | 改登录/令牌/刷新/限流前 |
 | [tenant_isolation.md](./tenant_isolation.md) | 多租户隔离：上下文链路、HTTP 闸门、数据层读写隔离、套餐联动、覆盖边界、接入与排障 | 改隔离层/Api 表/套餐门禁、新表接租户前 |
 | [plan_billing.md](./plan_billing.md) | 套餐与计费管控：三档到期策略全链路、模块白名单、配额与用量计量、租户数据清理 | 改套餐/配额/到期处置、租户 403 排障前 |
 | [task_system.md](./task_system.md) | 任务调度系统：配置与启动链、任务数据模型、调度生命周期、系统级常驻任务、管理页、多租户语义与排障 | 加任务类型、排"任务没跑"、接新调度需求前 |

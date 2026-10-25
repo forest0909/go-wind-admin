@@ -85,9 +85,6 @@ func NewRestMiddleware(
 		// 可脱离 access token 独立鉴权。页面刷新后 access token 丢失时，前端凭
 		// refresh cookie 静默恢复会话，不再强制重新登录。
 		adminV1.OperationAuthenticationServiceRefreshToken,
-		// MFA 登录挑战验证免鉴权：operation_id 由登录流程签发，见 doGrantTypePassword 的 MFA 闸门。
-		// 仅此一个 MFA RPC 免鉴权；管理侧 RPC（GetMFAStatus 等）走正常 auth+authz。
-		adminV1.OperationMfaServiceVerifyMFAChallenge,
 		// 租户白标查询免鉴权：登录前按租户编号取名称/Logo（只暴露展示字段）
 		adminV1.OperationAuthenticationServiceGetTenantBranding,
 		//OperationFileTransferServiceDownloadFile,
@@ -119,8 +116,6 @@ func NewRestServer(
 	authorizer *authorizer.Authorizer,
 
 	authenticationService *service.AuthenticationService,
-	mfaService *service.MfaService,
-	loginPolicyService *service.LoginPolicyService,
 
 	portalService *service.AdminPortalService,
 	taskService *service.TaskService,
@@ -185,13 +180,10 @@ func NewRestServer(
 
 	adminV1.RegisterAuthenticationServiceHTTPServer(srv, authenticationService)
 
-	adminV1.RegisterMfaServiceHTTPServer(srv, mfaService)
-
 	adminV1.RegisterUserProfileServiceHTTPServer(srv, userProfileService)
 
 	adminV1.RegisterAdminPortalServiceHTTPServer(srv, portalService)
 	adminV1.RegisterTaskServiceHTTPServer(srv, taskService)
-	adminV1.RegisterLoginPolicyServiceHTTPServer(srv, loginPolicyService)
 
 	adminV1.RegisterDictTypeServiceHTTPServer(srv, dictTypeService)
 	adminV1.RegisterDictEntryServiceHTTPServer(srv, dictEntryService)

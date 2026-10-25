@@ -36,8 +36,6 @@ type Tx struct {
 	Language *LanguageClient
 	// LoginAuditLog is the client for interacting with the LoginAuditLog builders.
 	LoginAuditLog *LoginAuditLogClient
-	// LoginPolicy is the client for interacting with the LoginPolicy builders.
-	LoginPolicy *LoginPolicyClient
 	// Membership is the client for interacting with the Membership builders.
 	Membership *MembershipClient
 	// MembershipOrgUnit is the client for interacting with the MembershipOrgUnit builders.
@@ -94,8 +92,6 @@ type Tx struct {
 	User *UserClient
 	// UserCredential is the client for interacting with the UserCredential builders.
 	UserCredential *UserCredentialClient
-	// UserMfaFactor is the client for interacting with the UserMfaFactor builders.
-	UserMfaFactor *UserMfaFactorClient
 	// UserOrgUnit is the client for interacting with the UserOrgUnit builders.
 	UserOrgUnit *UserOrgUnitClient
 	// UserPosition is the client for interacting with the UserPosition builders.
@@ -245,7 +241,6 @@ func (tx *Tx) init() {
 	tx.InternalMessageRecipient = NewInternalMessageRecipientClient(tx.config)
 	tx.Language = NewLanguageClient(tx.config)
 	tx.LoginAuditLog = NewLoginAuditLogClient(tx.config)
-	tx.LoginPolicy = NewLoginPolicyClient(tx.config)
 	tx.Membership = NewMembershipClient(tx.config)
 	tx.MembershipOrgUnit = NewMembershipOrgUnitClient(tx.config)
 	tx.MembershipPosition = NewMembershipPositionClient(tx.config)
@@ -274,7 +269,6 @@ func (tx *Tx) init() {
 	tx.Tenant = NewTenantClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserCredential = NewUserCredentialClient(tx.config)
-	tx.UserMfaFactor = NewUserMfaFactorClient(tx.config)
 	tx.UserOrgUnit = NewUserOrgUnitClient(tx.config)
 	tx.UserPosition = NewUserPositionClient(tx.config)
 	tx.UserRole = NewUserRoleClient(tx.config)

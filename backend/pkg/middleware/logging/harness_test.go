@@ -147,8 +147,8 @@ func newAuditServer(t *testing.T, opts ...Option) *auditServerEnv {
 // 先按 X-Test-Operation 设置 operation，再把业务闭包挂进中间件链。
 // 业务闭包按 X-Test-Error 返回错误（kratos 错误 / 普通错误），
 // 按 X-Test-Data-Access 向 accumulator 注入 SQL 事件（模拟 driver wrapper
-// 的采集行为）；X-Test-Reply-Username 模拟 handler 通过响应头回传
-// 挑战上下文用户名（MFA 免鉴权流程语义，见 MfaService.VerifyMFAChallenge）。
+// 的采集行为）；X-Test-Reply-Username 模拟 handler 通过响应头回传用户名，
+// 供登录审计在请求上下文没有用户名时回退。
 func (e *auditServerEnv) chainHandler() func(ctx khttp.Context) error {
 	return func(ctx khttp.Context) error {
 		req := ctx.Request()

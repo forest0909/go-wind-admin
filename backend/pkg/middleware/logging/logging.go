@@ -27,7 +27,6 @@ var sessionOnlyOperations = map[string]bool{
 	adminV1.OperationAuthenticationServiceLogin:        true,
 	adminV1.OperationAuthenticationServiceRefreshToken: true,
 	adminV1.OperationAuthenticationServiceLogout:       true,
-	adminV1.OperationMfaServiceVerifyMFAChallenge:      true,
 }
 
 // maxBodySnapshot 快照上限：CRUD JSON 体远小于此；超长时剩余部分透传原流。
@@ -83,9 +82,6 @@ func Server(opts ...Option) middleware.Middleware {
 	op := options{
 		loginOperations: []string{
 			adminV1.OperationAuthenticationServiceLogin,
-			// MFA 登录挑战验证也按登录事件审计：它是登录流程的二次验证阶段，
-			// 审计 schema 已预埋 mfa_status / Status.PARTIAL 等字段支持此语义。
-			adminV1.OperationMfaServiceVerifyMFAChallenge,
 		},
 		logoutOperation: adminV1.OperationAuthenticationServiceLogout,
 	}

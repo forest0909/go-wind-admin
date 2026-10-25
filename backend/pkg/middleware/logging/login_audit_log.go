@@ -12,7 +12,6 @@ import (
 	"github.com/tx7do/go-utils/timeutil"
 	"github.com/tx7do/go-utils/trans"
 
-	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 
 	"github.com/tx7do/go-crud/viewer"
@@ -40,7 +39,7 @@ func (l *LoginAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transpor
 		return
 	}
 
-	// 登录类操作（含 MFA 二次验证）与登出操作才进登录审计。
+	// 登录与登出才进登录审计。
 	isLoginOp := false
 	for _, op := range l.op.loginOperations {
 		if htr.Operation() == op {
@@ -64,18 +63,7 @@ func (l *LoginAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transpor
 		loginAuditLog.ActionType = trans.Ptr(auditV1.LoginAuditLog_LOGOUT)
 	}
 
-	// MFA 验证事件：填充 mfa_status（proto 预定义 VERIFIED/FAILED 语义，供
-	// 风险因子计算——此前全链路无人填充，MFA 相关风险因子从未生效）
-	if htr.Operation() == adminV1.OperationMfaServiceVerifyMFAChallenge {
-		if success {
-			loginAuditLog.MfaStatus = trans.Ptr("VERIFIED")
-		} else {
-			loginAuditLog.MfaStatus = trans.Ptr("FAILED")
-		}
-	}
-
-	// MFA 验证等免鉴权接口的请求体不含 username，由 handler 通过响应头
-	// 回传挑战上下文中的用户名（见 MfaService.VerifyMFAChallenge）。
+	// 请求体不含 username 时，handler 可以经响应头回传用户名。
 	auditUsername := htr.ReplyHeader().Get("X-Audit-Username")
 
 	clientIp := auditutil.ClientRealIP(htr.Request())
@@ -98,8 +86,7 @@ func (l *LoginAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transpor
 		}
 	}
 
-	// 免鉴权接口（如 MFA 验证）请求体无 username 也无 token：以上两路都取不到，
-	// 用 handler 通过响应头回传的挑战上下文用户名兜底。
+	// 请求体和令牌都没有用户名时，用响应头回传的用户名兜底。
 	if loginAuditLog.Username == nil && auditUsername != "" {
 		loginAuditLog.Username = trans.Ptr(auditUsername)
 	}

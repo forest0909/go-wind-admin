@@ -18,7 +18,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessagerecipient"
 	"go-wind-admin/app/admin/service/internal/data/ent/language"
 	"go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/loginpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/membership"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiporgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershipposition"
@@ -47,7 +46,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
-	"go-wind-admin/app/admin/service/internal/data/ent/usermfafactor"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/userposition"
 	"go-wind-admin/app/admin/service/internal/data/ent/userrole"
@@ -129,7 +127,6 @@ func checkColumn(t, c string) error {
 			internalmessagerecipient.Table: internalmessagerecipient.ValidColumn,
 			language.Table:                 language.ValidColumn,
 			loginauditlog.Table:            loginauditlog.ValidColumn,
-			loginpolicy.Table:              loginpolicy.ValidColumn,
 			membership.Table:               membership.ValidColumn,
 			membershiporgunit.Table:        membershiporgunit.ValidColumn,
 			membershipposition.Table:       membershipposition.ValidColumn,
@@ -158,7 +155,6 @@ func checkColumn(t, c string) error {
 			tenant.Table:                   tenant.ValidColumn,
 			user.Table:                     user.ValidColumn,
 			usercredential.Table:           usercredential.ValidColumn,
-			usermfafactor.Table:            usermfafactor.ValidColumn,
 			userorgunit.Table:              userorgunit.ValidColumn,
 			userposition.Table:             userposition.ValidColumn,
 			userrole.Table:                 userrole.ValidColumn,

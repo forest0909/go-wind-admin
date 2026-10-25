@@ -1,9 +1,9 @@
 // AuthenticationService 的 SQLite 内存库 + miniredis 集成测试（白盒，包内测试）。
 //
 // 装配范式：
-//   - ent 仓储（tenant / role / permission / login_policy / user_mfa_factor /
-//     user_credential(+config)）走 data 包 repo_testkit 构造器（enttest SQLite 内存库）；
-//   - redis 依赖（user_token_cache / login_rate_limiter / mfa_challenge_cache / captcha）
+//   - ent 仓储（tenant / role / permission / user_credential(+config)）走 data 包
+//     repo_testkit 构造器（enttest SQLite 内存库）；
+//   - redis 依赖（user_token_cache / login_rate_limiter / captcha）
 //     一律 miniredis 假 client 注入（对齐 data 包 authenticator_test.go /
 //     user_token_cache_test.go 的注入范式），authenticator 走
 //     data.NewAuthenticatorForTest（测试 HS256 临时密钥）；
@@ -211,9 +211,6 @@ func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 		clientType:              authenticationV1.ClientType_admin,
 		captchaClient:           captchaClient,
 		rateLimiter:             data.NewLoginRateLimiterForTest(rdb),
-		loginPolicyRepo:         data.NewLoginPolicyRepoForTest(entClient),
-		mfaFactorRepo:           data.NewUserMfaFactorRepoForTest(entClient),
-		mfaChallengeCache:       data.NewMfaChallengeCacheForTest(rdb),
 	}
 
 	return &authSvcEnv{
@@ -477,58 +474,6 @@ func TestAuthSvcSqlite_LoginTenantResolution(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-// TestAuthSvcSqlite_LoginPolicyGate 验证登录策略闸门两段：
-// 全局 DEVICE 黑名单（target_id 为空，密码校验前拦截）与用户定向 TIME 黑名单
-// （target_id=userId，凭证校验通过后拦截）均 403。
-func TestAuthSvcSqlite_LoginPolicyGate(t *testing.T) {
-	e := newAuthenticationServiceForTest(t)
-	base := context.Background()
-
-	// 全局 DEVICE 黑名单。
-	require.NoError(t, e.svc.loginPolicyRepo.Create(e.ctx, &authenticationV1.CreateLoginPolicyRequest{
-		Data: &authenticationV1.LoginPolicy{
-			Type:   authenticationV1.LoginPolicy_BLACKLIST.Enum(),
-			Method: authenticationV1.LoginPolicy_DEVICE.Enum(),
-			Value:  trans.Ptr("authsvc-bad-device"),
-			Reason: trans.Ptr("authsvc test device blacklist"),
-		},
-	}))
-	ctx1, req1 := e.loginHappyReq(t, base, authSvcTestUsername, constants.DefaultUserPassword)
-	req1.DeviceId = trans.Ptr("authsvc-bad-device")
-	resp, err := e.svc.Login(ctx1, req1)
-	require.Error(t, err)
-	require.True(t, authenticationV1.IsForbidden(err), "全局 DEVICE 黑名单应 403")
-	require.Nil(t, resp)
-
-	// 不命中设备号的同一策略：放行到后续凭证校验（未播种凭证 → INVALID_PASSWORD）。
-	ctx2, req2 := e.loginHappyReq(t, base, authSvcTestUsername, constants.DefaultUserPassword)
-	req2.DeviceId = trans.Ptr("authsvc-good-device")
-	resp, err = e.svc.Login(ctx2, req2)
-	require.Error(t, err)
-	require.True(t, authenticationV1.IsInvalidPassword(err), "未命中策略但凭证未播种，应归一化 INVALID_PASSWORD")
-	require.Nil(t, resp)
-
-	// 用户定向 TIME 黑名单（任意时刻窗口全覆盖）。
-	permID := e.seedBackendAccessPermission(t)
-	roleID := e.seedRole(t, nil, permissionV1.Role_SYSTEM, constants.PlatformAdminRoleCode, []uint32{permID}, nil, nil)
-	e.seedCredential(t, nil, authSvcTestUserID, authSvcTestUsername, authenticationV1.UserCredential_ENABLED)
-	e.seedStubUser(authSvcTestUserID, nil, authSvcTestUsername, identityV1.User_NORMAL, []uint32{roleID})
-	require.NoError(t, e.svc.loginPolicyRepo.Create(e.ctx, &authenticationV1.CreateLoginPolicyRequest{
-		Data: &authenticationV1.LoginPolicy{
-			TargetId: trans.Ptr(authSvcTestUserID),
-			Type:     authenticationV1.LoginPolicy_BLACKLIST.Enum(),
-			Method:   authenticationV1.LoginPolicy_TIME.Enum(),
-			Value:    trans.Ptr("00:00-23:59"),
-			Reason:   trans.Ptr("authsvc test time blacklist"),
-		},
-	}))
-	ctx3, req3 := e.loginHappyReq(t, base, authSvcTestUsername, constants.DefaultUserPassword)
-	resp, err = e.svc.Login(ctx3, req3)
-	require.Error(t, err)
-	require.True(t, authenticationV1.IsForbidden(err), "用户定向 TIME 黑名单应 403")
-	require.Nil(t, resp)
-}
-
 // TestAuthSvcSqlite_LoginCredentialFailures 验证凭证校验的防枚举归一：
 // 凭证不存在 / 密码错误 / email 标识符（GetUsername 为空）/ 凭证停用 / 用户行缺失，
 // 一律对外归一为 INVALID_PASSWORD（真实原因仅留服务端日志）。
@@ -610,7 +555,6 @@ func TestAuthSvcSqlite_LoginFullPlatformChain(t *testing.T) {
 	require.NotEmpty(t, resp.GetAccessToken(), "应签发 access token")
 	require.Positive(t, resp.GetExpiresIn(), "过期时间应为正数秒")
 	require.Equal(t, authenticationV1.TokenType_bearer, resp.GetTokenType())
-	require.Empty(t, resp.GetMfaOperationId(), "未绑定 MFA 因子不应返回 MFA 操作标识")
 
 	// 登录成功后限流计数清零。
 	_, usrErr = e.mr.Get("gowind:login:fail:user:" + authSvcTestUsername)
@@ -672,35 +616,6 @@ func TestAuthSvcSqlite_LoginRateLimiterLockout(t *testing.T) {
 	require.True(t, authenticationV1.IsBadRequest(err), "锁定窗口内应 400")
 	require.Contains(t, err.Error(), "too many login failures")
 	require.Nil(t, resp)
-}
-
-// TestAuthSvcSqlite_LoginMfaGate 验证 MFA 闸门：
-// 绑定 ENABLED TOTP 因子的用户密码校验通过后不签发 token，
-// 改为返回 MfaOperationId（access token 为空）。
-func TestAuthSvcSqlite_LoginMfaGate(t *testing.T) {
-	e := newAuthenticationServiceForTest(t)
-	base := context.Background()
-
-	permID := e.seedBackendAccessPermission(t)
-	roleID := e.seedRole(t, nil, permissionV1.Role_SYSTEM, constants.PlatformAdminRoleCode, []uint32{permID}, nil, nil)
-	e.seedCredential(t, nil, 7301, "authsvc-mfa-user", authenticationV1.UserCredential_ENABLED)
-	e.seedStubUser(7301, nil, "authsvc-mfa-user", identityV1.User_NORMAL, []uint32{roleID})
-
-	// 未绑定因子：正常签发。
-	ctx1, req1 := e.loginHappyReq(t, base, "authsvc-mfa-user", constants.DefaultUserPassword)
-	resp, err := e.svc.Login(ctx1, req1)
-	require.NoError(t, err)
-	require.NotEmpty(t, resp.GetAccessToken(), "未绑定 MFA 因子应正常签发")
-	require.Empty(t, resp.GetMfaOperationId())
-
-	// 绑定 ENABLED TOTP 因子：进入 MFA 挑战分支。
-	_, err = e.svc.mfaFactorRepo.CreateTotpFactor(e.ctx, 0, 7301, "JBSWY3DPEHPK3PXP", "authsvc-totp")
-	require.NoError(t, err)
-	ctx2, req2 := e.loginHappyReq(t, base, "authsvc-mfa-user", constants.DefaultUserPassword)
-	resp, err = e.svc.Login(ctx2, req2)
-	require.NoError(t, err, "MFA 闸门分支应返回挑战而非错误")
-	require.Empty(t, resp.GetAccessToken(), "MFA 分支不应签发 access token")
-	require.NotEmpty(t, resp.GetMfaOperationId(), "MFA 分支应返回操作标识")
 }
 
 // TestAuthSvcSqlite_TenantLoginChain 验证租户上下文登录链路与令牌聚合：

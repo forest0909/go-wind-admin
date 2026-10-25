@@ -31,9 +31,9 @@
 | Create 防伪造 | 租户上下文 Create 强制覆盖 tenant_id 为 viewer.tid | 库层 `TenantPrivacy.EvalMutation` Create 分支 |
 
 **与数据范围的组合**：试点表 `sys_positions` 的 Policy 返回 `TenantAndDataScopePolicy`
-（`schema/data_scope_guard.go`，链式：租户变更防护 + 数据范围查询过滤），其余 31 张带租户表
+（`schema/data_scope_guard.go`，链式：租户变更防护 + 数据范围查询过滤），其余 29 张带租户表
 返回裸 `TenantMutationGuardPolicy`——
-全部 32 张带租户表均为库层+仓内双防线。
+全部 30 张带租户表均为库层+仓内双防线。
 
 ## 2. 租户模型与表分类
 
@@ -49,7 +49,7 @@
 平台级表（无 tenant_id，跨租户可见）：`sys_tenants`/`sys_plans` 本身、`sys_apis`、菜单、权限点/权限组、
 语言等。租户表与平台表的划分**以 schema 是否装配 `mixin.TenantID[uint32]{}` 为准**，不靠命名约定。
 
-### 2.2 带租户列的表（当前 32 张，全量盘点）
+### 2.2 带租户列的表（当前 30 张，全量盘点）
 
 | 模块 | 表 |
 |---|---|
@@ -58,8 +58,8 @@
 | internal_message | `internal_messages`、`internal_message_categories`、`internal_message_recipients`（**没有 `sys_` 前缀**，2026-09-20 按 `information_schema.tables` 核对；写探针 SQL 时别照 ent schema 名加前缀） |
 | log（审计） | `sys_api_audit_logs`、`sys_data_access_audit_logs`、`sys_login_audit_logs`、`sys_operation_audit_logs`、`sys_permission_audit_logs`、`sys_policy_evaluation_logs` |
 | membership | `sys_memberships`、`sys_membership_org_units`、`sys_membership_positions`、`sys_membership_roles` |
-| opm | `sys_org_units`、`sys_positions`（数据范围试点，挂组合策略）、`sys_users`、`sys_user_credentials`、`sys_user_mfa_factors`、`sys_user_org_units`、`sys_user_positions`、`sys_user_roles`、`sys_roles`、`sys_role_metadata`、`sys_role_org_units`、`sys_role_permissions`、`sys_role_field_permissions` |
-| system/tenant | `sys_login_policies`、`sys_tasks` |
+| opm | `sys_org_units`、`sys_positions`（数据范围试点，挂组合策略）、`sys_users`、`sys_user_credentials`、`sys_user_org_units`、`sys_user_positions`、`sys_user_roles`、`sys_roles`、`sys_role_metadata`、`sys_role_org_units`、`sys_role_permissions`、`sys_role_field_permissions` |
+| system/tenant | `sys_tasks` |
 
 > 审计日志表带 tenant_id 意味着：租户管理员只能看到本租户的审计记录；平台管理员全量。
 
@@ -169,7 +169,7 @@ EXPIRED / FREEZE 并吊销该租户全部用户令牌，随后由本闸门第 1 
 Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防伪造，优先强类型接口、
 反射兜底、都不可用则报错）；平台上下文尊重代码里的显式 `SetTenantID`。
 
-**仓内 `TenantMutationGuardPolicy`（`schema/tenant_mutation_guard.go`）**——全部 32 张带租户表
+**仓内 `TenantMutationGuardPolicy`（`schema/tenant_mutation_guard.go`）**——全部 30 张带租户表
 经 schema `Policy()` 追加：
 对非 Create 变更同样经 `WhereP` 注入租户谓词，缺 viewer 拒绝、平台/系统放行。
 **历史**：该守卫诞生于库旧版本（EvalMutation 仅覆盖 Create、Update/Delete 直接放行）的时代；
@@ -186,11 +186,11 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 
 | 路径 | 状态 | 说明 |
 |---|---|---|
-| ent 数据层（32 张表读写） | ✅ 隔离 | 本文档第 5 节 |
+| ent 数据层（30 张表读写） | ✅ 隔离 | 本文档第 5 节 |
 | **应用层自有存储**（Redis 缓存键、MinIO 对象路径、asynq 任务载荷） | ❌ 不自动注入 | 隔离谓词只存在于 ent privacy；这些路径必须业务侧显式携带/校验租户维度 |
 | **租户内跨用户**（同 tenant 下 A 读/写 B 的行） | ❌ 完全不覆盖 | 隔离谓词只有 `tenant_id` 一列，"只看自己的行"必须业务侧自己钉（收件箱读/写已钉，见下） |
 | 平台管理员上下文 | 放行 | 设计使然（tid==0 全量） |
-| 登录 / 刷新 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、**刷新链路**（`authentication_service.go:725`，注释 `:721-724` 说明为何必须跨租户读）——审计落库自身也经 SystemContext 写入 |
+| 登录 / 刷新 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、**刷新链路**（`authentication_service.go:639`，注释 `:635-638` 说明为何必须跨租户读）——审计落库自身也经 SystemContext 写入 |
 
 **"自己的行"没人钉过：收件箱越权读＋越权写（2026-09-20 实测并修）**。
 `GET /admin/v1/internal-message/inbox` 的过滤条件整个来自调用方 `query` 字符串，租户隔离只保证"读不到别租户的行"，

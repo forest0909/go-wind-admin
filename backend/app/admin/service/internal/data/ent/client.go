@@ -23,7 +23,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessagerecipient"
 	"go-wind-admin/app/admin/service/internal/data/ent/language"
 	"go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/loginpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/membership"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiporgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershipposition"
@@ -52,7 +51,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
-	"go-wind-admin/app/admin/service/internal/data/ent/usermfafactor"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/userposition"
 	"go-wind-admin/app/admin/service/internal/data/ent/userrole"
@@ -92,8 +90,6 @@ type Client struct {
 	Language *LanguageClient
 	// LoginAuditLog is the client for interacting with the LoginAuditLog builders.
 	LoginAuditLog *LoginAuditLogClient
-	// LoginPolicy is the client for interacting with the LoginPolicy builders.
-	LoginPolicy *LoginPolicyClient
 	// Membership is the client for interacting with the Membership builders.
 	Membership *MembershipClient
 	// MembershipOrgUnit is the client for interacting with the MembershipOrgUnit builders.
@@ -150,8 +146,6 @@ type Client struct {
 	User *UserClient
 	// UserCredential is the client for interacting with the UserCredential builders.
 	UserCredential *UserCredentialClient
-	// UserMfaFactor is the client for interacting with the UserMfaFactor builders.
-	UserMfaFactor *UserMfaFactorClient
 	// UserOrgUnit is the client for interacting with the UserOrgUnit builders.
 	UserOrgUnit *UserOrgUnitClient
 	// UserPosition is the client for interacting with the UserPosition builders.
@@ -181,7 +175,6 @@ func (c *Client) init() {
 	c.InternalMessageRecipient = NewInternalMessageRecipientClient(c.config)
 	c.Language = NewLanguageClient(c.config)
 	c.LoginAuditLog = NewLoginAuditLogClient(c.config)
-	c.LoginPolicy = NewLoginPolicyClient(c.config)
 	c.Membership = NewMembershipClient(c.config)
 	c.MembershipOrgUnit = NewMembershipOrgUnitClient(c.config)
 	c.MembershipPosition = NewMembershipPositionClient(c.config)
@@ -210,7 +203,6 @@ func (c *Client) init() {
 	c.Tenant = NewTenantClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.UserCredential = NewUserCredentialClient(c.config)
-	c.UserMfaFactor = NewUserMfaFactorClient(c.config)
 	c.UserOrgUnit = NewUserOrgUnitClient(c.config)
 	c.UserPosition = NewUserPositionClient(c.config)
 	c.UserRole = NewUserRoleClient(c.config)
@@ -318,7 +310,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		InternalMessageRecipient: NewInternalMessageRecipientClient(cfg),
 		Language:                 NewLanguageClient(cfg),
 		LoginAuditLog:            NewLoginAuditLogClient(cfg),
-		LoginPolicy:              NewLoginPolicyClient(cfg),
 		Membership:               NewMembershipClient(cfg),
 		MembershipOrgUnit:        NewMembershipOrgUnitClient(cfg),
 		MembershipPosition:       NewMembershipPositionClient(cfg),
@@ -347,7 +338,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Tenant:                   NewTenantClient(cfg),
 		User:                     NewUserClient(cfg),
 		UserCredential:           NewUserCredentialClient(cfg),
-		UserMfaFactor:            NewUserMfaFactorClient(cfg),
 		UserOrgUnit:              NewUserOrgUnitClient(cfg),
 		UserPosition:             NewUserPositionClient(cfg),
 		UserRole:                 NewUserRoleClient(cfg),
@@ -382,7 +372,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		InternalMessageRecipient: NewInternalMessageRecipientClient(cfg),
 		Language:                 NewLanguageClient(cfg),
 		LoginAuditLog:            NewLoginAuditLogClient(cfg),
-		LoginPolicy:              NewLoginPolicyClient(cfg),
 		Membership:               NewMembershipClient(cfg),
 		MembershipOrgUnit:        NewMembershipOrgUnitClient(cfg),
 		MembershipPosition:       NewMembershipPositionClient(cfg),
@@ -411,7 +400,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Tenant:                   NewTenantClient(cfg),
 		User:                     NewUserClient(cfg),
 		UserCredential:           NewUserCredentialClient(cfg),
-		UserMfaFactor:            NewUserMfaFactorClient(cfg),
 		UserOrgUnit:              NewUserOrgUnitClient(cfg),
 		UserPosition:             NewUserPositionClient(cfg),
 		UserRole:                 NewUserRoleClient(cfg),
@@ -446,14 +434,14 @@ func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Api, c.ApiAuditLog, c.DataAccessAuditLog, c.DictEntry, c.DictEntryI18n,
 		c.DictType, c.File, c.InternalMessage, c.InternalMessageCategory,
-		c.InternalMessageRecipient, c.Language, c.LoginAuditLog, c.LoginPolicy,
-		c.Membership, c.MembershipOrgUnit, c.MembershipPosition, c.MembershipRole,
-		c.Menu, c.OperationAuditLog, c.OrgUnit, c.Permission, c.PermissionApi,
+		c.InternalMessageRecipient, c.Language, c.LoginAuditLog, c.Membership,
+		c.MembershipOrgUnit, c.MembershipPosition, c.MembershipRole, c.Menu,
+		c.OperationAuditLog, c.OrgUnit, c.Permission, c.PermissionApi,
 		c.PermissionAuditLog, c.PermissionGroup, c.PermissionMenu, c.PermissionPolicy,
 		c.Plan, c.PlanModule, c.PlanQuota, c.PolicyEvaluationLog, c.Position, c.Role,
 		c.RoleFieldPermission, c.RoleMetadata, c.RoleOrgUnit, c.RolePermission,
-		c.SysConfig, c.Task, c.Tenant, c.User, c.UserCredential, c.UserMfaFactor,
-		c.UserOrgUnit, c.UserPosition, c.UserRole,
+		c.SysConfig, c.Task, c.Tenant, c.User, c.UserCredential, c.UserOrgUnit,
+		c.UserPosition, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -465,14 +453,14 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Api, c.ApiAuditLog, c.DataAccessAuditLog, c.DictEntry, c.DictEntryI18n,
 		c.DictType, c.File, c.InternalMessage, c.InternalMessageCategory,
-		c.InternalMessageRecipient, c.Language, c.LoginAuditLog, c.LoginPolicy,
-		c.Membership, c.MembershipOrgUnit, c.MembershipPosition, c.MembershipRole,
-		c.Menu, c.OperationAuditLog, c.OrgUnit, c.Permission, c.PermissionApi,
+		c.InternalMessageRecipient, c.Language, c.LoginAuditLog, c.Membership,
+		c.MembershipOrgUnit, c.MembershipPosition, c.MembershipRole, c.Menu,
+		c.OperationAuditLog, c.OrgUnit, c.Permission, c.PermissionApi,
 		c.PermissionAuditLog, c.PermissionGroup, c.PermissionMenu, c.PermissionPolicy,
 		c.Plan, c.PlanModule, c.PlanQuota, c.PolicyEvaluationLog, c.Position, c.Role,
 		c.RoleFieldPermission, c.RoleMetadata, c.RoleOrgUnit, c.RolePermission,
-		c.SysConfig, c.Task, c.Tenant, c.User, c.UserCredential, c.UserMfaFactor,
-		c.UserOrgUnit, c.UserPosition, c.UserRole,
+		c.SysConfig, c.Task, c.Tenant, c.User, c.UserCredential, c.UserOrgUnit,
+		c.UserPosition, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -505,8 +493,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Language.mutate(ctx, m)
 	case *LoginAuditLogMutation:
 		return c.LoginAuditLog.mutate(ctx, m)
-	case *LoginPolicyMutation:
-		return c.LoginPolicy.mutate(ctx, m)
 	case *MembershipMutation:
 		return c.Membership.mutate(ctx, m)
 	case *MembershipOrgUnitMutation:
@@ -563,8 +549,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.User.mutate(ctx, m)
 	case *UserCredentialMutation:
 		return c.UserCredential.mutate(ctx, m)
-	case *UserMfaFactorMutation:
-		return c.UserMfaFactor.mutate(ctx, m)
 	case *UserOrgUnitMutation:
 		return c.UserOrgUnit.mutate(ctx, m)
 	case *UserPositionMutation:
@@ -2243,140 +2227,6 @@ func (c *LoginAuditLogClient) mutate(ctx context.Context, m *LoginAuditLogMutati
 		return (&LoginAuditLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown LoginAuditLog mutation op: %q", m.Op())
-	}
-}
-
-// LoginPolicyClient is a client for the LoginPolicy schema.
-type LoginPolicyClient struct {
-	config
-}
-
-// NewLoginPolicyClient returns a client for the LoginPolicy from the given config.
-func NewLoginPolicyClient(c config) *LoginPolicyClient {
-	return &LoginPolicyClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `loginpolicy.Hooks(f(g(h())))`.
-func (c *LoginPolicyClient) Use(hooks ...Hook) {
-	c.hooks.LoginPolicy = append(c.hooks.LoginPolicy, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `loginpolicy.Intercept(f(g(h())))`.
-func (c *LoginPolicyClient) Intercept(interceptors ...Interceptor) {
-	c.inters.LoginPolicy = append(c.inters.LoginPolicy, interceptors...)
-}
-
-// Create returns a builder for creating a LoginPolicy entity.
-func (c *LoginPolicyClient) Create() *LoginPolicyCreate {
-	mutation := newLoginPolicyMutation(c.config, OpCreate)
-	return &LoginPolicyCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of LoginPolicy entities.
-func (c *LoginPolicyClient) CreateBulk(builders ...*LoginPolicyCreate) *LoginPolicyCreateBulk {
-	return &LoginPolicyCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *LoginPolicyClient) MapCreateBulk(slice any, setFunc func(*LoginPolicyCreate, int)) *LoginPolicyCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &LoginPolicyCreateBulk{err: fmt.Errorf("calling to LoginPolicyClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*LoginPolicyCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &LoginPolicyCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for LoginPolicy.
-func (c *LoginPolicyClient) Update() *LoginPolicyUpdate {
-	mutation := newLoginPolicyMutation(c.config, OpUpdate)
-	return &LoginPolicyUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *LoginPolicyClient) UpdateOne(_m *LoginPolicy) *LoginPolicyUpdateOne {
-	mutation := newLoginPolicyMutation(c.config, OpUpdateOne, withLoginPolicy(_m))
-	return &LoginPolicyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *LoginPolicyClient) UpdateOneID(id uint32) *LoginPolicyUpdateOne {
-	mutation := newLoginPolicyMutation(c.config, OpUpdateOne, withLoginPolicyID(id))
-	return &LoginPolicyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for LoginPolicy.
-func (c *LoginPolicyClient) Delete() *LoginPolicyDelete {
-	mutation := newLoginPolicyMutation(c.config, OpDelete)
-	return &LoginPolicyDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *LoginPolicyClient) DeleteOne(_m *LoginPolicy) *LoginPolicyDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *LoginPolicyClient) DeleteOneID(id uint32) *LoginPolicyDeleteOne {
-	builder := c.Delete().Where(loginpolicy.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &LoginPolicyDeleteOne{builder}
-}
-
-// Query returns a query builder for LoginPolicy.
-func (c *LoginPolicyClient) Query() *LoginPolicyQuery {
-	return &LoginPolicyQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeLoginPolicy},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a LoginPolicy entity by its id.
-func (c *LoginPolicyClient) Get(ctx context.Context, id uint32) (*LoginPolicy, error) {
-	return c.Query().Where(loginpolicy.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *LoginPolicyClient) GetX(ctx context.Context, id uint32) *LoginPolicy {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// Hooks returns the client hooks.
-func (c *LoginPolicyClient) Hooks() []Hook {
-	hooks := c.hooks.LoginPolicy
-	return append(hooks[:len(hooks):len(hooks)], loginpolicy.Hooks[:]...)
-}
-
-// Interceptors returns the client interceptors.
-func (c *LoginPolicyClient) Interceptors() []Interceptor {
-	return c.inters.LoginPolicy
-}
-
-func (c *LoginPolicyClient) mutate(ctx context.Context, m *LoginPolicyMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&LoginPolicyCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&LoginPolicyUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&LoginPolicyUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&LoginPolicyDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown LoginPolicy mutation op: %q", m.Op())
 	}
 }
 
@@ -6313,140 +6163,6 @@ func (c *UserCredentialClient) mutate(ctx context.Context, m *UserCredentialMuta
 	}
 }
 
-// UserMfaFactorClient is a client for the UserMfaFactor schema.
-type UserMfaFactorClient struct {
-	config
-}
-
-// NewUserMfaFactorClient returns a client for the UserMfaFactor from the given config.
-func NewUserMfaFactorClient(c config) *UserMfaFactorClient {
-	return &UserMfaFactorClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `usermfafactor.Hooks(f(g(h())))`.
-func (c *UserMfaFactorClient) Use(hooks ...Hook) {
-	c.hooks.UserMfaFactor = append(c.hooks.UserMfaFactor, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `usermfafactor.Intercept(f(g(h())))`.
-func (c *UserMfaFactorClient) Intercept(interceptors ...Interceptor) {
-	c.inters.UserMfaFactor = append(c.inters.UserMfaFactor, interceptors...)
-}
-
-// Create returns a builder for creating a UserMfaFactor entity.
-func (c *UserMfaFactorClient) Create() *UserMfaFactorCreate {
-	mutation := newUserMfaFactorMutation(c.config, OpCreate)
-	return &UserMfaFactorCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of UserMfaFactor entities.
-func (c *UserMfaFactorClient) CreateBulk(builders ...*UserMfaFactorCreate) *UserMfaFactorCreateBulk {
-	return &UserMfaFactorCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *UserMfaFactorClient) MapCreateBulk(slice any, setFunc func(*UserMfaFactorCreate, int)) *UserMfaFactorCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &UserMfaFactorCreateBulk{err: fmt.Errorf("calling to UserMfaFactorClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*UserMfaFactorCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &UserMfaFactorCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for UserMfaFactor.
-func (c *UserMfaFactorClient) Update() *UserMfaFactorUpdate {
-	mutation := newUserMfaFactorMutation(c.config, OpUpdate)
-	return &UserMfaFactorUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *UserMfaFactorClient) UpdateOne(_m *UserMfaFactor) *UserMfaFactorUpdateOne {
-	mutation := newUserMfaFactorMutation(c.config, OpUpdateOne, withUserMfaFactor(_m))
-	return &UserMfaFactorUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *UserMfaFactorClient) UpdateOneID(id uint32) *UserMfaFactorUpdateOne {
-	mutation := newUserMfaFactorMutation(c.config, OpUpdateOne, withUserMfaFactorID(id))
-	return &UserMfaFactorUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for UserMfaFactor.
-func (c *UserMfaFactorClient) Delete() *UserMfaFactorDelete {
-	mutation := newUserMfaFactorMutation(c.config, OpDelete)
-	return &UserMfaFactorDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *UserMfaFactorClient) DeleteOne(_m *UserMfaFactor) *UserMfaFactorDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *UserMfaFactorClient) DeleteOneID(id uint32) *UserMfaFactorDeleteOne {
-	builder := c.Delete().Where(usermfafactor.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &UserMfaFactorDeleteOne{builder}
-}
-
-// Query returns a query builder for UserMfaFactor.
-func (c *UserMfaFactorClient) Query() *UserMfaFactorQuery {
-	return &UserMfaFactorQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeUserMfaFactor},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a UserMfaFactor entity by its id.
-func (c *UserMfaFactorClient) Get(ctx context.Context, id uint32) (*UserMfaFactor, error) {
-	return c.Query().Where(usermfafactor.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *UserMfaFactorClient) GetX(ctx context.Context, id uint32) *UserMfaFactor {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// Hooks returns the client hooks.
-func (c *UserMfaFactorClient) Hooks() []Hook {
-	hooks := c.hooks.UserMfaFactor
-	return append(hooks[:len(hooks):len(hooks)], usermfafactor.Hooks[:]...)
-}
-
-// Interceptors returns the client interceptors.
-func (c *UserMfaFactorClient) Interceptors() []Interceptor {
-	return c.inters.UserMfaFactor
-}
-
-func (c *UserMfaFactorClient) mutate(ctx context.Context, m *UserMfaFactorMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&UserMfaFactorCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&UserMfaFactorUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&UserMfaFactorUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&UserMfaFactorDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown UserMfaFactor mutation op: %q", m.Op())
-	}
-}
-
 // UserOrgUnitClient is a client for the UserOrgUnit schema.
 type UserOrgUnitClient struct {
 	config
@@ -6854,23 +6570,23 @@ type (
 	hooks struct {
 		Api, ApiAuditLog, DataAccessAuditLog, DictEntry, DictEntryI18n, DictType, File,
 		InternalMessage, InternalMessageCategory, InternalMessageRecipient, Language,
-		LoginAuditLog, LoginPolicy, Membership, MembershipOrgUnit, MembershipPosition,
+		LoginAuditLog, Membership, MembershipOrgUnit, MembershipPosition,
 		MembershipRole, Menu, OperationAuditLog, OrgUnit, Permission, PermissionApi,
 		PermissionAuditLog, PermissionGroup, PermissionMenu, PermissionPolicy, Plan,
 		PlanModule, PlanQuota, PolicyEvaluationLog, Position, Role,
 		RoleFieldPermission, RoleMetadata, RoleOrgUnit, RolePermission, SysConfig,
-		Task, Tenant, User, UserCredential, UserMfaFactor, UserOrgUnit, UserPosition,
+		Task, Tenant, User, UserCredential, UserOrgUnit, UserPosition,
 		UserRole []ent.Hook
 	}
 	inters struct {
 		Api, ApiAuditLog, DataAccessAuditLog, DictEntry, DictEntryI18n, DictType, File,
 		InternalMessage, InternalMessageCategory, InternalMessageRecipient, Language,
-		LoginAuditLog, LoginPolicy, Membership, MembershipOrgUnit, MembershipPosition,
+		LoginAuditLog, Membership, MembershipOrgUnit, MembershipPosition,
 		MembershipRole, Menu, OperationAuditLog, OrgUnit, Permission, PermissionApi,
 		PermissionAuditLog, PermissionGroup, PermissionMenu, PermissionPolicy, Plan,
 		PlanModule, PlanQuota, PolicyEvaluationLog, Position, Role,
 		RoleFieldPermission, RoleMetadata, RoleOrgUnit, RolePermission, SysConfig,
-		Task, Tenant, User, UserCredential, UserMfaFactor, UserOrgUnit, UserPosition,
+		Task, Tenant, User, UserCredential, UserOrgUnit, UserPosition,
 		UserRole []ent.Interceptor
 	}
 )

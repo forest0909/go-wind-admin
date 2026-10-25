@@ -856,21 +856,6 @@ var DefaultMenus = []*permissionV1.Menu{
 		},
 	},
 	{
-		Id:        trans.Ptr(uint32(64)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("LoginPolicyManagement"),
-		Path:      trans.Ptr("login-policies"),
-		Component: trans.Ptr("app/system/login_policy/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.loginPolicy"),
-			Icon:      trans.Ptr("lucide:shield-x"),
-			Order:     trans.Ptr(int32(4)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
 		Id:        trans.Ptr(uint32(65)),
 		ParentId:  trans.Ptr(uint32(60)),
 		Type:      permissionV1.Menu_MENU.Enum(),

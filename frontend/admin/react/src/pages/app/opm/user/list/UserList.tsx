@@ -4,7 +4,7 @@ import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
 import { Button, Tag, App } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, InfoCircleOutlined , SafetyOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -13,8 +13,6 @@ import { PaginationQuery } from '@/core';
 import { TABLE } from '@/config/constants';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { fetchListUsers, useDeleteUser } from '@/api/hooks/user';
-import { useAdminResetMfa } from '@/api/hooks/mfa';
-import { useAuthStore } from '@/stores';
 import { useUserStore } from '@/stores/user';
 import { parseResourceHiddenFields } from '@/core/access';
 import { getUserStatusMap, getUserStatusOptions } from '../constants';
@@ -64,18 +62,6 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
     onError: (error: Error) => {
       message.error(error.message || t('deleteFailed'));
     },
-  });
-
-  // 列配置
-  // 管理端救援重置：清空目标用户 TOTP 因子（认证器丢失解锁用，仅平台管理员生效）
-  // 仅平台侧操作者（tenantId=0）显示救援重置；非平台用户由后端 403 兜底
-  const isPlatformSide = Number(useAuthStore((s) => s.userInfo?.tenantId ?? 0)) === 0;
-  const adminResetMfa = useAdminResetMfa({
-    onSuccess: () => {
-      message.success(t('resetMfaSuccess'));
-      actionRef.current?.reload();
-    },
-    onError: (err: Error) => message.error(err.message || t('resetMfaFailed')),
   });
 
   const columns: ProColumns<any>[] = ([
@@ -214,15 +200,6 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
                 setDrawerMode('edit');
                 setDrawerOpen(true);
               },
-            },
-            {
-              key: 'reset-mfa',
-              label: t('resetMfa'),
-              icon: <SafetyOutlined />,
-              hidden: !isPlatformSide,
-              confirm: { title: t('resetMfaConfirmTitle'), description: t('resetMfaConfirmDesc') },
-              onClick: () =>
-                record.id && adminResetMfa.mutate({ userId: record.id, method: 'TOTP' } as any),
             },
             {
               key: 'delete',

@@ -20,7 +20,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessagecategory"
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessagerecipient"
 	"go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/loginpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/membership"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiporgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershipposition"
@@ -216,7 +215,7 @@ func (r *TenantUsageRepo) CleanupTenantData(ctx context.Context, tenantId uint32
 	}
 
 	// 以下每个闭包删除一张带 tenant_id 的业务表。
-	// 列表对齐 ent.Client/Tx 中所有拥有 TenantIDEQ 谓词的包（共 29 张表）。
+	// 列表对齐 ent.Client/Tx 中所有拥有 TenantIDEQ 谓词的包（共 28 张表）。
 	// 注意：Tx 层的 Delete.Exec 返回 (int, error)，需丢弃 int 仅返回 error。
 	deleteFns := []func() error{
 		func() error {
@@ -251,10 +250,6 @@ func (r *TenantUsageRepo) CleanupTenantData(ctx context.Context, tenantId uint32
 		},
 		func() error {
 			_, e := tx.LoginAuditLog.Delete().Where(loginauditlog.TenantIDEQ(tenantId)).Exec(sysCtx)
-			return e
-		},
-		func() error {
-			_, e := tx.LoginPolicy.Delete().Where(loginpolicy.TenantIDEQ(tenantId)).Exec(sysCtx)
 			return e
 		},
 		func() error {

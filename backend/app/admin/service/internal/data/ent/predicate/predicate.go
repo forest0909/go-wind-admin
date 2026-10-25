@@ -42,9 +42,6 @@ type Language func(*sql.Selector)
 // LoginAuditLog is the predicate function for loginauditlog builders.
 type LoginAuditLog func(*sql.Selector)
 
-// LoginPolicy is the predicate function for loginpolicy builders.
-type LoginPolicy func(*sql.Selector)
-
 // Membership is the predicate function for membership builders.
 type Membership func(*sql.Selector)
 
@@ -128,9 +125,6 @@ type User func(*sql.Selector)
 
 // UserCredential is the predicate function for usercredential builders.
 type UserCredential func(*sql.Selector)
-
-// UserMfaFactor is the predicate function for usermfafactor builders.
-type UserMfaFactor func(*sql.Selector)
 
 // UserOrgUnit is the predicate function for userorgunit builders.
 type UserOrgUnit func(*sql.Selector)

@@ -17,7 +17,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessagerecipient"
 	"go-wind-admin/app/admin/service/internal/data/ent/language"
 	"go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/loginpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/membership"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiporgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershipposition"
@@ -47,7 +46,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
-	"go-wind-admin/app/admin/service/internal/data/ent/usermfafactor"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/userposition"
 	"go-wind-admin/app/admin/service/internal/data/ent/userrole"
@@ -418,30 +416,6 @@ func init() {
 	loginauditlogDescID := loginauditlogMixinFields0[0].Descriptor()
 	// loginauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	loginauditlog.IDValidator = loginauditlogDescID.Validators[0].(func(uint32) error)
-	loginpolicyMixin := schema.LoginPolicy{}.Mixin()
-	loginpolicy.Policy = privacy.NewPolicies(loginpolicyMixin[3], schema.LoginPolicy{})
-	loginpolicy.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := loginpolicy.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	loginpolicyMixinFields0 := loginpolicyMixin[0].Fields()
-	_ = loginpolicyMixinFields0
-	loginpolicyMixinFields3 := loginpolicyMixin[3].Fields()
-	_ = loginpolicyMixinFields3
-	loginpolicyFields := schema.LoginPolicy{}.Fields()
-	_ = loginpolicyFields
-	// loginpolicyDescTenantID is the schema descriptor for tenant_id field.
-	loginpolicyDescTenantID := loginpolicyMixinFields3[0].Descriptor()
-	// loginpolicy.DefaultTenantID holds the default value on creation for the tenant_id field.
-	loginpolicy.DefaultTenantID = loginpolicyDescTenantID.Default.(uint32)
-	// loginpolicyDescID is the schema descriptor for id field.
-	loginpolicyDescID := loginpolicyMixinFields0[0].Descriptor()
-	// loginpolicy.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	loginpolicy.IDValidator = loginpolicyDescID.Validators[0].(func(uint32) error)
 	membershipMixin := schema.Membership{}.Mixin()
 	membership.Policy = privacy.NewPolicies(membershipMixin[3], schema.Membership{})
 	membership.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -1185,52 +1159,6 @@ func init() {
 	usercredentialDescID := usercredentialMixinFields1[0].Descriptor()
 	// usercredential.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	usercredential.IDValidator = usercredentialDescID.Validators[0].(func(uint32) error)
-	usermfafactorMixin := schema.UserMfaFactor{}.Mixin()
-	usermfafactor.Policy = privacy.NewPolicies(usermfafactorMixin[2], schema.UserMfaFactor{})
-	usermfafactor.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := usermfafactor.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	usermfafactorMixinFields1 := usermfafactorMixin[1].Fields()
-	_ = usermfafactorMixinFields1
-	usermfafactorMixinFields2 := usermfafactorMixin[2].Fields()
-	_ = usermfafactorMixinFields2
-	usermfafactorFields := schema.UserMfaFactor{}.Fields()
-	_ = usermfafactorFields
-	// usermfafactorDescTenantID is the schema descriptor for tenant_id field.
-	usermfafactorDescTenantID := usermfafactorMixinFields2[0].Descriptor()
-	// usermfafactor.DefaultTenantID holds the default value on creation for the tenant_id field.
-	usermfafactor.DefaultTenantID = usermfafactorDescTenantID.Default.(uint32)
-	// usermfafactorDescSecretHash is the schema descriptor for secret_hash field.
-	usermfafactorDescSecretHash := usermfafactorFields[2].Descriptor()
-	// usermfafactor.SecretHashValidator is a validator for the "secret_hash" field. It is called by the builders before save.
-	usermfafactor.SecretHashValidator = func() func(string) error {
-		validators := usermfafactorDescSecretHash.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(secret_hash string) error {
-			for _, fn := range fns {
-				if err := fn(secret_hash); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// usermfafactorDescDisplayName is the schema descriptor for display_name field.
-	usermfafactorDescDisplayName := usermfafactorFields[3].Descriptor()
-	// usermfafactor.DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
-	usermfafactor.DisplayNameValidator = usermfafactorDescDisplayName.Validators[0].(func(string) error)
-	// usermfafactorDescID is the schema descriptor for id field.
-	usermfafactorDescID := usermfafactorMixinFields1[0].Descriptor()
-	// usermfafactor.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	usermfafactor.IDValidator = usermfafactorDescID.Validators[0].(func(uint32) error)
 	userorgunitMixin := schema.UserOrgUnit{}.Mixin()
 	userorgunit.Policy = privacy.NewPolicies(userorgunitMixin[3], schema.UserOrgUnit{})
 	userorgunit.Hooks[0] = func(next ent.Mutator) ent.Mutator {

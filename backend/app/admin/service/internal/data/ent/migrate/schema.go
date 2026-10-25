@@ -810,46 +810,6 @@ var (
 			},
 		},
 	}
-	// SysLoginPoliciesColumns holds the columns for the "sys_login_policies" table.
-	SysLoginPoliciesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
-		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
-		{Name: "updated_at", Type: field.TypeTime, Nullable: true, Comment: "更新时间"},
-		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, Comment: "删除时间"},
-		{Name: "created_by", Type: field.TypeUint32, Nullable: true, Comment: "创建者ID"},
-		{Name: "updated_by", Type: field.TypeUint32, Nullable: true, Comment: "更新者ID"},
-		{Name: "deleted_by", Type: field.TypeUint32, Nullable: true, Comment: "删除者ID"},
-		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
-		{Name: "target_id", Type: field.TypeUint32, Nullable: true, Comment: "目标用户ID"},
-		{Name: "value", Type: field.TypeString, Nullable: true, Comment: "限制值（如IP地址、MAC地址或地区代码）"},
-		{Name: "reason", Type: field.TypeString, Nullable: true, Comment: "限制原因"},
-		{Name: "type", Type: field.TypeEnum, Nullable: true, Comment: "限制类型", Enums: []string{"BLACKLIST", "WHITELIST"}, Default: "BLACKLIST"},
-		{Name: "method", Type: field.TypeEnum, Nullable: true, Comment: "限制方式", Enums: []string{"IP", "MAC", "REGION", "TIME", "DEVICE"}, Default: "IP"},
-	}
-	// SysLoginPoliciesTable holds the schema information for the "sys_login_policies" table.
-	SysLoginPoliciesTable = &schema.Table{
-		Name:       "sys_login_policies",
-		Comment:    "登录策略表",
-		Columns:    SysLoginPoliciesColumns,
-		PrimaryKey: []*schema.Column{SysLoginPoliciesColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "uidx_sys_login_policy_tenant_target_type_method",
-				Unique:  true,
-				Columns: []*schema.Column{SysLoginPoliciesColumns[7], SysLoginPoliciesColumns[8], SysLoginPoliciesColumns[11], SysLoginPoliciesColumns[12]},
-			},
-			{
-				Name:    "idx_sys_login_policy_tenant_type_method",
-				Unique:  false,
-				Columns: []*schema.Column{SysLoginPoliciesColumns[7], SysLoginPoliciesColumns[11], SysLoginPoliciesColumns[12]},
-			},
-			{
-				Name:    "idx_sys_login_policy_tenant_value",
-				Unique:  false,
-				Columns: []*schema.Column{SysLoginPoliciesColumns[7], SysLoginPoliciesColumns[9]},
-			},
-		},
-	}
 	// SysMembershipsColumns holds the columns for the "sys_memberships" table.
 	SysMembershipsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
@@ -2749,39 +2709,6 @@ var (
 			},
 		},
 	}
-	// SysUserMfaFactorsColumns holds the columns for the "sys_user_mfa_factors" table.
-	SysUserMfaFactorsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
-		{Name: "created_at", Type: field.TypeTime, Nullable: true, Comment: "创建时间"},
-		{Name: "updated_at", Type: field.TypeTime, Nullable: true, Comment: "更新时间"},
-		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, Comment: "删除时间"},
-		{Name: "tenant_id", Type: field.TypeUint32, Nullable: true, Comment: "租户ID", Default: 0},
-		{Name: "user_id", Type: field.TypeUint32, Nullable: true, Comment: "关联主表的用户ID"},
-		{Name: "method", Type: field.TypeEnum, Nullable: true, Comment: "MFA 方法", Enums: []string{"TOTP", "SMS", "EMAIL", "WEBAUTHN"}, Default: "TOTP"},
-		{Name: "secret_hash", Type: field.TypeString, Nullable: true, Size: 512, Comment: "MFA secret 密文（AES-GCM 加密，base64 编码；TOTP 校验需还原明文）"},
-		{Name: "display_name", Type: field.TypeString, Nullable: true, Size: 128, Comment: "设备/因子展示名（用户自定义）"},
-		{Name: "status", Type: field.TypeEnum, Nullable: true, Comment: "因子状态", Enums: []string{"DISABLED", "ENABLED"}, Default: "ENABLED"},
-		{Name: "last_used_at", Type: field.TypeTime, Nullable: true, Comment: "最近一次用于验证的时间"},
-	}
-	// SysUserMfaFactorsTable holds the schema information for the "sys_user_mfa_factors" table.
-	SysUserMfaFactorsTable = &schema.Table{
-		Name:       "sys_user_mfa_factors",
-		Comment:    "用户 MFA 因子表",
-		Columns:    SysUserMfaFactorsColumns,
-		PrimaryKey: []*schema.Column{SysUserMfaFactorsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "idx_sys_user_mfa_tenant_user_id",
-				Unique:  false,
-				Columns: []*schema.Column{SysUserMfaFactorsColumns[4], SysUserMfaFactorsColumns[5]},
-			},
-			{
-				Name:    "idx_sys_user_mfa_tenant_uid_method",
-				Unique:  true,
-				Columns: []*schema.Column{SysUserMfaFactorsColumns[4], SysUserMfaFactorsColumns[5], SysUserMfaFactorsColumns[6]},
-			},
-		},
-	}
 	// SysUserOrgUnitsColumns holds the columns for the "sys_user_org_units" table.
 	SysUserOrgUnitsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUint32, Increment: true, Comment: "id"},
@@ -3073,7 +3000,6 @@ var (
 		InternalMessageRecipientsTable,
 		SysLanguagesTable,
 		SysLoginAuditLogsTable,
-		SysLoginPoliciesTable,
 		SysMembershipsTable,
 		SysMembershipOrgUnitsTable,
 		SysMembershipPositionsTable,
@@ -3102,7 +3028,6 @@ var (
 		SysTenantsTable,
 		SysUsersTable,
 		SysUserCredentialsTable,
-		SysUserMfaFactorsTable,
 		SysUserOrgUnitsTable,
 		SysUserPositionsTable,
 		SysUserRolesTable,
@@ -3169,11 +3094,6 @@ func init() {
 	}
 	SysLoginAuditLogsTable.Annotation = &entsql.Annotation{
 		Table:     "sys_login_audit_logs",
-		Charset:   "utf8mb4",
-		Collation: "utf8mb4_bin",
-	}
-	SysLoginPoliciesTable.Annotation = &entsql.Annotation{
-		Table:     "sys_login_policies",
 		Charset:   "utf8mb4",
 		Collation: "utf8mb4_bin",
 	}
@@ -3320,11 +3240,6 @@ func init() {
 	}
 	SysUserCredentialsTable.Annotation = &entsql.Annotation{
 		Table:     "sys_user_credentials",
-		Charset:   "utf8mb4",
-		Collation: "utf8mb4_bin",
-	}
-	SysUserMfaFactorsTable.Annotation = &entsql.Annotation{
-		Table:     "sys_user_mfa_factors",
 		Charset:   "utf8mb4",
 		Collation: "utf8mb4_bin",
 	}

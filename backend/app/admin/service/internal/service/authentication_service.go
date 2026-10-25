@@ -9,7 +9,6 @@ import (
 
 	"github.com/tx7do/go-crud/viewer"
 	"github.com/tx7do/go-utils/captcha"
-	"github.com/tx7do/go-utils/geoip/geolite"
 	"github.com/tx7do/go-utils/timeutil"
 	"github.com/tx7do/go-utils/trans"
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
@@ -178,12 +177,6 @@ type AuthenticationService struct {
 
 	captchaClient *captcha.Captcha
 	rateLimiter   *data.LoginRateLimiter
-
-	loginPolicyRepo *data.LoginPolicyRepo
-
-	mfaFactorRepo     *data.UserMfaFactorRepo
-	mfaChallengeCache *data.MfaChallengeCache
-	geoClient         *geolite.Client
 }
 
 func NewAuthenticationService(
@@ -201,10 +194,6 @@ func NewAuthenticationService(
 	clientType authenticationV1.ClientType,
 	captchaClient *captcha.Captcha,
 	rateLimiter *data.LoginRateLimiter,
-	loginPolicyRepo *data.LoginPolicyRepo,
-	mfaFactorRepo *data.UserMfaFactorRepo,
-	mfaChallengeCache *data.MfaChallengeCache,
-	geoClient *geolite.Client,
 ) *AuthenticationService {
 	return &AuthenticationService{
 		log:                     ctx.NewLoggerHelper("authn/service/admin-service"),
@@ -221,38 +210,7 @@ func NewAuthenticationService(
 		clientType:              clientType,
 		captchaClient:           captchaClient,
 		rateLimiter:             rateLimiter,
-		loginPolicyRepo:         loginPolicyRepo,
-		mfaFactorRepo:           mfaFactorRepo,
-		mfaChallengeCache:       mfaChallengeCache,
-		geoClient:               geoClient,
 	}
-}
-
-// checkLoginPolicies 拉取租户登录策略并按当前上下文匹配。
-// userId 传 0 时只匹配全局条目（target_id 为空）；密码校验前与取到 user 后各调用一次。
-// 匹配逻辑见 data.MatchLoginPolicy（纯函数，含单测）。
-// 策略查询失败时 fail-open（仅告警）——登录可用性优先于策略拦截，与验证码开关的容错取向一致。
-func (s *AuthenticationService) checkLoginPolicies(ctx context.Context, tenantID, userId uint32, clientIP, deviceId string) (bool, string) {
-	policies, err := s.loginPolicyRepo.ListForLogin(ctx, tenantID)
-	if err != nil {
-		s.log.Errorf(ctx, "list login policies failed for tenant [%d]: %s", tenantID, err.Error())
-		return false, ""
-	}
-	return data.MatchLoginPolicy(policies, userId, clientIP, deviceId, s.resolveRegionFromIP(ctx, clientIP), time.Now())
-}
-
-// resolveRegionFromIP 把客户端 IP 解析为归属地串（取省，空=解析失败）。
-// REGION 策略值与此串精确相等（大小写不敏感）即命中。
-// geolite 客户端内嵌库，失败不阻断登录（REGION 维度按未判定处理）。
-func (s *AuthenticationService) resolveRegionFromIP(ctx context.Context, clientIP string) string {
-	if clientIP == "" || s.geoClient == nil {
-		return ""
-	}
-	res, err := s.geoClient.Query(clientIP)
-	if err != nil {
-		return ""
-	}
-	return res.Province
 }
 
 func (s *AuthenticationService) resetContextForLogin(ctx context.Context) context.Context {
@@ -506,16 +464,6 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 		tenantID = tenant.GetId()
 	}
 
-	// ===== 登录策略闸门（全局部分）：target_id 为空的策略不依赖用户身份， =====
-	// ===== 在 identifier 反查与密码校验之前拦截，被封锁的 IP 连 user 表查询都省掉。
-	// ===== 用户定向策略（target_id = userId）在取到 user 后二次检查。
-	if s.loginPolicyRepo != nil {
-		if blocked, reason := s.checkLoginPolicies(ctx, tenantID, 0, clientIP, req.GetDeviceId()); blocked {
-			s.log.Warnf(ctx, "login blocked by policy: ip=%s username=%s reason=%s", clientIP, username, reason)
-			return nil, authenticationV1.ErrorForbidden("login blocked by security policy")
-		}
-	}
-
 	// ===== identifier 智能解析：输入含 @ 视为 email、纯数字视为 mobile， =====
 	// ===== 经 user 表反查得到真实 username 后仍走 USERNAME 维度凭证校验。
 	// 未命中时原样返回，交由凭证校验走统一失败路径（防枚举）；mobile 多行歧义直接拒绝。
@@ -560,15 +508,6 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 		return nil, authenticationV1.ErrorBadRequest("invalid tenant")
 	}
 
-	// ===== 登录策略闸门（用户定向部分）：密码已通过、userId 已知， =====
-	// ===== 检查 target_id 约束到该用户的策略条目。
-	if s.loginPolicyRepo != nil {
-		if blocked, reason := s.checkLoginPolicies(ctx, tenantID, user.GetId(), clientIP, req.GetDeviceId()); blocked {
-			s.log.Warnf(ctx, "login blocked by user-targeted policy: uid=%d ip=%s reason=%s", user.GetId(), clientIP, reason)
-			return nil, authenticationV1.ErrorForbidden("login blocked by security policy")
-		}
-	}
-
 	tokenPayload := &authenticationV1.UserTokenPayload{
 		UserId:   user.GetId(),
 		TenantId: user.TenantId,
@@ -582,31 +521,6 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 	if err != nil {
 		s.log.Errorf(ctx, "resolve user [%d] authority failed [%s]", user.GetId(), err.Error())
 		return nil, err
-	}
-
-	// ===== MFA 闸门：若该用户绑定了 ENABLED 的 TOTP 因子，则不签发 token， =====
-	// ===== 改为签发 operation_id，要求前端走二次验证（MfaService.VerifyMFAChallenge）。
-	// 注意：此处不清零限流计数——认证尚未完成；真正清零在 VerifyMFAChallenge 通过后。
-	if s.mfaFactorRepo != nil {
-		needMfa, merr := s.mfaFactorRepo.HasEnabledTotp(ctx, user.GetTenantId(), user.GetId())
-		if merr != nil {
-			// fail-closed：MFA 状态查询失败时拒绝登录，避免已绑定用户在 DB 故障时
-			// 被降级为单因子放行（与上方凭证校验出错即拒登的行为一致）。
-			s.log.Errorf(ctx, "check mfa factor failed for user [%d]: %s", user.GetId(), merr.Error())
-			return nil, authenticationV1.ErrorInternalServerError("mfa check failed")
-		}
-		if needMfa && s.mfaChallengeCache != nil {
-			opId, cerr := s.mfaChallengeCache.SetLoginChallenge(ctx, tokenPayload, req.GetClientType())
-			if cerr != nil {
-				s.log.Errorf(ctx, "set mfa login challenge failed for user [%d]: %s", user.GetId(), cerr.Error())
-				return nil, authenticationV1.ErrorInternalServerError("mfa challenge failed")
-			}
-			return &authenticationV1.LoginResponse{
-				TokenType:      authenticationV1.TokenType_bearer,
-				AccessToken:    "",
-				MfaOperationId: trans.Ptr(opId),
-			}, nil
-		}
 	}
 
 	// 生成令牌
@@ -639,7 +553,7 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 
 // recordUserLastLogin 记录用户最后登录时间与 IP。
 // 仅用于展示（用户列表"最后登录"列、个人中心），更新失败不阻断登录流程。
-// 密码登录与 MFA 挑战通过两条成功路径都调用。
+// 密码登录成功时调用。
 func recordUserLastLogin(ctx context.Context, log *bLogger.Helper, userRepo data.UserRepo, userID uint32, clientIP string) {
 	if userID == 0 || userRepo == nil {
 		return

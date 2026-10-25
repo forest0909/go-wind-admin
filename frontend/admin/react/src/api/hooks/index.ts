@@ -35,7 +35,6 @@ export * from './dict';
 export * from './file';
 export * from './file-transfer';
 export * from './task';
-export * from './login-policy';
 export * from './language';
 export * from './config';
 

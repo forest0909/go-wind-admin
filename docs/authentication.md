@@ -1,7 +1,7 @@
 # 认证与令牌链路（Authentication & Tokens）参考文档
 
 > **定位**：本仓认证机制的唯一权威说明——登录链路全流程、令牌结构与配置、刷新轮换与 Cookie、
-> MFA、限流/策略/验证码等辅助闸门、会话管理与吊销、白名单端点、运维与已知问题。
+> 限流与图形验证码、会话管理与吊销、白名单端点、运维与已知问题。
 > 前端权限消费侧（路由/按钮/字段黑名单）见 [frontend_authority.md](./frontend_authority.md)；
 > 租户隔离与数据范围另见 [tenant_isolation.md](./tenant_isolation.md)、[data_scope_design.md](./data_scope_design.md)。
 
@@ -17,9 +17,7 @@
   ├─ AuthenticationScheme（authn）+ Authorizer（authz）引擎配置：configs/auth.yaml（authn.jwt / authz.type）
   ├─ internal/data/authenticator.go —— 令牌签发/验签/吊销/轮换/缓存（engine 适配层）
   ├─ internal/service/authentication_service.go —— 登录/刷新/验证码
-  ├─ internal/service/mfa_service.go —— TOTP 绑定与登录挑战
   ├─ internal/data/login_rate_limiter.go —— Redis 双维度失败计数限流
-  ├─ internal/data/login_policy_checker.go —— 登录策略匹配（纯函数+单测）
   └─ pkg/middleware/auth/auth.go —— 每请求认证（验签+缓存核对）+ ViewerContext/Operator 注入
 ```
 
@@ -31,26 +29,21 @@ POST /admin/v1/login（grant_type=password）
   ├─ 1  限流预检：IP + 用户名双维度 Redis 计数（锁定期直接 400）
   ├─ 2  图形验证码：X-Captcha-Id/X-Captcha-Value Header，Redis verify-and-delete（单次有效）
   ├─ 3  租户解析：tenant_code 空=平台（tid 0）；非空查 sys_tenants，非 ON 统一文案拒绝
-  ├─ 4  登录策略·全局段：target_id 为空的策略（IP/时间窗/设备），被封锁 IP 连 user 表都不查
-  ├─ 5  identifier 反查：输入含 @ → email、纯数字 → mobile，反查真实 username；多行歧义拒绝
-  ├─ 6  凭证校验（user_credential_repo.FindUserCredential）：
+  ├─ 4  identifier 反查：输入含 @ → email、纯数字 → mobile，反查真实 username；多行歧义拒绝
+  ├─ 5  凭证校验（user_credential_repo.FindUserCredential）：
   │      AES 解密（DefaultAESKey）→ 按 (tenant, USERNAME, username) 查凭证 → bcrypt 比对；
   │      用户不存在时跑一次假 bcrypt（恒定时间防枚举）
   │      失败 → 限流计数自增 + 统一 INVALID_PASSWORD 文案（防用户名枚举，真实原因进日志/审计）
-  ├─ 7  取用户行：按凭证返回的 user_id 精确 Get（避免同 identifier 多租户歧义）
-  ├─ 8  纵深防御：凭证行 tenant 必须等于用户行 tenant，否则 "invalid tenant"
-  │      （`authentication_service.go:549-554`——它在取到用户行之后，不在凭证库里）
-  ├─ 9  登录策略·用户定向段：target_id = 该 userId 的策略条目（`:558-563`，命中即 Forbidden）
-  ├─ 10 授权丰富（`resolveUserAuthority`，调用点 `:574`）：
-  │      **先**查 `user.status != NORMAL` 即拒（`:451-455`，Forbidden "user is disabled"——
-  │      所以状态检查实际发生在策略段**之后**，不是之前）；
+  ├─ 6  取用户行：按凭证返回的 user_id 精确 Get（避免同 identifier 多租户歧义）
+  ├─ 7  纵深防御：凭证行 tenant 必须等于用户行 tenant，否则 "invalid tenant"
+  │      （`authentication_service.go:504-509`——它在取到用户行之后，不在凭证库里）
+  ├─ 8  授权丰富（`resolveUserAuthority`，调用点 `:520`）：
+  │      **先**查 `user.status != NORMAL` 即拒（`:419`，Forbidden "user is disabled"）；
   │      再 authorizeAndEnrich*（一对一/一对多按 DefaultUserTenantRelationType）：
   │      角色链（user→role / membership→role）→ 权限码集合须含 SystemAccessBackendPermissionCode
   │      → 角色 codes 进 token；fillAdminFlags（平台/租户管理员旗标）；
   │      聚合数据范围（dss/dsu）与字段黑名单（hfs）进 token（见对应设计文档）
-  ├─ 11a MFA 闸门：用户绑有 ENABLED TOTP → 不发 token，签发 operation_id（挑战缓存），
-  │      前端走 /admin/v1/mfa/challenge 二次验证（见第 5 章）——限流计数此时不清零
-  └─ 11b 签发：CreateUserToken（access + refresh，jti，Redis 令牌对入缓存）
+  └─ 9  签发：CreateUserToken（access + refresh，jti，Redis 令牌对入缓存）
          → 会话元数据记录 + last_login 记录（均 best-effort）
          → 限流计数清零
          → refresh 经 HttpOnly Cookie 下发（见第 4 章），响应体只回 access + expires_in
@@ -78,10 +71,10 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 |---|---|---|
 | `uid` | user_id | 用户 ID |
 | `tid` | tenant_id | 租户 ID；0=平台上下文 |
-| `cid` / `did` | client_id / device_id | 客户端/设备标识（登录策略 DEVICE 维度用 did） |
+| `cid` / `did` | client_id / device_id | 客户端/设备标识 |
 | `sub` | username | 用户名 |
 | `roc` | roles | 角色码列表 |
-| `ipa` / `ita` | is_platform_admin / is_tenant_admin | 管理员旗标（fillAdminFlags 产出；MFA 重置/越权校验消费） |
+| `ipa` / `ita` | is_platform_admin / is_tenant_admin | 管理员旗标（fillAdminFlags 产出） |
 | `ds`/`dss`/`dsu` | data_scope(s)/unit_ids | 数据范围聚合（语义见 data_scope_design 第 3 节） |
 | `ouid` | org_unit_id | 当前组织单元 |
 | `hfs` | hidden_fields | 字段黑名单（"资源.字段"，语义见 frontend_authority 字段级一节） |
@@ -159,19 +152,11 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 - 401 拦截：`refreshTokenQueue` 单飞（并发 401 只发一次刷新），成功后重放队列、失败清队列走重登；
   刷新请求自身的 401 不再触发刷新（防死循环）。
 
-## 5. MFA（TOTP）
+## 5. MFA（TOTP）已删除
 
-- 绑定面（`mfa_service.go`）：StartEnrollMethod 产出 otpauth 密钥/二维码 → ConfirmEnrollMethod
-  验码落 `sys_user_mfa_factors`（secret 加密存储）；ListEnrolledMethods / GetMFAStatus；
-  DisableMFA：不传 user_id 自解绑；传 user_id 指定他人**仅平台管理员**（救援重置，告警留痕）；
-  RevokeMFADevice 单设备解绑；
-- 登录挑战（VerifyMFAChallenge，白名单端点）：`operation_id` 单次有效挑战缓存
-  （Peek 可重试、`RecordLoginFailure` 计错、超限作废；`TakeLoginChallengeAtomic` 原子消耗
-  **防双花**——并发同 opId 仅一人得 token）；TOTP 校验 ±1 窗口/30s/6 位/SHA1；
-  错码计入登录限流（IP+用户名）；通过后清零限流计数、记 last_login、签发**常规令牌对**；
-  审计贯通：本端点请求体无 username，经 `X-Audit-Username` 响应头回传挑战上下文用户名给
-  登录审计中间件兜底（非 ASCII 过滤）；
-- 中间件探测 `HasEnabledTotp` **fail-closed**（查询失败拒登，不降级单因子）。
+登录不再做 TOTP 二次验证。个人中心不再提供绑定，用户管理不再提供救援重置。
+`sys_user_mfa_factors` 需要在已部署库手工 `DROP`。凭证枚举 `TOTP` / `OTP` 仍留在
+`user_credential`，避免存量凭证行扫描失败。登录日志的 `mfa_status` 列保留，新登录不再写入。
 
 ## 7. 辅助闸门
 
@@ -192,19 +177,12 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
   的注释写成"滑动窗口"是错的）；`CheckAndIncr` 为 Lua 原子
   （锁定判定→自增→TTL）；任一维度达阈值即锁；
 - Redis 不可用 → **fail-open**（防御性增强不阻断登录可用性），仅告警；
-- 成功（含 MFA 通过）→ `Reset` 清零两维度。
+- 登录成功 → `Reset` 清零两维度。
 
-### 7.3 登录策略（`login_policy_service` + `login_policy_checker.go`）
+### 7.3 登录策略已删除
 
-- 存储：`sys_login_policies`（租户级表，`ent/schema/login_policy.go:21`），条目含 TargetID（0=全局/否则定向用户）、
-  Method（IP/TIME/DEVICE）、Type（黑/白名单）、Value；
-- 匹配（纯函数 `MatchLoginPolicy`，含单测）：黑名单任一命中→拒；白名单存在约束
-  （全局或定向当前用户）且当前值未命中任何白名单→拒。IP 支持精确与 CIDR；
-  TIME 为 `HH:MM-HH:MM`（支持跨午夜）；DEVICE 精确匹配 device_id；
-  **MAC/REGION 未实现**（HTTP 上下文无 MAC；REGION 待接 IP 地理库）；
-- 两段式调用：全局段在 identifier 反查与密码校验**之前**（封锁 IP 不消耗查询），
-  用户定向段在密码通过、userId 已知后；
-- 策略查询失败 → **fail-open**（仅告警——登录可用性优先，与验证码开关同取向）。
+不再按 IP、时段或设备拦截登录。`sys_login_policies` 需要在已部署库手工 `DROP`。
+图形验证码和登录限流仍在，见 7.1 与 7.2。
 
 ## 8. 会话管理与在线用户（`online_session_service.go` + `session_meta.go`）
 
@@ -225,7 +203,6 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 | Login | 全链闸门（第 2 章） |
 | GenerateCaptcha / VerifyCaptcha | 单次有效、无敏感返回 |
 | RefreshToken | refresh 自描述 JWT 独立鉴权 + 原子轮换 + 缓存吊销核对 |
-| MfaService.VerifyMFAChallenge | operation_id 单次有效原子消耗 + 错码限流 + 审计贯通 |
 
 白名单**跳过的是整个 `auth.Server` 中间件**——租户闸门就在这个中间件内部
 （`pkg/middleware/auth/auth.go:120-132` 的 `CheckTenantAccess`），而 selector 的语义是
@@ -243,7 +220,6 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 | TTL 调整 | auth.yaml 两字段（Duration 串）；生效于新签发，存量按旧 TTL |
 | 自动化登录 | 直读 Redis `gowind:captcha:<captchaId>` 取答案（或临时置 CaptchaEnabled=false 后编译） |
 | 限流排查 | Redis 双维度键计数；误锁清理直接删键 |
-| 策略调整 | 登录策略管理页（租户级）；匹配语义见 7.3，改动跑 login_policy_checker_test |
 | 审计 | 全部登录尝试落 `sys_login_audit_logs`（成败/原因/归属地），见 audit-log-producer-design |
 | 会话处置 | 在线用户页强制下线（单会话）/ 改密自动全吊销 |
 
@@ -251,12 +227,11 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 
 | 项 | 现状 | 影响 |
 |---|---|---|
-| ~~MFA 登录成功路径 refresh token 走响应体~~ | **已修复（2026-09-13）**：`VerifyMFAChallenge` 改调 `setRefreshCookies`，响应体不再携带 refresh 字段，与主登录路径一致 | 修复前：refresh 暴露在 JS 可读响应体 + MFA 用户会话静默续期丢失（前端只认 Cookie）。修复后 MFA 用户获得与其他用户一致的续期链路 |
+| ~~MFA（TOTP）与登录策略~~ | **已删除**：登录不再二次验证，也不再按 IP、时段或设备拦截。登录日志 `mfa_status` 列保留 | 已部署库需手工 `DROP TABLE sys_user_mfa_factors, sys_login_policies`，并删除菜单 `LoginPolicyManagement` |
 | ~~`LoginResponse.RefreshToken`/`RefreshExpiresIn` 字段残留~~ | **已清理（2026-10-03）**：proto 删字段 + 三端重生成；核实三端零消费方（refresh 全走 HttpOnly Cookie）。`LoginRequest.refresh_token`（授权请求入参，另一语义）保留 | 无 |
 | preshared_key 配置节 | 预留未接线 | 接入前勿在生产配置里误以为已启用 |
 | ~~oauth proto（第三方绑定）~~ | **已移除（2026-10-03）**：OAuthService 11 个 RPC 无实现/无注册/三端生成物零引用，微信/QQ 等消费平台绑定不在产品范围 | 无 |
 | ~~OIDC 企业登录~~ | **已移除**：环境变量 `SSO_OIDC_*`、登录页按钮、`/auth/sso/callback` 和 `auth.yaml` 的 `authn.oidc` 都已删掉。凭证枚举 `ENTERPRISE_SSO` / `SSO_TOKEN` 仍留在 `user_credential`，避免存量行扫描失败 | 无 |
-| ~~MAC / REGION 登录策略维度~~ | **REGION 已实现（2026-10-03）**：IP 经内嵌 GeoLite2 库解析归属地（取省），与策略值精确相等（大小写不敏感）即命中；解析失败不判定。**MAC 移出三端方法下拉**（HTTP 拿不到 MAC，选了永不命中；后端枚举保留兼容存量数据，存量 MAC 策略永不命中） | 无 |
 
 ## 12. 边界（明确不做）
 
@@ -264,4 +239,5 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 - 注册入口（RegisterUser）已移除，不再恢复（孤儿用户教训）；
 - login 端点不做 refresh（专用端点）、不做 client_credentials（机器令牌交换已删除）；
 - 找回密码（`/admin/v1/forgot-password`、`/admin/v1/reset-password-by-code`）已删除。个人中心换绑邮箱和手机仍读 `configs/mail.yaml` 同步发验证码；
+- MFA（TOTP）和登录策略已删除。图形验证码和登录限流保留；
 - access token 不落 localStorage/sessionStorage（仅内存，刷新即失，靠 refresh Cookie 恢复）。

@@ -3,15 +3,15 @@
 //
 // 说明：
 //   - 本文件为批 3c（AuthenticationService / UserService 测试）所需的构造器，分三类：
-//     1) 纯 ent 构造（LoginPolicyRepo / UserMfaFactorRepo / PermissionRepo /
+//     1) 纯 ent 构造（PermissionRepo /
 //     RoleOrgUnitRepo / RoleFieldPermissionRepo）：字段与生产构造器逐字段对齐
 //     （含 mapper/converter 初始化与 init() 调用），唯一差异是 log 一律
 //     bLogger.NewHelper(bLogger.NopLogger())；entClient 由调用方传入（测试场景
 //     为 enttest.NewEntClientForTest 的 SQLite 内存库）。PermissionRepo /
 //     RoleOrgUnitRepo / RoleFieldPermissionRepo 与 repo_testkit.go 内同名
 //     testkit 私有构造器逻辑一致，此处为跨包（service 层）可见的导出副本。
-//     2) redis 依赖构造（ConfigRepo / UserTokenCache / LoginRateLimiter /
-//     MfaChallengeCache）：redis 客户端由调用方注入，测试场景一律传
+//     2) redis 依赖构造（ConfigRepo / UserTokenCache / LoginRateLimiter）：
+//     redis 客户端由调用方注入，测试场景一律传
 //     miniredis 假 client（与 data 包内 authenticator_test.go /
 //     user_token_cache_test.go 的注入范式一致）。ConfigRepo 生产构造器中的
 //     subscribeInvalidations 常驻 goroutine 是跨实例失效广播订阅（运行期副作用
@@ -35,7 +35,6 @@ import (
 	"github.com/tx7do/go-utils/password"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
-	"go-wind-admin/app/admin/service/internal/data/ent/loginpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/permission"
 	"go-wind-admin/app/admin/service/internal/data/ent/sysconfig"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
@@ -46,35 +45,6 @@ import (
 	configV1 "go-wind-admin/api/gen/go/config/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 )
-
-// NewLoginPolicyRepoForTest 与生产 NewLoginPolicyRepo 逐字段一致（log 换 NopLogger），并调用 init()。
-func NewLoginPolicyRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *LoginPolicyRepo {
-	repo := &LoginPolicyRepo{
-		log:       bLogger.NewHelper(bLogger.NopLogger()),
-		entClient: entClient,
-		mapper:    mapper.NewCopierMapper[authenticationV1.LoginPolicy, ent.LoginPolicy](),
-		typeConverter: mapper.NewEnumTypeConverter[authenticationV1.LoginPolicy_Type, loginpolicy.Type](
-			authenticationV1.LoginPolicy_Type_name,
-			authenticationV1.LoginPolicy_Type_value,
-		),
-		methodConverter: mapper.NewEnumTypeConverter[authenticationV1.LoginPolicy_Method, loginpolicy.Method](
-			authenticationV1.LoginPolicy_Method_name,
-			authenticationV1.LoginPolicy_Method_value,
-		),
-	}
-
-	repo.init()
-
-	return repo
-}
-
-// NewUserMfaFactorRepoForTest 与生产 NewUserMfaFactorRepo 逐字段一致（log 换 NopLogger）。
-func NewUserMfaFactorRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *UserMfaFactorRepo {
-	return &UserMfaFactorRepo{
-		entClient: entClient,
-		log:       bLogger.NewHelper(bLogger.NopLogger()),
-	}
-}
 
 // NewPermissionRepoForTest 与生产 NewPermissionRepo 逐字段一致（log 换 NopLogger；
 // 关联子 repo 复用 repo_testkit.go 的 testkit 私有构造器），并调用 init()。
@@ -171,15 +141,6 @@ func NewUserTokenCacheForTest(rdb *redis.Client) *UserTokenCache {
 // （log 换 NopLogger；rdb 由调用方注入——测试场景为 miniredis 假 client）。
 func NewLoginRateLimiterForTest(rdb *redis.Client) *LoginRateLimiter {
 	return &LoginRateLimiter{
-		rdb: rdb,
-		log: bLogger.NewHelper(bLogger.NopLogger()),
-	}
-}
-
-// NewMfaChallengeCacheForTest 与生产 NewMfaChallengeCache 逐字段一致
-// （log 换 NopLogger；rdb 由调用方注入——测试场景为 miniredis 假 client）。
-func NewMfaChallengeCacheForTest(rdb *redis.Client) *MfaChallengeCache {
-	return &MfaChallengeCache{
 		rdb: rdb,
 		log: bLogger.NewHelper(bLogger.NopLogger()),
 	}

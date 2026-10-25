@@ -15,7 +15,7 @@
   服务端可随时吊销 refresh（在线用户管理 → 强制下线）。
 - 每个请求由 transport 中间件验签，把 `UserTokenPayload`（用户/租户/角色/数据范围/字段黑名单等
   claim）注入上下文——后面所有轴都从这个上下文出发。
-- 登录方式可配置（账号/邮箱/手机号 + 登录策略），TOTP MFA 可选绑定；这些是管理页里的配置，不是代码改动。
+- 登录支持账号、邮箱、手机号，并带图形验证码和登录限流。
 
 ## 2. 授权的三个正交轴
 
@@ -106,7 +106,7 @@
 
 ## 深读
 
-- [authentication.md](../authentication.md) —— 认证与令牌链路唯一权威：登录全流程、令牌结构与配置、刷新轮换与 Cookie、MFA、限流/策略/验证码、会话吊销、已知问题
+- [authentication.md](../authentication.md) —— 认证与令牌链路唯一权威：登录全流程、令牌结构与配置、刷新轮换与 Cookie、限流与验证码、会话吊销、已知问题
 - [frontend_authority.md](../frontend_authority.md) —— 路由两种模式、按钮权限三端用法、字段级 V1 的权威说明
 - [data_scope_design.md](../data_scope_design.md) —— 三轴关系表（第 1 节）与数据范围全部细节
 - 根 [AGENTS.md](../../AGENTS.md) 与 [docs/frontend_authority](../frontend_authority.md) 的"项目代码"节 —— 前端权限的工程现状

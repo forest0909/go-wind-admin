@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/go-kratos/kratos/v2"
-	"github.com/tx7do/go-utils/geoip/geolite"
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
 
 	"github.com/tx7do/go-utils/authorizer"
@@ -64,8 +63,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	authenticator := data.NewAuthenticator(ctx, userTokenCache)
 	accessTokenChecker := data.NewTokenChecker(ctx, authenticator, clientType)
 	loginRateLimiter := data.NewLoginRateLimiter(ctx, redisClient)
-	mfaChallengeCache := data.NewMfaChallengeCache(ctx, redisClient)
-	geoClient, _ := geolite.NewClient()
 	vcodeCache := data.NewVCodeCache(ctx, redisClient)
 
 	// ═══════════════════════ 二、仓储层(internal/data) ═══════════════════════
@@ -81,8 +78,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	userRepo := data.NewUserRepo(ctx, entClient, userRoleRepo, userOrgUnitRepo, userPositionRepo, membershipRepo)
 	configRepo := data.NewConfigRepo(ctx, entClient, redisClient)
 	userCredentialRepo := data.NewUserCredentialRepo(ctx, entClient, passwordCrypto, configRepo)
-	userMfaFactorRepo := data.NewUserMfaFactorRepo(ctx, entClient)
-	loginPolicyRepo := data.NewLoginPolicyRepo(ctx, entClient)
 
 	// 组织架构与租户
 	orgUnitRepo := data.NewOrgUnitRepo(ctx, entClient, userOrgUnitRepo)
@@ -163,9 +158,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	taskMonitorService := service.NewTaskMonitorService(ctx)
 
 	// 认证与登录策略
-	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter, loginPolicyRepo, userMfaFactorRepo, mfaChallengeCache, geoClient)
-	mfaService := service.NewMfaService(ctx, userMfaFactorRepo, mfaChallengeCache, authenticator, loginRateLimiter, userRepo)
-	loginPolicyService := service.NewLoginPolicyService(ctx, loginPolicyRepo)
+	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter)
 
 	// 身份与组织
 	userService := service.NewUserService(ctx, userRepo, roleRepo, userCredentialRepo, positionRepo, orgUnitRepo, tenantRepo, tenantUsageRepo, membershipRepo, authenticator)
@@ -230,7 +223,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		apiAuditLogRepo, loginAuditLogRepo, operationAuditLogRepo, permissionAuditLogRepo, dataAccessAuditLogRepo, policyEvaluationLogRepo)
 
 	restServer, err := server.NewRestServer(ctx, restMiddlewares, authz,
-		authenticationService, mfaService, loginPolicyService,
+		authenticationService,
 		adminPortalService, taskService,
 		fileService, fileTransferService,
 		dictTypeService, dictEntryService, languageService,

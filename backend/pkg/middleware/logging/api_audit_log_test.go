@@ -51,7 +51,7 @@ func TestApiAuditLogMiddlewareNameAndConstructor(t *testing.T) {
 }
 
 // TestApiAuditLogHandleSkipsLoginOperationsDirect 直调验证：operation 命中
-// loginOperations（登录 / MFA 验证）时 Handle 必须在读请求字段之前返回——
+// loginOperations（登录）时 Handle 必须在读请求字段之前返回——
 // 零值 Transport 的 Request() 为 nil，若未提前返回会在 RequestURI 处 panic，
 // 测试以"不 panic 且零写入"双重断言该跳过语义。
 func TestApiAuditLogHandleSkipsLoginOperationsDirect(t *testing.T) {
@@ -59,7 +59,6 @@ func TestApiAuditLogHandleSkipsLoginOperationsDirect(t *testing.T) {
 	var op options
 	WithLoginOperation(
 		adminV1.OperationAuthenticationServiceLogin,
-		adminV1.OperationMfaServiceVerifyMFAChallenge,
 	)(&op)
 	WithWriteApiLogFunc(func(ctx context.Context, d *auditV1.ApiAuditLog) error {
 		written++
@@ -69,7 +68,6 @@ func TestApiAuditLogHandleSkipsLoginOperationsDirect(t *testing.T) {
 
 	for _, loginOp := range []string{
 		adminV1.OperationAuthenticationServiceLogin,
-		adminV1.OperationMfaServiceVerifyMFAChallenge,
 	} {
 		tr := &khttp.Transport{}
 		ctx := transport.NewServerContext(context.Background(), tr)

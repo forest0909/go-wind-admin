@@ -160,7 +160,7 @@ func TestOperationAuditLogHandleResourceIdVariants(t *testing.T) {
 }
 
 // TestOperationAuditLogHandleSkips 验证三类跳过路径：GET 读请求、
-// 会话维护端点（登录/刷新无关但含登出与 MFA 验证）、解析不出资源的 operation。
+// 会话维护端点（登录、登出）、解析不出资源的 operation。
 func TestOperationAuditLogHandleSkips(t *testing.T) {
 	skipCases := []struct {
 		name   string
@@ -170,7 +170,6 @@ func TestOperationAuditLogHandleSkips(t *testing.T) {
 		{"GET读请求", nethttp.MethodGet, "/demo.v1.GadgetService/Update"},
 		{"登录端点", nethttp.MethodPost, adminV1.OperationAuthenticationServiceLogin},
 		{"登出端点", nethttp.MethodPost, adminV1.OperationAuthenticationServiceLogout},
-		{"MFA验证端点", nethttp.MethodPost, adminV1.OperationMfaServiceVerifyMFAChallenge},
 		{"畸形operation", nethttp.MethodPost, "plain-bad-op"},
 		{"仅服务段", nethttp.MethodPost, "/demo.v1.GadgetService/"},
 	}

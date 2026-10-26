@@ -8,16 +8,16 @@ import (
 	"path/filepath"
 	"time"
 
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	loginauditlog "go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
 	operationauditlog "go-wind-admin/app/admin/service/internal/data/ent/operationauditlog"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // AuditLogArchiveRepo 审计日志归档：把超过保留期的审计行导出为本地 JSONL

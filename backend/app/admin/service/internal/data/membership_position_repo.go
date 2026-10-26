@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershipposition"

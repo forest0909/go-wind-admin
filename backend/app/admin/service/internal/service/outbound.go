@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tx7do/go-utils/mailer"
-	"github.com/tx7do/go-utils/notify"
-	"github.com/tx7do/go-utils/notify/sms"
+	"go-wind-admin/third_party/go-utils/mailer"
+	"go-wind-admin/third_party/go-utils/notify"
+	"go-wind-admin/third_party/go-utils/notify/sms"
 	"gopkg.in/yaml.v3"
 )
 

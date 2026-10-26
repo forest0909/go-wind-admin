@@ -21,10 +21,10 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	onlineSessionV1 "go-wind-admin/api/gen/go/online_session/service/v1"

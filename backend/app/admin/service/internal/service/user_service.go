@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	"github.com/tx7do/go-utils/aggregator"
-	"github.com/tx7do/go-utils/sliceutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/aggregator"
+	"go-wind-admin/third_party/go-utils/sliceutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -20,9 +20,9 @@ import (
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 type UserService struct {

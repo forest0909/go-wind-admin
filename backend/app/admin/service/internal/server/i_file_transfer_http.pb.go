@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/trans"
 
 	"github.com/go-kratos/kratos/v2/encoding"
 	_ "github.com/go-kratos/kratos/v2/encoding/json"

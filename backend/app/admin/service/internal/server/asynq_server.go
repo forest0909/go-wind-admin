@@ -4,14 +4,14 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bootstrapAsynq "github.com/tx7do/kratos-bootstrap/transport/asynq"
-	asynqServer "github.com/tx7do/kratos-transport/transport/asynq"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bootstrapAsynq "go-wind-admin/third_party/kratos-bootstrap/transport/asynq"
+	asynqServer "go-wind-admin/third_party/kratos-transport/transport/asynq"
 
 	"go-wind-admin/app/admin/service/internal/service"
 
-	"github.com/tx7do/go-crud/viewer"
 	"go-wind-admin/pkg/task"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // NewAsynqServer creates a new asynq server.

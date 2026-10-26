@@ -6,16 +6,15 @@ import (
 
 	"github.com/go-kratos/kratos/v2/transport/http"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/trans"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/go-utils/authorizer"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
@@ -24,6 +23,7 @@ import (
 	entApi "go-wind-admin/app/admin/service/internal/data/ent/api"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
 // stubAuthzProvider 是 authorizer.Provider 的本地测试桩：

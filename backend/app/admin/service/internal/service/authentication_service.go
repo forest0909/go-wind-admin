@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tx7do/go-crud/viewer"
-	"github.com/tx7do/go-utils/captcha"
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-crud/viewer"
+	"go-wind-admin/third_party/go-utils/captcha"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 

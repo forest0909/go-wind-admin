@@ -26,20 +26,20 @@
 package data
 
 import (
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/password"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/password"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/permission"
 	"go-wind-admin/app/admin/service/internal/data/ent/sysconfig"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	configV1 "go-wind-admin/api/gen/go/config/service/v1"

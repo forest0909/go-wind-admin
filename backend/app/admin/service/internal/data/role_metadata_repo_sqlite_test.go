@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 	"go-wind-admin/app/admin/service/internal/data/ent"

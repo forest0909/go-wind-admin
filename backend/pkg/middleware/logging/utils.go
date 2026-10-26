@@ -7,12 +7,12 @@ import (
 
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"github.com/tx7do/go-utils/auditutil"
-	"github.com/tx7do/go-utils/geoip"
-	"github.com/tx7do/go-utils/geoip/geolite"
-	"github.com/tx7do/go-utils/jwtutil"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/auditutil"
+	"go-wind-admin/third_party/go-utils/geoip"
+	"go-wind-admin/third_party/go-utils/geoip/geolite"
+	"go-wind-admin/third_party/go-utils/jwtutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"github.com/mileusna/useragent"
 

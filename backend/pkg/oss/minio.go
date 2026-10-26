@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/minio/minio-go/v7"
-	"github.com/tx7do/go-utils/ossutil"
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/ossutil"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/trans"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
-	ossMinio "github.com/tx7do/kratos-bootstrap/oss/minio"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
+	ossMinio "go-wind-admin/third_party/kratos-bootstrap/oss/minio"
 
 	storageV1 "go-wind-admin/api/gen/go/storage/service/v1"
 )

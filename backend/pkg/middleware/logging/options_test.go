@@ -12,7 +12,7 @@ import (
 	"crypto/ecdsa"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/auditutil"
+	"go-wind-admin/third_party/go-utils/auditutil"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 )

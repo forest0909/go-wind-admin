@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentry"
@@ -42,7 +42,7 @@ import (
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // TenantUsageRepo 提供租户用量与配额的实时聚合查询，以及手动清理租户数据。

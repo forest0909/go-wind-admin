@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 

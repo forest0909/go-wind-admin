@@ -4,7 +4,7 @@ import (
 	"context"
 	"math"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"

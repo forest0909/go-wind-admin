@@ -5,18 +5,18 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessage"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
 
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
 )

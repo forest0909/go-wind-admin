@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tx7do/go-utils/ossutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/ossutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/types/known/emptypb"
 

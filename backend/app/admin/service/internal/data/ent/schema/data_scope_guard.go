@@ -5,7 +5,7 @@ import (
 
 	"entgo.io/ent"
 
-	"github.com/tx7do/go-crud/entgo/rule"
+	"go-wind-admin/third_party/go-crud/entgo/rule"
 
 	entPrivacy "go-wind-admin/app/admin/service/internal/data/ent/privacy"
 )

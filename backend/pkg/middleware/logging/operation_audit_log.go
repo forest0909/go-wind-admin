@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"github.com/tx7do/go-utils/auditutil"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/auditutil"
+	"go-wind-admin/third_party/go-utils/trans"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 type OperationAuditLogMiddleware struct {

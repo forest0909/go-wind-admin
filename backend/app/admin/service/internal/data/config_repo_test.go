@@ -8,11 +8,11 @@ import (
 	"google.golang.org/genproto/protobuf/field_mask"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
 	configV1 "go-wind-admin/api/gen/go/config/service/v1"
 	"go-wind-admin/app/admin/service/internal/data/ent"

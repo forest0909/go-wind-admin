@@ -9,7 +9,7 @@ package identitypb
 import (
 	_ "github.com/envoyproxy/protoc-gen-validate/validate"
 	_ "github.com/google/gnostic/openapiv3"
-	v1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	v1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	_ "go-wind-admin/third_party/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"

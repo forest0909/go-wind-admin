@@ -33,21 +33,21 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/password"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/password"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"

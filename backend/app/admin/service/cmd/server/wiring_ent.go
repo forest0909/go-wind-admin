@@ -1,13 +1,15 @@
 package main
 
 import (
-	"github.com/go-kratos/kratos/v2"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	"fmt"
 
-	"github.com/tx7do/go-utils/authorizer"
+	"github.com/go-kratos/kratos/v2"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/app/admin/service/internal/server"
 	"go-wind-admin/app/admin/service/internal/service"
+	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
 // initApp 手写装配整个应用,是依赖注入点。
@@ -144,6 +146,10 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		return nil, nil, err
 	}
 	authz := authorizer.NewAuthorizer(ctx.Context(), ctx.GetLogger(), authzEngineCfg, authorizerProvider)
+	if authz.Engine() == nil {
+		rollback()
+		return nil, nil, fmt.Errorf("authorization engine %q failed to initialize", authzEngineCfg.Type)
+	}
 
 	// ═══════════════════════ 四、服务层(internal/service) ═══════════════════════
 

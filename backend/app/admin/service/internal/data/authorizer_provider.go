@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"strconv"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	"github.com/tx7do/go-utils/trans"
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/trans"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"go-wind-admin/app/admin/service/cmd/server/assets"
 
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
-	"github.com/tx7do/go-utils/authorizer"
 	"go-wind-admin/pkg/constants"
+	"go-wind-admin/third_party/go-crud/viewer"
+	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
 // AuthzEngineCasbin 唯一受支持的接口级鉴权引擎。

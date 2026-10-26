@@ -6,7 +6,7 @@ package identitypb
 import (
 	context "context"
 	validate "github.com/envoyproxy/protoc-gen-validate/validate"
-	pagination "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	pagination "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	redact "go-wind-admin/third_party/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	annotations "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"

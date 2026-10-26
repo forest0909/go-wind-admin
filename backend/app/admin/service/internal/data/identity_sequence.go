@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 )
 
 // 显式 ID 写入的表：菜单与接口的种子/重建都自带 id（sys_menus 1..74、sys_apis 1..N），

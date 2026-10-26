@@ -11,13 +11,13 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware/validate"
 	"github.com/go-kratos/kratos/v2/transport/http"
 
-	authz "github.com/tx7do/kratos-authz/middleware"
+	authz "go-wind-admin/third_party/kratos-authz/middleware"
 
-	swaggerUI "github.com/tx7do/kratos-swagger-ui"
+	swaggerUI "go-wind-admin/third_party/kratos-swagger-ui"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
-	"github.com/tx7do/kratos-bootstrap/rpc"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/rpc"
 
 	"go-wind-admin/app/admin/service/cmd/server/assets"
 	"go-wind-admin/app/admin/service/internal/data"
@@ -26,10 +26,10 @@ import (
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
-	"github.com/tx7do/go-utils/authorizer"
 	"go-wind-admin/pkg/middleware/auth"
 	applogging "go-wind-admin/pkg/middleware/logging"
+	"go-wind-admin/third_party/go-crud/viewer"
+	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
 // selfServiceOperations 只需登录、不走接口级鉴权（casbin）的操作。

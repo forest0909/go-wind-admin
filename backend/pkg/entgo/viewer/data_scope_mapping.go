@@ -3,7 +3,7 @@ package viewer
 import (
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // 本文件是 identityV1 数据范围声明到 go-crud/viewer 库层执行结构的唯一适配层；

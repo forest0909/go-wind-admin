@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/authorizer"
-	authzEngine "github.com/tx7do/kratos-authz/engine"
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/authorizer"
+	authzEngine "go-wind-admin/third_party/kratos-authz/engine"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 )
 
 func TestNewAuthorizerEngineConfig(t *testing.T) {

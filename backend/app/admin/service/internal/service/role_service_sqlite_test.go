@@ -16,9 +16,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
@@ -27,8 +27,8 @@ import (
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"github.com/tx7do/go-utils/authorizer"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
 // roleServiceAuthProviderStub：authorizer.Provider 桩，返回空模型/空策略，
@@ -42,15 +42,15 @@ func (roleServiceAuthProviderStub) ProvidePolicies(context.Context) (authorizer.
 }
 
 // newRoleServiceForTest 白盒复刻 NewRoleService 的字段初始化：
-// log 换 NopLogger，repo 用 testkit 构造器，authorizer 用 noop 引擎最小桩；
+// log 换 NopLogger，repo 用 testkit 构造器，authorizer 显式用 noop 引擎最小桩；
 // 并复刻生产构造器的 svc.init()（空表时播种 constants.DefaultRoles）。
 func newRoleServiceForTest(t *testing.T) *RoleService {
 	t.Helper()
 	entClient := enttest.NewEntClientForTest(t)
-	// noop 引擎形态：EngineConfig 空类型按 noop 分支处理，日志用 NopLogger。
+	// 空类型不再退回 noop。测试要放行时显式指定 noop。
 	svc := &RoleService{
 		log:        bLogger.NewHelper(bLogger.NopLogger()),
-		authorizer: authorizer.NewAuthorizer(context.Background(), bLogger.NopLogger(), &authorizer.EngineConfig{}, roleServiceAuthProviderStub{}),
+		authorizer: authorizer.NewAuthorizer(context.Background(), bLogger.NopLogger(), &authorizer.EngineConfig{Type: "noop"}, roleServiceAuthProviderStub{}),
 		roleRepo:   data.NewRoleRepoForTest(entClient),
 		tenantRepo: data.NewTenantRepoForTest(entClient),
 	}

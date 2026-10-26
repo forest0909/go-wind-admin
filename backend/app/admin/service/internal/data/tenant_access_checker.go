@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
@@ -17,9 +17,9 @@ import (
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // TenantAccessCheckerImpl 是 TenantAccessChecker 接口的 data 层实现。

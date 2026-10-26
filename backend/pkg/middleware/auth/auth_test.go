@@ -22,11 +22,11 @@ import (
 	kmeta "github.com/go-kratos/kratos/v2/metadata"
 	"github.com/go-kratos/kratos/v2/transport"
 
-	"github.com/tx7do/go-crud/viewer"
-	"github.com/tx7do/go-utils/trans"
-	authzEngine "github.com/tx7do/kratos-authz/engine"
-	authzMw "github.com/tx7do/kratos-authz/middleware"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-crud/viewer"
+	"go-wind-admin/third_party/go-utils/trans"
+	authzEngine "go-wind-admin/third_party/kratos-authz/engine"
+	authzMw "go-wind-admin/third_party/kratos-authz/middleware"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"

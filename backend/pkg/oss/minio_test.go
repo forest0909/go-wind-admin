@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	storageV1 "go-wind-admin/api/gen/go/storage/service/v1"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 )
 
 // MinIO 测试端点与凭据默认值（与既有硬编码行为保持一致）。

@@ -3,9 +3,9 @@ package data
 import (
 	"context"
 
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 

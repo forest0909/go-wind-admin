@@ -15,22 +15,22 @@ import (
 	"time"
 
 	"github.com/minio/minio-go/v7"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	"github.com/tx7do/go-utils/id"
-	"github.com/tx7do/go-utils/ossutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	"go-wind-admin/third_party/go-utils/id"
+	"go-wind-admin/third_party/go-utils/ossutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	storageV1 "go-wind-admin/api/gen/go/storage/service/v1"
 
-	"github.com/tx7do/go-utils/crypto"
+	"go-wind-admin/third_party/go-utils/crypto"
 	"net/url"
 
-	gonetutil "github.com/tx7do/go-utils/netutil"
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/pkg/oss"
+	gonetutil "go-wind-admin/third_party/go-utils/netutil"
 )
 
 type FileTransferService struct {

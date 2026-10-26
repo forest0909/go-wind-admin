@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/logger"
 	"github.com/xuri/excelize/v2"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	"go-wind-admin/pkg/middleware/auth"

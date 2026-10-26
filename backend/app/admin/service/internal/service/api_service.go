@@ -6,12 +6,12 @@ import (
 	"context"
 
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	"github.com/tx7do/go-utils/trans"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/trans"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"go-wind-admin/app/admin/service/cmd/server/assets"
@@ -21,10 +21,10 @@ import (
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
-	"github.com/tx7do/go-utils/authorizer"
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-crud/viewer"
+	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
 type RouteWalker interface {

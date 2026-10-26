@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tx7do/go-utils/password"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
+	"go-wind-admin/third_party/go-utils/password"
 )
 
 // TestDefaultPasswordMeetsPolicy 种子密码必须通过等保复杂度策略。

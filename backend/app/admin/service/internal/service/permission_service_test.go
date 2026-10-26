@@ -23,16 +23,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
-	crudViewer "github.com/tx7do/go-crud/viewer"
-	"github.com/tx7do/go-utils/authorizer"
-	goconv "github.com/tx7do/go-utils/converter"
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
@@ -43,6 +40,9 @@ import (
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/pkg/utils/converter"
+	crudViewer "go-wind-admin/third_party/go-crud/viewer"
+	"go-wind-admin/third_party/go-utils/authorizer"
+	goconv "go-wind-admin/third_party/go-utils/converter"
 )
 
 // newPermissionServiceForTest 白盒构造 PermissionService，逐字段对齐

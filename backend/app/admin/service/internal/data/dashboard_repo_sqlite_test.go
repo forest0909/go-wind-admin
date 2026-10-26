@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	entLoginAuditLog "go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
 	entOperationAuditLog "go-wind-admin/app/admin/service/internal/data/ent/operationauditlog"

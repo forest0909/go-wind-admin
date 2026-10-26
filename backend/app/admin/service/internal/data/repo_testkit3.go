@@ -12,11 +12,11 @@
 package data
 
 import (
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/mapper"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	entTask "go-wind-admin/app/admin/service/internal/data/ent/task"

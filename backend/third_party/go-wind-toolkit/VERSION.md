@@ -10,4 +10,4 @@
 
 许可证是 **Apache-2.0**，不是其余依赖所用的 MIT。LICENSE 与 NOTICE 原样保留。NOTICE 写明这是 Shivam Rathore 的 protoc-gen-redact 的衍生作品。
 
-本仓修改：import 路径和 `redact.proto` 的 `go_package` 从 `github.com/tx7do/go-wind-toolkit/...` 改为 `go-wind-admin/third_party/go-wind-toolkit/...`。
+本仓修改：import 路径和 `redact.proto` 的 `go_package` 从 `github.com/tx7do/go-wind-toolkit/...` 改为 `go-wind-admin/third_party/go-wind-toolkit/...`。`redact.pb.go` 里对应的原始描述符按新路径改了字符串长度，并同步加长外层 FileOptions 的长度。

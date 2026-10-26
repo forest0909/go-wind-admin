@@ -14,11 +14,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/trans"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"

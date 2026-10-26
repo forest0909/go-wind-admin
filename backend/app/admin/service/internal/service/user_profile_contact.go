@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/trans"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
@@ -15,7 +15,7 @@ import (
 	"go-wind-admin/pkg/mailtext"
 	"go-wind-admin/pkg/middleware/auth"
 
-	"github.com/tx7do/go-utils/notify/sms"
+	"go-wind-admin/third_party/go-utils/notify/sms"
 )
 
 // 联系方式种类：绑定验证码按它分渠道（邮箱走 SMTP，手机号走 SMS）。

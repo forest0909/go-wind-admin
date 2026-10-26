@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"go-wind-admin/app/admin/service/internal/data"
@@ -20,9 +20,9 @@ import (
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	taskV1 "go-wind-admin/api/gen/go/task/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/pkg/task"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // TaskScheduler 任务调度接口

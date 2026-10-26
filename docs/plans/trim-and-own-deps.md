@@ -302,7 +302,53 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 
 > 每个阶段完成后由实施 agent 追加，格式：日期、阶段、分支、做了什么、门禁结果、遗留问题和需要用户决定的事项。
 
-（暂无）
+### 2026-10-26 · 第 1 阶段 · `chore/trim-phase-1`（HEAD `509d6e9`，本记录为后续提交）
+
+阶段内提交从 `dd46de8` 到 `509d6e9`（GORM 平行后端到自助接口豁免）。本记录只做验收，没有再改业务代码。
+
+**改动**
+
+- casbin 的域用令牌里的租户 ID（`pkg/middleware/auth/utils.go` 的 `processAuthz`）；策略按角色编码追加，不再按编码覆盖（`AuthorizerProvider.ProvidePolicies`）。`authz.type` 不是 `casbin` 或配置缺失时，启动直接报错。
+- 平台管理员（租户 0、角色编码为平台管理员）写入 `/*` + `ANY` 通配策略。种子里的 ApiId 仍按位置写死为 1..136，空库启动时实际同步出 156 个接口。
+- `backend/Makefile` 里不再有 `@latest`。
+- 删除监控模块（服务器监控、Redis 缓存监控、任务监控，以及监控告警）；模块枚举去掉 AI（`module.proto` 对 11 / `AI` 做了 `reserved`）；`4175a56` 清理已删模块的残留引用。
+- 接口同步按 `(method, path)` 对齐，保留已有 ID 和权限绑定。
+- 个人资料更新只允许改资料字段（`profileUpdatablePaths` 丢掉 `roleIds` 等）。OpenAPI：`PUT /admin/v1/me`，`body: "*"`，请求体是 `UpdateUserRequest`（`id`、`data`、`updateMask` 字符串）。冒烟用这个格式把 viewer 的昵称改成 `v2`，`roleIds` 仍是原角色。
+- 自助类接口（导航、权限码、个人资料、自己的在线会话、退出登录）只要登录，不走 casbin。站内信收件箱不在豁免里。
+
+**门禁（2026-10-26）**
+
+- `go build ./...`、`go vet ./...`、`go test ./...`：通过，没有新增失败。和 `goadmin-trim-tools/baseline-main-gotest.txt`（main，全绿）比，已删模块的包（GORM、脚本、通知渠道等）不再出现，其余包为 ok。
+- `make api && make openapi && make ts && make ent` 之后，git 状态里除了本来就有的本地配置（`data.yaml`、`oss.yaml`、`server.yaml`，含远程库凭据，不提交）没有别的改动。
+- 前端 `npm run typecheck`、`npm run build` 通过。`npm run lint` 退出码 1：909 条（659 error，250 warning）。第 0 阶段没留下 lint 基线，这次补上，见 `docs/plans/react-lint-baseline.tsv`。截图基线按交接说明不做。
+- 空库冒烟（远程 test 库，`smoke.sh HEAD`）：`RESULT: ALL PASS`。已核对的例外：`GET /admin/v1/file/download` 不带参数返回 500；`GET /admin/v1/initial-context` 返回 500。第一次冒烟里 `PUT /admin/v1/users/{id}` 只带昵称得到 400 `role_ids is required`，这是脚本漏了字段，不是本阶段回归：`UserService.Update` 从上游起就无条件要求 `roleIds`，和 `updateMask` 无关，管理端表单也会带上角色。已改冒烟脚本（仓库外）后重跑通过，并核对昵称写成了 `t2`。
+
+**上游原有的问题（没修，只记录）**
+
+- `GetInitialContext` 没有实现。`AdminPortalService` 嵌入的 HTTP 接口是 nil，调用会空指针 panic，表现为 500。`file/download` 没有 selector 时走 `ErrorDownloadFailed("unknown download selector")`，返回 500。
+- 启动时 `PermissionService.init` 在权限表为空时调用 `SyncPermissions`。该函数要 `auth.FromContext`，启动期没有操作人，错误被 `_, _ =` 丢掉，权限点不会种上。管理员要在管理页手动点「权限同步」（冒烟里 `POST /admin/v1/permissions/sync:perms` 返回 200，`user:view` 能查到）。
+- Kratos 访问日志记下登录请求参数。密码是 AES 密文，密钥是前端的 `VITE_AES_KEY`，会打进浏览器包，密文可以解回明文。另外 `useCreateUser` 创建用户时密码没有加密，同一条访问日志会记下明文密码。
+- 收件箱在单租户下任何人都能读写别人的消息。`InternalMessageRecipientRepo.List` 只在「不是平台上下文、也不是系统上下文」时按当前用户收窄；`tid==0` 被当成平台特权放行，而单租户下所有用户都是 `tid==0`。自助接口豁免故意没把收件箱放进去。
+- 租户管理员的种子 ApiId 是按位置写死的 1..128，和平台管理员的 1..136 是同一类问题。平台管理员已改走通配策略，租户管理员没有。
+
+**已部署的老库要手动处理**（程序不会 DROP 表，也不会改旧菜单。清单对照了 `4175a56`、`e524a2d` 和已删的 ent schema）
+
+- 删表：`sys_login_policies`、`sys_user_mfa_factors`、`sys_access_keys`、`sys_notification_channels`、`sys_notification_deliveries`、`notification_preferences`、`sys_notification_rules`、`notification_templates`、`sys_scripts`、`sys_script_logs`、`sys_api_audit_logs`、`sys_data_access_audit_logs`、`sys_permission_audit_logs`、`sys_policy_evaluation_logs`、`sys_ai_agent_apps`、`sys_ai_agent_runs`、`sys_ai_chunks`、`sys_ai_conversations`、`sys_ai_docs`、`sys_ai_knowledge_bases`、`sys_ai_messages`、`sys_ai_providers`、`sys_ai_usage_logs`、`monitor_alert_rules`。
+- 程序内备份没有独立业务表（对象在 MinIO 桶 `backups`）。服务器监控、Redis 缓存监控、任务监控也没有表。
+- `sys_apis.business_module`、`sys_menus.module`、`sys_plan_modules.module` 里值为 `AI` 的行（枚举值 11 已 reserved）。
+- 旧菜单行。本阶段从种子里拿掉的 path：`/ai`、`/notification`、`access-keys`、`agents`、`api-audit-logs`、`channels`、`chat`、`data-access-audit-logs`、`deliveries`、`knowledge`、`login-policies`、`monitor-alerts`、`permission-audit-logs`、`policy-evaluation-logs`、`providers`、`query`、`redis-cache-monitor`、`rules`、`scripts`、`server-monitor`、`templates`、`usage`。MFA、SSO、找回密码、任务监控、备份在 phase 0 的 `default_data.go` 里没有对应菜单行；老库如果更早种过，也要删。菜单只在表为空时播种，老库不会自己消失。
+- 已删类型的 `sys_tasks`：`ai_audit_digest`、`ai_doc_reindex`、`ai_query_run`、`backup`、`monitor_alert_scan`、`notification_delivery_sweep`、`notification_dispatch`、`script_task`。
+
+**故意没动的**
+
+- `role.proto` 里的 `force_mfa`、`ip_allow_list`。
+- `user_credential.proto` 里 OTP / SSO 相关的凭据枚举。
+- `mailtext.PasswordResetCode`（找回密码页面和接口已删，文案函数还在）。
+
+**需要用户决定的**
+
+- 收件箱越权（单租户 `tid==0` 放行）要不要修。本阶段没改。
+- 访问日志里的密码（登录密文可解、创建用户明文）要不要收。本阶段没改。
 
 ---
 

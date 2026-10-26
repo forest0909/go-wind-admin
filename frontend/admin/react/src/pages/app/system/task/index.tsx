@@ -287,7 +287,7 @@ const TaskManagement = () => {
           <ListTable<Task>
             actionRef={actionRef}
             columns={columns}
-            request={async (params, _sorter, _filter) => {
+            request={async (params) => {
               const query = new PaginationQuery({
                 paging: {
                   page: params.current || 1,

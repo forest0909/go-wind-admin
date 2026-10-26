@@ -44,28 +44,30 @@ docs/                       文档体系（总入口 docs/README.md：教程层 
 
 **CRUD 模块**：全流程手册在 `docs/crud_module_guide/`（后端 + 前端端到端流程）。
 
-**代码生成器**：配套工具 [go-wind-toolkit/gowind-uiapp](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)（桌面 GUI + CLI，从数据库表/SQL 生成前后端代码，含简单表单）。CLI（`gowind-cli`）非交互、JSON 输出，适合 Agent 调用。工具产物仍须按本仓铁律与约定验收补齐（`{ data: {...} }` 包裹、contains 搜索、已部署实例的新端点走管理页「接口同步」登记进 Api 表、`make ts` 生成三端 TS 等）。
+**代码生成器**：新模块按 `docs/crud_module_guide/` 写。产物仍须按本仓铁律与约定验收补齐（`{ data: {...} }` 包裹、contains 搜索、已部署实例的新端点走管理页「接口同步」登记进 Api 表、`make ts` 生成 TS 等）。
 
 > 系统默认数据（admin 用户、角色、菜单、权限、语言等）由服务启动时在 Go 侧自动播种（`pkg/constants/default_data.go` + 各 service 的 count==0 守卫；Api 表仅在空表时于启动期自动同步，**已部署实例新增端点须在管理页「接口同步」手动触发全量重建**，否则租户闸门 fail-closed 403；「接口同步」重建读的是**打进二进制的** `backend/app/admin/service/cmd/server/assets/openapi.yaml`，所以新 proto 必须先 `make openapi` 再重启进程，否则同步"成功"而新端点依旧不在表里。新菜单同理：`count==0` 守卫意味着老库要靠各端「菜单同步」(MERGE) 才会多出这一行），**不要**找 SQL 种子脚本，`backend/sql/` 下只剩演示数据。
 
-## 后端任务：gow 优先，make 兜底
+## 后端任务：用 Makefile
 
-后端的运行与代码生成统一走 [gow CLI](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind)（安装：`go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest`），在 `backend/` 下执行。**接手后不要上来就用 Makefile 的 make 命令**：Windows 无原生 make、嵌套 Makefile 需要跨目录 cd，而 gow 自动发现 `app/*/service`，行为一致：
+在 `backend/` 下执行。本仓不再使用 gow。
 
-| 任务 | gow 命令 |
+| 任务 | 命令 |
 |---|---|
-| 运行服务 | `gow run admin` |
-| Ent 生成 | `gow ent`（全部服务）/ `gow ent admin` |
-| Proto / API Go 代码 | `gow api` |
-| 从数据库表生成 CRUD | `gow generate`（DSN 驱动；`--proto-only` 仅出 proto） |
+| 运行服务 | `make -C app/admin/service run` |
+| Ent 生成 | `make ent` |
+| Proto / API Go 代码 | `make api`（同时生成配置 pb） |
+| OpenAPI | `make openapi` |
+| React 的 TS 客户端 | `make ts` |
+| 安装 protoc 插件 | `make plugin`（redact 和 typescript-http 从 `third_party/tools` 编译） |
 
-项目已弃用 Wire（DI 为手写 `wiring_*.go`），不要运行 `gow wire`，也不要在新代码里引入 wire 依赖。
+项目已弃用 Wire（DI 为手写 `wiring_*.go`），不要在新代码里引入 wire 依赖。
 
-gow 未覆盖的任务（三端 TS 生成 `make ts`、OpenAPI `make openapi`、`make test/lint` 等）才退回 Makefile（`backend/` 根目录执行）。
+从数据库表脚手架生成 CRUD 的外部工具不在本仓。新模块按 `docs/crud_module_guide/` 写。
 
 ## 本地验证要点
 
-- 后端起在 `:7788`（`gow run admin`；启动方式见 `docs/windows-startup-guide.md` / `docs/backend_deploy.md`）；前端 dev 端口见上表，代理已配置好 API 转发。
+- 后端起在 `:7788`（`make -C app/admin/service run`；启动方式见 `docs/windows-startup-guide.md` / `docs/backend_deploy.md`）；前端 dev 端口见上表，代理已配置好 API 转发。
 - 登录账号：全新环境播种为 `admin / Abcd@1234`（`pkg/constants/default_data.go` 的 `DefaultUserPassword`）；本机 `gwa` 库实测（2026-09-20）即为此值，历史备注的 `admin / admin` 已失效（登录返回 `INVALID_PASSWORD`）。图形验证码的答案可在 Redis 中按 `gowind:captcha:<captchaId>` 直接读取，便于自动化验证。
 - vue-element 若见 router-view 塌空/白屏：**别再往 vite 依赖优化/HMR 上归因**（那是早先的误判）。真因是 `<transition mode="out-in">` 叠 vue-router 5 懒加载路由的竞态，已通过去掉 `out-in` 改同帧交叉淡入淡出修掉；回归判定与保留的防御见 `frontend/admin/vue-element/AGENTS.md`「白屏（router-view 塌空）真因与处置」。
 - `go test ./...` 偶发 `fork/exec %TEMP%\go-build...\x.test.exe: Access is denied.`（Windows 上对刚链接好的测试二进制执行被拦，疑似安全策略/杀软实时扫描）：属环境问题、**不是代码失败**。复验办法是绕开 Temp 执行——`go test -c -o <工作区内路径>/x.test.exe ./pkg/x` 后直接跑该 exe；判成"测试挂了"之前先这样确认一次。

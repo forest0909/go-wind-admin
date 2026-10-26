@@ -239,7 +239,7 @@ APP_ROOT=/opt/app ./scripts/docker/full_deploy.sh
 ./scripts/docker/libs_only.sh
 
 # 然后在另一个终端本地运行应用
-gow run admin
+make -C app/admin/service run
 
 # 自定义配置
 APP_ROOT=/opt/app COMPOSE_FILE=custom.yaml ./scripts/docker/libs_only.sh
@@ -252,7 +252,7 @@ APP_ROOT=/opt/app COMPOSE_FILE=custom.yaml ./scripts/docker/libs_only.sh
 .\scripts\docker\libs_only.ps1
 
 # 然后在另一个 PowerShell 本地运行应用
-gow run admin
+make -C app/admin/service run
 
 # 自定义配置
 .\scripts\docker\libs_only.ps1 -AppRoot "D:\app" -ComposeFile "docker-compose.libs.yaml"
@@ -319,7 +319,7 @@ gow run admin
 ./scripts/docker/full_deploy.sh
 
 # 3. 开始开发
-gow run admin
+make -C app/admin/service run
 ```
 
 ---
@@ -334,7 +334,7 @@ gow run admin
 ./scripts/docker/libs_only.sh
 
 # 3. 本地运行应用代码
-gow run admin
+make -C app/admin/service run
 
 # 4. 在 IDE 中调试应用（推荐）
 ```
@@ -373,7 +373,7 @@ gow run admin
 # 打开项目，按 F5 开始调试
 
 # 或本地运行应用（如使用方式 B）
-gow run admin
+make -C app/admin/service run
 ```
 
 **Windows PowerShell 脚本特性：**
@@ -453,7 +453,7 @@ Unix hosts 初始化相关变量：
 ./scripts/docker/libs_only.sh
 
 # 3. 本地开发运行
-gow run admin
+make -C app/admin/service run
 
 # 4. 查看日志
 docker logs -f postgres  # 查看数据库日志
@@ -470,7 +470,7 @@ docker logs -f postgres  # 查看数据库日志
 .\scripts\docker\libs_only.ps1
 
 # 4. 本地开发
-gow run admin
+make -C app/admin/service run
 ```
 
 ---

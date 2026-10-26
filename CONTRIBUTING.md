@@ -40,13 +40,13 @@
 
 | 产物 | 生成命令 | 说明 |
 |------|---------|------|
-| Go API / HTTP / gRPC / 校验代码 | `gow api` 或 `make api` | 由 `backend/api/protos/` 下的 proto 生成至 `backend/api/gen/go/` |
+| Go API / HTTP / gRPC / 校验代码 | `make api` | 由 `backend/api/protos/` 下的 proto 生成至 `backend/api/gen/go/`，并生成配置 pb |
 | OpenAPI 文档 | `make openapi` | 产物写到 `backend/app/admin/service/cmd/server/assets/openapi.yaml`，**打进二进制**（用途见下方提示） |
-| TypeScript HTTP 客户端 | `make ts` | 一条命令依次跑三个 buf 模板，同时生成到三端各自的 `src/api/generated/` |
-| Ent ORM 代码 | `gow ent admin` 或 `make ent` | 由 `app/admin/service/internal/data/ent/schema/` 下的 schema 生成 |
+| TypeScript HTTP 客户端 | `make ts` | 生成到 React 的 `src/api/generated/` |
+| Ent ORM 代码 | `make ent` | 由 `app/admin/service/internal/data/ent/schema/` 下的 schema 生成 |
 | 新模块接入装配 | `make register ENTITY=xxx` | 把仓储/服务构造行与路由注册注入手写的 `cmd/server/wiring_ent.go` 和 `internal/server/rest_server.go`（靠 `// register:*` 锚点行定位，幂等可重跑） |
 
-`gow` 与 `make` 产出完全一致，选 `gow` 的理由很实际：Windows 没有原生 make，且本仓 Makefile 是嵌套结构、需要跨目录 cd（`gow` 会自动发现 `app/*/service`，见根 [AGENTS.md](./AGENTS.md)）。`make ts` / `make openapi` 目前只有 Makefile 入口。
+命令在 `backend/` 下执行。本仓不再使用 gow。
 
 修改 `.proto` 或 `ent/schema` 后请重新生成并**连同产物一并提交**。三端 TS 是同一条 `make ts` 的产物、本来就同时更新，不存在"只提交一端"的选项。
 
@@ -110,7 +110,7 @@ string email = 11 [(validate.rules).string.max_len = 254];  // 见 api/protos/au
 ## 提交 Pull Request
 
 1. 确保本地通过后端 `make lint` + `go vet ./...` + `make test`，以及对应前端的 lint / typecheck（三端门禁命令见根 [AGENTS.md](./AGENTS.md)）
-2. 若改动涉及 proto / schema，确认已重新生成并提交产物：`make api && make openapi && make ent`（`make ts` 只在前端在范围内时跑）。Windows 无原生 make，`api` / `ent` 可改用等价的 `gow api`、`gow ent admin`
+2. 若改动涉及 proto / schema，确认已重新生成并提交产物：`make api && make openapi && make ent`（`make ts` 只在前端在范围内时跑）。
 3. PR 标题遵循上述提交规范
 4. PR 描述请按 [模板](./.github/PULL_REQUEST_TEMPLATE.md) 填写：类型、动机、改动内容、影响范围、自测、备注。**"影响范围"一节请写清改动落在哪一端**——只需一端，另外两端由维护者移植
 5. 一个 PR 只解决一个问题，便于评审与回退

@@ -125,7 +125,8 @@ endif
 # generate protobuf api go code
 api:
 	cd ../../../api && \
-	buf generate
+	buf generate && \
+	buf generate --template buf.gen.conf.yaml
 
 # generate protobuf api OpenAPI v3 docs
 openapi:

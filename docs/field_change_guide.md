@@ -44,18 +44,18 @@ A 档纯前端，直接跳 §3。B/C 档先看 §1 的三条前提，能省掉�
 
 ## 2. 后端（B / C 档）
 
-### 2.1 命令序列（在 `backend/` 下，gow 优先）
+### 2.1 命令序列（在 `backend/` 下）
 
 ```bash
-gow api        # proto -> *.pb.go / *.pb.validate.go
+make api       # proto -> *.pb.go / *.pb.validate.go，并生成配置 pb
 make openapi   # -> openapi.yaml（这份是打进二进制的，「接口同步」读它）
-gow ent admin  # schema -> ent CRUD 代码（含 migrate/schema.go）
-make ts        # -> 各端 src/api/generated/（vben 在 src/ 下）
+make ent       # schema -> ent CRUD 代码（含 migrate/schema.go）
+make ts        # -> React src/api/generated/
 ```
 
 两条注意：
 
-- **`make ts` 会同时写三端**，即使你只改一端。另外两端的 `index.ts` 也随之变化——**一起提交，不要 revert**（提交口径见 [CONTRIBUTING.md](../CONTRIBUTING.md)：生成产物三端齐、业务页面只需一端）。
+- **`make ts` 只写 React** 的 `frontend/admin/react/src/api/generated/`。
 - 只改前端能看见的东西（A 档）不用跑任何一条。
 
 ### 2.2 手写的就三个文件、四处

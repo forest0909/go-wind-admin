@@ -178,7 +178,7 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
      只有 DASHBOARD/OPM/SYSTEM/DICT/TENANT/PERMISSION/LOG/INTERNAL_MESSAGE/FILE/TASK 十档，
      **没有 NOTIFICATION**（`menu.go` 的 `NamedValues` 同）。通知域页面已随该域删除，
      这一条现在只剩历史意义；以后新增模块要同时动 proto + `menu.go` 枚举 + `ComponentToModule` +
-     `ServiceTagOrBusinessModule`，再 `gow api && gow ent` 重生成。
+     `ServiceTagOrBusinessModule`，再 `make api && make ent` 重生成。
    排障口径：`SELECT name, component FROM sys_menus WHERE module IS NULL AND component <> 'BasicLayout' AND deleted_at IS NULL;`
    列出的就是"当前不受模块白名单约束"的页面。
 

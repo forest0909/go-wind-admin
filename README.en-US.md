@@ -24,7 +24,7 @@
 - **Enterprise-grade RBAC**: Multi-tenant, multi-role, multi-department, menu / button / data-level permission control (switchable policy engine: Casbin / OPA)
 - **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, image captcha and login rate limiting, application-layer password encryption, dynamic RBAC and tenant isolation. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
-- **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM, one-click CRUD scaffolding; companion desktop GUI generator and CLI ([go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp), see [Companion Tools](#companion-tools))
+- **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM. Under `backend/`: `make api`, `make ent`, `make ts`.
 - **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
 ### This checkout keeps React only
 
@@ -49,7 +49,7 @@ This project is published in sync on the three platforms below — identical con
 
 | Platform | URL |
 |----------|-----|
-| GitHub | <https://github.com/tx7do/go-wind-admin> |
+| Repository | this working copy |
 | Gitee | <https://gitee.com/tx7do/go-wind-admin> |
 | AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
 
@@ -94,7 +94,7 @@ The three URLs below are upstream online demos. **This tree keeps React only**; 
 
 ### Backend Startup
 
-> Backend commands go through the `gow` CLI (install: `go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest`, see [Companion Tools](#companion-tools)).
+> Backend commands run from `backend/` via the Makefile (`make api`, `make ent`, `make -C app/admin/service run`). See [AGENTS.md](./AGENTS.md).
 
 **Linux / macOS:**
 
@@ -109,7 +109,7 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 # Development (Recommended)
 ./scripts/env/install_unix_dev.sh
 ./scripts/docker/libs_only.sh
-gow run admin
+make -C app/admin/service run
 
 # Production
 ./scripts/env/install_unix_prod.sh
@@ -133,7 +133,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Local development
 .\scripts\docker\libs_only.ps1
-gow run admin
+make -C app/admin/service run
 
 # One-click full deployment
 .\scripts\docker\full_deploy.ps1
@@ -334,8 +334,7 @@ go-wind-admin/
 
 ## Companion Tools
 
-- **[go-wind-toolkit / gowind-uiapp](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)** — Cross-platform desktop code generator (Go + Wails). Import SQL or connect to your database (MySQL / PostgreSQL / SQLite / SQL Server / Oracle) to generate server-side and frontend code from gRPC / RESTful templates, including simple forms. Also ships a non-interactive, JSON-output CLI (`gowind-cli`) for scripts and AI agents.
-- **[gow — GoWind CLI](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind)** — The recommended command-line entry for this project: `gow run admin` to run the service, `gow ent` / `gow api` for code generation, `gow generate` to scaffold CRUD microservices from a database DSN, and `gow extract` for progressive microservice extraction. Run it under `backend/`; it discovers `app/*/service` automatically. Prefer it over the Makefile for daily development.
+Code generation runs under `backend/`: `make api`, `make openapi`, `make ent`, `make ts`. Run the service with `make -C app/admin/service run`. See [AGENTS.md](./AGENTS.md).
 
 ## Community & Contribution
 

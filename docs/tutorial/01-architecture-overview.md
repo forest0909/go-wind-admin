@@ -95,9 +95,9 @@ PostgreSQL / MySQL
 
 | 目录 | 产生方式 | 能否手改 |
 |---|---|---|
-| `backend/api/gen/go/**` | `gow api` 从 proto 生成 | ❌ 改 proto 重新生成 |
-| `backend/app/admin/service/internal/data/ent/**`（除 `schema/`） | `gow ent` 从 schema 生成 | ❌ 改 schema 重新生成 |
-| 三端 `api/generated/**` | `make ts`（后端）从 BFF proto 生成 | ❌ |
+| `backend/api/gen/go/**` | `make api` 从 proto 生成 | ❌ 改 proto 重新生成 |
+| `backend/app/admin/service/internal/data/ent/**`（除 `schema/`） | `make ent` 从 schema 生成 | ❌ 改 schema 重新生成 |
+| React `api/generated/**` | `make ts`（后端）从 BFF proto 生成 | ❌ |
 | `backend/app/admin/service/internal/data/ent/schema/**` | 手写 | ✅ |
 | `backend/api/protos/**` | 手写 proto | ✅ |
 | `internal/service/`、`internal/data/*_repo.go` | 手写（模式化样板） | ✅ |

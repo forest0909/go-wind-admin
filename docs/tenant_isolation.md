@@ -217,7 +217,7 @@ repo 的查询/变更构造上，而不是指望调用方传对——三端各�
 
 1. **新表带租户**：schema `Mixin()` 加 `mixin.TenantID[uint32]{}`（库层隔离自动生效）+
    **同时** `Policy()` 返回 `&TenantMutationGuardPolicy{}`（与其余 31 张一致的第二道；
-   机器凭证表曾缺这道守卫，见第 6 节）→ `gow ent`；
+   机器凭证表曾缺这道守卫，见第 6 节）→ `make ent`；
 2. **表同时接数据范围**：另见 data_scope_design 第 4 节（两列齐备 + 组合策略 + 守卫单测）；
 3. **新端点**：部署后管理页「接口同步」；
 4. **新服务（新 OpenAPI tag）**：`pkg/constants/module_mapping.go` 登记——漏登记=租户全 403。

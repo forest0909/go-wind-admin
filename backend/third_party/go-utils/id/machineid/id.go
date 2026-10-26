@@ -1,9 +1,6 @@
 // Package machineid provides support for reading the unique machine id of most OSs (without admin privileges).
 //
-// https://github.com/tx7do/go-utils/id/machineid
-//
-// https://godoc.org/github.com/tx7do/go-utils/id/machineid/cmd/machineid
-//
+// 来源版本见同仓库 VERSION.md。
 // This package is Cross-Platform (tested on Win7+, Debian 8+, Ubuntu 14.04+, OS X 10.6+, FreeBSD 11+)
 // and does not use any internal hardware IDs (no MAC, BIOS, or CPU).
 //

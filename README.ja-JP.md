@@ -24,7 +24,7 @@
 - **エンタープライズ級 RBAC**：マルチテナント、マルチロール、マルチ部署、メニュー / ボタン / データレベルの権限制御（ポリシーエンジン切り替え可：Casbin / OPA）
 - **セキュリティと等保コンプライアンス**：等保 2.0 の技術要求に準拠——監査ログの 180 日保持・アーカイブ、パスワードポリシー 3 点セット、画像認証コードとログイン失敗レート制限、パスワードのアプリケーション層暗号化、動的 RBAC とテナント分離。詳しくは[セキュリティと等級保護コンプライアンス](#セキュリティと等級保護コンプライアンス等保-20) を参照
 - **マイクロサービス + モノリスの自由切替**：go-kratos マイクロサービスフレームワークベースでありながら、モノリス構成での開発・デプロイもサポートし、チーム規模に柔軟に対応
-- **フルスタックコード生成**：Protobuf → Go API / TypeScript クライアント、Ent Schema → ORM、ワンクリック CRUD スキャフォールド。デスクトップ GUI ジェネレーターと CLI（[go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)、[関連ツール](#関連ツール) 参照）を同梱
+- **フルスタックコード生成**：Protobuf → Go API / TypeScript クライアント、Ent Schema → ORM。`backend/` で `make api`、`make ent`、`make ts`。
 - **本番即戦力**：JWT 認証、SSE プッシュ、非同期タスクスケジューリング、Swagger ドキュメント、Docker ワンクリックデプロイ
 ### この作業コピーは React のみ
 
@@ -49,7 +49,7 @@
 
 | プラットフォーム | URL |
 |------------------|-----|
-| GitHub | <https://github.com/tx7do/go-wind-admin> |
+| リポジトリ | この作業コピー |
 | Gitee | <https://gitee.com/tx7do/go-wind-admin> |
 | AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
 
@@ -94,7 +94,7 @@
 
 ### バックエンド起動
 
-> バックエンドのコマンドは `gow` CLI 経由で統一（インストール：`go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest`、詳しくは[関連ツール](#関連ツール)）。
+> バックエンドのコマンドは `backend/` の Makefile で実行します（`make api`、`make ent`、`make -C app/admin/service run`）。詳細は [AGENTS.md](./AGENTS.md)。
 
 **Linux / macOS：**
 
@@ -109,7 +109,7 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 # 開発環境（推奨）
 ./scripts/env/install_unix_dev.sh
 ./scripts/docker/libs_only.sh
-gow run admin
+make -C app/admin/service run
 
 # 本番環境
 ./scripts/env/install_unix_prod.sh
@@ -133,7 +133,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # ローカル開発
 .\scripts\docker\libs_only.ps1
-gow run admin
+make -C app/admin/service run
 
 # ワンクリック完全デプロイ
 .\scripts\docker\full_deploy.ps1
@@ -334,8 +334,7 @@ go-wind-admin/
 
 ## 関連ツール
 
-- **[go-wind-toolkit / gowind-uiapp](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)** — クロスプラットフォームのデスクトップ型コードジェネレーター（Go + Wails）。SQL のインポートまたはデータベーステーブル（MySQL / PostgreSQL / SQLite / SQL Server / Oracle）への接続から、gRPC / RESTful などのテンプレートでサーバーサイド・フロントエンドのコード（簡易フォームを含む）を自動生成。非対話・JSON 出力の CLI（`gowind-cli`）も同梱しており、スクリプトや AI エージェントからの呼び出しに便利です。
-- **[gow — GoWind CLI](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind)** — 本プロジェクトの推奨コマンドライン入口：`gow run admin` でサービス起動、`gow ent` / `gow api` でコード生成、`gow generate` でデータベース DSN から CRUD マイクロサービスを生成、`gow extract` でマイクロサービスのモジュール分割を行います。`backend/` 配下で実行すると `app/*/service` を自動検出します。日常開発では Makefile より優先的に使用してください。
+コード生成は `backend/` で実行します：`make api`、`make openapi`、`make ent`、`make ts`。サービスの起動は `make -C app/admin/service run`。詳細は [AGENTS.md](./AGENTS.md)。
 
 ## コミュニティとコントリビューション
 

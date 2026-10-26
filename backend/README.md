@@ -1,14 +1,13 @@
 # GO后端
 
-本项目是基于 Go + `gow` 脚手架 构建的**微服务后端架构**，支持：
+本项目是 Go + Kratos + Ent 的管理后端，支持：
 
 - 多协议：RESTful API + gRPC
 - 多存储：MySQL/PostgreSQL、Redis、MinIO
 - 服务治理：Etcd 注册发现、Jaeger 链路追踪
-- 代码生成：Ent ORM、Wire 依赖注入、Protobuf 自动生成、TypeScript 客户端
+- 代码生成：Ent ORM、Protobuf、TypeScript 客户端
 - 容器化：Docker + Docker Compose 一键部署
 - 文档自动生成：Swagger UI、OpenAPI v3
-- CRUD自动生成：基于 SQL的DDL语句 一键生成 CRUD 接口和实现
 
 ## 前置环境要求
 
@@ -61,80 +60,20 @@ myproject/
 └── Makefile             # 构建命令
 ```
 
-## gow 脚手架工具使用
+## 常用命令
 
-### 安装
-
-```bash
-# 安装最新版
-go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest
-
-# 验证安装
-gow version  # 查看版本
-gow help     # 查看帮助
-```
-
-### 环境变量配置（可选）
-
-将 Go 安装目录加入环境变量，确保全局可调用`gow`：
+在 `backend/` 下执行。本仓不再使用 gow。
 
 ```bash
-# Linux/Mac
-export PATH=$PATH:$(go env GOPATH)/bin
-
-# Windows（PowerShell）
-$env:PATH += ";$(go env GOPATH)\bin"
+make plugin   # 安装 protoc 插件。redact 和 typescript-http 从 third_party/tools 编译
+make api      # Protobuf Go 代码，并生成配置 pb
+make ent      # Ent ORM
+make openapi  # OpenAPI
+make ts       # React 的 TypeScript 客户端
+make -C app/admin/service run
 ```
 
-### 核心命令
-
-#### 创建新项目
-
-```bash
-# 基础创建（默认模块名）
-gow new myproject
-cd myproject
-go mod tidy  # 安装依赖
-
-# 指定自定义模块名（推荐）
-gow new myproject -m github.com/yourname/myproject
-```
-
-#### 添加微服务
-
-```shell
-# 基础服务（默认REST）
-gow add service admin
-gow add service user
-
-# 高级用法
-gow add service order -s grpc          # 纯gRPC服务
-gow add service pay -s rest -s grpc    # 双协议服务
-gow add svc goods -d gorm -d redis     # 带数据库+缓存
-go mod tidy                            # 同步依赖
-```
-
-#### 运行服务
-
-```shell
-# 方式1：进入服务目录运行
-cd app/admin/service
-gow run
-
-# 方式2：根目录指定服务运行
-gow run admin
-```
-
-#### 代码自动生成
-
-```bash
-# 生成Ent ORM代码
-gow ent          # 所有服务
-gow ent admin    # 指定服务
-
-# 生成Protobuf/API代码
-gow api
-```
+进入服务目录时，`make api` / `make ent` / `make openapi` / `make run` 同样可用。新模块登记：`make register ENTITY=product`。
 
 ## Makefile 构建命令详解
 
@@ -255,7 +194,7 @@ go mod tidy
 
 - **本仓不要求 Redis 8**：旧版本文档写的"项目使用 `HExpire` 命令，仅支持 Redis 8.0+"没有代码依据——
   `grep -rnE "\.HExpire\(|\.HPExpire\(|\.HExpireAt\(|\.HTTL\(" --include=*.go app pkg` 在本仓 **0 命中**，
-  在 `hibiken` / `go-kratos` / `tx7do` / `go-redsync` 四个依赖目录下同样 **0 命中**（2026-09-25 实测）。
+  在 `hibiken` / `go-kratos` / `go-redsync` 和本仓 `third_party` 下同样 **0 命中**（2026-09-25 实测）。
   应用实际用到的是 `Set` / `Expire` / `Publish` / `HSet` 一类的长期命令（同口径 837 处调用）。
 - **仍然报"unknown command"时**：compose 拉的是 `bitnami/redis:latest`，未在配置里固定版本，
   因此报错一般来自**你自己指向的旧服务端**（例如自建 6.x/7.x 或云厂商锁定版本）。

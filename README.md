@@ -24,7 +24,7 @@
 - **企业级 RBAC**：支持多租户、多角色、多部门、菜单/按钮/数据级权限控制（策略引擎可切换：Casbin / OPA）
 - **安全与等保合规**：按等保 2.0 技术要求内置 180 天审计日志留存归档、口令策略三件套、图形验证码与登录限流、口令应用层加密、动态 RBAC 与多租户隔离，详见[安全与等保合规](#安全与等保合规)
 - **微服务 + 单体自由切换**：基于 go-kratos 微服务框架，但支持单体架构模式开发与部署，灵活适配团队规模
-- **全栈代码生成**：Protobuf → Go API / TypeScript 客户端，Ent Schema → ORM，一键 CRUD 脚手架；配套桌面端可视化代码生成器与 CLI（[go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)，见[配套工具](#配套工具)）
+- **全栈代码生成**：Protobuf → Go API / TypeScript 客户端，Ent Schema → ORM。命令在 `backend/` 下：`make api`、`make ent`、`make ts`。
 - **生产就绪**：JWT 鉴权、SSE 消息推送、异步任务调度、Swagger 文档、Docker 一键部署
 ### 本仓库只保留 React
 
@@ -49,7 +49,7 @@
 
 | 平台 | 地址 |
 |------|------|
-| GitHub | <https://github.com/tx7do/go-wind-admin> |
+| 仓库 | 当前工作副本 |
 | Gitee | <https://gitee.com/tx7do/go-wind-admin> |
 | AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
 
@@ -94,7 +94,7 @@
 
 ### 后端启动
 
-> 后端命令统一走 `gow` CLI（安装：`go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest`，详见[配套工具](#配套工具)）。
+> 后端命令在 `backend/` 下用 Makefile（`make api`、`make ent`、`make -C app/admin/service run`）。见 [AGENTS.md](./AGENTS.md)。
 
 **Linux / macOS：**
 
@@ -109,7 +109,7 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 # 开发环境（推荐）
 ./scripts/env/install_unix_dev.sh
 ./scripts/docker/libs_only.sh
-gow run admin
+make -C app/admin/service run
 
 # 生产环境
 ./scripts/env/install_unix_prod.sh
@@ -133,7 +133,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # 本地开发
 .\scripts\docker\libs_only.ps1
-gow run admin
+make -C app/admin/service run
 
 # 一键完整部署
 .\scripts\docker\full_deploy.ps1
@@ -334,8 +334,7 @@ go-wind-admin/
 
 ## 配套工具
 
-- **[go-wind-toolkit / gowind-uiapp](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)** —— 跨平台桌面端代码生成器（Go + Wails）：一键导入 SQL 或直连数据库表（MySQL / PostgreSQL / SQLite / SQL Server / Oracle），自动生成服务端与前端代码，支持 gRPC / RESTful 等多种模板与简单表单生成；另提供非交互、JSON 输出的 CLI（`gowind-cli`），便于脚本与 AI Agent 调用。
-- **[gow —— GoWind CLI](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind)** —— 本项目的推荐命令行入口：`gow run admin` 运行服务，`gow ent` / `gow api` 代码生成，`gow generate` 从数据库 DSN 生成 CRUD 微服务，`gow extract` 微服务模块拆分演进。在 `backend/` 下执行，自动发现 `app/*/service`，日常开发优先于 Makefile 使用。
+代码生成在 `backend/` 下执行：`make api`、`make openapi`、`make ent`、`make ts`。运行服务：`make -C app/admin/service run`。详见 [AGENTS.md](./AGENTS.md)。
 
 ## 社区与贡献
 

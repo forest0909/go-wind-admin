@@ -33,7 +33,7 @@ powershell -ExecutionPolicy Bypass -File backend\scripts\env\install_windows_dev
 在 `backend/` 目录下执行 `.\scripts\env\install_windows_dev.ps1` 等价——脚本用 `$MyInvocation` 解析自身目录来加载
 `scripts/env/lib/*.ps1`（`install_windows_dev.ps1:13`），**工作目录不影响行为**。
 
-该脚本通过 Scoop 自动安装 Go、Docker Desktop、Node.js、Git、Make 等，并安装所有 Go 代码生成工具（buf、ent、gow 等）。
+该脚本通过 Scoop 自动安装 Go、Docker Desktop、Node.js、Git、Make 等，并安装代码生成工具（buf、ent、protoc 插件）。
 
 > **注意**：非管理员运行也可以，但**需要管理员权限的两步会被跳过**：Docker 服务自动启动配置，
 > 以及 hosts 写入（`install_windows_dev.ps1:44-45` 的提示原文即
@@ -173,28 +173,24 @@ cd backend
 # 下载 Go 模块依赖
 go mod download
 
-# 首次搭建：安装代码生成工具（buf、ent、gow 等）
-# make init = make plugin + make cli，cli 目标里已含 gow（backend/Makefile:48），无需单独再装
+# 首次搭建：安装代码生成工具（buf、ent、protoc 插件）
+# make init = make plugin + make cli。redact 和 typescript-http 从 third_party/tools 编译
 make init
 
-# （可选）只想装 gow 时用；已跑过 make init 则这条是重复
-# go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest
+# 生成全部代码（Ent ORM + Protobuf API + 配置 pb）
+make ent && make api
 
-# 生成全部代码（Ent ORM + Protobuf API）
-gow ent && gow api
-
-# OpenAPI 文档（gow 未覆盖，走 make）
 make openapi
 ```
 
-如果没有安装 `make`，生成代码可全部分步用 gow / buf 手动执行：
+如果没有安装 `make`，在 `backend/` 下用 buf 和 ent 分步执行：
 
 ```bash
 # 1. 生成 ENT ORM 代码（在 backend/ 下）
-gow ent
+make ent
 
 # 2. 生成 Protobuf Go 代码（在 backend/ 下）
-gow api
+make api
 
 # 3. 生成 OpenAPI 文档
 cd api
@@ -333,9 +329,9 @@ pnpm install
 
 | 场景 | 命令 |
 |------|------|
-| 修改了 `.proto` 文件 | `gow api`，如需文档再跑 `make openapi` |
-| 修改了 ENT Schema | `gow ent` |
-| 全量重新生成 | `gow ent && gow api && make openapi` |
+| 修改了 `.proto` 文件 | `make api`，如需文档再跑 `make openapi` |
+| 修改了 ENT Schema | `make ent` |
+| 全量重新生成 | `make ent && make api && make openapi` |
 | 生成前端 TypeScript 客户端 | `make ts` |
 
 ---
@@ -361,13 +357,12 @@ go env GOPATH
 # 应输出类似 C:\Users\你的用户名\go
 
 ls "$(go env GOPATH)/bin/"
-# 应能看到 buf.exe、gow.exe 等
+# 应能看到 buf.exe、ent.exe 等
 ```
 
-如果为空，手动安装：
+如果为空，在 `backend/` 下执行 `make init`。也可以手动安装 buf 和 ent：
 
 ```bash
-go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest
 go install github.com/bufbuild/buf/cmd/buf@latest
 go install entgo.io/ent/cmd/ent@latest
 ```

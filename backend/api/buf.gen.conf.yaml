@@ -1,0 +1,21 @@
+version: v2
+
+clean: false
+
+managed:
+  enabled: true
+  # 生成结果要和已收编的 pb 逐字节一致：包名保持 v1，不带 ;conf。
+  override:
+    - file_option: go_package
+      path: conf/v1
+      value: go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1
+
+inputs:
+  - directory: protos
+    paths:
+      - protos/conf/v1
+
+plugins:
+  - local: protoc-gen-go
+    out: ../third_party/kratos-bootstrap/api/gen/go
+    opt: paths=source_relative

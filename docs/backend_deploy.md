@@ -1,6 +1,6 @@
 # 后端项目部署
 
-> **执行目录约定**：本文所有相对路径命令（`./scripts/...`、`make ...`、`docker compose ...`、`gow ...`）
+> **执行目录约定**：本文所有相对路径命令（`./scripts/...`、`make ...`、`docker compose ...`）
 > 一律在 **`backend/` 目录**下执行——仓库根目录没有 Makefile，脚本也不在根目录。
 
 - 所有的Docker配置文件都在`backend`目录下。
@@ -84,7 +84,7 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 然后本地运行后端服务：
 
 ```bash
-gow run admin
+make -C app/admin/service run
 ```
 
 ### 3. PM2 进程管理（生产环境物理机部署）

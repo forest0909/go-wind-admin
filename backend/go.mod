@@ -16,6 +16,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/jinzhu/inflection v1.0.0
 	github.com/lib/pq v1.12.3
+	github.com/lyft/protoc-gen-star/v2 v2.0.4
 	github.com/mileusna/useragent v1.3.5
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/redis/go-redis/v9 v9.22.0
@@ -27,11 +28,13 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260908043556-f8649ddbbfe6
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
+	gotest.tools/v3 v3.5.2
 	modernc.org/sqlite v1.58.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/spf13/afero v1.15.0 // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
 )
 

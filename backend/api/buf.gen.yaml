@@ -11,8 +11,8 @@ managed:
     - module: 'buf.build/kratos/apis'
     - module: 'buf.build/gnostic/gnostic'
     - module: 'buf.build/gogo/protobuf'
-    - module: 'buf.build/tx7do/pagination'
-    - module: 'buf.build/go-wind/redact'
+    - path: pagination/v1/pagination.proto
+    - path: redact/v1/redact.proto
 
   override:
     # global go_package_prefix option
@@ -55,6 +55,14 @@ managed:
     - file_option: go_package
       path: config/service/v1
       value: go-wind-admin/api/gen/go/config/service/v1;configpb
+
+# 分页、脱敏和配置 proto 的 Go 代码已经在 third_party，不往 api/gen 再生成一份。
+inputs:
+  - directory: protos
+    exclude_paths:
+      - protos/pagination
+      - protos/redact
+      - protos/conf
 
 plugins:
   # generate go code

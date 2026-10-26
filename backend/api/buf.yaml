@@ -5,6 +5,10 @@ modules:
     lint:
       use:
         - STANDARD
+      ignore:
+        - protos/pagination
+        - protos/redact
+        - protos/conf
     breaking:
       use:
         - FILE
@@ -12,8 +16,6 @@ deps:
   - 'buf.build/googleapis/googleapis'
   - 'buf.build/kratos/apis'
   - 'buf.build/gnostic/gnostic'
-  - 'buf.build/tx7do/pagination'
-  - 'buf.build/go-wind/redact'
   - 'buf.build/envoyproxy/protoc-gen-validate'
 
 breaking:

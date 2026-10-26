@@ -47,7 +47,7 @@ Workflow example:
   .\libs_only.ps1
 
   # PowerShell 2: run the application code
-  gow run admin
+  make -C app/admin/service run
 
 Related scripts:
   - full_deploy.ps1  Full application (includes the app service)

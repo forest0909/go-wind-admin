@@ -79,7 +79,7 @@
    引发运行时错误；
 2. 实体 `Policy()` 改返 `TenantAndDataScopePolicy{}`
    （参照 `schema/position.go`）；
-3. `gow ent` 重新生成，补守卫单测（参照 `data_scope_guard_test.go` 的 (单元×创建人) 矩阵范式）；
+3. `make ent` 重新生成，补守卫单测（参照 `data_scope_guard_test.go` 的 (单元×创建人) 矩阵范式）；
 4. 变更侧（Update/Delete）行级过滤为 R2 范围，V1 全部不挂。
 
 ## 5. 组织单元物化路径（path 列）约定

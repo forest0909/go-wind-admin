@@ -227,8 +227,6 @@ service ProductService {
 ### Step 3: 生成 Go 代码
 
 ```bash
-gow api        # 推荐，可在任意位置执行
-# 或
 cd backend && make api && make openapi
 ```
 
@@ -237,9 +235,7 @@ cd backend && make api && make openapi
 在 `app/admin/service/internal/data/ent/schema/` 下创建 schema（字段用 `.Optional()` 对应 proto `optional`，可用 `entsql.Annotation{Table: "..."}` 指定表名），然后:
 
 ```bash
-gow ent        # 推荐
-# 或
-cd app/admin/service && make ent
+cd backend && make ent
 ```
 
 ### Step 6: 创建 Repository
@@ -328,7 +324,7 @@ make register ENTITY=product    # 自动注入 wiring_ent.go 三处 + rest_serve
 ### Step 10: 验证
 
 ```bash
-gow run        # 无需先构建
+make -C app/admin/service run
 # 访问 http://localhost:7788/docs 验证
 ```
 
@@ -339,34 +335,27 @@ gow run        # 无需先构建
 - Go 1.22+
 - Docker & Docker Compose (可选，用于依赖服务)
 - buf CLI (Protobuf 代码生成)
-- gow CLI (推荐): `go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest`
+- protoc 插件：在 `backend/` 执行 `make plugin`。redact 和 typescript-http 从 `third_party/tools` 本地编译
 
 ### 代码生成命令
 
-**使用 gow (推荐，所有命令可在项目任意位置执行):**
+在 `backend/` 根目录执行：
 
-| 命令                                                                                            | 说明                                        |
-|-----------------------------------------------------------------------------------------------|-------------------------------------------|
-| `gow api`                                                                                     | 生成所有服务的 Protobuf & API 代码 (自动遍历所有 buf 配置) |
-| `gow ent` / `gow ent admin`                                                                   | 生成所有 / 指定服务的 Ent 代码                      |
-| `gow run` / `gow run admin`                                                                   | 运行当前 / 指定服务                              |
-| `gow generate --dsn "mysql://..." --service admin --orm ent`                                  | 从数据库一键生成完整 CRUD 代码                       |
-| `gow extract admin user -o role[,permission] [--keep-source]`                                 | 微服务演进：从 admin 提取模块到目标服务                 |
-
-**Make 命令 (需在 `backend/` 根目录执行):**
-
-| 命令                | 说明                                |
-|-------------------|-----------------------------------|
-| `make api`        | 生成 Protobuf Go 代码                 |
-| `make openapi`    | 生成 OpenAPI 文档                     |
-| `make ent`        | 生成 Ent ORM 代码                     |
-| `make gen`        | 一键生成 (ent + api + openapi)        |
-| `make build`      | 构建 (含 api + openapi 生成)           |
-| `make build_only` | 仅构建，不生成代码                         |
-| `make test`       | 运行测试                              |
-| `make cover`      | 覆盖率测试                             |
-| `make lint`       | golangci-lint                     |
-| `make docker-libs`| 启动 MySQL/Redis/MinIO 等基础服务         |
+| 命令 | 说明 |
+|---|---|
+| `make api` | 生成 Protobuf Go 代码，并生成配置 pb |
+| `make openapi` | 生成 OpenAPI 文档 |
+| `make ent` | 生成 Ent ORM 代码 |
+| `make ts` | 生成 React 的 TypeScript 客户端 |
+| `make gen` | 一键生成 (ent + api + openapi) |
+| `make -C app/admin/service run` | 运行 admin 服务 |
+| `make build` | 构建 (含 api + openapi 生成) |
+| `make build_only` | 仅构建，不生成代码 |
+| `make test` | 运行测试 |
+| `make cover` | 覆盖率测试 |
+| `make lint` | golangci-lint |
+| `make docker-libs` | 启动 MySQL/Redis/MinIO 等基础服务 |
+| `make register ENTITY=product` | 把新 CRUD 登记进手写装配 |
 
 ### 配置文件
 

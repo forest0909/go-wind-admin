@@ -35,8 +35,8 @@ plugin:
 	go install github.com/go-kratos/kratos/cmd/protoc-gen-go-errors/v2@v2.0.0-20260404020628-f149714c1d54
 	go install github.com/google/gnostic/cmd/protoc-gen-openapi@v0.7.1
 	go install github.com/envoyproxy/protoc-gen-validate@v1.3.3
-	go install github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact@v0.0.0-20260831125122-5bb4931991b2
-	go install github.com/tx7do/go-wind-toolkit/protoc-gen-typescript-http@v0.0.0-20260831125122-5bb4931991b2
+	go install ./third_party/tools/protoc-gen-go-redact
+	go install ./third_party/tools/protoc-gen-typescript-http
 
 # install cli tools
 cli:
@@ -45,7 +45,6 @@ cli:
 	go install github.com/bufbuild/buf/cmd/buf@v1.55.1
 	go install entgo.io/ent/cmd/ent@v0.14.6
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
-	go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@v1.0.4
 
 # download dependencies of module
 dep:
@@ -88,7 +87,8 @@ register:
 # generate protobuf api go code
 api:
 	cd api && \
-	buf generate
+	buf generate && \
+	buf generate --template buf.gen.conf.yaml
 
 # generate protobuf api OpenAPI v3 docs.
 openapi:

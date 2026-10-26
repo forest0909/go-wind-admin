@@ -143,7 +143,7 @@ const InternalMessageList = () => {
           <ListTable<InternalMessage>
             actionRef={actionRef}
             columns={columns}
-            request={async (params, _sorter, _filter) => {
+            request={async (params) => {
               const formValues: Record<string, any> = {};
               // 过滤搜索参数
               Object.entries(params).forEach(([key, value]) => {

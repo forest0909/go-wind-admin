@@ -130,7 +130,7 @@ const InternalMessageCategoryManagement = () => {
           <ListTable<Category>
             actionRef={actionRef}
             columns={columns}
-            request={async (params, _sorter, _filter) => {
+            request={async (params) => {
               const query = new PaginationQuery({
                 formValues: Object.fromEntries(
                   Object.entries(params).filter(

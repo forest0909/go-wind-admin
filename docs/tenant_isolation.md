@@ -206,6 +206,7 @@ React 页面在前端塞 `recipientUserId`，所以这个条件从来不是服�
 `recipient_user_id = viewer.UserID()`）。
 **2026-10-26 补了一刀**：单租户下所有人的 `tenant_id` 都是 0，`IsPlatformContext()` 会把普通用户也放行。
 收件箱不再用这个判断。系统上下文（广播、异步任务）和令牌里带 `platform:admin` 的平台管理员仍可按指定用户读写，用户详情页靠后者。其余登录用户，包括租户 0 的普通用户，只能动自己的收件箱。
+调用方 query 里的 `recipient_user_id` 不再被改写：它和归属谓词是 AND，写成别人时返回空表。
 **写侧同形问题同日修复**：`MarkNotificationAsRead` / `MarkNotificationsStatus` / `DeleteNotificationFromInbox`
 原先一律用请求体的 `user_id` 定作用域，后果比读侧重——`DeleteNotificationFromInbox` 在 `recipient_ids`
 为空时是"按用户维度整箱删除"，换一个 id 就是清空别人的收件箱。现收进同一个助手

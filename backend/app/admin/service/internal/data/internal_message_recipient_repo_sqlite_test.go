@@ -62,16 +62,15 @@ func TestInternalMessageRecipientInboxListSqlite_TenantZeroStaysOwn(t *testing.T
 	require.Len(t, inbox.GetItems(), 1)
 	require.Equal(t, uint32(11), inbox.GetItems()[0].GetRecipientUserId())
 
-	// 调用方把 recipient_user_id 写成 B。归属谓词仍然只返回 A 自己的那一行。
+	// 调用方把 recipient_user_id 写成 B。归属谓词和这份条件是 AND，返回空表。
 	specified, err := repo.List(asUser(11), &paginationV1.PagingRequest{
 		FilteringType: &paginationV1.PagingRequest_Query{
 			Query: `{"recipient_user_id":12}`,
 		},
 	})
 	require.NoError(t, err)
-	require.Equal(t, uint64(1), specified.GetTotal())
-	require.Len(t, specified.GetItems(), 1)
-	require.Equal(t, uint32(11), specified.GetItems()[0].GetRecipientUserId())
+	require.Equal(t, uint64(0), specified.GetTotal())
+	require.Empty(t, specified.GetItems())
 
 	admin := auth.NewContext(asUser(1), &authenticationV1.UserTokenPayload{
 		UserId: 1,

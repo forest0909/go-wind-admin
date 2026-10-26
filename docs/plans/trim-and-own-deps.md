@@ -463,7 +463,7 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 ### 2026-10-26 · 收件箱归属与 Apache-2.0
 
 - Apache-2.0 接受。redact 运行时、插件，以及 NOTICE 里的 Shivam Rathore 版权都留在 `THIRD_PARTY_LICENSES`。
-- 收件箱已修。`tenant_id == 0` 不再放行。系统上下文和令牌角色 `platform:admin` 仍可按指定用户读写；其余登录用户只能动自己的收件箱。见 `internal_message_recipient_repo.go` 的 `inboxRestrictToViewer`。限制时会丢掉 query 里的 `recipient_user_id`，避免和归属谓词交成空表。
+- 收件箱已修。`tenant_id == 0` 不再放行。系统上下文和令牌角色 `platform:admin` 仍可按指定用户读写；其余登录用户只能动自己的收件箱。见 `internal_message_recipient_repo.go` 的 `inboxRestrictToViewer`。调用方 query 里的 `recipient_user_id` 会和归属谓词做 AND，写成别人时返回空表，不再从 query 里丢掉这个键。
 - 数据范围已修，两处都改了：`AuthenticationService.aggregateDataScopes` 只在令牌 `is_platform_admin`（`fillAdminFlags` 已先按 `platform:admin` 置位）时写成 `[ALL]`，`tenant_id == 0` 的普通用户按角色聚合；`backend/third_party/go-crud/entgo/rule/system.go` 的 `PermissionRule` 去掉 `IsPlatformContext()`，只留 `IsSystemContext()`。平台管理员能看全表，是因为令牌里的 ALL。改动记在 `backend/third_party/go-crud/VERSION.md`。
 - 应修 1 已修：用户角色集合发生变化时，`UserService.Update` 在写入前比较 `ListRoleIDsByUserID`，更新成功后调用 `RevokeUserTokenAllClientTypes`，旧 access token 立即不能再认证。集合与库中一致，或 field mask 不含 `role_ids` / `role_id`（管理端保存昵称仍带同一组角色），不吊销。列举失败仍吊销。改角色定义（权限、数据范围）以及刷新轮换留下旧 access token，这两处不在本次范围。
 - 单租户下 `tid==0` 放行、本轮没动的位置（先 grep 再记）：

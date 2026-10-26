@@ -2,9 +2,7 @@ package data
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"strings"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -77,6 +75,7 @@ func (r *InternalMessageRecipientRepo) init() {
 	r.mapper.AppendConverters(r.statusConverter.NewConverterPair())
 }
 
+// Count 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Count(ctx context.Context, whereCond []func(s *sql.Selector)) (int, error) {
 	builder := r.entClient.Client().InternalMessageRecipient.Query()
 	if len(whereCond) != 0 {
@@ -92,6 +91,7 @@ func (r *InternalMessageRecipientRepo) Count(ctx context.Context, whereCond []fu
 	return count, nil
 }
 
+// IsExist 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) IsExist(ctx context.Context, id uint32) (bool, error) {
 	exist, err := r.entClient.Client().InternalMessageRecipient.Query().
 		Where(internalmessagerecipient.IDEQ(id)).
@@ -112,13 +112,9 @@ func (r *InternalMessageRecipientRepo) List(ctx context.Context, req *pagination
 
 	// 收件箱按"我自己的"来读。查询条件来自调用方，不钉住 recipient_user_id 就能翻别人的收件记录。
 	// 单租户下所有用户的 tenant_id 都是 0，不能再用 IsPlatformContext 放行。
-	// 归属谓词和调用方条件是 AND。调用方若把 recipient_user_id 写成别人，交集是空表，
-	// 看起来像对方没有消息。限制时丢掉这份条件，归属只由 viewer 决定。
+	// 归属谓词和调用方条件是 AND。调用方若把 recipient_user_id 写成别人，交集是空表。
 	if uid, restrict := inboxRestrictToViewer(ctx); restrict {
 		builder.Where(internalmessagerecipient.RecipientUserIDEQ(uid))
-		if cleaned, ok := stripRecipientUserIDQuery(req.GetQuery()); ok {
-			req.FilteringType = &paginationV1.PagingRequest_Query{Query: cleaned}
-		}
 	}
 
 	ret, err := r.repository.ListWithPaging(ctx, builder, builder.Clone(), req)
@@ -135,6 +131,7 @@ func (r *InternalMessageRecipientRepo) List(ctx context.Context, req *pagination
 	}, nil
 }
 
+// Get 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Get(ctx context.Context, req *internalMessageV1.GetInternalMessageRecipientRequest) (*internalMessageV1.InternalMessageRecipient, error) {
 	if req == nil {
 		return nil, internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -271,6 +268,7 @@ func (r *InternalMessageRecipientRepo) IdsByMessageAndRecipients(ctx context.Con
 	return ids, nil
 }
 
+// Update 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Update(ctx context.Context, req *internalMessageV1.UpdateInternalMessageRecipientRequest) error {
 	if req == nil || req.Data == nil {
 		return internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -312,6 +310,7 @@ func (r *InternalMessageRecipientRepo) Update(ctx context.Context, req *internal
 	return err
 }
 
+// Delete 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Delete(ctx context.Context, id uint32) error {
 	if id == 0 {
 		return internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -341,70 +340,6 @@ func inboxRestrictToViewer(ctx context.Context) (uint32, bool) {
 		return 0, false
 	}
 	return uint32(vc.UserID()), true
-}
-
-// stripRecipientUserIDQuery 去掉 query JSON 里的收件人条件。
-// 解析失败时原样留下，分页层会报这份 JSON 的错误；没有可删的键时不改写。
-func stripRecipientUserIDQuery(query string) (string, bool) {
-	if strings.TrimSpace(query) == "" {
-		return "", false
-	}
-	var raw any
-	if err := json.Unmarshal([]byte(query), &raw); err != nil {
-		return "", false
-	}
-	cleaned, removed := removeRecipientUserKeys(raw)
-	if !removed {
-		return "", false
-	}
-	encoded, err := json.Marshal(cleaned)
-	if err != nil {
-		return "", false
-	}
-	return string(encoded), true
-}
-
-func removeRecipientUserKeys(raw any) (any, bool) {
-	switch v := raw.(type) {
-	case map[string]any:
-		removed := false
-		out := make(map[string]any, len(v))
-		for key, child := range v {
-			if isRecipientUserFilterKey(key) {
-				removed = true
-				continue
-			}
-			next, childRemoved := removeRecipientUserKeys(child)
-			if childRemoved {
-				removed = true
-			}
-			out[key] = next
-		}
-		return out, removed
-	case []any:
-		removed := false
-		out := make([]any, len(v))
-		for i, child := range v {
-			next, childRemoved := removeRecipientUserKeys(child)
-			if childRemoved {
-				removed = true
-			}
-			out[i] = next
-		}
-		return out, removed
-	default:
-		return raw, false
-	}
-}
-
-func isRecipientUserFilterKey(key string) bool {
-	field, _, _ := strings.Cut(key, "__")
-	switch field {
-	case "recipient_user_id", "recipientUserId", "RecipientUserId":
-		return true
-	default:
-		return false
-	}
 }
 
 func inboxCallerIsPlatformAdmin(ctx context.Context) bool {

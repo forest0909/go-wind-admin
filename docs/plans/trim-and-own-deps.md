@@ -389,6 +389,52 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 - redact 运行时的 Apache-2.0 能不能接受。已经按交接说明单独收编并标出，没有把它混进 MIT 那一笔。
 - 第 1 阶段的收件箱越权、访问日志里的密码，本阶段仍没改。
 
+### 2026-10-26 · 第 3 阶段 · `chore/trim-phase-3`
+
+提交：`8fd138e`。本记录是后续提交。
+
+**改动**
+
+- 分页 proto 来自 `buf.build/tx7do/pagination:7e34dd27013f4c67bb09025c73a73980`，脱敏 proto 来自 `buf.build/go-wind/redact:d1f98995227e44d6b839e578d9fa1466`，配置 proto 从 `kratos-bootstrap/api@v0.0.45` 的 `protos/conf/v1` 拷进 `backend/api/protos/`。`go_package` 指向已收编的 `third_party` 路径。业务 proto 的 import 路径没改。
+- `buf.yaml` 去掉这两个 BSR 依赖。`buf.lock` 只删了这两项，googleapis 仍是 `c17df5b2beca46928cc87d5656bd5343`。`buf dep update` 会把 googleapis 升到别的 commit，所以没有留那次更新。
+- `buf.gen.yaml` 不再按 BSR 模块名关掉 pagination / redact 的 managed 模式，改成按文件路径关掉。生成输入排除 `protos/pagination`、`protos/redact`、`protos/conf`，避免往 `api/gen` 再写一份。配置 pb 用新建的 `buf.gen.conf.yaml`：managed 打开，`go_package` 覆盖成不带 `;conf` 的路径，才能和已收编的 pb 逐字节一致。`make api` 会接着跑这个模板。
+- `protoc-gen-go-redact`、`protoc-gen-typescript-http` 从 module cache `v0.0.0-20260831125122-5bb4931991b2` 拷到 `backend/third_party/tools/`，编进主模块。Makefile `plugin` 改为 `go install ./third_party/tools/...`。`cli` 里不再安装 gow。安装脚本同样改为本地安装。
+- 文档和教程里的后端命令改成 `backend/` 下的 `make api`、`make ent`、`make openapi`、`make ts`、`make -C app/admin/service run`。
+- `go.mod` 增加直接依赖 `github.com/lyft/protoc-gen-star/v2 v2.0.4`、`gotest.tools/v3 v3.5.2`。`go.einride.tech/aip` 仍是 `v0.86.3`。
+
+**许可证**
+
+- `protoc-gen-typescript-http`：MIT，版权 Einride AB（2020），LICENSE 原样保留。
+- `protoc-gen-go-redact` 插件：Apache-2.0，和运行时同一许可证，LICENSE 与 NOTICE 原样保留。
+- 没有遇到既不是 MIT 也不是 Apache 的插件，所以没有停。
+
+**门禁（2026-10-26）**
+
+- `make api && make openapi && make ts && make ent` 之后，`backend/api/gen`、`internal/data/ent`、`openapi.yaml`、`frontend/admin/react/src/api/generated`、`third_party/kratos-bootstrap/api/gen` 相对第 2 阶段末尾没有 diff。第 2 阶段记录里「再生成会写回 tx7do import」这一条已经消掉。
+- `go vet ./...`、`go test ./...`：退出码 0。`GOFLAGS=-mod=mod GOPROXY=off go build ./...`：通过。
+- 前端 `npm run typecheck`、`npm run build` 通过。`npm run lint` 仍是 909 条（659 error，250 warning）。
+- 空库冒烟留到第 4 阶段。计划第 8 节把完整冒烟放在防回流和文档收尾之后；本阶段的验收核心是生成链零 diff。
+
+**为了让插件测试能编过，改过的测试**
+
+- `redactor_test.go`、`validation_test.go` 补上运行时包的 import。上游这两份测试使用 `redact.FieldRules`，但文件里没有 import，在主模块里编译不过。
+- 三个会调用 `protoc` 的测试在 PATH 里没有 `protoc` 时跳过。buf 不提供这个可执行文件。另一次把 protoc 29.3 放进 PATH 后，该包测试通过，没有留下生成文件。
+- 插件测试要 import `redact/v1/redact.proto`。运行时 proto 在 `go-wind-toolkit` 里，插件目录用符号链接指过去，避免两份正文。
+
+**和第 7.3 节字面 grep 不一致、但没有改掉的**
+
+- 第 7.3 节的模式会命中目录名 `third_party/go-wind-toolkit`、`third_party/go-wind-plugins` 以及对应 import。这是第 6.2 节规定的路径，不改名。
+- `VERSION.md` 保留来源模块坐标。
+- 文档 URL 仍是上游地址：`admin_doc.proto` / `admin_doc.pb.go` / `openapi.yaml` 的项目地址，`pagination.proto` / `pagination.pb.go` 的过滤条件 README。改掉会让生成物不再是零 diff，或者把描述符长度弄坏。
+- `machineid` 的 godoc 链接已改成指向同目录 `VERSION.md`，不再含 `github.com/tx7do`。
+- `go.mod`、`buf.yaml`、Makefile 里没有 `github.com/tx7do`、`buf.build/tx7do`、`buf.build/go-wind`。
+- `buf lint` 仍然失败：既有 enum 命名，加上收进来的 proto 的目录命名。没有为了 lint 改这些 proto 正文。
+
+**需要用户决定的**
+
+- redact 插件和运行时都是 Apache-2.0，能不能接受。
+- 第 1 阶段的收件箱越权、访问日志里的密码，本阶段仍没改。
+
 ---
 
 ## 附录 A：作者依赖实测（2026-10-25，裁剪前）

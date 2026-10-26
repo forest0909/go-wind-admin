@@ -254,6 +254,7 @@ message CreateUserRequest {
   User data = 1;
 
   optional string password = 2 [
+    (redact.value).string = "",
     (gnostic.openapi.v3.property) = {description: "用户登录密码", read_only: true},
     json_name = "password"
   ]; // 用户登录密码
@@ -270,6 +271,7 @@ message UpdateUserRequest {
   ]; // 用户的数据
 
   optional string password = 3 [
+    (redact.value).string = "",
     (gnostic.openapi.v3.property) = {description: "用户登录密码", read_only: true},
     json_name = "password"
   ]; // 用户登录密码
@@ -348,6 +350,7 @@ message EditUserPasswordRequest {
   ]; // 用户ID
 
   string new_password = 2 [
+    (redact.value).string = "",
     json_name = "newPassword",
     (gnostic.openapi.v3.property) = {
       description: "新密码"
@@ -360,6 +363,7 @@ message EditUserPasswordRequest {
 // 修改用户密码（需要验证旧密码） - 请求
 message ChangePasswordRequest {
   string old_password = 1 [
+    (redact.value).string = "",
     json_name = "oldPassword",
     (gnostic.openapi.v3.property) = {
           description: "旧密码"
@@ -368,6 +372,7 @@ message ChangePasswordRequest {
   ]; // 旧密码
 
   string new_password = 2 [
+    (redact.value).string = "",
     json_name = "newPassword",
     (gnostic.openapi.v3.property) = {
           description: "新密码"

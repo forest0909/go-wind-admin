@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
-	"github.com/go-kratos/kratos/v2/middleware/logging"
 	"github.com/go-kratos/kratos/v2/middleware/recovery"
 	"github.com/go-kratos/kratos/v2/middleware/selector"
 	"github.com/go-kratos/kratos/v2/middleware/validate"
@@ -74,7 +73,9 @@ func NewRestMiddleware(
 	// recovery 必须置于链首：任何中间件/handler 的 panic（如审计日志解析畸形 JWT）
 	// 兜底为 500，避免崩溃请求 goroutine、被用作未认证 DoS。
 	ms = append(ms, recovery.Recovery())
-	ms = append(ms, logging.Server(bLogger.AsKratosLogger(ctx.GetLogger())))
+	// 不用 Kratos logging.Server：它只认 Redact() string，本仓生成的是原地 Redact()，
+	// 对不上就把整个请求按 String() 打进访问日志。AccessLogServer 在克隆上脱敏。
+	ms = append(ms, applogging.AccessLogServer(bLogger.AsKratosLogger(ctx.GetLogger())))
 
 	ms = append(ms, applogging.Server(
 		applogging.WithWriteLoginLogFunc(func(ctx context.Context, data *auditV1.LoginAuditLog) error {

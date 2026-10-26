@@ -195,7 +195,7 @@ func (r *UserCredentialRepo) CreateWithTx(ctx context.Context, tx *ent.Tx, data 
 		SetCreatedAt(time.Now())
 
 	if err = builder.Exec(ctx); err != nil {
-		r.log.Errorf(ctx, "insert user credential failed: %s [%v]", err.Error(), data)
+		r.log.Errorf(ctx, "insert user credential failed: %s", err.Error())
 		return authenticationV1.ErrorInternalServerError("insert user credential failed")
 	}
 

@@ -467,8 +467,9 @@ func TestUserServiceSqlite_CreateGuards(t *testing.T) {
 }
 
 // TestUserServiceSqlite_CreatePlatform 验证平台操作人的创建路径：
-// 未显式给密码时注入默认密码，凭证行经真实 bcrypt 落库（自定义密码同理）；
-// 弱密码被复杂度策略拒绝；CreatedBy 注入操作人。
+// 未显式给密码时注入默认密码（明文常量，不解密），凭证行经真实 bcrypt 落库；
+// 自定义密码按创建契约传入 AES 密文，解密后能登录；
+// 不满足复杂度的密文被拒绝；CreatedBy 注入操作人。
 func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 	e := newUserServiceForTest(t)
 	systemRoleID := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_SYSTEM_CREATE")
@@ -491,13 +492,13 @@ func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 	require.Len(t, e.stub.creates, 1)
 	require.Equal(t, uint32(9001), e.stub.creates[0].Data.GetCreatedBy(), "CreatedBy 应注入操作人")
 
-	// 自定义密码路径。
+	// 自定义密码路径：与前端 useCreateUser 一样传 AES 密文。
 	_, err = e.svc.Create(platformOp, &identityV1.CreateUserRequest{
 		Data: &identityV1.User{
 			Username: trans.Ptr("usersvc-custom-pw"),
 			RoleIds:  []uint32{systemRoleID},
 		},
-		Password: trans.Ptr("CustomP@ss777"),
+		Password: trans.Ptr(encryptLoginPassword(t, "CustomP@ss777")),
 	})
 	require.NoError(t, err)
 	require.Equal(t, 2, e.credentialCount(t))
@@ -514,7 +515,7 @@ func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 			Username: trans.Ptr("usersvc-weak-pw"),
 			RoleIds:  []uint32{systemRoleID},
 		},
-		Password: trans.Ptr("short"),
+		Password: trans.Ptr(encryptLoginPassword(t, "short")),
 	})
 	require.Error(t, err)
 	require.True(t, adminV1.IsBadRequest(err), "弱密码应被复杂度策略拒绝")

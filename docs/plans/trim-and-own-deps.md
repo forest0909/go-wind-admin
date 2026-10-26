@@ -327,8 +327,8 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 
 - `GetInitialContext` 没有实现。`AdminPortalService` 嵌入的 HTTP 接口是 nil，调用会空指针 panic，表现为 500。`file/download` 没有 selector 时走 `ErrorDownloadFailed("unknown download selector")`，返回 500。
 - 启动时 `PermissionService.init` 在权限表为空时调用 `SyncPermissions`。该函数要 `auth.FromContext`，启动期没有操作人，错误被 `_, _ =` 丢掉，权限点不会种上。管理员要在管理页手动点「权限同步」（冒烟里 `POST /admin/v1/permissions/sync:perms` 返回 200，`user:view` 能查到）。
-- Kratos 访问日志记下登录请求参数。密码是 AES 密文，密钥是前端的 `VITE_AES_KEY`，会打进浏览器包，密文可以解回明文。另外 `useCreateUser` 创建用户时密码没有加密，同一条访问日志会记下明文密码。
-- 收件箱在单租户下任何人都能读写别人的消息。`InternalMessageRecipientRepo.List` 只在「不是平台上下文、也不是系统上下文」时按当前用户收窄；`tid==0` 被当成平台特权放行，而单租户下所有用户都是 `tid==0`。自助接口豁免故意没把收件箱放进去。
+- Kratos 访问日志记下登录请求参数。密码是 AES 密文，密钥是前端的 `VITE_AES_KEY`，会打进浏览器包，密文可以解回明文。另外 `useCreateUser` 创建用户时密码没有加密，同一条访问日志会记下明文密码。2026-10-26 已修，见文末「字段隐藏、访问日志与创建用户口令」。
+- 收件箱在单租户下任何人都能读写别人的消息。`InternalMessageRecipientRepo.List` 只在「不是平台上下文、也不是系统上下文」时按当前用户收窄；`tid==0` 被当成平台特权放行，而单租户下所有用户都是 `tid==0`。自助接口豁免故意没把收件箱放进去。2026-10-26 已修，见文末「收件箱归属与 Apache-2.0」。
 - 租户管理员的种子 ApiId 是按位置写死的 1..128，和平台管理员的 1..136 是同一类问题。平台管理员已改走通配策略，租户管理员没有。
 
 **已部署的老库要手动处理**（程序不会 DROP 表，也不会改旧菜单。清单对照了 `4175a56`、`e524a2d` 和已删的 ent schema）
@@ -347,8 +347,8 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 
 **需要用户决定的**
 
-- 收件箱越权（单租户 `tid==0` 放行）要不要修。本阶段没改。
-- 访问日志里的密码（登录密文可解、创建用户明文）要不要收。本阶段没改。
+- 收件箱越权（单租户 `tid==0` 放行）要不要修。本阶段没改。2026-10-26 已修，见文末「收件箱归属与 Apache-2.0」。
+- 访问日志里的密码（登录密文可解、创建用户明文）要不要收。本阶段没改。2026-10-26 已修，见文末「字段隐藏、访问日志与创建用户口令」。
 
 ### 2026-10-26 · 第 2 阶段 · `chore/trim-phase-2`
 
@@ -387,7 +387,7 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 **需要用户决定的**
 
 - redact 运行时的 Apache-2.0 能不能接受。已经按交接说明单独收编并标出，没有把它混进 MIT 那一笔。
-- 第 1 阶段的收件箱越权、访问日志里的密码，本阶段仍没改。
+- 第 1 阶段的收件箱越权、访问日志里的密码，本阶段仍没改。收件箱后来的结论见文末「收件箱归属与 Apache-2.0」。访问日志后来的结论见文末「字段隐藏、访问日志与创建用户口令」。
 
 ### 2026-10-26 · 第 3 阶段 · `chore/trim-phase-3`
 
@@ -433,7 +433,7 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 **需要用户决定的**
 
 - redact 插件和运行时都是 Apache-2.0，能不能接受。
-- 第 1 阶段的收件箱越权、访问日志里的密码，本阶段仍没改。
+- 第 1 阶段的收件箱越权、访问日志里的密码，本阶段仍没改。收件箱后来的结论见文末「收件箱归属与 Apache-2.0」。访问日志后来的结论见文末「字段隐藏、访问日志与创建用户口令」。
 
 ### 2026-10-26 · 第 4 阶段 · `chore/trim-phase-4`
 
@@ -458,7 +458,27 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 **需要用户决定的**
 
 - redact 运行时和插件是 Apache-2.0。NOTICE 里的原作者是 Shivam Rathore（2020），另有 2025 Contributors。能不能接受。
-- 收件箱越权、访问日志里的密码，仍没改。
+- 收件箱越权、访问日志里的密码，仍没改。收件箱后来的结论见下一节「收件箱归属与 Apache-2.0」。访问日志后来的结论见文末「字段隐藏、访问日志与创建用户口令」。
+
+### 2026-10-26 · 收件箱归属与 Apache-2.0
+
+- Apache-2.0 接受。redact 运行时、插件，以及 NOTICE 里的 Shivam Rathore 版权都留在 `THIRD_PARTY_LICENSES`。
+- 收件箱已修。`tenant_id == 0` 不再放行。系统上下文和令牌角色 `platform:admin` 仍可按指定用户读写；其余登录用户只能动自己的收件箱。见 `internal_message_recipient_repo.go` 的 `inboxRestrictToViewer`。限制时会丢掉 query 里的 `recipient_user_id`，避免和归属谓词交成空表。
+- 数据范围已修，两处都改了：`AuthenticationService.aggregateDataScopes` 只在令牌 `is_platform_admin`（`fillAdminFlags` 已先按 `platform:admin` 置位）时写成 `[ALL]`，`tenant_id == 0` 的普通用户按角色聚合；`backend/third_party/go-crud/entgo/rule/system.go` 的 `PermissionRule` 去掉 `IsPlatformContext()`，只留 `IsSystemContext()`。平台管理员能看全表，是因为令牌里的 ALL。改动记在 `backend/third_party/go-crud/VERSION.md`。
+- 应修 1 已修：用户角色集合发生变化时，`UserService.Update` 在写入前比较 `ListRoleIDsByUserID`，更新成功后调用 `RevokeUserTokenAllClientTypes`，旧 access token 立即不能再认证。集合与库中一致，或 field mask 不含 `role_ids` / `role_id`（管理端保存昵称仍带同一组角色），不吊销。列举失败仍吊销。改角色定义（权限、数据范围）以及刷新轮换留下旧 access token，这两处不在本次范围。
+- 单租户下 `tid==0` 放行、本轮没动的位置（先 grep 再记）：
+  - `entgo/rule/system.go` 的 `OwnerOnlyRule`、`SoftDeleteRule`、`DenyFieldsMutationRule`、`LimitFieldAccessRule`：全仓库只有定义，没有业务调用。
+  - `entgo/interceptor/tenant.go` 的 `TenantInterceptor`：生产代码没有注册（mixin 里那行是注释，调用只在拦截器测试和一处注释掉的 client 测试）。当前无业务调用。
+  - `entgo/rule/tenant.go` 的 `TenantPrivacy`、`viewer/enforce.go` 的 `EnforceTenant`：租户维度。`TenantPrivacy` 挂在带租户的表上；`EnforceTenant` 只被 `tenant.go` 的变更路径调用。`tid==0` 在这里是跳过租户谓词，不是数据范围。
+  - 另外还有业务路径把 `tid==0` 当平台，本轮同样不修：`schema/tenant_mutation_guard.go`（变更侧租户守卫，租户维度）；`export_common.go` 的 `authorizeExportRequest` 把 `tenant_id == 0` 换成 `SystemContext`（目前只有审计导出在用，查询前还有 `IsPlatformAdmin` 闸）；`user_credential_repo.go` 的 `maybeTenantFromViewer` 把 `tid == 0` 当成没有租户谓词；HTTP 租户闸门只在 `tid>0` 时触发（`docs/tenant_isolation.md` 第 4.1 节）。`aggregateHiddenFields` 已从这份清单拿掉，见下一节。
+- 访问日志里的密码当时仍没改。后来的结论见下一节「字段隐藏、访问日志与创建用户口令」。
+
+### 2026-10-26 · 字段隐藏、访问日志与创建用户口令
+
+- 字段隐藏已修。`AuthenticationService.aggregateHiddenFields` 只在令牌 `is_platform_admin` 为真时跳过聚合（`fillAdminFlags` 已先按角色码 `platform:admin` 置位）。`tenant_id == 0` 的普通用户按角色把 `"资源.字段"` 写入令牌 `hfs`。一对一、一对多两条路径都在 `fillAdminFlags` 之后调用。平台管理员不写 `hfs`，字段裁剪装饰器因此放行。
+- 访问日志密码已修。根因：`app/admin/service/internal/server/rest_server.go` 的 `NewRestMiddleware` 原来用 Kratos `logging.Server`。它的 `extractArgs` 只认返回字符串的 `Redact() string`。本仓 `protoc-gen-redact` 生成的 `*.pb.redact.go` 是原地清空、没有返回值的 `Redact()`，签名对不上，于是所有请求按 `String()` 全量打进访问日志，已有的 `(redact.value)` 在访问日志里无效。现改为 `pkg/middleware/logging.AccessLogServer`：`req` 是 proto 时先 `proto.Clone`，在克隆上调用原地 `Redact()`，再按字段名兜底清空 `password`、`old_password`、`new_password`、`credential`、`old_credential`、`new_credential`、`client_secret`、`refresh_token`、`access_token`、`secret`、`token` 这些 string 字段（含嵌套、repeated、map）。不改原始 `req`。兜底名单是为了以后有人加了口令字段却忘了注解。`LoginRequest` 的 `client_secret`、`refresh_token`，用户创建/更新/改密口令，以及 `user_credential.proto` 的 credential 系列补了 `(redact.value).string = ""`。登录审计只抽用户名，操作审计不存请求体。`TenantService.CreateTenantWithAdminUser` 参数非法时不再把整个请求打进日志。
+- 创建用户改为加密传输。前端 `useCreateUser` 调 `encryptPassword`。`UserService.Create` 对非空密码先按改密、重置同一套 AES 解密，再交给 `userCredentialRepo.Create` 做复杂度校验和 bcrypt。没传密码仍填 `DefaultUserPassword` 明文常量，不解密。菜单已隐藏的 `CreateTenantWithAdminUser` 和启动播种仍传明文，不走这条解密。
+- 运维：上线之前产生的访问日志里有密码。登录请求是 AES 密文，密钥打在前端包的 `VITE_AES_KEY` 里，可以解回明文；创建用户当时是明文。这些日志要清理，或者限制访问。此期间新建过的用户，建议改一次密码。同一条提醒写在 `docs/backend_deploy.md`。
 
 ---
 

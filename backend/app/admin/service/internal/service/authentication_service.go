@@ -308,7 +308,7 @@ func (s *AuthenticationService) authorizeAndEnrichUserTokenPayloadUserTenantRela
 
 	// 聚合角色级数据范围配置进令牌（dss/dsu 轨道；语义见 aggregateDataScopes）。
 	s.aggregateDataScopes(ctx, tokenPayload.GetTenantId(), userID, roleIDs, tokenPayload)
-	// 聚合角色级字段权限配置进令牌（hfs 轨道；语义见 aggregateHiddenFields）。
+	// 聚合角色级字段权限配置进令牌（hfs 轨道；fillAdminFlags 已先置位，语义见 aggregateHiddenFields）。
 	s.aggregateHiddenFields(ctx, tokenPayload.GetTenantId(), roleIDs, tokenPayload)
 
 	return nil
@@ -391,7 +391,7 @@ func (s *AuthenticationService) authorizeAndEnrichUserTokenPayloadUserTenantRela
 
 	// 聚合角色级数据范围配置进令牌（dss/dsu 轨道；语义见 aggregateDataScopes）。
 	s.aggregateDataScopes(ctx, tokenPayload.GetTenantId(), userID, validRoleIDs, tokenPayload)
-	// 聚合角色级字段权限配置进令牌（hfs 轨道；语义见 aggregateHiddenFields）。
+	// 聚合角色级字段权限配置进令牌（hfs 轨道；fillAdminFlags 已先置位，语义见 aggregateHiddenFields）。
 	s.aggregateHiddenFields(ctx, tokenPayload.GetTenantId(), validRoleIDs, tokenPayload)
 
 	return nil

@@ -185,7 +185,9 @@ func (x *LoginRequest) Redact() {
 
 	// Safe field: ClientId
 
-	// Safe field: ClientSecret
+	// Redacting field: ClientSecret
+	ClientSecretTmp := ``
+	x.ClientSecret = &ClientSecretTmp
 
 	// Safe field: Scope
 
@@ -197,7 +199,9 @@ func (x *LoginRequest) Redact() {
 	PasswordTmp := ``
 	x.Password = &PasswordTmp
 
-	// Safe field: RefreshToken
+	// Redacting field: RefreshToken
+	RefreshTokenTmp := ``
+	x.RefreshToken = &RefreshTokenTmp
 
 	// Safe field: Code
 

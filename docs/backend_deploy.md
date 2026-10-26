@@ -171,3 +171,10 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 > 由 `scripts/env/lib/host-utils.ps1:111,119-120` 拼成 `postgres.local` 等），与上面的裸主机名清单不一致；
 > 其中 `mysql` 一项当前 compose 也未启用。两种写法各自自洽即可，**不要混用**：走脚本就在配置里写
 > `postgres.local`，走本文清单就写 `postgres`，用 `localhost` 则两条都不需要。
+
+## 上线前的访问日志
+
+这次修复上线之前，访问日志会记下请求参数里的口令。登录请求是 AES 密文，密钥打在前端包的
+`VITE_AES_KEY` 里，可以解回明文。创建用户当时是明文。这段时间产生的访问日志要清理，
+或者限制访问。此期间新建过的用户，建议改一次密码。根因和修法见
+`docs/plans/trim-and-own-deps.md` 的「字段隐藏、访问日志与创建用户口令」。

@@ -297,7 +297,9 @@ func (x *CreateUserRequest) Redact() {
 
 	// Safe field: Data
 
-	// Safe field: Password
+	// Redacting field: Password
+	PasswordTmp := ``
+	x.Password = &PasswordTmp
 }
 
 // Ensure UpdateUserRequest implements the Redactor interface at compile time.
@@ -313,7 +315,9 @@ func (x *UpdateUserRequest) Redact() {
 
 	// Safe field: Data
 
-	// Safe field: Password
+	// Redacting field: Password
+	PasswordTmp := ``
+	x.Password = &PasswordTmp
 
 	// Safe field: UpdateMask
 
@@ -399,7 +403,8 @@ func (x *EditUserPasswordRequest) Redact() {
 
 	// Safe field: UserId
 
-	// Safe field: NewPassword
+	// Redacting field: NewPassword
+	x.NewPassword = ``
 }
 
 // Ensure ChangePasswordRequest implements the Redactor interface at compile time.
@@ -411,9 +416,11 @@ func (x *ChangePasswordRequest) Redact() {
 		return
 	}
 
-	// Safe field: OldPassword
+	// Redacting field: OldPassword
+	x.OldPassword = ``
 
-	// Safe field: NewPassword
+	// Redacting field: NewPassword
+	x.NewPassword = ``
 }
 
 // Ensure UploadAvatarRequest implements the Redactor interface at compile time.

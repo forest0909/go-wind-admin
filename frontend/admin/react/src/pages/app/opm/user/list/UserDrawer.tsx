@@ -174,7 +174,8 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         });
       }
       return true;
-    } catch {
+    } catch (error) {
+      console.error(error);
       return false;
     } finally {
       setConfirmLoading(false);

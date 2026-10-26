@@ -26,7 +26,8 @@ const fieldPermissionUserResource = "User"
 //
 // 刻意不裁剪 /admin/v1/me 系端点（UserProfileService）：本人资料页需要
 // 完整字段才能自编辑，字段权限管控的是"对他人/管理视角的可见性"。
-// 平台管理员（tenantId==0）登录期即不聚合隐藏集，此处天然放行。
+// 平台管理员（令牌 is_platform_admin）登录期不聚合隐藏集，此处天然放行。
+// tenantId==0 不再表示平台管理员：单租户下普通用户的租户也是 0，仍按角色隐藏集裁剪。
 type FieldPermissionUserServiceServer struct {
 	adminV1.UnsafeUserServiceServer
 	inner adminV1.UserServiceServer

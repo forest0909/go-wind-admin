@@ -18,6 +18,7 @@ import (
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
 	"go-wind-admin/pkg/middleware/auth"
+	applogging "go-wind-admin/pkg/middleware/logging"
 	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
@@ -230,7 +231,8 @@ func (s *TenantService) TenantExists(ctx context.Context, req *identityV1.Tenant
 // CreateTenantWithAdminUser 创建租户及其管理员用户
 func (s *TenantService) CreateTenantWithAdminUser(ctx context.Context, req *identityV1.CreateTenantWithAdminUserRequest) (*emptypb.Empty, error) {
 	if req.Tenant == nil || req.User == nil {
-		s.log.Error(ctx, "invalid parameter: tenant or user is nil", req)
+		// 参数非法时也不要把整个请求打进日志：请求里有管理员初始口令。
+		s.log.Errorf(ctx, "invalid parameter: tenant or user is nil: %s", applogging.FormatArgs(req))
 		return nil, adminV1.ErrorBadRequest("invalid parameter")
 	}
 

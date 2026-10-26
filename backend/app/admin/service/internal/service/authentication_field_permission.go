@@ -9,7 +9,8 @@ import (
 // aggregateHiddenFields 聚合用户各角色的字段权限配置为令牌承载的隐藏字段集。
 //
 // 语义（黑名单式字段权限）：
-//   - 平台上下文（tenantID==0）：不聚合（平台管理员字段全可见）。
+//   - 平台管理员（tokenPayload.IsPlatformAdmin，fillAdminFlags 在本函数之前按角色码置位）：
+//     不聚合（字段全可见）。tenantID==0 不再短路——单租户下普通用户的租户也是 0。
 //   - 各角色配置的 "资源.字段" 条目按并集聚合；未配置即无隐藏字段。
 //   - 聚合失败时 fail-open（仅告警、不加条目）：字段权限是纵深防御手段，
 //     与数据范围 "配置异常即拒绝登录" 的取向不同——登录可用性优先，
@@ -23,13 +24,14 @@ func (s *AuthenticationService) aggregateHiddenFields(
 	roleIDs []uint32,
 	tokenPayload *authenticationV1.UserTokenPayload,
 ) {
-	if tenantID == 0 {
+	// 平台管理员字段全可见。普通用户（含 tenantID==0）继续按角色聚合。
+	if tokenPayload.GetIsPlatformAdmin() {
 		return
 	}
 
 	groups, err := s.roleFieldPermissionRepo.ListHiddenFieldGroupsByRoleIDs(ctx, roleIDs)
 	if err != nil {
-		s.log.Errorf(ctx, "aggregate hidden fields: list by roles [%v] failed: %s", roleIDs, err.Error())
+		s.log.Errorf(ctx, "aggregate hidden fields: list by roles [%v] tenant [%d] failed: %s", roleIDs, tenantID, err.Error())
 		return
 	}
 

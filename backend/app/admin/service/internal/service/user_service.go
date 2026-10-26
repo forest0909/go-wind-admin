@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"go-wind-admin/third_party/go-utils/aggregator"
+	"go-wind-admin/third_party/go-utils/crypto"
 	"go-wind-admin/third_party/go-utils/sliceutil"
 	"go-wind-admin/third_party/go-utils/trans"
 	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
@@ -436,6 +438,17 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 		}
 	}
 
+	// 创建请求里的密码与改密、重置同一条传输契约：前端 AES 密文。
+	// 空密码不解密，下面仍填 DefaultUserPassword 明文常量。
+	if len(req.GetPassword()) > 0 {
+		plainPassword, derr := decryptTransportPassword(req.GetPassword())
+		if derr != nil {
+			s.log.Errorf(ctx, "decrypt create user password failed: %s", derr.Error())
+			return nil, derr
+		}
+		req.Password = trans.Ptr(plainPassword)
+	}
+
 	// 创建用户
 	var user *identityV1.User
 	if user, err = s.userRepo.Create(ctx, req); err != nil {
@@ -443,7 +456,7 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	}
 
 	if len(req.GetPassword()) == 0 {
-		// 如果没有设置密码，则设置为默认密码。
+		// 如果没有设置密码，则设置为默认密码。明文常量，不要再解密。
 		req.Password = trans.Ptr(constants.DefaultUserPassword)
 	}
 
@@ -468,6 +481,21 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// decryptTransportPassword 解开前端 encryptPassword 的 base64(AES) 密文。
+// 与 ResetCredential / ChangeCredential 的 NeedDecrypt 使用同一密钥和同一失败文案。
+// 日志只记错误，不记密文。
+func decryptTransportPassword(cipherText string) (string, error) {
+	bytesPass, err := base64.StdEncoding.DecodeString(cipherText)
+	if err != nil {
+		return "", authenticationV1.ErrorBadRequest("invalid new credential format")
+	}
+	plainPassword, err := crypto.AesDecrypt(bytesPass, crypto.DefaultAESKey, nil)
+	if err != nil {
+		return "", authenticationV1.ErrorBadRequest("decrypt new credential failed")
+	}
+	return string(plainPassword), nil
 }
 
 func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequest) (*emptypb.Empty, error) {

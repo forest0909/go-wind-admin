@@ -104,6 +104,7 @@ message LoginRequest {
     }
   ];
   optional string client_secret = 3 [
+    (redact.value).string = "",
     json_name = "client_secret",
     (gnostic.openapi.v3.property) = {
       description: "客户端密钥"
@@ -156,6 +157,7 @@ message LoginRequest {
   ]; // 用户的密码，必选项。
 
   optional string refresh_token = 20 [
+    (redact.value).string = "",
     json_name = "refresh_token",
     (gnostic.openapi.v3.property) = {
       description: "更新令牌，用来获取下一次的访问令牌，可选项。如果访问令牌将过期，则返回刷新令牌很有用，应用程序可以使用该刷新令牌来获取另一个访问令牌。但是，通过隐式授予颁发的令牌不能颁发刷新令牌。"

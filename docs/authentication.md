@@ -42,7 +42,8 @@ POST /admin/v1/login（grant_type=password）
   │      再 authorizeAndEnrich*（一对一/一对多按 DefaultUserTenantRelationType）：
   │      角色链（user→role / membership→role）→ 权限码集合须含 SystemAccessBackendPermissionCode
   │      → 角色 codes 进 token；fillAdminFlags（平台/租户管理员旗标）；
-  │      聚合数据范围（dss/dsu）与字段黑名单（hfs）进 token（见对应设计文档）
+  │      聚合数据范围（dss/dsu）与字段黑名单（hfs）进 token。
+  │      hfs 只在非平台管理员时按角色聚合；tenant_id==0 的普通用户也会写入（见第 3.1 节）
   └─ 9  签发：CreateUserToken（access + refresh，jti，Redis 令牌对入缓存）
          → 会话元数据记录 + last_login 记录（均 best-effort）
          → 限流计数清零
@@ -63,6 +64,22 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 `grant_type=refresh_token` 在 login 端点被拒（引导到专用刷新端点）；
 `grant_type=client_credentials` 被拒。机器令牌交换已删除。
 
+### 2.1 口令传输
+
+登录、创建用户、管理员重置密码、个人中心改密走同一条契约：前端 `encryptPassword`
+（`base64(AES)`，密钥是构建期的 `VITE_AES_KEY`，与后端 `crypto.DefaultAESKey` 一致），
+后端解密后再做复杂度校验，通过后 bcrypt 入库。
+
+| 路径 | 前端 | 后端 |
+|---|---|---|
+| 登录 | 登录表单 | `FindUserCredential`，`NeedDecrypt: true` |
+| 创建用户 | `src/api/hooks/user.ts` 的 `useCreateUser` | `UserService.Create`：非空密码先 `decryptTransportPassword`，再 `userCredentialRepo.Create`（复杂度 + bcrypt） |
+| 管理员重置 / 更新时改密 | `useUpdateUser`、`useEditUserPassword` | `ResetCredential`，`NeedDecrypt: true` |
+| 个人中心改密 | `useUpdateUserProfile` | `ChangeCredential`，`NeedDecrypt: true` |
+
+创建用户没传密码时仍填 `constants.DefaultUserPassword` 明文常量，不拿去解密。
+启动播种和菜单已隐藏的 `CreateTenantWithAdminUser` 也传明文，不走这条解密。
+
 ## 3. 令牌体系
 
 ### 3.1 结构（`authentication/service/v1/user_token.proto`，自描述 JWT）
@@ -77,7 +94,7 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 | `ipa` / `ita` | is_platform_admin / is_tenant_admin | 管理员旗标（fillAdminFlags 产出） |
 | `ds`/`dss`/`dsu` | data_scope(s)/unit_ids | 数据范围聚合（语义见 data_scope_design 第 3 节） |
 | `ouid` | org_unit_id | 当前组织单元 |
-| `hfs` | hidden_fields | 字段黑名单（"资源.字段"，语义见 frontend_authority 字段级一节） |
+| `hfs` | hidden_fields | 字段黑名单（"资源.字段"）。平台管理员（`is_platform_admin`）不写入；`tenant_id==0` 的普通用户仍按角色聚合。语义见 frontend_authority 字段级一节 |
 | `jti` | jti | 令牌对唯一标识（吊销/轮换/会话元数据键） |
 
 ### 3.2 配置（`configs/auth.yaml`）与引擎

@@ -110,7 +110,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         const detected = detectedLanguage.language;
         const detectedKey = typeof detected === 'string' ? detected.toLowerCase() : '';
         return languageMap[detectedKey] || 'plaintext';
-      } catch (error) {
+      } catch {
         return language || 'plaintext';
       }
     },

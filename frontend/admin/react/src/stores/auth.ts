@@ -164,7 +164,7 @@ export const useAuthStore = create<AuthState>()(
 
       // 登出（主动，调后端接口）
       // 清除状态后由 React 组件响应状态变化自然重定向
-      logout: async (_redirect = true) => {
+      logout: async () => {
         stopRefreshTimer();
         disconnectSSEServer();
         try {

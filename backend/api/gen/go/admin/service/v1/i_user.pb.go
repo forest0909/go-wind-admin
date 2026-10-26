@@ -8,8 +8,8 @@ package adminpb
 
 import (
 	v1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	_ "github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	v11 "go-wind-admin/api/gen/go/identity/service/v1"
+	_ "go-wind-admin/third_party/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"

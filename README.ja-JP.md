@@ -260,7 +260,7 @@ go-wind-admin/
 │   │   └── gen/go/                 # buf が生成する Go コード
 │   ├── app/admin/service/          # Admin サービスアプリケーション
 │   │   ├── cmd/server/             # エントリポイント（main.go、wiring_ent.go 依存性組み立て）
-│   │   ├── configs/                # 設定ファイル（YAML）
+│   │   ├── configs/                # 設定ファイル（YAML）。手元の上書きは configs/local/（gitignore）
 │   │   └── internal/               # ビジネスコア（data/service/server）
 │   ├── pkg/                        # 共通パッケージ
 │   │   ├── oss/                    # オブジェクトストレージ（MinIO）

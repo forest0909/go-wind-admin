@@ -19,3 +19,5 @@
 
 本仓修改：import 路径改为 `go-wind-admin/third_party/...`。`api/gen/go/conf/v1` 各 pb 的 `go_package` 描述符长度已按新路径更新。`app_info.pb.go` 的 FileOptions 长度从 1 字节 varint 变成 2 字节。`bootstrap` 测试在缺少上游 `../../configs` 时跳过。白名单测试改成对齐现有匹配方向：名单里是方法名时，完整操作名也能命中；名单里是完整操作名时，不会反查方法名。
 
+2026-10-27：`config.NewConfigProvider` 在主配置目录和可选远程源之后，再加载 `<configPath>/local/`（目录存在才加载）。file source 读目录时跳过子目录，所以 `local/` 不会被主源读两遍。合并仍是 Kratos 默认的 mergo 深度合并，后加载的非空值覆盖同名键。没有 `config.yaml` 时不走远程源。
+

@@ -122,35 +122,37 @@ docker compose -f docker-compose.libs.yaml ps
 
 ---
 
-## 第三步：修改后端配置（本地开发必须）
+## 第三步：用 local 目录覆盖后端配置（本地开发必须）
 
-默认配置中的主机名（`postgres`、`redis`、`minio`）是 Docker Compose 的容器服务名，仅在容器网络内部有效。本地运行后端时**必须改为 `localhost`**。
+默认配置中的主机名（`postgres`、`redis`、`minio`）是 Docker Compose 的容器服务名，仅在容器网络内部有效。本地运行后端时要改成 `localhost`，但**不要改** `backend/app/admin/service/configs/` 根下被 Git 跟踪的 yaml。口令写进那些文件，下次提交就可能进仓库。
 
-需要修改 `backend/app/admin/service/configs/` 下的三个文件：
+在 `configs/local/` 下新建同名文件，**只写要改的键**。目录不存在就跳过，行为和只有主配置时一样。目录存在时在主配置之后加载；如果同目录还有 `config.yaml` 远程源，远程源仍会加载，并且排在 `local/` 之前。Kratos 按深度合并，后加载的非空值覆盖同名键，`local/` 里没写的键保留前面的值。主配置按目录读取时会跳过子目录，所以 `local/` 不会被主配置读两遍。
 
-### data.yaml
+`configs/local/` 已写进仓库根 `.gitignore`。部署时也可以把同名目录挂进容器，只放要覆盖的键。
+
+### local/data.yaml
 
 ```yaml
 data:
   database:
     source: "host=localhost port=5432 user=postgres password=*Abcd123456 dbname=gwa sslmode=disable"
-    #          ^^^^^^^^^ 原值为 postgres
+    #          ^^^^^^^^^ 主配置里是 postgres
 
   redis:
     addr: "localhost:6379"
-    #      ^^^^^^^^^ 原值为 redis
+    #      ^^^^^^^^^ 主配置里是 redis
 ```
 
-### server.yaml
+### local/server.yaml
 
 ```yaml
 server:
   asynq:
     uri: "redis://:*Abcd123456@localhost:6379/1"
-    #                           ^^^^^^^^^ 原值为 redis
+    #                           ^^^^^^^^^ 主配置里是 redis
 ```
 
-### oss.yaml
+### local/oss.yaml
 
 ```yaml
 oss:
@@ -158,10 +160,10 @@ oss:
     endpoint: "localhost:9000"
     upload_host: "localhost:9000"
     download_host: "localhost:9000"
-    #               ^^^^^^^^^ 原值均为 minio
+    #               ^^^^^^^^^ 主配置里是 minio
 ```
 
-> **提示**：这些改动仅用于本地开发，建议不要提交到 Git。可以用 `git stash` 暂存。
+> **提示**：口令只放 `configs/local/`。不要用 `git stash` 把改过的主配置藏起来，也不要提交这个目录。
 
 ---
 
@@ -344,7 +346,7 @@ pnpm install
 
 ### Q: Docker 容器启动后后端连接数据库失败
 
-确认配置文件中的主机名已改为 `localhost`（见第三步）。`postgres` / `redis` / `minio` 是 Docker Compose 内部网络的服务名，宿主机上不能直接使用。
+确认 `configs/local/` 里已经把主机名覆盖成 `localhost`（见第三步）。不要改被跟踪的主配置。`postgres` / `redis` / `minio` 是 Docker Compose 内部网络的服务名，宿主机上不能直接使用。
 
 ### Q: `make gen` / `make init` 报错找不到 `buf` / `ent`
 

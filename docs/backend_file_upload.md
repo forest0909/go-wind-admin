@@ -55,7 +55,7 @@ oss:
     use_ssl: false
 ```
 
-> **本地开发注意**：compose 里的服务名 `minio` 仅在容器网络内有效。本地直接运行后端时，需将 `endpoint`/`upload_host`/`download_host` 从 `minio` 改为 `localhost`。详见 `windows-startup-guide.md` 第三步。
+> **本地开发注意**：compose 里的服务名 `minio` 仅在容器网络内有效。本地直接运行后端时，不要改被跟踪的 `oss.yaml`，把 `endpoint`/`upload_host`/`download_host` 写到 `configs/local/oss.yaml` 覆盖成 `localhost`。详见 `windows-startup-guide.md` 第三步。
 
 `upload_host` 与 `download_host` 用于对 MinIO 返回的预签名/下载 URL 做主机替换——把容器内部地址替换成客户端可访问的外部地址。生产部署时这三个字段都应指向客户端可达的 MinIO 入口。
 

@@ -370,6 +370,7 @@ make -C app/admin/service run
 | `oss.yaml`    | 对象存储配置               |
 | `client.yaml` | 客户端配置                |
 | `mail.yaml`   | 验证码 SMTP / 短信配置。口令留空表示未配置，填了口令的副本不要提交 |
+| `local/`      | 可选覆盖层，目录存在才加载，后写入的非空值覆盖同名键。已 gitignore，本机口令只放这里 |
 
 ## 编码约定
 

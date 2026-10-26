@@ -142,6 +142,18 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 
 程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练一次恢复。
 
+## 本地覆盖配置
+
+本机要连自己的数据库、Redis 或 MinIO 时，不要改 `backend/app/admin/service/configs/` 根下被 Git 跟踪的 yaml。在同级的 `configs/local/` 里放同名文件，只写要改的键，例如 `local/data.yaml` 里只保留 `data.database.source` 和 `data.redis`。
+
+加载顺序：
+
+1. 主配置目录。按目录读取时会跳过子目录，因此 `local/` 不会被主配置读两遍。
+2. 若存在 `config.yaml`，远程配置源仍按原逻辑加载，并覆盖主配置里的同名键。
+3. `configs/local/` 仅在目录存在时最后加载。合并是深度合并，这里的非空值覆盖同名键；没写的键保留前面的值。
+
+`configs/local/` 在仓库根 `.gitignore` 里。部署时可以把同名目录挂进容器或配置目录，用来覆盖镜像里的主配置，同样只放差异键。本地把主机名改成 `localhost` 的例子见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步。
+
 ## 本地开发配置 hosts
 
 如果使用完整模式部署后需要从宿主机访问服务，需修改`hosts`文件（需要管理员权限）：
@@ -163,8 +175,8 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 > 若二次开发自行引入 Consul，再按当时的形态补 hosts 与 `registry` 配置（历史坑：`consul` 作主机名会 502，
 > 地址要写 `localhost:8500`）。
 >
-> **推荐做法**：本地开发使用依赖模式（libs_only），配置文件中直接使用`localhost`即可，无需修改 hosts
-> （见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步：改的就是 `localhost`）。
+> **推荐做法**：本地开发使用依赖模式（libs_only），在 `configs/local/` 里把主机名覆盖成 `localhost`，无需修改 hosts，也不要改被跟踪的主配置
+> （见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步）。
 >
 > **与一键脚本的差异**：`scripts/env/install_windows_dev.ps1` 以管理员运行时写的是**带 `.local` 后缀**的
 > 域名（其 50-51 行 `$services = @('postgres','mysql','redis','minio')` + `-DomainSuffix ".local"`，

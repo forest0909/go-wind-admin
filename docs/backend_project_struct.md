@@ -77,7 +77,7 @@
         - `cmd`：存放 Admin 服务的命令行代码
             - `server`：存放 Admin 服务的入口代码
                 - `assets`：存放 Admin 服务的静态资源文件，现在只存放了OpenAPI的静态资源文件。
-        - `configs`：存放 Admin 服务的配置文件（server.yaml、data.yaml、auth.yaml、logger.yaml、oss.yaml、client.yaml、mail.yaml）
+        - `configs`：存放 Admin 服务的配置文件（server.yaml、data.yaml、auth.yaml、logger.yaml、oss.yaml、client.yaml、mail.yaml）。本机差异写在同级 `local/`（gitignore），只放要覆盖的键
         - `internal`：存放 Admin 服务的内部代码，使用internal目录是为了避免被外部代码引用。
             - `data`：存放 Admin 服务的数据访问代码
                 - `ent`：存放 Admin 服务的 Ent 数据库 ORM 代码

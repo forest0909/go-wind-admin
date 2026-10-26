@@ -26,25 +26,45 @@ func NewConfigProvider(configPath string) (config.Config, error) {
 		return nil, err
 	}
 
+	// 主配置目录在前。file source 读目录时跳过子目录，所以后面的 local/ 不会被主源再读一遍。
+	// 远程源（config.yaml）仍插在主配置之后、local 之前，没有 config.yaml 时这条分支不走。
+	// local 最后加载。Kratos 用 mergo.WithOverride 做深度合并，后一个源的非空值覆盖同名键。
+	sources := []config.Source{NewFileConfigSource(configPath)}
 	if rc != nil {
 		rcs, err := NewProvider(rc)
 		if err != nil {
 			log.Error("NewProvider: ", err.Error())
 			return nil, err
 		}
-		return config.New(
-			config.WithSource(
-				NewFileConfigSource(configPath),
-				rcs,
-			),
-		), nil
+		sources = append(sources, rcs)
+	}
+	sources, err = appendLocalOverrideSource(sources, configPath)
+	if err != nil {
+		log.Error("appendLocalOverrideSource: ", err.Error())
+		return nil, err
 	}
 
-	return config.New(
-		config.WithSource(
-			NewFileConfigSource(configPath),
-		),
-	), nil
+	return config.New(config.WithSource(sources...)), nil
+}
+
+// localOverrideDir 是主配置目录下的可选覆盖层，只在目录存在时加载。
+const localOverrideDir = "local"
+
+// appendLocalOverrideSource 把 <configPath>/local 追加到源列表末尾。
+// 目录不存在，或该路径不是目录时，源列表保持原样。
+func appendLocalOverrideSource(sources []config.Source, configPath string) ([]config.Source, error) {
+	localPath := filepath.Join(configPath, localOverrideDir)
+	info, err := os.Stat(localPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return sources, nil
+		}
+		return nil, err
+	}
+	if !info.IsDir() {
+		return sources, nil
+	}
+	return append(sources, NewFileConfigSource(localPath)), nil
 }
 
 // LoadBootstrapConfig 加载程序引导配置

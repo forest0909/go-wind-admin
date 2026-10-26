@@ -260,7 +260,7 @@ go-wind-admin/
 │   │   └── gen/go/                 # buf 生成的 Go 代码
 │   ├── app/admin/service/          # Admin 服务应用
 │   │   ├── cmd/server/             # 入口 (main.go, wiring_ent.go 依赖装配)
-│   │   ├── configs/                # 配置文件 (YAML)
+│   │   ├── configs/                # 配置文件 (YAML)。本机覆盖写 configs/local/，该目录不入库
 │   │   └── internal/               # 业务核心（data/service/server）
 │   ├── pkg/                        # 公共包
 │   │   ├── oss/                    # 对象存储（MinIO）

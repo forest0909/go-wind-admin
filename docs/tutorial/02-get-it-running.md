@@ -50,18 +50,18 @@ docker compose -f docker-compose.libs.yaml up -d
 docker compose -f docker-compose.libs.yaml ps   # 应看到 postgres / redis / minio 三个 Running
 ```
 
-## 4. 改后端配置：容器服务名 → localhost
+## 4. 用 local 目录把容器服务名覆盖成 localhost
 
 `docker-compose.libs.yaml` 里的服务名（`postgres`/`redis`/`minio`）只在容器网络内有效。
-后端在本地跑，所以 `backend/app/admin/service/configs/` 下三个文件的地址**必须改成 `localhost`**：
+后端在本地跑时，把地址写进 `backend/app/admin/service/configs/local/`，**不要改**同目录下被 Git 跟踪的 yaml：
 
-| 文件 | 改什么 |
+| 文件 | 只写这些键 |
 |---|---|
-| `data.yaml` | `database.source`、`redis.addr` 的主机名 |
-| `server.yaml` | `asynq.uri` 的主机名 |
-| `oss.yaml` | `minio.endpoint` / `upload_host` / `download_host` 的主机名 |
+| `local/data.yaml` | `database.source`、`redis.addr` 的主机名 |
+| `local/server.yaml` | `asynq.uri` 的主机名 |
+| `local/oss.yaml` | `minio.endpoint` / `upload_host` / `download_host` 的主机名 |
 
-> 这些改动只用于本地，别提交。建议 `git stash` 或本地 ignore。
+目录不存在就跳过。存在时最后加载，同名键覆盖主配置，没写的键保留主配置。`local/` 已在 `.gitignore` 里。完整示例见 [windows-startup-guide.md](../windows-startup-guide.md) 第三步。
 
 ## 5. 生成代码 & 启动后端
 

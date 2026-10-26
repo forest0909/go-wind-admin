@@ -10,5 +10,5 @@
 
 本仓修改：import 路径改为 `go-wind-admin/third_party/...`。
 
-未收编 `engine/opa`。`engine/noop` 仍收编，供显式指定 noop 的测试使用。
+未收编 `engine/opa` 和 zanzibar。`engine/noop` 仍收编，供显式指定 noop 的测试使用。中间件测试里创建 OPA 引擎的调用已注释，避免去编译没拷进来的包。
 

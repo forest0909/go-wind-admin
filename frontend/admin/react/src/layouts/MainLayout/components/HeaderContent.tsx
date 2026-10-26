@@ -850,7 +850,7 @@ export const HeaderContent = ({
                 }
               : undefined
           }
-          items={breadcrumbItems.map((item, _index) => ({
+          items={breadcrumbItems.map((item) => ({
             key: item.key,
             title: item.onClick ? (
               <a

@@ -435,6 +435,31 @@ go list -deps -f '{{if not .Standard}}{{.ImportPath}}{{end}}' ./... | grep '^git
 - redact 插件和运行时都是 Apache-2.0，能不能接受。
 - 第 1 阶段的收件箱越权、访问日志里的密码，本阶段仍没改。
 
+### 2026-10-26 · 第 4 阶段 · `chore/trim-phase-4`
+
+提交：`7a82568`。本记录是后续提交。
+
+**改动**
+
+- `scripts/check-no-upstream-deps.sh` 扫描 `go.mod`、`buf.yaml`、`Makefile`、`app.mk` 和全部 `.go`。出现 `github.com/tx7do`、`buf.build/tx7do`、`buf.build/go-wind` 就失败。`.github/workflows/no-upstream-deps.yml` 在 push 和 pull request 上跑它。
+- 两份生成代码里的文档 URL 不计入失败：`admin_doc.pb.go`、`pagination.pb.go`。这两份仍然检查带引号的 `"github.com/tx7do/` import。`admin_doc.proto`、`pagination.proto`、`openapi.yaml` 不在脚本扫描范围内，原因和第 3 阶段记录相同。
+- 仓库根 `THIRD_PARTY_LICENSES` 列出每个来源目录、许可证和原文。Apache-2.0 的 NOTICE 写明衍生自 Shivam Rathore 的 protoc-gen-redact。`backend/third_party/README.md` 说明这些代码可以直接改，改动记在对应 `VERSION.md`。
+- 三份 README 改成单租户管理端的定位：只有 React，接口鉴权是 Casbin，没有 AI，租户和套餐代码还在但菜单隐藏。三份文件仍是 14 个二级标题、360 行，标题行号对齐。
+- `AGENTS.md` 的布局加上 `backend/third_party/`。门禁只留后端、React 和防回流脚本。文档索引不再指向已删除的前端和已删除模块。
+- `scripts/check-update-mask-allowlists.mjs` 去掉已删除的通知、监控告警、AI 页面登记。仓库里没有 `sso-smoke.yml`，不用再删。
+
+**门禁（2026-10-26）**
+
+- `bash scripts/check-no-upstream-deps.sh` 通过。
+- `node scripts/check-readme-parity.mjs`、`node scripts/check-frontend-mirror.mjs`、`node scripts/check-update-mask-allowlists.mjs` 通过。
+- `go vet ./...`、`go test ./...` 退出码 0。前端 `npm run typecheck`、`npm run build` 通过。`npm run lint` 仍是 909 条（659 error，250 warning）。
+- 空库冒烟 `smoke.sh HEAD`。跑的时候 HEAD 是第 3 阶段的 `a14d9d1`，本阶段没有改 Go 代码。`RESULT: ALL PASS`。`file/download` 和 `initial-context` 仍是已知的 500。
+
+**需要用户决定的**
+
+- redact 运行时和插件是 Apache-2.0。NOTICE 里的原作者是 Shivam Rathore（2020），另有 2025 Contributors。能不能接受。
+- 收件箱越权、访问日志里的密码，仍没改。
+
 ---
 
 ## 附录 A：作者依赖实测（2026-10-25，裁剪前）

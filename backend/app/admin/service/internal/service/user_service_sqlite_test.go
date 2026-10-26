@@ -35,12 +35,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"go-wind-admin/third_party/go-utils/password"
 	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
 	"go-wind-admin/app/admin/service/internal/data"
+	"go-wind-admin/app/admin/service/internal/data/ent"
+	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
@@ -56,12 +59,16 @@ import (
 // userServiceUserRepoStub 是 UserService 测试专用的 data.UserRepo 桩：
 // 嵌入接口获得默认方法集（未覆写方法一旦被调用即 nil 接口 panic，测试即失败）。
 // 只覆写服务层会用到的方法：Get（按 id 回放）、List（回放固定列表）、
-// Count（回放固定计数）、Create（记录并回放占位用户）、Update / Delete /
-// AssignUserRole（记录调用）、UserExists（回放固定响应）、
+// Count（回放固定计数）、Create / CreateWithTx（记录并回放占位用户）、
+// BeginTx（与凭证仓储共用 ent client，好让 Create 的事务能提交凭证）、
+// Update / Delete / AssignUserRole（记录调用）、UserExists（回放固定响应）、
 // ListRoleIDsByUserID（按用户回放角色 ID，供更新前比较）。
-// 桩数据与实体表无关；真实落库的只有凭证表（经真实 userCredentialRepo）。
+// 桩不写用户行；真实落库的只有凭证表（经真实 userCredentialRepo）。
+// 用户行和凭证同事务回滚的断言见 TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected，
+// 那条用真实 userRepo。
 type userServiceUserRepoStub struct {
 	data.UserRepo
+	client           *ent.Client
 	usersByID        map[uint32]*identityV1.User
 	listUsers        []*identityV1.User
 	count            int
@@ -93,6 +100,18 @@ func (s *userServiceUserRepoStub) Create(_ context.Context, req *identityV1.Crea
 	s.creates = append(s.creates, req)
 	// 直接透传请求体内的租户指针（含 nil=平台），保持 Create 返回行的租户语义。
 	return &identityV1.User{Id: trans.Ptr(uint32(66001)), TenantId: req.Data.TenantId}, nil
+}
+
+func (s *userServiceUserRepoStub) BeginTx(ctx context.Context) (*ent.Tx, error) {
+	if s.client == nil {
+		return nil, fmt.Errorf("userService stub BeginTx: ent client is nil")
+	}
+	return s.client.Tx(ctx)
+}
+
+func (s *userServiceUserRepoStub) CreateWithTx(_ context.Context, _ *ent.Tx, data *identityV1.User) (*identityV1.User, error) {
+	s.creates = append(s.creates, &identityV1.CreateUserRequest{Data: data})
+	return &identityV1.User{Id: trans.Ptr(uint32(66001)), TenantId: data.TenantId, Username: data.Username}, nil
 }
 
 func (s *userServiceUserRepoStub) Update(_ context.Context, req *identityV1.UpdateUserRequest) error {
@@ -152,7 +171,10 @@ func newUserServiceForTest(t *testing.T) *userServiceEnv {
 	authenticator, err := data.NewAuthenticatorForTest(jwtCfg, userTokenCache)
 	require.NoError(t, err)
 
-	stub := &userServiceUserRepoStub{usersByID: make(map[uint32]*identityV1.User)}
+	stub := &userServiceUserRepoStub{
+		usersByID: make(map[uint32]*identityV1.User),
+		client:    entClient.Client(),
+	}
 
 	svc := &UserService{
 		log:                bLogger.NewHelper(bLogger.NopLogger()),
@@ -521,6 +543,183 @@ func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 	require.True(t, adminV1.IsBadRequest(err), "弱密码应被复杂度策略拒绝")
 	require.Contains(t, err.Error(), "password too short", "复杂度拒绝的具体原因应透传（长度不足）")
 	require.Equal(t, 2, e.credentialCount(t), "弱密码不应落库")
+}
+
+// TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected 用真实 userRepo：
+// 弱密码时用户行和角色/组织/岗位关联一起回滚；正常创建后用户、关联、凭据都在；
+// 不传密码时默认密码能通过登录用的凭证校验。
+func TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected(t *testing.T) {
+	svc, client, sys := newUserServiceWithRealUserRepo(t)
+
+	opRow, err := client.User.Create().SetUsername("usersvc-tx-operator").Save(sys)
+	require.NoError(t, err)
+	platformOp := opCtx(sys, opRow.ID, 0, true)
+
+	roleID := seedUserSvcRoleOn(t, svc.roleRepo, sys, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_TX")
+	require.NoError(t, svc.orgUnitRepo.Create(sys, &identityV1.CreateOrgUnitRequest{
+		Data: &identityV1.OrgUnit{
+			Name:   trans.Ptr("UserService 事务组织"),
+			Code:   trans.Ptr("USERSVC_ORGUNIT_TX"),
+			Status: identityV1.OrgUnit_ON.Enum(),
+			Type:   identityV1.OrgUnit_DEPARTMENT.Enum(),
+		},
+	}))
+	orgList, err := svc.orgUnitRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var orgUnitID uint32
+	for _, item := range orgList.GetItems() {
+		if item.GetCode() == "USERSVC_ORGUNIT_TX" {
+			orgUnitID = item.GetId()
+		}
+	}
+	require.NotZero(t, orgUnitID)
+	require.NoError(t, svc.positionRepo.Create(sys, &identityV1.CreatePositionRequest{
+		Data: &identityV1.Position{
+			OrgUnitId: trans.Ptr(orgUnitID),
+			Name:      trans.Ptr("UserService 事务职位"),
+			Code:      trans.Ptr("USERSVC_POSITION_TX"),
+			Status:    identityV1.Position_ON.Enum(),
+			Type:      identityV1.Position_LEADER.Enum(),
+		},
+	}))
+	posList, err := svc.positionRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var positionID uint32
+	for _, item := range posList.GetItems() {
+		if item.GetCode() == "USERSVC_POSITION_TX" {
+			positionID = item.GetId()
+		}
+	}
+	require.NotZero(t, positionID)
+
+	_, err = svc.Create(platformOp, &identityV1.CreateUserRequest{
+		Data: &identityV1.User{
+			Username:    trans.Ptr("usersvc-tx-weak"),
+			RoleIds:     []uint32{roleID},
+			OrgUnitIds:  []uint32{orgUnitID},
+			PositionIds: []uint32{positionID},
+		},
+		Password: trans.Ptr(encryptLoginPassword(t, "short")),
+	})
+	require.Error(t, err)
+	require.True(t, adminV1.IsBadRequest(err))
+	require.Equal(t, 0, countUsersByUsername(t, client, sys, "usersvc-tx-weak"), "弱密码回滚后用户名不应留在用户表")
+	roleN, err := client.UserRole.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, roleN, "弱密码应回滚角色关联")
+	orgN, err := client.UserOrgUnit.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, orgN, "弱密码应回滚组织关联")
+	posN, err := client.UserPosition.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, posN, "弱密码应回滚岗位关联")
+	credN, cerr := svc.userCredentialRepo.Count(sys, nil)
+	require.NoError(t, cerr)
+	require.Equal(t, 0, credN, "弱密码不应留下凭据")
+
+	_, err = svc.Create(platformOp, &identityV1.CreateUserRequest{
+		Data: &identityV1.User{
+			Username:    trans.Ptr("usersvc-tx-ok"),
+			RoleIds:     []uint32{roleID},
+			OrgUnitIds:  []uint32{orgUnitID},
+			PositionIds: []uint32{positionID},
+		},
+		Password: trans.Ptr(encryptLoginPassword(t, "CustomP@ss777")),
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, countUsersByUsername(t, client, sys, "usersvc-tx-ok"))
+	okRow, err := client.User.Query().Where(user.UsernameEQ("usersvc-tx-ok")).Only(sys)
+	require.NoError(t, err)
+	roleIDs, err := svc.userRepo.ListRoleIDsByUserID(sys, okRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, []uint32{roleID}, roleIDs)
+	orgIDs, err := svc.userRepo.ListOrgUnitIDsByUserID(sys, okRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, []uint32{orgUnitID}, orgIDs)
+	posIDs, err := svc.userRepo.ListPositionIDsByUserID(sys, okRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, []uint32{positionID}, posIDs)
+	matched, ferr := svc.userCredentialRepo.FindUserCredential(sys, 0,
+		authenticationV1.UserCredential_USERNAME, "usersvc-tx-ok", "CustomP@ss777", false)
+	require.NoError(t, ferr)
+	require.Equal(t, okRow.ID, matched)
+
+	_, err = svc.Create(platformOp, &identityV1.CreateUserRequest{
+		Data: &identityV1.User{
+			Username: trans.Ptr("usersvc-tx-default"),
+			RoleIds:  []uint32{roleID},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, countUsersByUsername(t, client, sys, "usersvc-tx-default"))
+	defaultRow, err := client.User.Query().Where(user.UsernameEQ("usersvc-tx-default")).Only(sys)
+	require.NoError(t, err)
+	matched, ferr = svc.userCredentialRepo.FindUserCredential(sys, 0,
+		authenticationV1.UserCredential_USERNAME, "usersvc-tx-default", constants.DefaultUserPassword, false)
+	require.NoError(t, ferr, "未传密码时应能用默认密码通过登录凭证校验")
+	require.Equal(t, defaultRow.ID, matched)
+}
+
+func newUserServiceWithRealUserRepo(t *testing.T) (*UserService, *ent.Client, context.Context) {
+	t.Helper()
+	entClient := enttest.NewEntClientForTest(t)
+	sys := enttest.NewSystemContext(context.Background())
+	boot := bootstrap.NewContextWithParam(context.Background(), nil, nil, bLogger.NopLogger())
+
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	passwordCrypto := password.NewBCryptCrypto()
+	configRepo := data.NewConfigRepoForTest(entClient, rdb)
+	svc := &UserService{
+		log: bLogger.NewHelper(bLogger.NopLogger()),
+		userRepo: data.NewUserRepo(boot, entClient,
+			data.NewUserRoleRepo(boot, entClient),
+			data.NewUserOrgUnitRepo(boot, entClient),
+			data.NewUserPositionRepo(boot, entClient),
+			nil,
+		),
+		userCredentialRepo: data.NewUserCredentialRepoForTest(entClient, passwordCrypto, configRepo),
+		roleRepo:           data.NewRoleRepoForTest(entClient),
+		positionRepo:       data.NewPositionRepoForTest(entClient),
+		orgUnitRepo:        data.NewOrgUnitRepoForTest(entClient),
+		tenantRepo:         data.NewTenantRepoForTest(entClient),
+	}
+	return svc, entClient.Client(), sys
+}
+
+func seedUserSvcRoleOn(t *testing.T, repo *data.RoleRepo, ctx context.Context, tenantID *uint32, roleType permissionV1.Role_Type, roleCode string) uint32 {
+	t.Helper()
+	require.NoError(t, repo.Create(ctx, &permissionV1.CreateRoleRequest{
+		Data: &permissionV1.Role{
+			TenantId: tenantID,
+			Name:     trans.Ptr("UserService 角色 " + roleCode),
+			Code:     trans.Ptr(roleCode),
+			Status:   permissionV1.Role_ON.Enum(),
+			Type:     roleType.Enum(),
+		},
+	}))
+	var wantTenant uint32
+	if tenantID != nil {
+		wantTenant = *tenantID
+	}
+	listResp, err := repo.List(ctx, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	for _, item := range listResp.GetItems() {
+		if item.GetCode() == roleCode && item.GetTenantId() == wantTenant {
+			return item.GetId()
+		}
+	}
+	t.Fatalf("角色 (%d, %s) 未在列表中反查到", wantTenant, roleCode)
+	return 0
+}
+
+func countUsersByUsername(t *testing.T, client *ent.Client, ctx context.Context, username string) int {
+	t.Helper()
+	n, err := client.User.Query().Where(user.UsernameEQ(username)).Count(ctx)
+	require.NoError(t, err)
+	return n
 }
 
 // TestUserServiceSqlite_CreateTenant 验证租户操作人的创建路径：

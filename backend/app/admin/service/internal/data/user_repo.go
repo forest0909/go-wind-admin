@@ -40,6 +40,8 @@ type UserRepo interface {
 
 	Create(ctx context.Context, req *identityV1.CreateUserRequest) (*identityV1.User, error)
 	CreateWithTx(ctx context.Context, tx *ent.Tx, data *identityV1.User) (*identityV1.User, error)
+	// BeginTx 开启 ent 事务。提交和回滚由调用方负责，不要和 Create 叠用。
+	BeginTx(ctx context.Context) (*ent.Tx, error)
 
 	Update(ctx context.Context, req *identityV1.UpdateUserRequest) error
 
@@ -471,6 +473,16 @@ func (r *userRepo) Get(ctx context.Context, req *identityV1.GetUserRequest) (*id
 	r.log.Debugf(ctx, "get user id=%d role_ids=%v position_ids=%v org_unit_ids=%v", dto.GetId(), roleIDs, positionIDs, orgUnitIDs)
 
 	return dto, err
+}
+
+// BeginTx 开启 ent 事务。UserService.Create 用它把用户行、关联和凭据放进同一个事务。
+func (r *userRepo) BeginTx(ctx context.Context) (*ent.Tx, error) {
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
+		return nil, identityV1.ErrorInternalServerError("start transaction failed")
+	}
+	return tx, nil
 }
 
 // Create 创建用户

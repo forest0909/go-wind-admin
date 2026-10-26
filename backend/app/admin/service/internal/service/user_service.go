@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"go-wind-admin/app/admin/service/internal/data"
+	"go-wind-admin/app/admin/service/internal/data/ent"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
@@ -349,7 +350,7 @@ func (s *UserService) Get(ctx context.Context, req *identityV1.GetUserRequest) (
 	return resp, nil
 }
 
-func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequest) (*emptypb.Empty, error) {
+func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequest) (resp *emptypb.Empty, err error) {
 	if req.Data == nil {
 		return nil, adminV1.ErrorBadRequest("invalid parameter")
 	}
@@ -449,9 +450,29 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 		req.Password = trans.Ptr(plainPassword)
 	}
 
-	// 创建用户
+	// 用户行、角色/组织/岗位关联、凭据在同一个事务里。
+	// 凭据复杂度校验失败时回滚，避免留下没有密码的用户。
+	var tx *ent.Tx
+	tx, err = s.userRepo.BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+			}
+			return
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			s.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+			err = identityV1.ErrorInternalServerError("transaction commit failed")
+			resp = nil
+		}
+	}()
+
 	var user *identityV1.User
-	if user, err = s.userRepo.Create(ctx, req); err != nil {
+	if user, err = s.userRepo.CreateWithTx(ctx, tx, req.GetData()); err != nil {
 		return nil, err
 	}
 
@@ -461,26 +482,25 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	}
 
 	if len(req.GetPassword()) > 0 {
-		if err = s.userCredentialRepo.Create(ctx, &authenticationV1.CreateUserCredentialRequest{
-			Data: &authenticationV1.UserCredential{
-				UserId:   user.Id,
-				TenantId: user.TenantId,
+		if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
+			UserId:   user.Id,
+			TenantId: user.TenantId,
 
-				IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
-				Identifier:   req.Data.Username,
+			IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
+			Identifier:   req.Data.Username,
 
-				CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
-				Credential:     req.Password,
+			CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
+			Credential:     req.Password,
 
-				IsPrimary: trans.Ptr(true),
-				Status:    authenticationV1.UserCredential_ENABLED.Enum(),
-			},
+			IsPrimary: trans.Ptr(true),
+			Status:    authenticationV1.UserCredential_ENABLED.Enum(),
 		}); err != nil {
 			return nil, err
 		}
 	}
 
-	return &emptypb.Empty{}, nil
+	resp = &emptypb.Empty{}
+	return resp, nil
 }
 
 // decryptTransportPassword 解开前端 encryptPassword 的 base64(AES) 密文。

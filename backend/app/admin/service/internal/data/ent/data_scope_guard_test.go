@@ -163,7 +163,8 @@ func TestPositionDataScopeGuard(t *testing.T) {
 		t.Fatal("empty scope query should be denied")
 	}
 
-	// 平台上下文（tid=0）：放行两租户全部 5 行。
+	// tid=0 且令牌为 ALL：租户闸门不按租户收窄，数据范围 ALL 放行，两租户 5 行都可见。
+	// tid=0 本身不再跳过数据范围。
 	expectPairs(t, visiblePositionPairs(client, scopeCtx(ctx, 1, 0,
 		viewer.DataScope{ScopeType: viewer.ScopeTypeAll})),
 		fmtPair(101, 11), fmtPair(101, 12), fmtPair(102, 11), fmtPair(102, 12),

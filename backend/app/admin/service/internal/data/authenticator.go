@@ -630,7 +630,7 @@ func (a *Authenticator) ListSessionEntries(ctx context.Context) ([]SessionEntry,
 }
 
 // RevokeUserTokenAllClientTypes 吊销用户全部客户端类型的所有令牌与会话记录。
-// 用于改密 / 重置密码后的强制下线：被改密用户的所有已签发令牌立即失效。
+// 用于改密、重置密码，以及用户角色集合成员变更后的强制下线：已签发令牌立即失效。
 func (a *Authenticator) RevokeUserTokenAllClientTypes(ctx context.Context, userId uint32) error {
 	// 显式枚举合法客户端类型（与 RevokeTokenByJti 的 nil 分支同形）。
 	// 此前遍历 ClientType_value 名字表：后续枚举若新增无效/未实现类型会被

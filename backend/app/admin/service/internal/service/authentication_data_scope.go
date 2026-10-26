@@ -16,7 +16,8 @@ const maxDataScopeUnitIds = 256
 // aggregateDataScopes 聚合用户各角色的数据范围配置为令牌承载的扁平结构。
 //
 // 语义（若依式角色级数据范围）：
-//   - 平台上下文（tenantID==0）：整体 [ALL]（平台侧本就全放行，执行规则跳过）。
+//   - 平台管理员（tokenPayload.IsPlatformAdmin，fillAdminFlags 在本函数之前按角色码置位）：
+//     整体 [ALL]。tenantID==0 不再短路——单租户下普通用户的租户也是 0。
 //   - 任一角色 ALL → 整体 [ALL]。
 //   - 否则活动类型取并集（SELF 与 UNIT_* 可共存），UNIT_* 的单元目标集为
 //     各角色贡献的并集，全部按令牌租户过滤（登录上下文为 privacy.Allow，
@@ -38,8 +39,8 @@ func (s *AuthenticationService) aggregateDataScopes(
 	roleIDs []uint32,
 	tokenPayload *authenticationV1.UserTokenPayload,
 ) {
-	// 平台上下文：无租户隔离维度，整体全量。
-	if tenantID == 0 {
+	// 平台管理员令牌整体全量。普通用户（含 tenantID==0）继续按角色聚合。
+	if tokenPayload.GetIsPlatformAdmin() {
 		tokenPayload.DataScopes = []identityV1.DataScope{identityV1.DataScope_ALL}
 		tokenPayload.DataScope = trans.Ptr(identityV1.DataScope_ALL)
 		return

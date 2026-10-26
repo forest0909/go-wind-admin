@@ -13,3 +13,5 @@
 
 本仓修改：import 路径改为 `go-wind-admin/third_party/...`。`pagination.pb.go` 的 `go_package` 描述符长度已按新路径更新。字段说明里的上游 README 链接保持原样。
 
+2026-10-26：`entgo/rule/system.go` 的 `PermissionRule` 去掉 `IsPlatformContext()` 放行，只保留 `IsSystemContext()`。单租户下 `tenant_id == 0` 不是数据范围特权；平台管理员靠令牌里的 `ALL` 在规则内部放行。同文件的 `OwnerOnlyRule`、`SoftDeleteRule`、`DenyFieldsMutationRule`、`LimitFieldAccessRule` 未改。
+

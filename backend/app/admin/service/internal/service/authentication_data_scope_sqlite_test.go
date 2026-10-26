@@ -1,7 +1,7 @@
 // authentication_data_scope.go 的 SQLite 内存库集成测试（白盒，包内测试）。
 //
 // 覆盖目标（aggregateDataScopes 各分支）：
-//   - 平台上下文（tenantID==0）：整体 [ALL] 且单值镜像 ALL。
+//   - tenantID==0 的普通用户按角色聚合（SELF 就是 [SELF]）；平台管理员标志才短路 [ALL]。
 //   - 任一角色 ALL → [ALL] + 镜像 ALL（后续角色不再扫描）。
 //   - 仅 SELF → [SELF] + 镜像 SELF。
 //   - 无匹配角色 / 全 UNSPECIFIED：退化 [UNSPECIFIED]，无镜像、无单元目标集。
@@ -102,18 +102,94 @@ func seedOrgUnit(t *testing.T, client *ent.Client, ctx context.Context, svc *Aut
 	return row.ID
 }
 
-// TestAggregateDataScopes_PlatformContextIsAll 平台上下文：整体 [ALL] 且单值镜像 ALL。
-func TestAggregateDataScopes_PlatformContextIsAll(t *testing.T) {
-	svc, _ := newDataScopeAuthServiceForTest(t, nil)
+// TestAggregateDataScopes_TenantZeroOrdinarySelf tenantID==0 的普通用户按角色聚合，
+// SELF 写入 [SELF]，不再因为租户号是 0 变成 [ALL]。
+func TestAggregateDataScopes_TenantZeroOrdinarySelf(t *testing.T) {
+	svc, client := newDataScopeAuthServiceForTest(t, nil)
 	ctx := enttest.NewSystemContext(context.Background())
+	selfID := seedScopedRole(t, client, ctx, svc, "DS_T0_SELF_ROLE", identityV1.DataScope_SELF)
 	payload := &authenticationV1.UserTokenPayload{}
 
-	svc.aggregateDataScopes(ctx, 0, 1, nil, payload)
+	svc.aggregateDataScopes(ctx, 0, 1, []uint32{selfID}, payload)
+
+	require.Equal(t, []identityV1.DataScope{identityV1.DataScope_SELF}, payload.GetDataScopes(),
+		"tenantID==0 的普通用户应保留角色 SELF")
+	require.Equal(t, identityV1.DataScope_SELF, payload.GetDataScope(), "单值镜像应为 SELF")
+	require.Empty(t, payload.GetDataScopeUnitIds())
+	require.False(t, payload.GetIsPlatformAdmin())
+}
+
+// TestAggregateDataScopes_TenantZeroPlatformAdminIsAll 令牌已标平台管理员时，
+// 即使同时持有 SELF 角色、tenantID 为 0，也短路为 [ALL]。
+func TestAggregateDataScopes_TenantZeroPlatformAdminIsAll(t *testing.T) {
+	svc, client := newDataScopeAuthServiceForTest(t, nil)
+	ctx := enttest.NewSystemContext(context.Background())
+	selfID := seedScopedRole(t, client, ctx, svc, "DS_T0_ADMIN_SELF_ROLE", identityV1.DataScope_SELF)
+	payload := &authenticationV1.UserTokenPayload{IsPlatformAdmin: trans.Ptr(true)}
+
+	svc.aggregateDataScopes(ctx, 0, 1, []uint32{selfID}, payload)
 
 	require.Equal(t, []identityV1.DataScope{identityV1.DataScope_ALL}, payload.GetDataScopes(),
-		"平台上下文应整体 [ALL]")
+		"平台管理员应整体 [ALL]，不看角色档位")
 	require.Equal(t, identityV1.DataScope_ALL, payload.GetDataScope(), "单值镜像应为 ALL")
-	require.Empty(t, payload.GetDataScopeUnitIds(), "平台上下文不应有单元目标集")
+	require.Empty(t, payload.GetDataScopeUnitIds(), "ALL 不应带单元目标集")
+}
+
+// TestAggregateDataScopes_TenantZeroRoleAllIsAll tenantID==0 且不是平台管理员时，
+// 角色 ALL 仍走正常聚合，结果是 [ALL]。
+func TestAggregateDataScopes_TenantZeroRoleAllIsAll(t *testing.T) {
+	svc, client := newDataScopeAuthServiceForTest(t, nil)
+	ctx := enttest.NewSystemContext(context.Background())
+	allID := seedScopedRole(t, client, ctx, svc, "DS_T0_ALL_ROLE", identityV1.DataScope_ALL)
+	payload := &authenticationV1.UserTokenPayload{}
+
+	svc.aggregateDataScopes(ctx, 0, 1, []uint32{allID}, payload)
+
+	require.Equal(t, []identityV1.DataScope{identityV1.DataScope_ALL}, payload.GetDataScopes())
+	require.Equal(t, identityV1.DataScope_ALL, payload.GetDataScope(), "单值镜像应为 ALL")
+	require.False(t, payload.GetIsPlatformAdmin())
+}
+
+// TestAggregateDataScopes_TenantZeroUnitTargetsStayInTenant UNIT_* 在 tenantID==0 时
+// 仍只收租户 0 的单元：他租户的所属单元和配置单元都被显式租户谓词剔除。
+func TestAggregateDataScopes_TenantZeroUnitTargetsStayInTenant(t *testing.T) {
+	svc, client := newDataScopeAuthServiceForTest(t, nil)
+	ctx := enttest.NewSystemContext(context.Background())
+	own := seedOrgUnit(t, client, ctx, svc, 0, "租户0自身单元", "DS_T0_OWN", 0)
+	child := seedOrgUnit(t, client, ctx, svc, 0, "租户0子单元", "DS_T0_CHILD", own)
+	foreign := seedOrgUnit(t, client, ctx, svc, 999, "他租户单元", "DS_T0_FOREIGN", 0)
+	svc.userRepo.(*dataScopeUserRepoStub).ownUnits = []uint32{own, foreign}
+
+	t.Run("UNIT_ONLY", func(t *testing.T) {
+		roleID := seedScopedRole(t, client, ctx, svc, "DS_T0_UNIT_ONLY", identityV1.DataScope_UNIT_ONLY)
+		payload := &authenticationV1.UserTokenPayload{}
+		svc.aggregateDataScopes(ctx, 0, 1, []uint32{roleID}, payload)
+		require.Equal(t, []identityV1.DataScope{identityV1.DataScope_UNIT_ONLY}, payload.GetDataScopes())
+		require.Equal(t, []uint64{uint64(own)}, payload.GetDataScopeUnitIds(),
+			"tenantID==0 只保留租户 0 的所属单元")
+	})
+
+	t.Run("UNIT_AND_CHILD", func(t *testing.T) {
+		roleID := seedScopedRole(t, client, ctx, svc, "DS_T0_UNIT_CHILD", identityV1.DataScope_UNIT_AND_CHILD)
+		payload := &authenticationV1.UserTokenPayload{}
+		svc.aggregateDataScopes(ctx, 0, 1, []uint32{roleID}, payload)
+		require.Equal(t, []identityV1.DataScope{identityV1.DataScope_UNIT_AND_CHILD}, payload.GetDataScopes())
+		require.ElementsMatch(t, []uint64{uint64(own), uint64(child)}, payload.GetDataScopeUnitIds(),
+			"后代展开限制在租户 0，他租户单元不进来")
+	})
+
+	t.Run("SELECTED_UNITS", func(t *testing.T) {
+		roleID := seedScopedRole(t, client, ctx, svc, "DS_T0_SELECTED", identityV1.DataScope_SELECTED_UNITS)
+		_, err := client.RoleOrgUnit.Create().SetRoleID(roleID).SetOrgUnitID(own).Save(ctx)
+		require.NoError(t, err)
+		_, err = client.RoleOrgUnit.Create().SetRoleID(roleID).SetOrgUnitID(foreign).Save(ctx)
+		require.NoError(t, err)
+		payload := &authenticationV1.UserTokenPayload{}
+		svc.aggregateDataScopes(ctx, 0, 1, []uint32{roleID}, payload)
+		require.Equal(t, []identityV1.DataScope{identityV1.DataScope_SELECTED_UNITS}, payload.GetDataScopes())
+		require.Equal(t, []uint64{uint64(own)}, payload.GetDataScopeUnitIds(),
+			"自定义单元集按令牌租户 0 二次过滤")
+	})
 }
 
 // TestAggregateDataScopes_AnyRoleAllShortCircuits 任一角色 ALL → [ALL] + 镜像，

@@ -12,10 +12,14 @@ import (
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	crudViewer "go-wind-admin/third_party/go-crud/viewer"
 
+	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	entInternalMessageRecipient "go-wind-admin/app/admin/service/internal/data/ent/internalmessagerecipient"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
+
+	"go-wind-admin/pkg/constants"
+	"go-wind-admin/pkg/middleware/auth"
 )
 
 // newInternalMessageRecipientRepoSqlite 用 enttest helper 构造一个可直接做 CRUD 的
@@ -33,6 +37,49 @@ func newInternalMessageRecipientRepoSqlite(t *testing.T) *InternalMessageRecipie
 	}
 	repo.init()
 	return repo
+}
+
+func TestInternalMessageRecipientInboxListSqlite_TenantZeroStaysOwn(t *testing.T) {
+	repo := newInternalMessageRecipientRepoSqlite(t)
+	sysCtx := enttest.NewSystemContext(context.Background())
+	for _, uid := range []uint32{11, 12} {
+		_, err := repo.Create(sysCtx, &internalMessageV1.InternalMessageRecipient{
+			TenantId:        trans.Ptr(uint32(0)),
+			MessageId:       trans.Ptr(uint32(1)),
+			RecipientUserId: trans.Ptr(uid),
+			Status:          internalMessageV1.InternalMessageRecipient_RECEIVED.Enum(),
+		})
+		require.NoError(t, err)
+	}
+
+	asUser := func(uid uint32) context.Context {
+		return crudViewer.WithContext(context.Background(), crudViewer.NewUserContext(uint64(uid), 0, 0, "", nil))
+	}
+
+	inbox, err := repo.List(asUser(11), &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), inbox.GetTotal())
+	require.Len(t, inbox.GetItems(), 1)
+	require.Equal(t, uint32(11), inbox.GetItems()[0].GetRecipientUserId())
+
+	// 调用方把 recipient_user_id 写成 B。归属谓词仍然只返回 A 自己的那一行。
+	specified, err := repo.List(asUser(11), &paginationV1.PagingRequest{
+		FilteringType: &paginationV1.PagingRequest_Query{
+			Query: `{"recipient_user_id":12}`,
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), specified.GetTotal())
+	require.Len(t, specified.GetItems(), 1)
+	require.Equal(t, uint32(11), specified.GetItems()[0].GetRecipientUserId())
+
+	admin := auth.NewContext(asUser(1), &authenticationV1.UserTokenPayload{
+		UserId: 1,
+		Roles:  []string{constants.PlatformAdminRoleCode},
+	})
+	all, err := repo.List(admin, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	require.Len(t, all.GetItems(), 2)
 }
 
 // TestInternalMessageRecipientRepoSqlite_EnumReadback 对 status 枚举的全部 5 个取值
@@ -231,9 +278,9 @@ func TestInternalMessageRecipientTenantSqlite(t *testing.T) {
 //   - 带 recipient_ids：条件缩成"我自己的行 ∩ 这些 id"= 空集，整个调用是空操作；
 //   - recipient_ids 为空（"全部已读"/"清空"）：作用域缩回**调用者自己**的收件箱——越权意图
 //     伤不到目标用户，但会作用在自己身上。选"缩回"而不是"报错"，是因为三端合法调用方传的
-//     都是自己的 id，加一条错误码等于给三端新增文案与分支。
+//     都是自己的 id，加一条错误码等于给 React 收件箱新增文案与分支。
 //
-// 平台/系统上下文豁免同读侧：代客操作要按指定用户执行。
+// 系统上下文和平台管理员角色仍可按指定用户操作。tenant_id == 0 的普通用户不行。
 func TestInternalMessageRecipientInboxWritesSqlite(t *testing.T) {
 	// 每个子测试起一个干净库：断言读的是"另一个人的行有没有被动过"，共享库会互相污染。
 	newEnv := func(t *testing.T) (*InternalMessageRecipientRepo, uint32, uint32) {
@@ -355,7 +402,7 @@ func TestInternalMessageRecipientInboxWritesSqlite(t *testing.T) {
 		require.Equal(t, entInternalMessageRecipient.StatusReceived, other, "同租户另一个人的行仍不受影响")
 	})
 
-	t.Run("平台与系统上下文仍可代客", func(t *testing.T) {
+	t.Run("租户 0 的普通用户碰不到别人的行", func(t *testing.T) {
 		repo, _, otherID := newEnv(t)
 
 		require.NoError(t, repo.MarkNotificationAsRead(
@@ -363,7 +410,231 @@ func TestInternalMessageRecipientInboxWritesSqlite(t *testing.T) {
 			&internalMessageV1.MarkNotificationAsReadRequest{UserId: 202, RecipientIds: []uint32{otherID}},
 		))
 		other, _ := statusOf(t, repo, otherID)
-		require.Equal(t, entInternalMessageRecipient.StatusRead, other,
-			"平台上下文（租户 0）按指定用户代客操作，与读侧豁免同形")
+		require.Equal(t, entInternalMessageRecipient.StatusReceived, other,
+			"tenant_id == 0 不是收件箱放行条件")
 	})
+
+	t.Run("系统上下文仍可代客", func(t *testing.T) {
+		repo, _, otherID := newEnv(t)
+
+		require.NoError(t, repo.MarkNotificationAsRead(
+			enttest.NewSystemContext(context.Background()),
+			&internalMessageV1.MarkNotificationAsReadRequest{UserId: 202, RecipientIds: []uint32{otherID}},
+		))
+		other, _ := statusOf(t, repo, otherID)
+		require.Equal(t, entInternalMessageRecipient.StatusRead, other)
+	})
+
+	t.Run("平台管理员角色仍可代客", func(t *testing.T) {
+		repo, _, otherID := newEnv(t)
+
+		ctx := auth.NewContext(
+			crudViewer.WithContext(context.Background(), crudViewer.NewUserContext(1, 0, 0, "", nil)),
+			&authenticationV1.UserTokenPayload{UserId: 1, Roles: []string{constants.PlatformAdminRoleCode}},
+		)
+		require.NoError(t, repo.MarkNotificationAsRead(ctx, &internalMessageV1.MarkNotificationAsReadRequest{
+			UserId: 202, RecipientIds: []uint32{otherID},
+		}))
+		other, _ := statusOf(t, repo, otherID)
+		require.Equal(t, entInternalMessageRecipient.StatusRead, other,
+			"用户详情页按指定用户看收件箱，只对平台管理员角色放开")
+	})
+}
+
+// TestInternalMessageRecipientInboxWritesSqlite_TenantZero 租户 0 上 A、B 各有一行。
+// 普通用户 A 的三个写口碰不到 B；空 ids 只改或删 A。平台管理员和系统上下文可以按 B 操作，
+// 包括空 ids 整箱删除。
+func TestInternalMessageRecipientInboxWritesSqlite_TenantZero(t *testing.T) {
+	const userA uint32 = 31
+	const userB uint32 = 32
+
+	newEnv := func(t *testing.T) (*InternalMessageRecipientRepo, uint32, uint32) {
+		t.Helper()
+		repo := newInternalMessageRecipientRepoSqlite(t)
+		sysCtx := enttest.NewSystemContext(context.Background())
+		var idA, idB uint32
+		for _, uid := range []uint32{userA, userB} {
+			created, err := repo.Create(sysCtx, &internalMessageV1.InternalMessageRecipient{
+				TenantId:        trans.Ptr(uint32(0)),
+				MessageId:       trans.Ptr(uint32(1)),
+				RecipientUserId: trans.Ptr(uid),
+				Status:          internalMessageV1.InternalMessageRecipient_RECEIVED.Enum(),
+			})
+			require.NoError(t, err)
+			if uid == userA {
+				idA = created.GetId()
+			} else {
+				idB = created.GetId()
+			}
+		}
+		return repo, idA, idB
+	}
+
+	statusOf := func(t *testing.T, repo *InternalMessageRecipientRepo, recipientRowID uint32) (entInternalMessageRecipient.Status, bool) {
+		t.Helper()
+		sysCtx := enttest.NewSystemContext(context.Background())
+		row, err := repo.entClient.Client().InternalMessageRecipient.Query().
+			Where(entInternalMessageRecipient.IDEQ(recipientRowID)).Only(sysCtx)
+		if ent.IsNotFound(err) {
+			return "", false
+		}
+		require.NoError(t, err)
+		require.NotNil(t, row.Status)
+		return *row.Status, true
+	}
+
+	asOrdinaryA := crudViewer.WithContext(context.Background(), crudViewer.NewUserContext(uint64(userA), 0, 0, "", nil))
+	asAdmin := auth.NewContext(asOrdinaryA, &authenticationV1.UserTokenPayload{
+		UserId: userA,
+		Roles:  []string{constants.PlatformAdminRoleCode},
+	})
+	asSystem := enttest.NewSystemContext(context.Background())
+
+	t.Run("普通用户带对方id标已读", func(t *testing.T) {
+		repo, idA, idB := newEnv(t)
+		require.NoError(t, repo.MarkNotificationAsRead(asOrdinaryA, &internalMessageV1.MarkNotificationAsReadRequest{
+			UserId: userB, RecipientIds: []uint32{idB},
+		}))
+		statusB, ok := statusOf(t, repo, idB)
+		require.True(t, ok)
+		require.Equal(t, entInternalMessageRecipient.StatusReceived, statusB)
+		statusA, _ := statusOf(t, repo, idA)
+		require.Equal(t, entInternalMessageRecipient.StatusReceived, statusA)
+	})
+
+	t.Run("普通用户空ids标已读只改自己", func(t *testing.T) {
+		repo, idA, idB := newEnv(t)
+		require.NoError(t, repo.MarkNotificationAsRead(asOrdinaryA, &internalMessageV1.MarkNotificationAsReadRequest{
+			UserId: userB,
+		}))
+		statusB, ok := statusOf(t, repo, idB)
+		require.True(t, ok)
+		require.Equal(t, entInternalMessageRecipient.StatusReceived, statusB)
+		statusA, ok := statusOf(t, repo, idA)
+		require.True(t, ok)
+		require.Equal(t, entInternalMessageRecipient.StatusRead, statusA)
+	})
+
+	t.Run("普通用户带对方id改状态", func(t *testing.T) {
+		repo, _, idB := newEnv(t)
+		require.NoError(t, repo.MarkNotificationsStatus(asOrdinaryA, &internalMessageV1.MarkNotificationsStatusRequest{
+			UserId: userB, RecipientIds: []uint32{idB},
+			NewStatus: internalMessageV1.InternalMessageRecipient_READ,
+		}))
+		statusB, ok := statusOf(t, repo, idB)
+		require.True(t, ok)
+		require.Equal(t, entInternalMessageRecipient.StatusReceived, statusB)
+	})
+
+	t.Run("普通用户空ids改状态只改自己", func(t *testing.T) {
+		repo, idA, idB := newEnv(t)
+		require.NoError(t, repo.MarkNotificationsStatus(asOrdinaryA, &internalMessageV1.MarkNotificationsStatusRequest{
+			UserId:    userB,
+			NewStatus: internalMessageV1.InternalMessageRecipient_READ,
+		}))
+		statusB, ok := statusOf(t, repo, idB)
+		require.True(t, ok)
+		require.Equal(t, entInternalMessageRecipient.StatusReceived, statusB)
+		statusA, ok := statusOf(t, repo, idA)
+		require.True(t, ok)
+		require.Equal(t, entInternalMessageRecipient.StatusRead, statusA)
+	})
+
+	t.Run("普通用户带对方id删除", func(t *testing.T) {
+		repo, idA, idB := newEnv(t)
+		require.NoError(t, repo.DeleteNotificationFromInbox(asOrdinaryA, &internalMessageV1.DeleteNotificationFromInboxRequest{
+			UserId: userB, RecipientIds: []uint32{idB},
+		}))
+		_, ok := statusOf(t, repo, idB)
+		require.True(t, ok)
+		_, ok = statusOf(t, repo, idA)
+		require.True(t, ok)
+	})
+
+	t.Run("普通用户空ids删除只删自己", func(t *testing.T) {
+		repo, idA, idB := newEnv(t)
+		require.NoError(t, repo.DeleteNotificationFromInbox(asOrdinaryA, &internalMessageV1.DeleteNotificationFromInboxRequest{
+			UserId: userB,
+		}))
+		_, ok := statusOf(t, repo, idB)
+		require.True(t, ok)
+		_, ok = statusOf(t, repo, idA)
+		require.False(t, ok)
+	})
+
+	for _, actor := range []struct {
+		name string
+		ctx  context.Context
+	}{
+		{"平台管理员", asAdmin},
+		{"系统上下文", asSystem},
+	} {
+		t.Run(actor.name+"按指定用户标已读", func(t *testing.T) {
+			repo, idA, idB := newEnv(t)
+			require.NoError(t, repo.MarkNotificationAsRead(actor.ctx, &internalMessageV1.MarkNotificationAsReadRequest{
+				UserId: userB, RecipientIds: []uint32{idB},
+			}))
+			statusB, _ := statusOf(t, repo, idB)
+			require.Equal(t, entInternalMessageRecipient.StatusRead, statusB)
+			statusA, _ := statusOf(t, repo, idA)
+			require.Equal(t, entInternalMessageRecipient.StatusReceived, statusA)
+		})
+
+		t.Run(actor.name+"空ids标已读只改指定用户", func(t *testing.T) {
+			repo, idA, idB := newEnv(t)
+			require.NoError(t, repo.MarkNotificationAsRead(actor.ctx, &internalMessageV1.MarkNotificationAsReadRequest{
+				UserId: userB,
+			}))
+			statusB, _ := statusOf(t, repo, idB)
+			require.Equal(t, entInternalMessageRecipient.StatusRead, statusB)
+			statusA, _ := statusOf(t, repo, idA)
+			require.Equal(t, entInternalMessageRecipient.StatusReceived, statusA)
+		})
+
+		t.Run(actor.name+"按指定用户改状态", func(t *testing.T) {
+			repo, idA, idB := newEnv(t)
+			require.NoError(t, repo.MarkNotificationsStatus(actor.ctx, &internalMessageV1.MarkNotificationsStatusRequest{
+				UserId: userB, RecipientIds: []uint32{idB},
+				NewStatus: internalMessageV1.InternalMessageRecipient_READ,
+			}))
+			statusB, _ := statusOf(t, repo, idB)
+			require.Equal(t, entInternalMessageRecipient.StatusRead, statusB)
+			statusA, _ := statusOf(t, repo, idA)
+			require.Equal(t, entInternalMessageRecipient.StatusReceived, statusA)
+		})
+
+		t.Run(actor.name+"空ids改状态只改指定用户", func(t *testing.T) {
+			repo, idA, idB := newEnv(t)
+			require.NoError(t, repo.MarkNotificationsStatus(actor.ctx, &internalMessageV1.MarkNotificationsStatusRequest{
+				UserId:    userB,
+				NewStatus: internalMessageV1.InternalMessageRecipient_READ,
+			}))
+			statusB, _ := statusOf(t, repo, idB)
+			require.Equal(t, entInternalMessageRecipient.StatusRead, statusB)
+			statusA, _ := statusOf(t, repo, idA)
+			require.Equal(t, entInternalMessageRecipient.StatusReceived, statusA)
+		})
+
+		t.Run(actor.name+"按指定用户删除", func(t *testing.T) {
+			repo, idA, idB := newEnv(t)
+			require.NoError(t, repo.DeleteNotificationFromInbox(actor.ctx, &internalMessageV1.DeleteNotificationFromInboxRequest{
+				UserId: userB, RecipientIds: []uint32{idB},
+			}))
+			_, ok := statusOf(t, repo, idB)
+			require.False(t, ok)
+			_, ok = statusOf(t, repo, idA)
+			require.True(t, ok)
+		})
+
+		t.Run(actor.name+"空ids整箱删除指定用户", func(t *testing.T) {
+			repo, idA, idB := newEnv(t)
+			require.NoError(t, repo.DeleteNotificationFromInbox(actor.ctx, &internalMessageV1.DeleteNotificationFromInboxRequest{
+				UserId: userB,
+			}))
+			_, ok := statusOf(t, repo, idB)
+			require.False(t, ok)
+			_, ok = statusOf(t, repo, idA)
+			require.True(t, ok)
+		})
+	}
 }

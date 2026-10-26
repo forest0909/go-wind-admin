@@ -390,17 +390,13 @@ func TestInternalMessageServiceSqlite_PlatformBroadcastIsReadableByTenantUser(t 
 		require.Equal(t, "全平台可见", inbox.GetItems()[0].GetContent())
 	}
 
-	// 平台读者不参与归属钉定（用户详情页要按指定用户读收件箱，见 repo.List 的豁免条件），
-	// 所以这里只要求"平台用户自己的那一行也在、打标注 0、同样回填得到正文"。
+	// 租户 0 的普通用户也只读自己的收件行。平台管理员角色才按指定用户读，见 repo.List。
 	platformInbox, err := recipientSvc.ListUserInbox(inboxCtx(1, 0), &paginationV1.PagingRequest{})
 	require.NoError(t, err)
-	var own *internalMessageV1.InternalMessageRecipient
+	require.Len(t, platformInbox.GetItems(), 1, "租户 0 的普通用户只应看到自己的收件行")
 	for _, item := range platformInbox.GetItems() {
-		if item.GetRecipientUserId() == 1 {
-			own = item
-		}
+		require.Equal(t, uint32(1), item.GetRecipientUserId(), "结果里每一行都属于当前用户")
 	}
-	require.NotNil(t, own, "平台用户也在全员广播的受众里")
-	require.Equal(t, uint32(0), own.GetTenantId(), "平台用户的收件行属于租户 0（平台）")
-	require.Equal(t, "平台公告", own.GetTitle())
+	require.Equal(t, uint32(0), platformInbox.GetItems()[0].GetTenantId(), "平台用户的收件行属于租户 0（平台）")
+	require.Equal(t, "平台公告", platformInbox.GetItems()[0].GetTitle())
 }

@@ -46,8 +46,9 @@ func PermissionRule(ctx context.Context, f Filter) error {
 		return fmt.Errorf("security: missing ViewerContext in context")
 	}
 
-	// 平台管理视图/系统视图放行：允许查看全量数据
-	if vc.IsPlatformContext() || vc.IsSystemContext() {
+	// 系统视图放行。平台管理员不在这里用 tid==0 豁免：令牌里的 ALL 会在下面的
+	// ScopeTypeAll 分支放行。单租户下普通用户的 tenant_id 也是 0。
+	if vc.IsSystemContext() {
 		return nil // 在 Privacy 逻辑中 nil 相当于 Skip
 	}
 

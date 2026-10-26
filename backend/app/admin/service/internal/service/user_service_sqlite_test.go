@@ -14,7 +14,7 @@
 // Create（入参守卫 / 操作人与租户注入 / 角色存在性与类型校验(经 roleRepo 真实
 // 分页过滤) / 默认密码落凭证(经 userCredentialRepo 真实 bcrypt+复杂度校验)）、
 // Update（角色校验 / 跨租户重置密码拒绝 / 平台管理员与租户内重置(真实
-// ResetCredential) / 重置后吊销 / UpdatedBy+mask 注入）、Delete（默认管理员、
+// ResetCredential) / 重置后吊销 / 角色集合变化后吊销 / UpdatedBy+mask 注入）、Delete（默认管理员、
 // 自删守卫与正常删除）、EditUserPassword（跨租户拒绝与同租户/平台重置）、
 // init / createDefaultUser / createDefaultUserCredentials（空库播种、凭证自愈补种、
 // overrideUserID 绑定）。
@@ -55,19 +55,23 @@ import (
 
 // userServiceUserRepoStub 是 UserService 测试专用的 data.UserRepo 桩：
 // 嵌入接口获得默认方法集（未覆写方法一旦被调用即 nil 接口 panic，测试即失败）。
-// 只覆写服务层会用到的八个方法：Get（按 id 回放）、List（回放固定列表）、
+// 只覆写服务层会用到的方法：Get（按 id 回放）、List（回放固定列表）、
 // Count（回放固定计数）、Create（记录并回放占位用户）、Update / Delete /
-// AssignUserRole（记录调用）、UserExists（回放固定响应）。
+// AssignUserRole（记录调用）、UserExists（回放固定响应）、
+// ListRoleIDsByUserID（按用户回放角色 ID，供更新前比较）。
 // 桩数据与实体表无关；真实落库的只有凭证表（经真实 userCredentialRepo）。
 type userServiceUserRepoStub struct {
 	data.UserRepo
-	usersByID     map[uint32]*identityV1.User
-	listUsers     []*identityV1.User
-	count         int
-	creates       []*identityV1.CreateUserRequest
-	updates       []*identityV1.UpdateUserRequest
-	deletes       []uint32
-	assignedRoles []*permissionV1.UserRole
+	usersByID        map[uint32]*identityV1.User
+	listUsers        []*identityV1.User
+	count            int
+	creates          []*identityV1.CreateUserRequest
+	updates          []*identityV1.UpdateUserRequest
+	deletes          []uint32
+	assignedRoles    []*permissionV1.UserRole
+	roleIDsByUser    map[uint32][]uint32
+	listRoleIDsErr   error
+	listRoleIDsCalls int
 }
 
 func (s *userServiceUserRepoStub) Get(_ context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
@@ -108,6 +112,17 @@ func (s *userServiceUserRepoStub) UserExists(_ context.Context, _ *identityV1.Us
 func (s *userServiceUserRepoStub) AssignUserRole(_ context.Context, data *permissionV1.UserRole) error {
 	s.assignedRoles = append(s.assignedRoles, data)
 	return nil
+}
+
+func (s *userServiceUserRepoStub) ListRoleIDsByUserID(_ context.Context, userID uint32) ([]uint32, error) {
+	s.listRoleIDsCalls++
+	if s.listRoleIDsErr != nil {
+		return nil, s.listRoleIDsErr
+	}
+	ids := s.roleIDsByUser[userID]
+	out := make([]uint32, len(ids))
+	copy(out, ids)
+	return out, nil
 }
 
 // userServiceEnv 聚合 UserService 测试装配（每测试全新 enttest client + 全新 miniredis）。
@@ -620,6 +635,125 @@ func TestUserServiceSqlite_UpdatePasswordReset(t *testing.T) {
 	require.Nil(t, resp)
 	_, ferr = e.findCred(t, tenantB, "usersvc-cross-tenant-target", constants.DefaultUserPassword)
 	require.NoError(t, ferr, "跨租户目标的密码不应被改动")
+}
+
+// TestUserServiceSqlite_UpdateRoleChangeRevokesTokens 验证用户角色集合变化后旧访问令牌立即失效：
+// 全量或 role_ids 掩码且集合与库中一致时令牌仍有效；掩码不含角色时不比较、不吊销；
+// 集合变化后 Authenticate 失败；列举当前角色失败时仍吊销。其他用户的令牌不受影响。
+func TestUserServiceSqlite_UpdateRoleChangeRevokesTokens(t *testing.T) {
+	e := newUserServiceForTest(t)
+	roleA := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_REVOKE_A")
+	roleB := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_REVOKE_B")
+
+	const target uint32 = 10701
+	const bystander uint32 = 10702
+	e.stub.usersByID[target] = &identityV1.User{Id: trans.Ptr(target), Username: trans.Ptr("usersvc-role-target")}
+	e.stub.roleIDsByUser = map[uint32][]uint32{
+		target: {roleA, roleA},
+	}
+	e.registerOperator(9001)
+	platformOp := opCtx(e.ctx, 9001, 0, true)
+
+	access := issueAdminAccessToken(t, e, target, "usersvc-role-target")
+	bystanderAccess := issueAdminAccessToken(t, e, bystander, "usersvc-role-bystander")
+	requireAccessTokenValid(t, e, access, true)
+	requireAccessTokenValid(t, e, bystanderAccess, true)
+
+	_, err := e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleA},
+		},
+	})
+	require.NoError(t, err, "全量更新且角色集合不变应成功")
+	requireAccessTokenValid(t, e, access, true)
+
+	callsBefore := e.stub.listRoleIDsCalls
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"nickname"}},
+	})
+	require.NoError(t, err, "只改昵称应成功")
+	require.Equal(t, callsBefore, e.stub.listRoleIDsCalls, "掩码不含角色时不应读取当前角色")
+	requireAccessTokenValid(t, e, access, true)
+
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"roleIds"}},
+	})
+	require.NoError(t, err, "camelCase 掩码更新应成功")
+	require.Equal(t, callsBefore, e.stub.listRoleIDsCalls, "repo 不识别的 roleIds 不应触发角色比较")
+	requireAccessTokenValid(t, e, access, true)
+
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleA},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role_ids"}},
+	})
+	require.NoError(t, err, "角色集合相同的更新应成功")
+	requireAccessTokenValid(t, e, access, true)
+
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role_ids"}},
+	})
+	require.NoError(t, err, "角色集合变化的更新应成功")
+	requireAccessTokenValid(t, e, access, false)
+	requireAccessTokenValid(t, e, bystanderAccess, true)
+
+	access = issueAdminAccessToken(t, e, target, "usersvc-role-target")
+	e.stub.roleIDsByUser[target] = []uint32{roleB}
+	e.stub.listRoleIDsErr = fmt.Errorf("list roles failed")
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role_ids"}},
+	})
+	require.NoError(t, err, "列举角色失败时用户更新仍应成功")
+	requireAccessTokenValid(t, e, access, false)
+}
+
+func issueAdminAccessToken(t *testing.T, e *userServiceEnv, userID uint32, username string) string {
+	t.Helper()
+	access, _, err := e.svc.authenticator.CreateUserToken(context.Background(), authenticationV1.ClientType_admin, &authenticationV1.UserTokenPayload{
+		UserId:   userID,
+		Username: trans.Ptr(username),
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, access)
+	return access
+}
+
+func requireAccessTokenValid(t *testing.T, e *userServiceEnv, access string, valid bool) {
+	t.Helper()
+	resp, err := e.svc.authenticator.Authenticate(context.Background(), &authenticationV1.ValidateTokenRequest{
+		Token:         access,
+		ClientType:    authenticationV1.ClientType_admin,
+		TokenCategory: authenticationV1.TokenCategory_ACCESS,
+	})
+	if valid {
+		require.NoError(t, err)
+		require.True(t, resp.GetIsValid())
+		return
+	}
+	require.Error(t, err)
+	require.True(t, authenticationV1.IsUnauthorized(err))
+	if resp != nil {
+		require.False(t, resp.GetIsValid())
+	}
 }
 
 // TestUserServiceSqlite_EditUserPassword 验证 EditUserPassword：

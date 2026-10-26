@@ -2,7 +2,9 @@ package data
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -24,6 +26,9 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
+
+	"go-wind-admin/pkg/constants"
+	"go-wind-admin/pkg/middleware/auth"
 )
 
 type InternalMessageRecipientRepo struct {
@@ -105,13 +110,15 @@ func (r *InternalMessageRecipientRepo) List(ctx context.Context, req *pagination
 
 	builder := r.entClient.Client().InternalMessageRecipient.Query()
 
-	// 收件箱按"我自己的"来读，归属谓词必须由服务端给出：查询条件整个来自调用方的 query 字符串，
-	// 不钉住 recipient_user_id 就等于同租户任何登录用户改一个 ID 就能翻别人的收件记录
-	// （title/content 随父消息回填，一并跟着走）。三端页面本来就各自在前端塞这个条件，
-	// 钉住之后前端传不传都只会拿到自己的行。
-	// 平台/系统视图豁免：用户详情页要看指定用户的收件箱，异步任务路径也需要全量读。
-	if vc, ok := viewer.FromContext(ctx); ok && !vc.IsPlatformContext() && !vc.IsSystemContext() {
-		builder.Where(internalmessagerecipient.RecipientUserIDEQ(uint32(vc.UserID())))
+	// 收件箱按"我自己的"来读。查询条件来自调用方，不钉住 recipient_user_id 就能翻别人的收件记录。
+	// 单租户下所有用户的 tenant_id 都是 0，不能再用 IsPlatformContext 放行。
+	// 归属谓词和调用方条件是 AND。调用方若把 recipient_user_id 写成别人，交集是空表，
+	// 看起来像对方没有消息。限制时丢掉这份条件，归属只由 viewer 决定。
+	if uid, restrict := inboxRestrictToViewer(ctx); restrict {
+		builder.Where(internalmessagerecipient.RecipientUserIDEQ(uid))
+		if cleaned, ok := stripRecipientUserIDQuery(req.GetQuery()); ok {
+			req.FilteringType = &paginationV1.PagingRequest_Query{Query: cleaned}
+		}
 	}
 
 	ret, err := r.repository.ListWithPaging(ctx, builder, builder.Clone(), req)
@@ -323,17 +330,104 @@ func (r *InternalMessageRecipientRepo) Delete(ctx context.Context, id uint32) er
 	return nil
 }
 
+// inboxRestrictToViewer 决定这次收件箱读写要不要钉在当前用户身上。
+//
+// 系统上下文不钉：广播和异步任务要按指定用户读写。
+// 平台管理员角色不钉：用户详情页要按指定用户看收件箱。
+// 其余登录用户一律钉住。tenant_id == 0 在单租户下是所有人，不是放行条件。
+func inboxRestrictToViewer(ctx context.Context) (uint32, bool) {
+	vc, ok := viewer.FromContext(ctx)
+	if !ok || vc.IsSystemContext() || inboxCallerIsPlatformAdmin(ctx) {
+		return 0, false
+	}
+	return uint32(vc.UserID()), true
+}
+
+// stripRecipientUserIDQuery 去掉 query JSON 里的收件人条件。
+// 解析失败时原样留下，分页层会报这份 JSON 的错误；没有可删的键时不改写。
+func stripRecipientUserIDQuery(query string) (string, bool) {
+	if strings.TrimSpace(query) == "" {
+		return "", false
+	}
+	var raw any
+	if err := json.Unmarshal([]byte(query), &raw); err != nil {
+		return "", false
+	}
+	cleaned, removed := removeRecipientUserKeys(raw)
+	if !removed {
+		return "", false
+	}
+	encoded, err := json.Marshal(cleaned)
+	if err != nil {
+		return "", false
+	}
+	return string(encoded), true
+}
+
+func removeRecipientUserKeys(raw any) (any, bool) {
+	switch v := raw.(type) {
+	case map[string]any:
+		removed := false
+		out := make(map[string]any, len(v))
+		for key, child := range v {
+			if isRecipientUserFilterKey(key) {
+				removed = true
+				continue
+			}
+			next, childRemoved := removeRecipientUserKeys(child)
+			if childRemoved {
+				removed = true
+			}
+			out[key] = next
+		}
+		return out, removed
+	case []any:
+		removed := false
+		out := make([]any, len(v))
+		for i, child := range v {
+			next, childRemoved := removeRecipientUserKeys(child)
+			if childRemoved {
+				removed = true
+			}
+			out[i] = next
+		}
+		return out, removed
+	default:
+		return raw, false
+	}
+}
+
+func isRecipientUserFilterKey(key string) bool {
+	field, _, _ := strings.Cut(key, "__")
+	switch field {
+	case "recipient_user_id", "recipientUserId", "RecipientUserId":
+		return true
+	default:
+		return false
+	}
+}
+
+func inboxCallerIsPlatformAdmin(ctx context.Context) bool {
+	claims, err := auth.FromContext(ctx)
+	if err != nil || claims == nil {
+		return false
+	}
+	for _, role := range claims.GetRoles() {
+		if role == constants.PlatformAdminRoleCode {
+			return true
+		}
+	}
+	return false
+}
+
 // inboxScopedUserID 把"这次写操作算谁的"从请求体收回服务端，与 List 的归属谓词同形。
 //
-// 三个收件箱写口的 user_id 整个来自请求体：租户隔离只保证"动不到别租户的行"，同租户内换一个
-// user_id 就能把别人的收件行标成已读，而 DeleteNotificationFromInbox 在 recipient_ids 为空时
-// 是"按用户维度整箱清空"——换一个 id 就是清空别人的收件箱。平台/系统上下文豁免同读侧：
-// 用户详情页这类"代客"场景要按指定用户操作。
+// 三个收件箱写口的 user_id 来自请求体。DeleteNotificationFromInbox 在 recipient_ids
+// 为空时按用户维度整箱清空，换一个 id 就是清空别人的收件箱。
 func (r *InternalMessageRecipientRepo) inboxScopedUserID(ctx context.Context, reqUserID uint32) uint32 {
-	if vc, ok := viewer.FromContext(ctx); ok && !vc.IsPlatformContext() && !vc.IsSystemContext() {
-		return uint32(vc.UserID())
+	if uid, restrict := inboxRestrictToViewer(ctx); restrict {
+		return uid
 	}
-
 	return reqUserID
 }
 
@@ -363,12 +457,9 @@ func (r *InternalMessageRecipientRepo) MarkNotificationAsRead(ctx context.Contex
 	return err
 }
 
-// MarkNotificationsStatus 标记特定用户的某些或所有通知的状态
+// MarkNotificationsStatus 标记特定用户的某些或所有通知的状态。
+// recipient_ids 为空表示该用户的全部通知，与标已读、清空收件箱的空 ids 语义一致。
 func (r *InternalMessageRecipientRepo) MarkNotificationsStatus(ctx context.Context, req *internalMessageV1.MarkNotificationsStatusRequest) error {
-	if len(req.GetRecipientIds()) == 0 {
-		return internalMessageV1.ErrorBadRequest("invalid parameter")
-	}
-
 	userID := r.inboxScopedUserID(ctx, req.GetUserId())
 	if userID == 0 {
 		return internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -384,13 +475,21 @@ func (r *InternalMessageRecipientRepo) MarkNotificationsStatus(ctx context.Conte
 		receiveAt = trans.Ptr(now)
 	}
 
-	_, err := r.entClient.Client().InternalMessageRecipient.Update().
+	status := r.statusConverter.ToEntity(trans.Ptr(req.GetNewStatus()))
+	if status == nil {
+		return internalMessageV1.ErrorBadRequest("invalid parameter")
+	}
+
+	builder := r.entClient.Client().InternalMessageRecipient.Update().
 		Where(
-			internalmessagerecipient.IDIn(req.GetRecipientIds()...),
 			internalmessagerecipient.RecipientUserIDEQ(userID),
-			internalmessagerecipient.StatusNEQ(*r.statusConverter.ToEntity(trans.Ptr(req.GetNewStatus()))),
-		).
-		SetNillableStatus(r.statusConverter.ToEntity(trans.Ptr(req.GetNewStatus()))).
+			internalmessagerecipient.StatusNEQ(*status),
+		)
+	if len(req.GetRecipientIds()) > 0 {
+		builder = builder.Where(internalmessagerecipient.IDIn(req.GetRecipientIds()...))
+	}
+	_, err := builder.
+		SetNillableStatus(status).
 		SetNillableReadAt(readAt).
 		SetNillableReceivedAt(receiveAt).
 		SetNillableUpdatedAt(trans.Ptr(now)).

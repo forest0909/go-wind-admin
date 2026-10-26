@@ -192,7 +192,7 @@ Security capabilities are designed with reference to the technical requirements 
 | **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); image captcha; Redis login failure rate limiting (IP + username dual dimensions) |
 | **Access Control** | API authorization is Casbin. Role, permission, and API mappings live in the database and hot-reload. Menus, buttons, role data scope, and field permissions are also in place |
 | **Tenant code** | Isolation and plan code remains, and the sidebar entries are hidden. This tree is used as a single-tenant admin, not delivered as multi-tenant SaaS |
-| **Data Confidentiality** | Login passwords encrypted at the application layer (AES) in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
+| **Data Confidentiality** | Passwords for login, user creation, reset, and profile change are AES-encrypted in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
 | **Data Backup & Recovery** | The program does not ship a database backup. Use the database's own tools (for example `pg_dump`) or an operations platform, and rehearse a restore |
 | **Frontend Security** | `frontend/admin/react/scripts/deploy/nginx.conf` sets X-Frame-Options / HSTS / Content-Security-Policy. The React build also injects a CSP `<meta>` into `index.html` |
 
@@ -237,7 +237,7 @@ Security capabilities are designed with reference to the technical requirements 
 |---------|-------------|
 | Message Categories | Manage the message categories offered in message management. They are **flat, one level deep** (`sys_internal_message_categories` has no parent_id column, and deletion removes only the row — no tree cascade). |
 | Message Management | Send by scope (all users / specified users) with revocation; broadcast fan-out runs on an async task queue (resumable, idempotent); view read status and read time. |
-| Internal Mail | Manage internal messages: view details, delete, mark as read, mark all as read. |
+| Internal Mail | Each user sees only their own inbox: view, delete, mark as read, mark all as read. A platform admin can still open a chosen user's inbox from the user detail page. |
 | Login Logs | Query login logs for successful and failed logins; supports IP geolocation. |
 | Operation Logs | Query operation logs for normal and abnormal operations; supports IP geolocation, resource identification, and detail view. |
 

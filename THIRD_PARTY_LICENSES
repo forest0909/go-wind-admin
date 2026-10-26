@@ -1,6 +1,6 @@
 # Third-party licenses
 
-本仓库 `backend/third_party/` 里的代码已经收进主模块，可以直接改。改之前保留原版权声明。下面是收编时各目录的许可证原文。版本和本地改动记在各目录的 `VERSION.md`。收编日期都是 2026-10-26，来源是当时本机的 module cache，不是上游仓库的最新提交。
+本仓库 `backend/third_party/` 里的代码已经收进主模块，可以直接改。改之前保留原版权声明。下面是收编时各目录的许可证原文。版本和本地改动记在各目录的 `VERSION.md`。收编日期都是 2026-10-26，来源是当时本机的 module cache，不是上游仓库的最新提交。Apache-2.0（redact 运行时、redact 插件，以及 NOTICE 里的 Shivam Rathore 版权）已于 2026-10-26 接受。
 
 | 目录 | 许可证 | 来源版本 |
 |---|---|---|

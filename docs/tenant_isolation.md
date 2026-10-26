@@ -97,7 +97,7 @@ ViewerContext 语义（`viewer.Context` 接口实现）：
 
 | 实现 | tid | IsPlatform | IsSystem | 用途 |
 |---|---|---|---|---|
-| `UserContext` | 令牌 tid | tid==0 | false | 请求上下文；tid==0 平台管理员全量，tid>0 租户 |
+| `UserContext` | 令牌 tid | tid==0 | false | 请求上下文。tid==0 只跳过租户谓词；数据范围看令牌，不把 tid==0 当全量 |
 | `SystemContext`（库 `go-crud/viewer`） | 0 | true | true | 后台任务/闸门自查询（`viewer.WithSystemContext`） |
 | `NoopContext`（库） | — | — | — | 登录流程（配 `privacy.DecisionContext(Allow)` 显式绕过） |
 
@@ -183,6 +183,11 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 （`rule.PermissionRule`，五档语义见 data_scope_design 第 2/4 节）；变更侧 = 租户变更防护。
 其余表接入数据范围照 data_scope_design 第 4 节步骤（两列齐备 + Policy 改组合策略 + 守卫单测）。
 
+数据范围不把 `tid==0` 当成全量。`PermissionRule` 只在系统上下文放行；登录聚合
+（`aggregateDataScopes`）只在令牌 `is_platform_admin` 时写成 `[ALL]`，其余用户包括租户 0
+的普通用户按角色 `data_scope` 聚合。平台管理员能看全表，是因为令牌里的 ALL，不是因为租户号是 0。
+`UNIT_*` 的单元目标集仍按令牌租户过滤，租户 0 只取租户 0 的单元。
+
 ## 6. 覆盖边界（不隔离什么）
 
 | 路径 | 状态 | 说明 |
@@ -190,23 +195,25 @@ Create 分支：租户上下文**强制覆盖** `SetTenantID(viewer.tid)`（防�
 | ent 数据层（26 张表读写） | ✅ 隔离 | 本文档第 5 节 |
 | **应用层自有存储**（Redis 缓存键、MinIO 对象路径、asynq 任务载荷） | ❌ 不自动注入 | 隔离谓词只存在于 ent privacy；这些路径必须业务侧显式携带/校验租户维度 |
 | **租户内跨用户**（同 tenant 下 A 读/写 B 的行） | ❌ 完全不覆盖 | 隔离谓词只有 `tenant_id` 一列，"只看自己的行"必须业务侧自己钉（收件箱读/写已钉，见下） |
-| 平台管理员上下文 | 放行 | 设计使然（tid==0 全量） |
+| 平台管理员上下文 | 租户谓词跳过 | tid==0 只表示不做租户过滤。数据范围另看令牌里的 ALL，见第 5.3 节 |
 | 登录 / 刷新 / 闸门自查询 | 例外通道 | NoopContext+privacy.Allow（登录起步的 ctx 复位）/ SystemContext：闸门自查询、**刷新链路**（`authentication_service.go:639`，注释 `:635-638` 说明为何必须跨租户读）——审计落库自身也经 SystemContext 写入 |
 
 **"自己的行"没人钉过：收件箱越权读＋越权写（2026-09-20 实测并修）**。
 `GET /admin/v1/internal-message/inbox` 的过滤条件整个来自调用方 `query` 字符串，租户隔离只保证"读不到别租户的行"，
 同租户内换一个 `recipientUserId` 就能读到别人的收件记录（`title`/`content` 由父消息回填，一并带出）。
-三端页面各自在前端塞 `recipientUserId`，所以这个条件从来不是服务端事实。
-修法与位置见 `internal_message_recipient_repo.go` 的 `List`（非平台/非系统上下文强制
+React 页面在前端塞 `recipientUserId`，所以这个条件从来不是服务端事实。
+修法与位置见 `internal_message_recipient_repo.go` 的 `List`（登录用户强制
 `recipient_user_id = viewer.UserID()`）。
+**2026-10-26 补了一刀**：单租户下所有人的 `tenant_id` 都是 0，`IsPlatformContext()` 会把普通用户也放行。
+收件箱不再用这个判断。系统上下文（广播、异步任务）和令牌里带 `platform:admin` 的平台管理员仍可按指定用户读写，用户详情页靠后者。其余登录用户，包括租户 0 的普通用户，只能动自己的收件箱。
 **写侧同形问题同日修复**：`MarkNotificationAsRead` / `MarkNotificationsStatus` / `DeleteNotificationFromInbox`
 原先一律用请求体的 `user_id` 定作用域，后果比读侧重——`DeleteNotificationFromInbox` 在 `recipient_ids`
 为空时是"按用户维度整箱删除"，换一个 id 就是清空别人的收件箱。现收进同一个助手
-`inboxScopedUserID`（平台/系统上下文豁免同读侧），两种落定语义与回归测试见
+`inboxScopedUserID`（豁免条件与读侧相同），两种落定语义与回归测试见
 `internal_message_recipient_repo_sqlite_test.go` 的 `TestInternalMessageRecipientInboxWritesSqlite`：
 带 `recipient_ids` 时跨用户调用缩成空操作，`recipient_ids` 为空时整箱操作缩回**调用者自己**。
 **给"按人归属"的资源接入时的教训**：凡是"这张表每行属于某个用户"的路径，归属谓词要**读写两侧**都落在
-repo 的查询/变更构造上，而不是指望调用方传对——三端各有一份前端，漏一份就是一个洞。
+repo 的查询/变更构造上，而不是指望调用方传对——前端只有 React 这一份，漏传就是一个洞。
 
 **`sys_access_keys` 已随机器凭证删除。** 2026-09-13 曾给这张表补过仓内守卫，并有
 `TestTenantMutationGuardAccessKey`。表、schema 和这则单测都已撤掉。

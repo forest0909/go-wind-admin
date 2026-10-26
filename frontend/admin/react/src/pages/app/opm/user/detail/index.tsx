@@ -5,7 +5,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUpdateUser } from '@/api/hooks/user';
 import { queryClient } from '@/core';
+import { useAccess } from '@/core/access';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
+import { useUserStore } from '@/stores/user';
 import { TabEnum } from './types';
 import BasicInfoPage from './BasicInfoPage';
 import InternalMessagePage from './InternalMessagePage';
@@ -27,6 +29,17 @@ const UserDetail = () => {
 
   const [activeTab, setActiveTab] = useState<string>(TabEnum.BASIC_INFO);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const currentUserId = useUserStore((s) => s.userInfo?.id);
+  const { hasAccessByRoles } = useAccess();
+  // 角色码与后端 platform:admin 一致。非平台管理员看别人时，后端把收件箱钉在自己身上，
+  // 和详情里的用户条件相交是空表。看的就是自己时两边是同一个人，列表是自己的收件箱，Tab 留着。
+  const showInternalMessageTab =
+    hasAccessByRoles(['platform:admin']) ||
+    (userId !== undefined && currentUserId === userId);
+  const currentTab =
+    activeTab === TabEnum.INTERNAL_MESSAGE && !showInternalMessageTab
+      ? TabEnum.BASIC_INFO
+      : activeTab;
 
   // 禁用账户
   const banMutation = useUpdateUser({
@@ -101,20 +114,22 @@ const UserDetail = () => {
         {/* Tabs 导航 */}
         <div style={{ padding: '0 20px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
           <Tabs
-            activeKey={activeTab}
+            activeKey={currentTab}
             onChange={setActiveTab}
             style={{ marginBottom: 0 }}
             items={[
               { key: TabEnum.BASIC_INFO, label: t('tab.basicInfo') },
-              { key: TabEnum.INTERNAL_MESSAGE, label: t('tab.internalMessage') },
+              ...(showInternalMessageTab
+                ? [{ key: TabEnum.INTERNAL_MESSAGE, label: t('tab.internalMessage') }]
+                : []),
             ]}
           />
         </div>
 
         {/* Tab 内容区 */}
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-          {activeTab === TabEnum.BASIC_INFO && <BasicInfoPage userId={userId} />}
-          {activeTab === TabEnum.INTERNAL_MESSAGE && <InternalMessagePage userId={userId} />}
+          {currentTab === TabEnum.BASIC_INFO && <BasicInfoPage userId={userId} />}
+          {currentTab === TabEnum.INTERNAL_MESSAGE && <InternalMessagePage userId={userId} />}
         </div>
       </div>
 

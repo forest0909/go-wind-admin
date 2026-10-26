@@ -308,7 +308,7 @@ const TenantDrawer: React.FC<TenantDrawerProps> = ({
               {usageQuery.data.quotas.map((q, idx) => {
                 let label = q.quotaType?.toString() ?? '';
                 let current = 0;
-                let limit = q.quotaValue ?? 0;
+                const limit = q.quotaValue ?? 0;
                 if (q.quotaType === 'USER_LIMIT') {
                   label = t('usageUserCount');
                   current = usageQuery.data.userCount ?? 0;

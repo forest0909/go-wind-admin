@@ -39,77 +39,11 @@
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
-// Canonical mask values: one entry per distinct allowlist. Every site
-// carrying a given allowlist — inline literal or named constant, in any of
-// the three frontends — is pinned to the same canonical string, which is
-// what makes the three frontends' mask content comparable.
-const MASKS = {
-  // Built-in channel types. Credentials stay on dedicated request fields
-  // (password / webhookSecret / smsAccessSecret) and must not enter the mask.
-  notificationChannel:
-    'name,type,smtpHost,smtpPort,smtpUsername,smtpFrom,smtpFromName,smtpTls,webhookUrl,webhookSignStyle,webhookPayloadTemplate,smsProvider,smsAccessKeyId,smsSignName,smsTemplateCode,smsAppId,smsRegion,enabled,remark',
-  // Extension channel types: the dynamic settings object replaces the
-  // built-in SMTP/webhook/SMS columns.
-  notificationChannelExt: 'name,type,settings,enabled,remark',
-  // Notification rule form. event_type is immutable after creation.
-  notificationRule: 'channel,isAsync,isEnabled,remark',
-  // Notification template form. code is immutable after creation.
-  notificationTemplate:
-    'name,titleTemplate,contentTemplate,isEnabled,remark',
-  monitorAlert:
-    'name,metric,op,threshold,cooldownMinutes,channel,target,isEnabled,remark',
-  aiAgent: 'name,description,enabled',
-  aiAgentGraph: 'graph',
-};
+// 通知、监控告警、AI 页面已从本仓库删除，对应的 mask 登记一起拿掉。
+// 下面的扫描仍然会拦住新出现的、没有登记的 updateMask。
+const MASKS = {};
 
-// Registered allowlist sites. Each entry pins, for one file, the complete
-// set of updateMask usages that file may contain:
-//   expectStrings — every literal mask value in the file, compared as a
-//     multiset (counts included: a duplicated literal fails too)
-//   expectIdents  — every constant-referenced mask in the file
-//   defs          — named mask constants DEFINED in the file, pinned to
-//     their exact value (usage and definition may live in different
-//     files across the three frontends)
-const REGISTRY = [
-  {
-    // Ternary: extension channels write settings, built-in channels write
-    // the SMTP/webhook/SMS columns. Both branches are pinned.
-    path: 'frontend/admin/react/src/pages/app/notification/channel/index.tsx',
-    expectStrings: [MASKS.notificationChannelExt, MASKS.notificationChannel],
-    expectIdents: [],
-    defs: [],
-  },
-  {
-    path: 'frontend/admin/react/src/pages/app/notification/rule/index.tsx',
-    expectStrings: [MASKS.notificationRule],
-    expectIdents: [],
-    defs: [],
-  },
-  {
-    path: 'frontend/admin/react/src/pages/app/notification/template/index.tsx',
-    expectStrings: [MASKS.notificationTemplate],
-    expectIdents: [],
-    defs: [],
-  },
-  {
-    path: 'frontend/admin/react/src/pages/app/system/monitor-alert/index.tsx',
-    expectStrings: [MASKS.monitorAlert],
-    expectIdents: [],
-    defs: [],
-  },
-  {
-    path: 'frontend/admin/react/src/pages/app/ai/agent/index.tsx',
-    expectStrings: [MASKS.aiAgent],
-    expectIdents: [],
-    defs: [],
-  },
-  {
-    path: 'frontend/admin/react/src/pages/app/ai/agent/agent-canvas.tsx',
-    expectStrings: [MASKS.aiAgentGraph],
-    expectIdents: [],
-    defs: [],
-  },
-];
+const REGISTRY = [];
 
 // This checkout keeps the React application tree only.
 const ROOTS = ['frontend/admin/react/src'];

@@ -20,19 +20,19 @@
 
 ## 项目亮点
 
-- **前端只保留 React 19 + Ant Design**：后端不变。`vue-element` / `vue-vben` 已按 [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) 删除，本地只维护 `frontend/admin/react`
-- **企业级 RBAC**：支持多租户、多角色、多部门、菜单/按钮/数据级权限控制（策略引擎可切换：Casbin / OPA）
-- **安全与等保合规**：按等保 2.0 技术要求内置 180 天审计日志留存归档、口令策略三件套、图形验证码与登录限流、口令应用层加密、动态 RBAC 与多租户隔离，详见[安全与等保合规](#安全与等保合规)
+- **前端只有 React 19 + Ant Design**：目录是 `frontend/admin/react`。没有第二套前端
+- **权限**：角色、部门、菜单、按钮和数据范围。接口鉴权用 Casbin，不提供 OPA
+- **安全**：登录日志和操作日志、口令策略、图形验证码、登录限流、口令加密。详见[安全与等保合规](#安全与等保合规)
 - **微服务 + 单体自由切换**：基于 go-kratos 微服务框架，但支持单体架构模式开发与部署，灵活适配团队规模
 - **全栈代码生成**：Protobuf → Go API / TypeScript 客户端，Ent Schema → ORM。命令在 `backend/` 下：`make api`、`make ent`、`make ts`。
 - **生产就绪**：JWT 鉴权、SSE 消息推送、异步任务调度、Swagger 文档、Docker 一键部署
-### 本仓库只保留 React
+### 本仓库的定位
 
-**上游是三套并列前端；这份代码已经选定 React。**
+**单租户管理端：Go 后端 + React 前端。** 没有第二套前端，也没有 AI 模块。
 
-`vue-element` 与 `vue-vben` 已删除。后端、接口契约和 React 页面都还在。跟上游同步时，新功能以 React 为准。
+租户、套餐、配额的代码还在，侧栏菜单已隐藏。接口鉴权是 Casbin。
 
-文档里另外两端的端口、演示地址和 `make ts` 目标不再适用于本仓库。裁剪步骤见 [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md)。
+依赖在 `backend/third_party/`，许可证见 [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES)。命令见 [AGENTS.md](./AGENTS.md)。
 
 ---
 
@@ -45,27 +45,27 @@
 
 ## 代码仓库
 
-本项目在以下三个平台同步发布，内容一致，任选其一克隆 / Star 即可：
+这是裁剪后的工作副本，不随下面两个上游地址自动更新：
 
 | 平台 | 地址 |
 |------|------|
 | 仓库 | 当前工作副本 |
-| Gitee | <https://gitee.com/tx7do/go-wind-admin> |
-| AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+| 上游 Gitee | <https://gitee.com/tx7do/go-wind-admin> |
+| 上游 AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
 
 ---
 
 ## 演示地址
 
-下面三个地址是上游在线演示。**本仓库代码只保留 React**，本地对应最后一行：
+本仓库没有在线演示。本地前端只有 React，开发端口 15888。
 
-| 前端版本 | 演示地址 |
+| 端 | 说明 |
 |---------|--------|
-| Vue3 Vben | <https://vben.admin.gowind.cloud> |
-| Vue3 Element Plus | <https://ele.admin.gowind.cloud> |
-| React | <https://react.admin.gowind.cloud> |
+| 前端 | `frontend/admin/react` |
+| 后端 | HTTP `:7788` |
+| 账号 | `admin` / `Abcd@1234` |
 
-- 后端 Swagger：<https://api.demo.admin.gowind.cloud/docs/>
+- 后端 Swagger：服务起来之后打开 <http://127.0.0.1:7788/docs/>
 - 默认账号密码：`admin` / `Abcd@1234`
 
 ---
@@ -160,7 +160,7 @@ pnpm dev                    # 端口 15888
 >
 > 开发端口在 `frontend/admin/react/.env.development` 的 `VITE_SERVER_PORT`（15888）。被占用时 Vite 自动 +1；后端 CORS 已放行 `15888` 与 `15889`。
 >
-> `vue-element` 与 `vue-vben` 已删除。在 `backend/` 执行 `make ts` 只会生成 React 客户端。
+> 在 `backend/` 执行 `make ts` 只生成 React 客户端。
 
 ---
 
@@ -171,11 +171,11 @@ pnpm dev                    # 端口 15888
 <tr><td><strong>后端框架</strong></td><td><code>Golang</code> · <code>go-kratos v2</code> · <code>Protobuf / Buf</code></td></tr>
 <tr><td><strong>ORM</strong></td><td><code>Ent</code> · <code>MySQL</code> · <code>PostgreSQL</code></td></tr>
 <tr><td><strong>中间件</strong></td><td><code>Redis</code>（compose 拉 <code>bitnami/redis:latest</code>，未固定版本；代码只用到 Set/Expire/Publish 一类的长期命令，未使用 Redis 8 专属命令） · <code>MinIO</code>（S3 兼容对象存储）</td></tr>
-<tr><td><strong>认证授权</strong></td><td><code>JWT</code>（认证） · <code>Casbin</code> / <code>OPA</code>（鉴权引擎，二选一，默认 noop 全放行）</td></tr>
+<tr><td><strong>认证授权</strong></td><td><code>JWT</code>（认证） · <code>Casbin</code>（接口鉴权）。配置不是 casbin 时启动失败</td></tr>
 <tr><td><strong>实时通信</strong></td><td><code>SSE</code>（服务端推送） · <code>Asynq</code>（异步任务）</td></tr>
-<tr><td><strong>前端</strong></td><td><strong>只保留 React</strong>。下面两行是已删除的上游选项，本仓库没有这两份代码</td></tr>
-<tr><td><strong>Vue Vben 版</strong></td><td>已从本仓库删除（上游演示站仍在）</td></tr>
-<tr><td><strong>Vue Element 版</strong></td><td>已从本仓库删除（上游演示站仍在）</td></tr>
+<tr><td><strong>前端</strong></td><td>只有 React，技术见「React 版」那一行</td></tr>
+<tr><td><strong>已删除</strong></td><td>第二套前端、AI、SSO、MFA、程序内备份都不在本仓库</td></tr>
+<tr><td><strong>不对外的代码</strong></td><td>租户、套餐、配额的页面还在，侧栏不展示</td></tr>
 <tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code>（无 UMI） · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>部署运维</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -190,11 +190,11 @@ pnpm dev                    # 端口 15888
 |------------|---------|
 | **安全审计** | 登录日志和操作日志，记录客户端 IP（并解析归属地）与前端下发的 `X-Request-ID` 请求号。asynq 每日定时归档：库内留存 180 天（`AUDIT_RETENTION_DAYS` 可调），超期数据导出 JSONL 归档文件留痕，库瘦身与日志留存两不误 |
 | **身份鉴别** | 口令复杂度（≥8 位、小写/大写/数字/符号四类取三）、历史口令复用检查（默认近 3 条）、口令有效期（默认 90 天），阈值经「参数管理」平台参数调整（内置参数启动时播种，环境变量配置已废弃）；图形验证码；Redis 登录失败限流（IP + 用户名双维度） |
-| **访问控制** | 动态 RBAC 权限引擎（策略引擎可切换：Casbin / OPA），角色—权限—接口映射存于数据库，权限变更即时热更新生效；菜单/按钮级权限控制，角色级行数据权限范围（V1 试点：岗位表）与字段级权限（V1 试点：用户表，黑名单字段自响应裁剪） |
-| **多租户隔离** | ent Privacy 策略编译级数据隔离：读查询自动注入租户过滤，Create 防伪造租户、Update / Delete 注入租户谓词（跨租户变更命中 0 行）；租户请求按 `(path, method)` 经 Api 表 fail-closed 校验（缺权限点即拒绝）；套餐模块白名单与到期只读策略 |
+| **访问控制** | 接口鉴权是 Casbin。角色、权限、接口的对应关系存在数据库里，权限变更会热更新。另有菜单和按钮权限、角色级数据范围、字段级权限 |
+| **租户代码** | 隔离和套餐代码仍在，侧栏已隐藏。本仓库按单租户管理端使用，不作为多租户 SaaS 交付 |
 | **数据保密性** | 登录口令应用层 AES 加密传输、bcrypt 哈希存储；敏感任务配置 AES-256-GCM 静态加密（Ent Hook 透明加解密）；JWT RS256 非对称签名；refresh token 走 HttpOnly Cookie；传输层 TLS 由部署层启用（后端 `server.rest.tls` 配置或 nginx / 负载均衡终止） |
 | **数据备份恢复** | 程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练恢复 |
-| **前端安全** | 三端各自附带 `scripts/deploy/nginx.conf`，生产侧下发 X-Frame-Options / HSTS / Content-Security-Policy 响应头；react 与 vue-element 另在构建期向 `index.html` 注入 CSP `<meta>`（内联脚本按 sha256 白名单放行），换掉 web server 也仍有一层防护 |
+| **前端安全** | React 的 `frontend/admin/react/scripts/deploy/nginx.conf` 在生产侧下发 X-Frame-Options / HSTS / Content-Security-Policy。构建期还会向 `index.html` 注入 CSP `<meta>` |
 
 > **说明**：等保测评除技术要求外，还包含管理制度、物理环境、人员组织等非软件范畴的内容。本项目覆盖的是技术措施部分，可为私有化部署的等保测评准备提供直接支撑，但不能替代完整的等保测评流程。
 
@@ -209,13 +209,13 @@ pnpm dev                    # 端口 15888
 | 功能 | 说明 |
 |------|-----|
 | 用户管理 | 管理和查询用户，支持高级查询和按部门联动用户，用户可禁用/启用、设置/取消主管、重置密码、配置多角色、多部门和上级主管、一键登录指定用户等功能 |
-| 租户管理 | 管理租户，新增租户后自动初始化租户部门、默认角色和管理员。支持配置套餐、禁用/启用、一键登录租户管理员功能。侧栏不展示，页面仍在 `/tenant/members` |
-| 套餐与配额管理 | 管理租户订阅套餐及其资源配额（如模块白名单、用量上限），支持套餐与配额项的增删改查。侧栏不展示，页面仍在 `/tenant/plans` |
+| 租户管理 | 代码和页面还在（`/tenant/members`），侧栏不展示。本仓库不作为多租户 SaaS 使用 |
+| 套餐与配额管理 | 代码和页面还在（`/tenant/plans`），侧栏不展示 |
 | 角色管理 | 管理角色和角色分组，支持按角色联动用户，设置菜单授权、数据权限范围（五档 / 自定义组织单元集）与字段级权限（黑名单字段集），批量添加和移除员工 |
 | 权限管理 | 管理权限分组、菜单、权限点，支持树形列表展示 |
 | 组织管理 | 管理组织，支持树形列表展示 |
-| 职位管理 | 用户职务管理，职务可作为用户的一个标签；支持 Excel 导入（客户端模板下载、逐行走既有创建接口、行级错误回报）。**"所属组织"列只有 vue-element 的导入器解析**（按组织名称精确匹配回填组织单元，未命中记该行错误）；react 与 vue-vben 的导入字段清单里排除了 `orgUnitId`，代码注释标为"外键需名称解析，属后续演进" |
-| 菜单管理 | 配置系统菜单，操作权限，按钮权限标识等，包括目录、菜单、按钮；支持菜单同步（三端齐备，事务化清空重建或增量合并两种模式，合并模式按全路径匹配原位更新并保留既有菜单 ID 与角色授权） |
+| 职位管理 | 用户职务管理，可作为用户标签。Excel 导入不解析「所属组织」列（`orgUnitId` 不在导入字段里） |
+| 菜单管理 | 配置目录、菜单和按钮。菜单同步只在 React：可以清空重建，也可以按全路径增量合并并保留原菜单 ID 与角色授权 |
 
 ### 系统功能
 

@@ -20,19 +20,19 @@
 
 ## Project Highlights
 
-- **Frontend kept: React 19 + Ant Design**. The backend is unchanged. `vue-element` / `vue-vben` were removed per [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) (Chinese); this tree maintains `frontend/admin/react` only
-- **Enterprise-grade RBAC**: Multi-tenant, multi-role, multi-department, menu / button / data-level permission control (switchable policy engine: Casbin / OPA)
-- **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, image captcha and login rate limiting, application-layer password encryption, dynamic RBAC and tenant isolation. See [Security & Compliance](#security--compliance-mlps-20)
+- **Frontend: React 19 + Ant Design only**. The directory is `frontend/admin/react`. There is no second frontend
+- **Access control**: roles, departments, menus, buttons, and data scope. API authorization uses Casbin. OPA is not included
+- **Security**: login logs and operation logs, password policy, image captcha, login rate limiting, and password encryption. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
 - **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM. Under `backend/`: `make api`, `make ent`, `make ts`.
 - **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
-### This checkout keeps React only
+### What this tree is
 
-**Upstream ships three parallel frontends; this tree has already chosen React.**
+**A single-tenant admin: Go backend + React frontend.** There is no second frontend and no AI module.
 
-`vue-element` and `vue-vben` are removed. The backend, the API contract, and the React pages remain. New upstream features land on React first.
+Tenant, plan, and quota code is still in the tree. Their sidebar entries are hidden. API authorization is Casbin.
 
-Ports, demo URLs, and `make ts` targets for the other two frontends do not apply here. Trim steps: [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md) (Chinese).
+Dependencies live in `backend/third_party/`. Licenses: [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES). Commands: [AGENTS.md](./AGENTS.md).
 
 ---
 
@@ -45,27 +45,27 @@ Ports, demo URLs, and `make ts` targets for the other two frontends do not apply
 
 ## Code Repositories
 
-This project is published in sync on the three platforms below — identical content, clone or star whichever you prefer:
+This is a trimmed working copy. It does not track the two upstream URLs below:
 
 | Platform | URL |
 |----------|-----|
 | Repository | this working copy |
-| Gitee | <https://gitee.com/tx7do/go-wind-admin> |
-| AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+| Upstream Gitee | <https://gitee.com/tx7do/go-wind-admin> |
+| Upstream AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
 
 ---
 
 ## Demo
 
-The three URLs below are upstream online demos. **This tree keeps React only**; locally that is the last row:
+This tree has no online demo. The local frontend is React only, on dev port 15888.
 
-| Frontend Edition | Demo |
-|------------------|------|
-| Vue3 Vben | <https://vben.admin.gowind.cloud> |
-| Vue3 Element Plus | <https://ele.admin.gowind.cloud> |
-| React | <https://react.admin.gowind.cloud> |
+| Part | Where |
+|---------|--------|
+| Frontend | `frontend/admin/react` |
+| Backend | HTTP `:7788` |
+| Account | `admin` / `Abcd@1234` |
 
-- Backend Swagger: <https://api.demo.admin.gowind.cloud/docs/>
+- Backend Swagger: <http://127.0.0.1:7788/docs/> after the service is up
 - Default account / password: `admin` / `Abcd@1234`
 
 ---
@@ -160,7 +160,7 @@ pnpm dev                    # port 15888
 >
 > The dev port is `VITE_SERVER_PORT` in `frontend/admin/react/.env.development` (15888). Vite moves to the next port if it is busy; CORS already allows `15888` and `15889`.
 >
-> `vue-element` and `vue-vben` are gone. `make ts` in `backend/` generates the React client only.
+> `make ts` in `backend/` generates the React client only.
 
 ---
 
@@ -171,11 +171,11 @@ pnpm dev                    # port 15888
 <tr><td><strong>Backend Framework</strong></td><td><code>Golang</code> · <code>go-kratos v2</code> · <code>Protobuf / Buf</code></td></tr>
 <tr><td><strong>ORM</strong></td><td><code>Ent</code> · <code>MySQL</code> · <code>PostgreSQL</code></td></tr>
 <tr><td><strong>Middleware</strong></td><td><code>Redis</code> (compose pulls <code>bitnami/redis:latest</code>, no version pin; the codebase uses only long-standing commands such as Set/Expire/Publish — nothing Redis-8-specific) · <code>MinIO</code> (S3-compatible object storage)</td></tr>
-<tr><td><strong>Authentication & Authorization</strong></td><td><code>JWT</code> (authentication) · <code>Casbin</code> / <code>OPA</code> (authorization engine — choose one; defaults to allow-all noop)</td></tr>
+<tr><td><strong>Authentication & Authorization</strong></td><td><code>JWT</code> for authentication · <code>Casbin</code> for API authorization. Startup fails when the engine is not casbin</td></tr>
 <tr><td><strong>Realtime</strong></td><td><code>SSE</code> (server push) · <code>Asynq</code> (async tasks)</td></tr>
-<tr><td><strong>Frontend</strong></td><td><strong>React only</strong>. The next two rows are upstream options already removed from this tree</td></tr>
-<tr><td><strong>Vue Vben Edition</strong></td><td>Removed from this tree (the upstream demo is still online)</td></tr>
-<tr><td><strong>Vue Element Edition</strong></td><td>Removed from this tree (the upstream demo is still online)</td></tr>
+<tr><td><strong>Frontend</strong></td><td>React only. See the React row below</td></tr>
+<tr><td><strong>Removed</strong></td><td>No second frontend, no AI, no SSO, no MFA, and no in-app database backup</td></tr>
+<tr><td><strong>Not a product surface</strong></td><td>Tenant, plan, and quota pages remain, and they are hidden from the sidebar</td></tr>
 <tr><td><strong>React Edition</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> (no UMI) · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>Deployment & Ops</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -190,11 +190,11 @@ Security capabilities are designed with reference to the technical requirements 
 |------------|----------------|
 | **Security Audit** | Login logs and operation logs, recording the client IP (with geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
 | **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); image captcha; Redis login failure rate limiting (IP + username dual dimensions) |
-| **Access Control** | Dynamic RBAC engine (switchable policy engine: Casbin / OPA); role–permission–API mappings stored in the database with instant hot-reload on changes; menu / button level permission control, plus role-scoped row-level data scope (V1 pilot: position table) and field-level permissions (V1 pilot: user table, blacklisted fields pruned from responses) |
-| **Multi-Tenant Isolation** | Compile-time ent Privacy data isolation: read queries get automatic tenant filtering; Create guards against forged tenants, Update / Delete inject tenant predicates (cross-tenant mutations match 0 rows); tenant requests are fail-closed validated against the Api table by `(path, method)`; plan module whitelists and expiry read-only policy |
+| **Access Control** | API authorization is Casbin. Role, permission, and API mappings live in the database and hot-reload. Menus, buttons, role data scope, and field permissions are also in place |
+| **Tenant code** | Isolation and plan code remains, and the sidebar entries are hidden. This tree is used as a single-tenant admin, not delivered as multi-tenant SaaS |
 | **Data Confidentiality** | Login passwords encrypted at the application layer (AES) in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
 | **Data Backup & Recovery** | The program does not ship a database backup. Use the database's own tools (for example `pg_dump`) or an operations platform, and rehearse a restore |
-| **Frontend Security** | Each of the three frontends ships its own `scripts/deploy/nginx.conf`, setting X-Frame-Options / HSTS / Content-Security-Policy response headers in production; react and vue-element additionally inject a CSP `<meta>` into `index.html` at build time (inline scripts allowlisted by sha256), so one layer survives a different web server |
+| **Frontend Security** | `frontend/admin/react/scripts/deploy/nginx.conf` sets X-Frame-Options / HSTS / Content-Security-Policy. The React build also injects a CSP `<meta>` into `index.html` |
 
 > **Note**: MLPS evaluation covers more than technical requirements — management policies, physical environment, personnel organization, etc. This project covers the technical measures portion, providing direct support for evaluation preparation in private deployments, but it does not replace the full MLPS certification process.
 
@@ -209,13 +209,13 @@ Security capabilities are designed with reference to the technical requirements 
 | Feature | Description |
 |---------|-------------|
 | User Management | Manage and query users with advanced search and department-linked users; enable/disable users, set/unset manager, reset password, configure multiple roles / departments / managers, one-click login as a specified user. |
-| Tenant Management | Manage tenants. Adding a tenant auto-initializes its departments, default roles, and admin. Supports plan configuration, enable/disable, and one-click login as the tenant admin. Hidden from the sidebar; the page remains at `/tenant/members`. |
-| Plan & Quota Management | Manage tenant subscription plans and resource quotas (module whitelists, usage limits, etc.); CRUD for plans and quota items. Hidden from the sidebar; the page remains at `/tenant/plans`. |
+| Tenant Management | The code and page remain at `/tenant/members`. The sidebar entry is hidden. This tree is not used as multi-tenant SaaS. |
+| Plan & Quota Management | The code and page remain at `/tenant/plans`. The sidebar entry is hidden. |
 | Role Management | Manage roles and role groups; user selection by role; menu grants, data-scope configuration (five levels / custom organization-unit sets), and field-level permissions (blacklisted field sets); batch add/remove employees. |
 | Permission Management | Manage permission groups, menus, and permission points with tree-view listing. |
 | Organization Management | Manage organizations with tree-view listing. |
-| Position Management | Manage user positions; positions can serve as user labels. Excel import is supported: client-side template download, row-by-row processing through the existing create API with row-level error reporting. **The "organization" column is resolved only by the vue-element importer** (exact organization-name match; a miss is reported as that row's error) — the react and vue-vben field lists deliberately exclude `orgUnitId`, their comments mark foreign-key name resolution as future work. |
-| Menu Management | Configure system menus, operation permissions, and button permission identifiers — directories, menus, and buttons. Menu synchronization (available on all three frontends) supports two modes: transactional truncate-rebuild, or incremental merge, which matches existing entries by full path and updates them in place while preserving existing menu IDs and role grants. |
+| Position Management | Manage positions, which can label a user. Excel import does not resolve the organization column (`orgUnitId` is not an import field). |
+| Menu Management | Configure directories, menus, and buttons. Menu sync exists only on React: truncate-and-rebuild, or merge by full path while keeping menu IDs and role grants. |
 
 ### System Features
 

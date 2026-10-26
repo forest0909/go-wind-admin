@@ -166,7 +166,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	orgUnitService := service.NewOrgUnitService(ctx, orgUnitRepo, userRepo)
 
 	// RBAC
-	roleService := service.NewRoleService(ctx, authz, roleRepo, tenantRepo)
+	roleService := service.NewRoleService(ctx, authz, roleRepo, tenantRepo, userRoleRepo, authenticator)
 	menuService := service.NewMenuService(ctx, menuRepo)
 	apiService := service.NewApiService(ctx, apiRepo, authz)
 	permissionService := service.NewPermissionService(ctx, permissionRepo, permissionGroupRepo, menuRepo, apiRepo, roleRepo, authz)

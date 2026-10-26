@@ -214,8 +214,16 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
   `ListRoleIDsByUserID` 和请求中的角色集合比较；无 field mask（全量更新）或 mask 含
   `role_ids` / `role_id`，且两边不一致时，更新成功后调用 `RevokeUserTokenAllClientTypes`。
   集合相同，或 mask 只含昵称等其它字段，已签发令牌继续有效。列举当前角色失败时仍吊销。
-  吊销失败只记日志，不把已经提交的更新判失败。改角色定义（权限、数据范围）不经过这条路径，
-  持有该角色的人要重新登录或刷新后才换到新权限。刷新轮换仍不删除尚未过期的旧 access token；
+  吊销失败只记日志，不把已经提交的更新判失败。
+- 角色授予的内容发生变化 → 持有该角色的用户全部吊销（含正在操作的人自己，会被踢下线）。
+  写口只有 `RoleService.Update` / `Delete`：菜单、接口、权限点、数据范围（含选定组织）、
+  字段权限、启用/停用都在 Role 消息上，没有单独的分配 RPC。`Update` 在 `roleRepo.Update`
+  改写 mask 之前判断：无 field mask 视为全量更新并吊销；mask 里只要有 `status`、`data_scope`、
+  `permissions`、`org_units`、`field_permissions`、`code`、`type`、`tenant_id` 等非展示字段就吊销。
+  只改名称、描述、排序或审计字段不吊销。`Delete` 一律吊销。持有人用
+  `userRoleRepo.ListUserIDsByRoleIDs`（不过滤过期关联）查出后逐个
+  `RevokeUserTokenAllClientTypes`。列举或吊销失败只记日志，不把已经提交的写操作判失败
+  （列举失败时不知道该踢谁，已提交的更新或删除仍然成功）。刷新轮换仍不删除尚未过期的旧 access token；
 - `WhoAmI` 返回操作者 uid/username（operator 上下文）；注册入口已整体移除
   （账号一律管理员建，避免半注册孤儿）。
 
@@ -244,7 +252,7 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 | 自动化登录 | 直读 Redis `gowind:captcha:<captchaId>` 取答案（或临时置 CaptchaEnabled=false 后编译） |
 | 限流排查 | Redis 双维度键计数；误锁清理直接删键 |
 | 审计 | 全部登录尝试落 `sys_login_audit_logs`（成败/原因/归属地），见 audit-log-producer-design |
-| 会话处置 | 在线用户页强制下线（单会话）/ 改密或用户角色集合变化时自动全吊销 |
+| 会话处置 | 在线用户页强制下线（单会话）/ 改密、用户角色集合变化、或角色授权变更（含删除角色）时自动全吊销。只改角色名称、描述、排序不吊销。操作者自己持有该角色时同样被踢下线 |
 
 ## 11. 已知问题
 

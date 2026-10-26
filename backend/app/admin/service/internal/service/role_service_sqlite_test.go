@@ -15,17 +15,23 @@ import (
 	"context"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	"go-wind-admin/app/admin/service/internal/data"
+	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/third_party/go-utils/authorizer"
@@ -47,12 +53,14 @@ func (roleServiceAuthProviderStub) ProvidePolicies(context.Context) (authorizer.
 func newRoleServiceForTest(t *testing.T) *RoleService {
 	t.Helper()
 	entClient := enttest.NewEntClientForTest(t)
+	boot := bootstrap.NewContextWithParam(context.Background(), nil, nil, bLogger.NopLogger())
 	// 空类型不再退回 noop。测试要放行时显式指定 noop。
 	svc := &RoleService{
-		log:        bLogger.NewHelper(bLogger.NopLogger()),
-		authorizer: authorizer.NewAuthorizer(context.Background(), bLogger.NopLogger(), &authorizer.EngineConfig{Type: "noop"}, roleServiceAuthProviderStub{}),
-		roleRepo:   data.NewRoleRepoForTest(entClient),
-		tenantRepo: data.NewTenantRepoForTest(entClient),
+		log:          bLogger.NewHelper(bLogger.NopLogger()),
+		authorizer:   authorizer.NewAuthorizer(context.Background(), bLogger.NopLogger(), &authorizer.EngineConfig{Type: "noop"}, roleServiceAuthProviderStub{}),
+		roleRepo:     data.NewRoleRepoForTest(entClient),
+		tenantRepo:   data.NewTenantRepoForTest(entClient),
+		userRoleRepo: data.NewUserRoleRepo(boot, entClient),
 	}
 	svc.init()
 	return svc
@@ -200,4 +208,167 @@ func TestRoleServiceSqlite_CreateAndDelete(t *testing.T) {
 		require.NotEqual(t, "ROLESVC_CREATE_A", item.GetCode(),
 			"删除后列表不应再包含该角色")
 	}
+}
+
+// roleGrantEnv 给角色授权吊销测试用：真实 user_role 表 + miniredis 认证器。
+type roleGrantEnv struct {
+	svc    *RoleService
+	client *ent.Client
+	sys    context.Context
+}
+
+func newRoleGrantEnv(t *testing.T) *roleGrantEnv {
+	t.Helper()
+	entClient := enttest.NewEntClientForTest(t)
+	sys := enttest.NewSystemContext(context.Background())
+	boot := bootstrap.NewContextWithParam(context.Background(), nil, nil, bLogger.NopLogger())
+
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	userTokenCache := data.NewUserTokenCacheForTest(rdb)
+	authenticator, err := data.NewAuthenticatorForTest(
+		&conf.Authentication_Jwt{Method: "HS256", Key: authSvcTestJWTKey},
+		userTokenCache,
+	)
+	require.NoError(t, err)
+
+	svc := &RoleService{
+		log:           bLogger.NewHelper(bLogger.NopLogger()),
+		authorizer:    authorizer.NewAuthorizer(context.Background(), bLogger.NopLogger(), &authorizer.EngineConfig{Type: "noop"}, roleServiceAuthProviderStub{}),
+		roleRepo:      data.NewRoleRepoForTest(entClient),
+		tenantRepo:    data.NewTenantRepoForTest(entClient),
+		userRoleRepo:  data.NewUserRoleRepo(boot, entClient),
+		authenticator: authenticator,
+	}
+	svc.init()
+	return &roleGrantEnv{svc: svc, client: entClient.Client(), sys: sys}
+}
+
+func (e *roleGrantEnv) createRole(t *testing.T, code, name string) uint32 {
+	t.Helper()
+	op := opCtx(e.sys, roleGrantHolderID, 0, true)
+	_, err := e.svc.Create(op, &permissionV1.CreateRoleRequest{
+		Data: &permissionV1.Role{
+			Name:   trans.Ptr(name),
+			Code:   trans.Ptr(code),
+			Status: permissionV1.Role_ON.Enum(),
+			Type:   permissionV1.Role_TENANT.Enum(),
+		},
+	})
+	require.NoError(t, err)
+	resp, err := e.svc.List(e.sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	for _, item := range resp.GetItems() {
+		if item.GetCode() == code {
+			return item.GetId()
+		}
+	}
+	t.Fatalf("创建后找不到角色 %s", code)
+	return 0
+}
+
+func (e *roleGrantEnv) bindHolder(t *testing.T, roleID uint32) {
+	t.Helper()
+	_, err := e.client.UserRole.Create().
+		SetUserID(roleGrantHolderID).
+		SetRoleID(roleID).
+		Save(e.sys)
+	require.NoError(t, err)
+}
+
+func issueRoleAccessToken(t *testing.T, authn *data.Authenticator, userID uint32, username string) string {
+	t.Helper()
+	access, _, err := authn.CreateUserToken(context.Background(), authenticationV1.ClientType_admin, &authenticationV1.UserTokenPayload{
+		UserId:   userID,
+		Username: trans.Ptr(username),
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, access)
+	return access
+}
+
+func requireRoleAccessTokenValid(t *testing.T, authn *data.Authenticator, access string, valid bool) {
+	t.Helper()
+	resp, err := authn.Authenticate(context.Background(), &authenticationV1.ValidateTokenRequest{
+		Token:         access,
+		ClientType:    authenticationV1.ClientType_admin,
+		TokenCategory: authenticationV1.TokenCategory_ACCESS,
+	})
+	if valid {
+		require.NoError(t, err)
+		require.True(t, resp.GetIsValid())
+		return
+	}
+	if err == nil {
+		require.False(t, resp.GetIsValid())
+	}
+}
+
+const (
+	roleGrantHolderID    uint32 = 71001
+	roleGrantBystanderID uint32 = 71002
+)
+
+// TestRoleServiceSqlite_GrantChangeRevokesHolderNotBystander 改权限或停用角色后，
+// 持有人（这里就是操作者本人）的令牌失效，不持有的人不受影响；只改名称时两边都还有效。
+func TestRoleServiceSqlite_GrantChangeRevokesHolderNotBystander(t *testing.T) {
+	e := newRoleGrantEnv(t)
+	roleID := e.createRole(t, "ROLE_GRANT_REVOKE", "授权吊销前")
+	e.bindHolder(t, roleID)
+	op := opCtx(e.sys, roleGrantHolderID, 0, true)
+
+	holder := issueRoleAccessToken(t, e.svc.authenticator, roleGrantHolderID, "holder")
+	bystander := issueRoleAccessToken(t, e.svc.authenticator, roleGrantBystanderID, "bystander")
+
+	_, err := e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: roleID,
+		Data: &permissionV1.Role{
+			Name: trans.Ptr("只改名称"),
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name"}},
+	})
+	require.NoError(t, err)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, holder, true)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, bystander, true)
+
+	_, err = e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: roleID,
+		Data: &permissionV1.Role{
+			Status: permissionV1.Role_OFF.Enum(),
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"status"}},
+	})
+	require.NoError(t, err)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, holder, false)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, bystander, true)
+
+	holder = issueRoleAccessToken(t, e.svc.authenticator, roleGrantHolderID, "holder")
+	_, err = e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: roleID,
+		Data: &permissionV1.Role{
+			Permissions: []uint32{9001},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"permissions"}},
+	})
+	require.NoError(t, err)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, holder, false)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, bystander, true)
+}
+
+// TestRoleServiceSqlite_DeleteRevokesHolderTokens 删除角色后，持有人的令牌失效，旁人不受影响。
+func TestRoleServiceSqlite_DeleteRevokesHolderTokens(t *testing.T) {
+	e := newRoleGrantEnv(t)
+	roleID := e.createRole(t, "ROLE_GRANT_DELETE", "待删除角色")
+	e.bindHolder(t, roleID)
+
+	holder := issueRoleAccessToken(t, e.svc.authenticator, roleGrantHolderID, "holder")
+	bystander := issueRoleAccessToken(t, e.svc.authenticator, roleGrantBystanderID, "bystander")
+
+	_, err := e.svc.Delete(e.sys, &permissionV1.DeleteRoleRequest{
+		QueryBy: &permissionV1.DeleteRoleRequest_Id{Id: roleID},
+	})
+	require.NoError(t, err)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, holder, false)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, bystander, true)
 }

@@ -30,8 +30,11 @@ type RoleService struct {
 
 	authorizer *authorizer.Authorizer
 
-	roleRepo   *data.RoleRepo
-	tenantRepo *data.TenantRepo
+	roleRepo     *data.RoleRepo
+	tenantRepo   *data.TenantRepo
+	userRoleRepo *data.UserRoleRepo
+
+	authenticator *data.Authenticator
 }
 
 func NewRoleService(
@@ -39,12 +42,16 @@ func NewRoleService(
 	authorizer *authorizer.Authorizer,
 	roleRepo *data.RoleRepo,
 	tenantRepo *data.TenantRepo,
+	userRoleRepo *data.UserRoleRepo,
+	authenticator *data.Authenticator,
 ) *RoleService {
 	svc := &RoleService{
-		log:        ctx.NewLoggerHelper("role/service/admin-service"),
-		authorizer: authorizer,
-		roleRepo:   roleRepo,
-		tenantRepo: tenantRepo,
+		log:           ctx.NewLoggerHelper("role/service/admin-service"),
+		authorizer:    authorizer,
+		roleRepo:      roleRepo,
+		tenantRepo:    tenantRepo,
+		userRoleRepo:  userRoleRepo,
+		authenticator: authenticator,
 	}
 
 	svc.init()
@@ -234,6 +241,10 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 		}
 	}
 
+	// 在 roleRepo.Update 改写 mask 之前判断。无 mask 视为全量更新。
+	// 只改名称、描述、排序以及 updated_by 这类字段时不吊销。
+	revokeHolders := roleUpdateChangesGrant(req)
+
 	if err = s.roleRepo.Update(ctx, req); err != nil {
 		s.log.Errorf(ctx, "update role error: %v", err)
 		return nil, err
@@ -243,21 +254,111 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 		s.log.Errorf(ctx, "reset policies error: %v", err)
 	}
 
+	if revokeHolders {
+		s.revokeRoleHolders(ctx, req.GetId())
+	}
+
 	return &emptypb.Empty{}, nil
 }
 
 func (s *RoleService) Delete(ctx context.Context, req *permissionV1.DeleteRoleRequest) (*emptypb.Empty, error) {
-	var err error
+	// sys_user_roles.role_id 没有外键级联。先记下持有人，删除成功后再吊销。
+	// 列举失败只记日志：角色已经要删，不能因为列不出持有人就把删除判失败，
+	// 但这时也不知道该踢谁。
+	holderIDs, listErr := s.listRoleHolderIDs(ctx, req.GetId())
 
-	if err = s.roleRepo.Delete(ctx, req); err != nil {
+	if err := s.roleRepo.Delete(ctx, req); err != nil {
 		return nil, err
 	}
 
-	if err = s.authorizer.ResetPolicies(ctx); err != nil {
+	if err := s.authorizer.ResetPolicies(ctx); err != nil {
 		s.log.Errorf(ctx, "reset policies error: %v", err)
 	}
 
+	if listErr != nil {
+		s.log.Errorf(ctx, "list role holders before delete failed for role [%d]: %v", req.GetId(), listErr)
+	} else {
+		s.revokeUsers(ctx, holderIDs)
+	}
+
 	return &emptypb.Empty{}, nil
+}
+
+// roleUpdateChangesGrant 判断这次更新会不会改变角色授予的权限、数据范围、字段权限或状态。
+// 无 mask 或空 paths 视为全量更新。名称、描述、排序和审计字段不吊销。
+// 调用点要在 roleRepo.Update 之前：仓库会从 mask 里拿掉 permissions 等关联路径。
+func roleUpdateChangesGrant(req *permissionV1.UpdateRoleRequest) bool {
+	fm := req.GetUpdateMask()
+	if fm == nil || len(fm.GetPaths()) == 0 {
+		return true
+	}
+	for _, p := range fm.GetPaths() {
+		if !roleUpdatePathIsCosmetic(p) {
+			return true
+		}
+	}
+	return false
+}
+
+func roleUpdatePathIsCosmetic(path string) bool {
+	switch path {
+	case "name", "description", "sort_order", "sortOrder",
+		"updated_by", "updatedBy",
+		"created_by", "createdBy",
+		"deleted_by", "deletedBy",
+		"created_at", "updated_at", "deleted_at",
+		"createdAt", "updatedAt", "deletedAt",
+		"id", "tenant_name", "tenantName",
+		"is_protected", "isProtected",
+		"remark":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *RoleService) revokeRoleHolders(ctx context.Context, roleID uint32) {
+	ids, err := s.listRoleHolderIDs(ctx, roleID)
+	if err != nil {
+		s.log.Errorf(ctx, "list role holders failed for role [%d]: %v", roleID, err)
+		return
+	}
+	s.revokeUsers(ctx, ids)
+}
+
+func (s *RoleService) listRoleHolderIDs(ctx context.Context, roleID uint32) ([]uint32, error) {
+	if roleID == 0 || s.userRoleRepo == nil {
+		if s.userRoleRepo == nil {
+			s.log.Errorf(ctx, "user role repo is nil, cannot list holders of role [%d]", roleID)
+			return nil, adminV1.ErrorInternalServerError("user role repo is nil")
+		}
+		return nil, nil
+	}
+	return s.userRoleRepo.ListUserIDsByRoleIDs(ctx, []uint32{roleID}, false)
+}
+
+func (s *RoleService) revokeUsers(ctx context.Context, userIDs []uint32) {
+	if len(userIDs) == 0 {
+		return
+	}
+	if s.authenticator == nil {
+		s.log.Errorf(ctx, "authenticator is nil, skip revoke for %d role holders", len(userIDs))
+		return
+	}
+	seen := make(map[uint32]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		// 操作者自己持有这个角色时同样吊销。吊销失败只记日志。
+		if rerr := s.authenticator.RevokeUserTokenAllClientTypes(ctx, id); rerr != nil {
+			s.log.Errorf(ctx, "revoke tokens after role grant change failed for user [%d]: %v", id, rerr)
+		}
+	}
 }
 
 func (s *RoleService) GetRoleCodesByRoleIds(ctx context.Context, req *permissionV1.GetRoleCodesByRoleIdsRequest) (*permissionV1.GetRoleCodesByRoleIdsResponse, error) {

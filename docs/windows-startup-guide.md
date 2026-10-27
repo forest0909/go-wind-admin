@@ -126,7 +126,7 @@ docker compose -f docker-compose.libs.yaml ps
 
 默认配置中的主机名（`postgres`、`redis`、`minio`）是 Docker Compose 的容器服务名，仅在容器网络内部有效。本地运行后端时要改成 `localhost`，但**不要改** `backend/app/admin/service/configs/` 根下被 Git 跟踪的 yaml。口令写进那些文件，下次提交就可能进仓库。
 
-在 `configs/local/` 下新建同名文件，**只写要改的键**。目录不存在就跳过，行为和只有主配置时一样。目录存在时在主配置之后加载；如果同目录还有 `config.yaml` 远程源，远程源仍会加载，并且排在 `local/` 之前。Kratos 按深度合并，后加载的非空值覆盖同名键，`local/` 里没写的键保留前面的值。主配置按目录读取时会跳过子目录，所以 `local/` 不会被主配置读两遍。
+在 `configs/local/` 下新建同名文件，**只写要改的键**。目录不存在就跳过，行为和只有主配置时一样。目录存在时在主配置之后加载；如果同目录还有 `config.yaml` 远程源，远程源仍会加载，并且排在 `local/` 之前。Kratos 按深度合并。`local/` 里显式写出的标量都会覆盖同名键，包括空字符串、false 和 0；没写的键保留前面的值。主配置按目录读取时会跳过子目录，所以 `local/` 不会被主配置读两遍。
 
 `configs/local/` 已写进仓库根 `.gitignore`。部署时也可以把同名目录挂进容器，只放要覆盖的键。
 

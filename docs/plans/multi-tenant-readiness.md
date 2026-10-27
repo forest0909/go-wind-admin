@@ -44,7 +44,8 @@
 现在的行为：
 
 - viewer 不存在，或者 `TenantID() == 0`，返回「没有租户谓词」。
-- 调用点只有 `GetByIdentifier` 和 `DeleteByIdentifier`。注释写的是「平台管理员 tenant_id=0 不限定」。
+- 凭据上的 `GetByIdentifier`、`DeleteByIdentifier`，以及同文件里按 identifier 查询的另外几处，在「没有租户谓词」时不加 `tenant_id` 条件。注释写的是「平台管理员 tenant_id=0 不限定」。
+- 同一个函数还被角色、用户、岗位、字典类型、任务、成员身份的按 name/code 查询调用。那些调用点在 tid 为 0 时直接返回 400，避免跨租户匹配多行。不构成越权。
 - 登录不走这个函数。`FindUserCredential` 由调用方传入 `tenantID`，`TenantIDEQ` 一直在。`VerifyCredential` 写死租户 0。
 - 管理端 HTTP 没有把 `GetByIdentifier` / `DeleteByIdentifier` 暴露出去。它们在领域 gRPC 桩和 sqlite 测试里。
 
@@ -92,7 +93,18 @@
 
 单租户风险：决策结果和 `TenantPrivacy` 一样，tid 0 不加谓词。没有第二个租户时不漏数据。
 
-启用前：改这里一次，上面的隐私规则和 builder 注入会一起变。不要只改其中一处，否则查询和变更的放行条件会分叉。
+它和 `TenantPrivacy` 各判各的。`TenantPrivacy.EvalQuery` / `EvalMutation`（`entgo/rule/tenant.go`）直接读 `viewer.IsPlatformContext()` 和 `IsSystemContext()`，不调用 `EnforceTenant`。Create 分支也是直接看 `IsPlatformContext()`。只改 `EnforceTenant`，隐私规则不会跟着变。
+
+现在调用 `EnforceTenant` 的是：
+
+- `InjectTenantWhereIntoBuilder`：repository 写 builder 上的行级谓词。
+- `EnforceOnScopedInstance` / `EnforceOnScopedInstanceAny`：Create 时按决策 `SetTenantID`。
+
+启用前要分开改，不能指望改一处就带动另一处：
+
+1. `UserContext.IsPlatformContext`（`viewer/user_context.go`，现在就是 `tid == 0`）。这一处变了，所有直接调用它的规则一起变：`TenantPrivacy`、`schema/tenant_mutation_guard.go`、`TenantInterceptor`、`entgo/rule/system.go` 里下面四个规则。
+2. `EnforceTenant` 自己的平台分支。如果只改这个函数、不改 `IsPlatformContext`，builder 注入和 Create 强制设租户会变，`TenantPrivacy` 仍按 `tid == 0` 放行，查询和变更的放行条件分叉。
+3. 如果只改 `IsPlatformContext`、不改 `EnforceTenant`，隐私规则变了，但 `EnforceTenant` 仍读旧的 `IsPlatformContext`，两边会一起变。所以真正要改的是「什么叫平台」这一个谓词；`EnforceTenant` 不必再复制一套判断，除非它要改成认平台管理员旗标而 `IsPlatformContext` 仍表示别的含义。那种情况下两边都要改。
 
 ### `entgo/interceptor/tenant.go` 的 `TenantInterceptor`
 
@@ -102,7 +114,7 @@
 
 单租户风险：没挂上，所以没有运行时效果。
 
-启用前：在 `IsPlatformContext` 还等于 `tid == 0` 时不要把它注册进 client。注册之后会和 `TenantPrivacy` 叠两层，而且放行条件和现在的单租户漏洞一样。要留着就和 `EnforceTenant` 一起改。
+启用前：在 `IsPlatformContext` 还等于 `tid == 0` 时不要把它注册进 client。注册之后会和 `TenantPrivacy` 叠两层，而且放行条件和现在的单租户漏洞一样。它直接判断 `IsPlatformContext`，不会因为只改了 `EnforceTenant` 就收紧。要留着，就和 `TenantPrivacy` 用同一套平台判断。
 
 ### `entgo/rule/system.go` 里另外 4 个规则
 
@@ -125,7 +137,48 @@ HTTP 租户闸门只在 `tokenPayload.GetTenantId() > 0` 时跑（`pkg/middlewar
 
 启用前的顺序建议：
 
-1. 先改 `IsPlatformContext` / `EnforceTenant` 的含义，再迁数据。只迁数据、不改判断，平台管理员会丢跨租户能力；只改判断、不迁数据，现有 tid 0 用户会被收进租户 0 的谓词，和平台行混在一起。
+1. 先改 `UserContext.IsPlatformContext` 的含义，再核对直接调用它的规则（`TenantPrivacy`、写守卫、`TenantInterceptor`、`system.go` 四个规则）。`EnforceTenant` 现在也是读这个谓词；只改 `EnforceTenant` 的函数体不会让 `TenantPrivacy` 跟着变。然后迁数据。只迁数据、不改判断，平台管理员会丢跨租户能力；只改判断、不迁数据，现有 tid 0 用户会被收进租户 0 的谓词，和平台行混在一起。
 2. 业务用户改到非 0 租户，平台管理员继续 tid 0 也可以，但代码里的放行必须认角色旗标或系统上下文，不能认「tid 是 0」。
-3. 然后处理创建租户管理员的口令加密，以及导出函数的 viewer 选择。
+3. 然后处理创建租户管理员的口令加密、导出函数的 viewer 选择，以及下面第 7 节的异步广播。队列里 tenant 为 0 的旧任务要先处理掉，再切判断。
 4. 最后才考虑注册 `TenantInterceptor` 或挂上那四个还没人调用的规则。
+
+## 7. 站内信异步广播：任务 tenant 为 0 时用系统上下文
+
+位置：`internal_message_service.go` 的 `AsyncBroadcastMessage`（约第 590 行）。
+
+现在的行为：
+
+- asynq handler 的 ctx 没有请求期 viewer。`taskData.TenantId == 0` 时直接 `viewer.WithSystemContext`。大于 0 时用 `NewUserContext(0, tenantId, ...)`，用户 id 是 0。
+- 注释写明：升级前已入队、payload 里没有 `tenant_id` 的旧任务，按 0 处理，退回升级前的全平台投递。
+- `executeBroadcast` 在这个 ctx 上 `userRepo.List`。系统上下文不过 `TenantPrivacy`，名单是全表用户。收件行再按广播方租户打标。
+
+单租户风险：所有人本来就在租户 0，全表投递和现在的广播范围一致。不构成多一个租户的越权。
+
+启用前：
+
+- 不要再把任务 tenant 0 当成「全平台」。平台管理员的全员广播应看令牌上的平台管理员旗标，或显式的系统任务身份，不能看「payload 里的租户号是 0」。
+- 租户广播必须带上该租户的 viewer。用户 id 为 0 的 `UserContext` 只够注入租户谓词，不要把它当成某个真实用户。
+- 已经在队列里的旧任务：payload 没有租户字段时会反序列化成 0，一切过去就变成系统上下文，向所有租户发信。启用前停掉 worker，把这些任务标失败或按消息行上的 `tenant_id` 改写后再跑。不能靠「默认 0 = 升级前行为」过渡。消息行本身若也是租户 0，说明当时就是平台广播，要单独认平台管理员，而不是把队列里所有 0 都放行。
+
+## 8. 同一轮 grep 里其余的 `tid == 0`
+
+检索：`IsPlatformContext()`、`tenantID == 0`、`GetTenantId() == 0`、`tid == 0`。测试桩和 mock viewer 不列入。上面第 2 到第 7 节已经写过的不重复。
+
+需要在启用前收紧（留在 tid 0 的普通账号会走到平台分支）：
+
+- `permission_service.go` 的 `List` / `Get`：只有 `operator.GetTenantId() > 0` 才按角色码收窄可见权限。tid 为 0 时列出或读取全部权限点。
+- `user_service.go` 的创建和更新：只有操作者 tid 大于 0 才把目标用户的 `tenant_id` 改成操作者自己的。两边都是 0 时，角色查询限定为 `type: SYSTEM`，也就是可以分配系统角色。
+- `role_service.go` 的创建和更新：只有操作者 tid 大于 0 才把角色类型收成 `TENANT`，并禁止改系统角色。tid 为 0 可以建、改系统角色。
+
+不构成越权：
+
+- `authorizer_provider.go`：`role.GetTenantId() == 0` 并且角色码是 `platform:admin` 才装通配策略。认的是这一个角色行，不是调用方的 tid。
+- `user_service.go` 的 `Delete`：默认管理员（id 为 1，或用户名是 admin 且租户是 0）删不掉。这是多一道保护。
+- `user_service.go` 创建用户时 `targetTenantID == 0` 回落到操作者租户，最后仍为 0 就跳过 `USER_LIMIT`。只跳过配额。
+- `my_tenant_usage_service.go`：tid 为 0 返回空用量，不读别的租户。
+- `file_transfer_service.go`：tid 为 0 不查 `STORAGE` 配额。只跳过配额。
+- `user_profile_contact.go`：tid 大于 0 才按用户 locale 选验证码文案。tid 为 0 只是少了这一次语言选择。
+- `internal_message_service.go` 的 `executeBroadcast`：收件人 `tenant_id == 0` 且广播方不是 0 时，把收件行改标成广播方租户，避免行落在读者读不到的租户 0。不扩大查询范围。
+- `internal_message_recipient_repo.go`：注释和测试都写明 `tenant_id == 0` 不是收件箱放行条件。系统上下文和平台管理员角色另判。
+- `data_scope_guard.go`：只认系统上下文，不把 tid 0 当全量。本清单开头已排除。
+- 第 3 节里按 name/code 查询、tid 为 0 就返回 400 的那些调用点。

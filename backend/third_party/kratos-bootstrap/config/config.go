@@ -28,7 +28,8 @@ func NewConfigProvider(configPath string) (config.Config, error) {
 
 	// 主配置目录在前。file source 读目录时跳过子目录，所以后面的 local/ 不会被主源再读一遍。
 	// 远程源（config.yaml）仍插在主配置之后、local 之前，没有 config.yaml 时这条分支不走。
-	// local 最后加载。Kratos 用 mergo.WithOverride 做深度合并，后一个源的非空值覆盖同名键。
+	// local 最后加载。Kratos 用 mergo.WithOverride 做深度合并。
+	// local 里显式写出的标量都会覆盖同名键，包括空字符串、false 和 0。没写的键保留前面的值。
 	sources := []config.Source{NewFileConfigSource(configPath)}
 	if rc != nil {
 		rcs, err := NewProvider(rc)

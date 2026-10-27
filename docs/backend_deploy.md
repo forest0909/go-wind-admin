@@ -150,7 +150,7 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 
 1. 主配置目录。按目录读取时会跳过子目录，因此 `local/` 不会被主配置读两遍。
 2. 若存在 `config.yaml`，远程配置源仍按原逻辑加载，并覆盖主配置里的同名键。
-3. `configs/local/` 仅在目录存在时最后加载。合并是深度合并，这里的非空值覆盖同名键；没写的键保留前面的值。
+3. `configs/local/` 仅在目录存在时最后加载。合并是深度合并。这里显式写出的标量都会覆盖同名键，包括空字符串、false 和 0；没写的键保留前面的值。
 
 `configs/local/` 在仓库根 `.gitignore` 里。部署时可以把同名目录挂进容器或配置目录，用来覆盖镜像里的主配置，同样只放差异键。本地把主机名改成 `localhost` 的例子见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步。
 

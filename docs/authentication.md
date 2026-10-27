@@ -151,9 +151,18 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
   旧 refresh 立即作废；**旧 access 不随轮换删除**（自然存活至自身 TTL）：
   多标签页/多前端共享同一浏览器 cookie jar，轮换即删会把其他标签页刚拿到手的
   在用令牌作废，引发持续互杀的 401 风暴（2026-10-21 定案修复）；
-- **宽限窗口**（`RefreshTokenGraceWindow` 60s，`rtg:` 集合）：并发刷新对撞时
-  持有上一枚 RT 的一方命中宽限即兑换独立新会话，不再判 `INCORRECT_REFRESH_TOKEN`
-  逼前端强制登出；窗口外重放仍拒绝（防盗用重放语义保留）；
+- **宽限窗口**（`RefreshTokenGraceWindow` 60s，`rtg:` 有序集合，score 为该成员自己的过期时间戳）：
+  并发刷新对撞时，持有上一枚且尚未过期的 RT 兑换独立新会话，不再判 `INCORRECT_REFRESH_TOKEN`
+  逼前端强制登出。后一次轮换只给新成员计 60 秒，不会把更早的旧 RT 一起续期。
+  全量吊销（登出、改密、重置密码、用户角色变化、角色授权变更、租户清理）都经过
+  `UserTokenCache.RevokeToken`，同时删除对应的 `rtg` 键，宽限期内的旧 RT 不能再换新令牌。
+  窗口外重放仍拒绝；
+- **尚未堵住的竞态**：刷新在 Lua 里确认旧 RT 之后、把新令牌写回之前，全量吊销可能已经完成，
+  进行中的刷新仍会把新令牌写回去。要挡住它，需要吊销版本号：`RevokeToken` 递增
+  `rtv:{ct}:{uid}`，刷新验证时记下版本，写入新令牌时版本不一致就放弃。这要改
+  `doGrantTypeRefreshToken` 和登录/刷新共用的 `AddTokenPair`，本轮只记录、不改行为。
+  单会话强制下线（`RevokeTokenByJti`）也不删宽限成员：集合按用户而不是按 jti，
+  踢一个会话时没有那枚 RT 的原文；
 - **代际链**（`lin:{ct}:{uid}:{jti}`，值=上一代 jti，TTL 同 AT）：因旧 AT 不随轮换
   删除，踢下线（`RevokeTokenByJti`）沿链回溯删除整条世系的 AT，保住「踢即全灭」；
 - 重新走授权丰富（第 2 章第 9 步同款，角色/数据范围/字段黑名单**随每次刷新重算**——

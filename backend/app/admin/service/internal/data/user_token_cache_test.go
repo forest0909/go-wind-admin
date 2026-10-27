@@ -252,3 +252,86 @@ func TestUserTokenCache_RevokeTokenByJtiWalksLineage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, valid, "踢下线不应波及无关会话")
 }
+
+func newTestTokenCache(t *testing.T) (*UserTokenCache, *miniredis.Miniredis) {
+	t.Helper()
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	cfg := &conf.Bootstrap{
+		Server: &conf.Server{
+			Rest: &conf.Server_REST{
+				Middleware: &conf.Middleware{
+					Auth: &conf.Middleware_Auth{Method: "HS256", Key: "some_api_key"},
+				},
+			},
+		},
+		Data: &conf.Data{Redis: &conf.Data_Redis{Addr: mr.Addr()}},
+	}
+	bctx := bootstrap.NewContextWithParam(context.Background(), &conf.AppInfo{}, cfg, bLogger.NopLogger())
+	return NewUserTokenCache(bctx, rdb), mr
+}
+
+// 全量吊销必须清掉宽限集合。否则刚轮换进 rtg 的旧 RT 仍能换出新令牌。
+func TestUserTokenCache_RevokeTokenDropsGraceRefresh(t *testing.T) {
+	repo, _ := newTestTokenCache(t)
+	ctx := context.Background()
+	clientType := authenticationV1.ClientType_admin
+	const (
+		userID uint32 = 42
+		jti           = "jti-rt1"
+		rt1           = "refresh-rt1"
+	)
+
+	assert.NoError(t, repo.AddTokenPair(ctx, clientType, userID, jti, "at1", rt1, time.Hour, time.Hour))
+	valid, err := repo.VerifyAndRevokeTokenPair(ctx, clientType, userID, jti, rt1)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+	assert.True(t, repo.IsGraceRefreshToken(ctx, clientType, userID, rt1), "轮换后旧 RT 应进入宽限")
+
+	assert.NoError(t, repo.RevokeToken(ctx, clientType, userID))
+	assert.False(t, repo.IsGraceRefreshToken(ctx, clientType, userID, rt1), "全量吊销后宽限内的旧 RT 不能再被接受")
+}
+
+// 宽限按成员过期。后一次轮换不能把更早的旧 RT 一起续期。
+func TestUserTokenCache_GraceExpiryIsPerMember(t *testing.T) {
+	repo, mr := newTestTokenCache(t)
+	ctx := context.Background()
+	clientType := authenticationV1.ClientType_app
+	const userID uint32 = 7
+
+	// FastForward 只缩短键 TTL，不推动 Redis TIME。宽限 score 用的是 TIME，所以用 SetTime。
+	start := time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
+	mr.SetTime(start)
+
+	assert.NoError(t, repo.AddTokenPair(ctx, clientType, userID, "jti-1", "at1", "rt1", time.Hour, time.Hour))
+	valid, err := repo.VerifyAndRevokeTokenPair(ctx, clientType, userID, "jti-1", "rt1")
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	mr.SetTime(start.Add(50 * time.Second))
+
+	assert.NoError(t, repo.AddTokenPair(ctx, clientType, userID, "jti-2", "at2", "rt2", time.Hour, time.Hour))
+	valid, err = repo.VerifyAndRevokeTokenPair(ctx, clientType, userID, "jti-2", "rt2")
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	mr.SetTime(start.Add(70 * time.Second))
+
+	assert.False(t, repo.IsGraceRefreshToken(ctx, clientType, userID, "rt1"), "第 70 秒时 RT1 已超过 60 秒宽限")
+	assert.True(t, repo.IsGraceRefreshToken(ctx, clientType, userID, "rt2"), "第 70 秒时 RT2 仍在自己的宽限内")
+}
+
+// 升级前 rtg 是普通集合。查询时删掉它并拒绝，避免 ZSET 命令打在 SET 上直接报错。
+func TestUserTokenCache_LegacyGraceSetIsRejected(t *testing.T) {
+	repo, mr := newTestTokenCache(t)
+	ctx := context.Background()
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	assert.NoError(t, rdb.SAdd(ctx, "rtg:1:7", "legacy-rt").Err())
+	assert.False(t, repo.IsGraceRefreshToken(ctx, authenticationV1.ClientType_app, 7, "legacy-rt"))
+	exists, err := rdb.Exists(ctx, "rtg:1:7").Result()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), exists)
+}

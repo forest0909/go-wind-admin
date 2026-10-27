@@ -282,6 +282,29 @@ func (r *RoleRepo) ListRolesByRoleIds(ctx context.Context, ids []uint32) ([]*per
 	return dtos, nil
 }
 
+// EnabledRoleIDs 只保留状态为 ON 的角色。停用、查无此行、status 为空都不算启用。
+// 登录、刷新、菜单、权限码和策略装载用这份结果；角色下拉和列表展示仍用未过滤的查询。
+func (r *RoleRepo) EnabledRoleIDs(ctx context.Context, ids []uint32) ([]uint32, error) {
+	if len(ids) == 0 {
+		return []uint32{}, nil
+	}
+
+	entities, err := r.entClient.Client().Role.Query().
+		Where(role.IDIn(ids...), role.StatusEQ(role.StatusOn)).
+		Select(role.FieldID).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "query enabled roles failed: %s", err.Error())
+		return nil, permissionV1.ErrorInternalServerError("query enabled roles failed")
+	}
+
+	out := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		out = append(out, entity.ID)
+	}
+	return out, nil
+}
+
 // ListRoleCodesByRoleIds 通过角色ID列表获取角色编码列表
 func (r *RoleRepo) ListRoleCodesByRoleIds(ctx context.Context, ids []uint32) ([]string, error) {
 	if len(ids) == 0 {
@@ -778,6 +801,10 @@ func (r *RoleRepo) ListPermissionIDsByRoleIDs(ctx context.Context, roleIDs []uin
 // ListPermissionIDsByRoleCodes 通过角色编码列表获取权限ID列表
 func (r *RoleRepo) ListPermissionIDsByRoleCodes(ctx context.Context, roleCodes []string) ([]uint32, error) {
 	roleIDs, err := r.ListRoleIDsByRoleCodes(ctx, roleCodes)
+	if err != nil {
+		return nil, err
+	}
+	roleIDs, err = r.EnabledRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return nil, err
 	}

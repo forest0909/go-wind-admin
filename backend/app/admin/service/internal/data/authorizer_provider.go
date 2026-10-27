@@ -91,6 +91,10 @@ func (p *AuthorizerProvider) ProvidePolicies(_ context.Context) (authorizer.Perm
 		if role.GetCode() == "" {
 			continue
 		}
+		// 停用角色不装进 casbin。令牌里也不会再带它的角色码，两边一起挡住。
+		if role.GetStatus() != permissionV1.Role_ON {
+			continue
+		}
 		if constants.IsTemplateRoleCode(role.GetCode()) {
 			continue
 		}

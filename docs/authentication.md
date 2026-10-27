@@ -90,7 +90,7 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 | `tid` | tenant_id | 租户 ID；0=平台上下文 |
 | `cid` / `did` | client_id / device_id | 客户端/设备标识 |
 | `sub` | username | 用户名 |
-| `roc` | roles | 角色码列表 |
+| `roc` | roles | 角色码列表。只含状态为启用的角色；停用角色不参与登录和刷新时的角色码、管理员标志、数据范围、隐藏字段，也不装进 casbin |
 | `ipa` / `ita` | is_platform_admin / is_tenant_admin | 管理员旗标（fillAdminFlags 产出） |
 | `ds`/`dss`/`dsu` | data_scope(s)/unit_ids | 数据范围聚合（语义见 data_scope_design 第 3 节） |
 | `ouid` | org_unit_id | 当前组织单元 |

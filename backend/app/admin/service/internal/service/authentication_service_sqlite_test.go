@@ -49,7 +49,15 @@ import (
 	ktransport "github.com/go-kratos/kratos/v2/transport"
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
+	"go-wind-admin/third_party/go-utils/authorizer"
+	authzEngine "go-wind-admin/third_party/kratos-authz/engine"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
 	"go-wind-admin/app/admin/service/internal/data"
+	"go-wind-admin/app/admin/service/internal/data/ent"
+	entapi "go-wind-admin/app/admin/service/internal/data/ent/api"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
@@ -141,6 +149,7 @@ func headerCtx(ctx context.Context, header http.Header) context.Context {
 type authSvcEnv struct {
 	svc           *AuthenticationService
 	stub          *authSvcUserRepoStub
+	entClient     *entCrud.EntClient[*ent.Client]
 	mr            *miniredis.Miniredis
 	captchaClient *captcha.Captcha
 	ctx           context.Context // SystemContext（仅用于种子数据写入）
@@ -204,6 +213,7 @@ func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 	return &authSvcEnv{
 		svc:           svc,
 		stub:          stub,
+		entClient:     entClient,
 		mr:            mr,
 		captchaClient: captchaClient,
 		ctx:           enttest.NewSystemContext(context.Background()),
@@ -1016,5 +1026,125 @@ func TestAuthSvcSqlite_CookieHelperGuards(t *testing.T) {
 	require.NotPanics(t, func() {
 		recordSessionMetaAt(base, logHelper, nil, authenticationV1.ClientType_admin, nil, 0)
 		recordSessionMetaAt(base, logHelper, nil, authenticationV1.ClientType_admin, &authenticationV1.UserTokenPayload{}, 0)
+	})
+}
+
+func (e *authSvcEnv) seedProbeAPI(t *testing.T, path, method string) uint32 {
+	t.Helper()
+	require.NoError(t, data.NewApiRepoForTest(e.entClient).Create(e.ctx, &permissionV1.CreateApiRequest{
+		Data: &permissionV1.Api{
+			Path:        trans.Ptr(path),
+			Method:      trans.Ptr(method),
+			Description: trans.Ptr("停用角色探针"),
+		},
+	}))
+	row, err := e.entClient.Client().Api.Query().
+		Where(entapi.PathEQ(path), entapi.MethodEQ(method)).
+		Only(e.ctx)
+	require.NoError(t, err)
+	return row.ID
+}
+
+func (e *authSvcEnv) disableRole(t *testing.T, roleID uint32) {
+	t.Helper()
+	require.NoError(t, e.svc.roleRepo.Update(e.ctx, &permissionV1.UpdateRoleRequest{
+		Id: roleID,
+		Data: &permissionV1.Role{
+			Status: permissionV1.Role_OFF.Enum(),
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"status"}},
+	}))
+}
+
+func (e *authSvcEnv) casbinAllows(t *testing.T, roleCode, method, path, domain string) bool {
+	t.Helper()
+	boot := bootstrap.NewContextWithParam(context.Background(), nil, nil, bLogger.NopLogger())
+	provider := data.NewAuthorizerProvider(boot, e.svc.roleRepo, data.NewApiRepoForTest(e.entClient))
+	eng := authorizer.NewAuthorizer(context.Background(), bLogger.NopLogger(), &authorizer.EngineConfig{Type: "casbin"}, provider)
+	require.NoError(t, eng.ResetPolicies(e.ctx))
+	ok, err := eng.Engine().IsAuthorized(
+		e.ctx,
+		authzEngine.Subject(roleCode),
+		authzEngine.Action(method),
+		authzEngine.Resource(path),
+		authzEngine.Project(domain),
+	)
+	require.NoError(t, err)
+	return ok
+}
+
+// 唯一角色停用后，重新授权不能再把该角色、它的数据范围和隐藏字段写进令牌，casbin 也不再放行它的接口。
+func TestAuthSvcSqlite_DisabledRoleDroppedFromAuthority(t *testing.T) {
+	const (
+		roleCode = "ROLE_DISABLED_GRANT"
+		apiPath  = "/admin/v1/disabled-role-probe"
+		userID   = uint32(7701)
+	)
+	e := newAuthenticationServiceForTest(t)
+	apiID := e.seedProbeAPI(t, apiPath, "GET")
+	require.NoError(t, e.svc.permissionRepo.Create(e.ctx, &permissionV1.CreatePermissionRequest{
+		Data: &permissionV1.Permission{
+			Name:   trans.Ptr("停用角色后台访问"),
+			Code:   trans.Ptr(constants.SystemAccessBackendPermissionCode),
+			Status: permissionV1.Permission_ON.Enum(),
+			ApiIds: []uint32{apiID},
+		},
+	}))
+	permIDs, err := e.svc.permissionRepo.GetPermissionIDsByCodes(e.ctx, []string{constants.SystemAccessBackendPermissionCode})
+	require.NoError(t, err)
+	require.Len(t, permIDs, 1)
+
+	roleID := e.seedRole(
+		t, nil, permissionV1.Role_SYSTEM, roleCode, permIDs,
+		identityV1.DataScope_SELF.Enum(),
+		[]*permissionV1.RoleFieldPermission{{Resource: "User", HiddenFields: []string{"email"}}},
+	)
+	e.seedStubUser(userID, nil, "disabled-role-user", identityV1.User_NORMAL, []uint32{roleID})
+	user := e.stub.usersByID[userID]
+
+	on := &authenticationV1.UserTokenPayload{}
+	require.NoError(t, e.svc.resolveUserAuthority(e.ctx, user, on))
+	require.Equal(t, []string{roleCode}, on.GetRoles())
+	require.Equal(t, []identityV1.DataScope{identityV1.DataScope_SELF}, on.GetDataScopes())
+	require.Equal(t, identityV1.DataScope_SELF, on.GetDataScope())
+	require.Equal(t, []string{"User.email"}, on.GetHiddenFields())
+	require.False(t, on.GetIsPlatformAdmin())
+	require.True(t, e.casbinAllows(t, roleCode, "GET", apiPath, "0"), "启用时 casbin 应放行该角色的接口")
+
+	e.disableRole(t, roleID)
+
+	t.Run("reauthorize", func(t *testing.T) {
+		again := &authenticationV1.UserTokenPayload{}
+		err := e.svc.resolveUserAuthority(e.ctx, user, again)
+		require.Error(t, err)
+		require.NotContains(t, again.GetRoles(), roleCode)
+		require.Empty(t, again.GetDataScopes())
+		require.Empty(t, again.GetHiddenFields())
+		require.False(t, again.GetIsPlatformAdmin())
+		require.Equal(t, identityV1.DataScope_DATA_SCOPE_UNSPECIFIED, again.GetDataScope())
+	})
+	t.Run("casbin", func(t *testing.T) {
+		require.False(t, e.casbinAllows(t, roleCode, "GET", apiPath, "0"), "停用后 casbin 不再放行该角色的接口")
+	})
+
+	t.Run("platform_admin_flag", func(t *testing.T) {
+		pe := newAuthenticationServiceForTest(t)
+		permID := pe.seedBackendAccessPermission(t)
+		platRoleID := pe.seedRole(t, nil, permissionV1.Role_SYSTEM, constants.PlatformAdminRoleCode, []uint32{permID}, nil, nil)
+		pe.seedStubUser(7801, nil, "plat-off", identityV1.User_NORMAL, []uint32{platRoleID})
+		platUser := pe.stub.usersByID[7801]
+
+		enabled := &authenticationV1.UserTokenPayload{}
+		require.NoError(t, pe.svc.resolveUserAuthority(pe.ctx, platUser, enabled))
+		require.True(t, enabled.GetIsPlatformAdmin())
+		require.Contains(t, enabled.GetRoles(), constants.PlatformAdminRoleCode)
+		require.True(t, pe.casbinAllows(t, constants.PlatformAdminRoleCode, "DELETE", "/admin/v1/anything", "0"))
+
+		pe.disableRole(t, platRoleID)
+		disabled := &authenticationV1.UserTokenPayload{}
+		require.Error(t, pe.svc.resolveUserAuthority(pe.ctx, platUser, disabled))
+		require.False(t, disabled.GetIsPlatformAdmin())
+		require.NotContains(t, disabled.GetRoles(), constants.PlatformAdminRoleCode)
+		require.False(t, pe.casbinAllows(t, constants.PlatformAdminRoleCode, "DELETE", "/admin/v1/anything", "0"))
 	})
 }

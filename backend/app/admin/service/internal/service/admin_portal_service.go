@@ -112,7 +112,11 @@ func (s *AdminPortalService) GetMyPermissionCode(ctx context.Context, _ *emptypb
 		return nil, adminV1.ErrorInternalServerError("query user failed")
 	}
 
-	permissionIDs, err := s.roleRepo.ListPermissionIDsByRoleIDs(ctx, user.GetRoleIds())
+	roleIDs, err := s.roleRepo.EnabledRoleIDs(ctx, user.GetRoleIds())
+	if err != nil {
+		return nil, err
+	}
+	permissionIDs, err := s.roleRepo.ListPermissionIDsByRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +184,12 @@ func (s *AdminPortalService) GetNavigation(ctx context.Context, _ *emptypb.Empty
 		return nil, adminV1.ErrorInternalServerError("query user failed")
 	}
 
-	// 多角色的菜单
-	roleMenus, err := s.queryMultipleRolesMenusByRoleCodes(ctx, user.GetRoleIds())
+	// 多角色的菜单。停用角色不贡献菜单。
+	roleIDs, err := s.roleRepo.EnabledRoleIDs(ctx, user.GetRoleIds())
+	if err != nil {
+		return nil, err
+	}
+	roleMenus, err := s.queryMultipleRolesMenusByRoleCodes(ctx, roleIDs)
 	if err != nil {
 		return nil, err
 	}

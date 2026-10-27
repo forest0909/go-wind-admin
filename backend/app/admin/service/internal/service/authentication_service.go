@@ -265,10 +265,15 @@ func (s *AuthenticationService) authorizeAndEnrichUserTokenPayloadUserTenantRela
 		}
 	}
 
-	// 获取角色 ID 列表
+	// 获取角色 ID 列表。停用角色不参与后台访问、角色码、管理员标志、数据范围和隐藏字段。
 	roleIDs, err := s.userRepo.ListRoleIDsByUserID(ctx, userID)
 	if err != nil || len(roleIDs) == 0 {
 		s.log.Errorf(ctx, "get roles by user [%d] failed [%v]", userID, err)
+		return authenticationV1.ErrorForbidden("insufficient authority")
+	}
+	roleIDs, err = s.roleRepo.EnabledRoleIDs(ctx, roleIDs)
+	if err != nil || len(roleIDs) == 0 {
+		s.log.Errorf(ctx, "no enabled roles for user [%d]: %v", userID, err)
 		return authenticationV1.ErrorForbidden("insufficient authority")
 	}
 
@@ -348,10 +353,18 @@ func (s *AuthenticationService) authorizeAndEnrichUserTokenPayloadUserTenantRela
 			}
 		}
 
-		// 获取角色 ID 列表
+		// 获取角色 ID 列表。停用角色不参与该成员身份的授权。
 		roleIDs, err := s.membershipRepo.GetRoleIDsByMembership(ctx, m.GetId())
 		if err != nil || len(roleIDs) == 0 {
 			s.log.Errorf(ctx, "get roles by membership [%d] failed [%v]", m.GetId(), err)
+			continue
+		}
+		roleIDs, err = s.roleRepo.EnabledRoleIDs(ctx, roleIDs)
+		if err != nil {
+			s.log.Errorf(ctx, "filter enabled roles for membership [%d] failed [%v]", m.GetId(), err)
+			return err
+		}
+		if len(roleIDs) == 0 {
 			continue
 		}
 

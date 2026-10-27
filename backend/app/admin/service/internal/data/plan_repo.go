@@ -163,18 +163,10 @@ func (r *PlanRepo) Create(ctx context.Context, req *identityV1.CreatePlanRequest
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	builder := tx.Plan.Create().
 		SetNillableName(req.Data.Name).
@@ -200,6 +192,10 @@ func (r *PlanRepo) Create(ctx context.Context, req *identityV1.CreatePlanRequest
 		return identityV1.ErrorInternalServerError("insert plan failed")
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -232,18 +228,10 @@ func (r *PlanRepo) Update(ctx context.Context, req *identityV1.UpdatePlanRequest
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	builder := tx.Plan.UpdateOneID(req.GetId())
 	_, err = r.repository.UpdateOne(ctx, builder, req.Data, req.GetUpdateMask(),
@@ -272,7 +260,14 @@ func (r *PlanRepo) Update(ctx context.Context, req *identityV1.UpdatePlanRequest
 		return identityV1.ErrorInternalServerError("update plan failed")
 	}
 
-	return err
+	if err != nil {
+		return err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
 }
 
 func (r *PlanRepo) Delete(ctx context.Context, id uint32) error {

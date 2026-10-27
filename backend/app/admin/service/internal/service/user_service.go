@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
@@ -451,57 +452,61 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	}
 
 	// 用户行、角色/组织/岗位关联、凭据在同一个事务里。
-	// 凭据复杂度校验失败时回滚，避免留下没有密码的用户。
+	// 凭据复杂度校验失败或写入过程 panic 时整笔回滚，避免留下没有密码的用户。
 	var tx *ent.Tx
 	tx, err = s.userRepo.BeginTx(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				s.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
+	err = data.RunInTx(tx, func() error {
+		var user *identityV1.User
+		if user, err = s.userRepo.CreateWithTx(ctx, tx, req.GetData()); err != nil {
+			return err
 		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			s.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-			resp = nil
-		}
-	}()
 
-	var user *identityV1.User
-	if user, err = s.userRepo.CreateWithTx(ctx, tx, req.GetData()); err != nil {
+		if len(req.GetPassword()) == 0 {
+			// 如果没有设置密码，则设置为默认密码。明文常量，不要再解密。
+			req.Password = trans.Ptr(constants.DefaultUserPassword)
+		}
+
+		if len(req.GetPassword()) > 0 {
+			// 测试注入：模拟凭据写入过程中 panic。生产路径保持 nil。
+			if userCreateCredentialHook != nil {
+				userCreateCredentialHook()
+			}
+			if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
+				UserId:   user.Id,
+				TenantId: user.TenantId,
+
+				IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
+				Identifier:   req.Data.Username,
+
+				CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
+				Credential:     req.Password,
+
+				IsPrimary: trans.Ptr(true),
+				Status:    authenticationV1.UserCredential_ENABLED.Enum(),
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, func(rollbackErr error) {
+		s.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
+	if err != nil {
+		if errors.Is(err, data.ErrTxCommit) {
+			s.log.Errorf(ctx, "transaction commit failed: %s", err.Error())
+			return nil, identityV1.ErrorInternalServerError("transaction commit failed")
+		}
 		return nil, err
 	}
-
-	if len(req.GetPassword()) == 0 {
-		// 如果没有设置密码，则设置为默认密码。明文常量，不要再解密。
-		req.Password = trans.Ptr(constants.DefaultUserPassword)
-	}
-
-	if len(req.GetPassword()) > 0 {
-		if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
-			UserId:   user.Id,
-			TenantId: user.TenantId,
-
-			IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
-			Identifier:   req.Data.Username,
-
-			CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
-			Credential:     req.Password,
-
-			IsPrimary: trans.Ptr(true),
-			Status:    authenticationV1.UserCredential_ENABLED.Enum(),
-		}); err != nil {
-			return nil, err
-		}
-	}
-
-	resp = &emptypb.Empty{}
-	return resp, nil
+	return &emptypb.Empty{}, nil
 }
+
+// userCreateCredentialHook 只给测试注入。生产保持 nil。
+// 在凭据写入前调用，用来模拟写入过程中的 panic。
+var userCreateCredentialHook func()
 
 // decryptTransportPassword 解开前端 encryptPassword 的 base64(AES) 密文。
 // 与 ResetCredential / ChangeCredential 的 NeedDecrypt 使用同一密钥和同一失败文案。

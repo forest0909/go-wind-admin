@@ -194,27 +194,16 @@ func (r *TenantRepo) Get(ctx context.Context, req *identityV1.GetTenantRequest) 
 	return dto, nil
 }
 
-func (r *TenantRepo) BeginTx(ctx context.Context) (tx *ent.Tx, cleanup func(), err error) {
-	tx, err = r.entClient.Client().Tx(ctx)
+// BeginTx 开启 ent 事务。提交和回滚由调用方负责。
+// 以前返回的 cleanup 闭包捕获的是 BeginTx 自己的 err，成功开启后永远是 nil，
+// 调用方后续失败或 panic 时仍会 Commit。
+func (r *TenantRepo) BeginTx(ctx context.Context) (*ent.Tx, error) {
+	tx, err := r.entClient.Client().Tx(ctx)
 	if err != nil {
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
-		return nil, nil, identityV1.ErrorInternalServerError("start transaction failed")
+		return nil, identityV1.ErrorInternalServerError("start transaction failed")
 	}
-
-	cleanup = func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}
-
-	return tx, cleanup, nil
+	return tx, nil
 }
 
 func (r *TenantRepo) Create(ctx context.Context, data *identityV1.Tenant) (tenant *identityV1.Tenant, err error) {
@@ -228,20 +217,20 @@ func (r *TenantRepo) Create(ctx context.Context, data *identityV1.Tenant) (tenan
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return nil, identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
-	return r.CreateWithTx(ctx, tx, data)
+	tenant, err = r.CreateWithTx(ctx, tx, data)
+	if err != nil {
+		return tenant, err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return tenant, identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return tenant, nil
 }
 
 func (r *TenantRepo) CreateWithTx(ctx context.Context, tx *ent.Tx, data *identityV1.Tenant) (*identityV1.Tenant, error) {

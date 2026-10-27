@@ -384,18 +384,10 @@ func (r *MenuRepo) SyncMenus(ctx context.Context, items []*permissionV1.Menu, mo
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return 0, permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	client := tx.Client()
 
@@ -404,14 +396,30 @@ func (r *MenuRepo) SyncMenus(ctx context.Context, items []*permissionV1.Menu, mo
 		if mapErr != nil {
 			return 0, mapErr
 		}
-		return r.syncMergeTree(ctx, client, items, nil, "", existing, operatorId)
+		count, err = r.syncMergeTree(ctx, client, items, nil, "", existing, operatorId)
+		if err != nil {
+			return count, err
+		}
+		if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+			return count, permissionV1.ErrorInternalServerError("transaction commit failed")
+		}
+		return count, nil
 	}
 
 	if _, err = client.Menu.Delete().Exec(ctx); err != nil {
 		r.log.Errorf(ctx, "truncate menus failed: %s", err.Error())
 		return 0, permissionV1.ErrorInternalServerError("truncate menus failed")
 	}
-	return r.syncInsertTree(ctx, client, items, nil, operatorId)
+	count, err = r.syncInsertTree(ctx, client, items, nil, operatorId)
+	if err != nil {
+		return count, err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return count, permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return count, nil
 }
 
 // syncInsertTree 递归插入菜单树：先插父节点拿 ID，再递归子节点（REPLACE 模式）

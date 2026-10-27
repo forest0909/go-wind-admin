@@ -471,18 +471,10 @@ func (r *InternalMessageRecipientRepo) RevokeMessageWithMessage(ctx context.Cont
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return internalMessageV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = internalMessageV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var deleted int
 	if deleted, err = tx.InternalMessage.Delete().
@@ -503,6 +495,10 @@ func (r *InternalMessageRecipientRepo) RevokeMessageWithMessage(ctx context.Cont
 		return internalMessageV1.ErrorInternalServerError("revoke recipients failed")
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return internalMessageV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -520,18 +516,10 @@ func (r *InternalMessageRecipientRepo) DeleteMessageWithRecipients(ctx context.C
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return internalMessageV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = internalMessageV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var deleted int
 	if deleted, err = tx.InternalMessage.Delete().
@@ -552,6 +540,10 @@ func (r *InternalMessageRecipientRepo) DeleteMessageWithRecipients(ctx context.C
 		return internalMessageV1.ErrorInternalServerError("delete recipients failed")
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return internalMessageV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 

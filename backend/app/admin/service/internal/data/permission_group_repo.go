@@ -185,18 +185,10 @@ func (r *PermissionGroupRepo) Create(ctx context.Context, req *permissionV1.Crea
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return nil, permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	builder := tx.PermissionGroup.Create()
 	builder = r.newPermissionCreateWithBuilder(builder, req.Data)
@@ -213,6 +205,10 @@ func (r *PermissionGroupRepo) Create(ctx context.Context, req *permissionV1.Crea
 
 	dto = r.mapper.ToDTO(entity)
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return dto, permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return dto, nil
 }
 
@@ -348,18 +344,10 @@ func (r *PermissionGroupRepo) UpdateParentIDs(ctx context.Context, parentIDs map
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	for permID, parentID := range parentIDs {
 		builder := tx.PermissionGroup.Update().
@@ -380,6 +368,10 @@ func (r *PermissionGroupRepo) UpdateParentIDs(ctx context.Context, parentIDs map
 		}
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 

@@ -71,20 +71,19 @@ func (r *MembershipRepo) AssignTenantMembershipWith(ctx context.Context, data *i
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
-	return r.AssignTenantMembershipWithTx(ctx, tx, data)
+	if err = r.AssignTenantMembershipWithTx(ctx, tx, data); err != nil {
+		return err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
 }
 
 // AssignTenantMembershipWithTx 使用 Membership 数据为用户分配租户
@@ -204,18 +203,10 @@ func (r *MembershipRepo) AssignMembershipRoles(ctx context.Context,
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var membershipID uint32
 	membershipID, err = r.queryMembershipID(ctx, tx, userID)
@@ -228,6 +219,10 @@ func (r *MembershipRepo) AssignMembershipRoles(ctx context.Context,
 		return err
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -243,18 +238,10 @@ func (r *MembershipRepo) AssignMembershipPositions(
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var membershipID uint32
 	membershipID, err = r.queryMembershipID(ctx, tx, userID)
@@ -267,6 +254,10 @@ func (r *MembershipRepo) AssignMembershipPositions(
 		return err
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -281,18 +272,10 @@ func (r *MembershipRepo) AssignMembershipOrgUnits(ctx context.Context,
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var membershipID uint32
 	membershipID, err = r.queryMembershipID(ctx, tx, userID)
@@ -305,6 +288,10 @@ func (r *MembershipRepo) AssignMembershipOrgUnits(ctx context.Context,
 		return err
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -434,20 +421,20 @@ func (r *MembershipRepo) GetMembershipID(ctx context.Context, userID uint32) (me
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return uint32(0), identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
-	return r.queryMembershipID(ctx, tx, userID)
+	membershipID, err = r.queryMembershipID(ctx, tx, userID)
+	if err != nil {
+		return membershipID, err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return membershipID, identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return membershipID, nil
 }
 
 // GetMembershipByUserTenant 获取用户在指定租户下的 Membership 记录
@@ -510,18 +497,10 @@ func (r *MembershipRepo) ListMembershipRoleIDs(ctx context.Context, userID uint3
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return nil, identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var membershipID uint32
 	membershipID, err = r.queryMembershipID(ctx, tx, userID)
@@ -530,7 +509,15 @@ func (r *MembershipRepo) ListMembershipRoleIDs(ctx context.Context, userID uint3
 		return nil, identityV1.ErrorInternalServerError("get membership id failed")
 	}
 
-	return r.membershipRoleRepo.ListRoleIDs(ctx, membershipID, false)
+	roleIDs, err = r.membershipRoleRepo.ListRoleIDs(ctx, membershipID, false)
+	if err != nil {
+		return roleIDs, err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return roleIDs, identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return roleIDs, nil
 }
 
 // GetRoleIDsByMembership 根据 Membership ID 获取关联的角色 ID 列表
@@ -546,18 +533,10 @@ func (r *MembershipRepo) ListMembershipOrgUnitIDs(ctx context.Context, userID ui
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return nil, identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	membershipID, err := r.queryMembershipID(ctx, tx, userID)
 	if err != nil {
@@ -565,7 +544,15 @@ func (r *MembershipRepo) ListMembershipOrgUnitIDs(ctx context.Context, userID ui
 		return nil, identityV1.ErrorInternalServerError("get membership id failed")
 	}
 
-	return r.membershipOrgUnitRepo.ListOrgUnitIDs(ctx, membershipID, false)
+	orgUnitIDs, err = r.membershipOrgUnitRepo.ListOrgUnitIDs(ctx, membershipID, false)
+	if err != nil {
+		return orgUnitIDs, err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return orgUnitIDs, identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return orgUnitIDs, nil
 }
 
 // ListMembershipPositionIDs 获取 Membership 关联的职位 ID 列表
@@ -576,18 +563,10 @@ func (r *MembershipRepo) ListMembershipPositionIDs(ctx context.Context, userID u
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return nil, identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	membershipID, err := r.queryMembershipID(ctx, tx, userID)
 	if err != nil {
@@ -595,7 +574,15 @@ func (r *MembershipRepo) ListMembershipPositionIDs(ctx context.Context, userID u
 		return nil, identityV1.ErrorInternalServerError("get membership id failed")
 	}
 
-	return r.membershipPositionRepo.ListPositionIDs(ctx, membershipID, false)
+	positionIDs, err = r.membershipPositionRepo.ListPositionIDs(ctx, membershipID, false)
+	if err != nil {
+		return positionIDs, err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return positionIDs, identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return positionIDs, nil
 }
 
 // GetMembershipIDByUserID 获取 Membership ID By User ID

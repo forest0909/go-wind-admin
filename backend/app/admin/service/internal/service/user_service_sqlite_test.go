@@ -660,6 +660,98 @@ func TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected(t *testing.
 	require.Equal(t, defaultRow.ID, matched)
 }
 
+// userRepoOperatorLookupStub 让 Create 能通过操作人存在性检查，但不往用户表插行。
+// 这样 panic 回滚之后，用户表应当是 0 行，而不是留下测试自己种的操作人。
+type userRepoOperatorLookupStub struct {
+	data.UserRepo
+}
+
+func (userRepoOperatorLookupStub) Get(_ context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
+	return &identityV1.User{Id: trans.Ptr(req.GetId())}, nil
+}
+
+// TestUserServiceSqlite_CreatePanicRollsBackUser 凭据写入 panic 时，
+// 用户行、三张关联和凭据都不得提交。
+func TestUserServiceSqlite_CreatePanicRollsBackUser(t *testing.T) {
+	svc, client, sys := newUserServiceWithRealUserRepo(t)
+	svc.userRepo = userRepoOperatorLookupStub{UserRepo: svc.userRepo}
+	platformOp := opCtx(sys, 1, 0, true)
+
+	roleID := seedUserSvcRoleOn(t, svc.roleRepo, sys, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_PANIC")
+	require.NoError(t, svc.orgUnitRepo.Create(sys, &identityV1.CreateOrgUnitRequest{
+		Data: &identityV1.OrgUnit{
+			Name:   trans.Ptr("UserService panic 组织"),
+			Code:   trans.Ptr("USERSVC_ORGUNIT_PANIC"),
+			Status: identityV1.OrgUnit_ON.Enum(),
+			Type:   identityV1.OrgUnit_DEPARTMENT.Enum(),
+		},
+	}))
+	orgList, err := svc.orgUnitRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var orgUnitID uint32
+	for _, item := range orgList.GetItems() {
+		if item.GetCode() == "USERSVC_ORGUNIT_PANIC" {
+			orgUnitID = item.GetId()
+		}
+	}
+	require.NotZero(t, orgUnitID)
+	require.NoError(t, svc.positionRepo.Create(sys, &identityV1.CreatePositionRequest{
+		Data: &identityV1.Position{
+			OrgUnitId: trans.Ptr(orgUnitID),
+			Name:      trans.Ptr("UserService panic 职位"),
+			Code:      trans.Ptr("USERSVC_POSITION_PANIC"),
+			Status:    identityV1.Position_ON.Enum(),
+			Type:      identityV1.Position_LEADER.Enum(),
+		},
+	}))
+	posList, err := svc.positionRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var positionID uint32
+	for _, item := range posList.GetItems() {
+		if item.GetCode() == "USERSVC_POSITION_PANIC" {
+			positionID = item.GetId()
+		}
+	}
+	require.NotZero(t, positionID)
+
+	userCreateCredentialHook = func() { panic("credential write") }
+	t.Cleanup(func() { userCreateCredentialHook = nil })
+
+	panicked := false
+	func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				panicked = true
+			}
+		}()
+		_, _ = svc.Create(platformOp, &identityV1.CreateUserRequest{
+			Data: &identityV1.User{
+				Username:    trans.Ptr("usersvc-tx-panic"),
+				RoleIds:     []uint32{roleID},
+				OrgUnitIds:  []uint32{orgUnitID},
+				PositionIds: []uint32{positionID},
+			},
+		})
+	}()
+	require.True(t, panicked, "凭据写入 hook 应该 panic 出来")
+
+	userN, err := client.User.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, userN, "panic 后用户表应为 0 行")
+	roleN, err := client.UserRole.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, roleN, "panic 后角色关联应为 0 行")
+	orgN, err := client.UserOrgUnit.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, orgN, "panic 后组织关联应为 0 行")
+	posN, err := client.UserPosition.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, posN, "panic 后岗位关联应为 0 行")
+	credN, err := client.UserCredential.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, credN, "panic 后凭据表应为 0 行")
+}
+
 func newUserServiceWithRealUserRepo(t *testing.T) (*UserService, *ent.Client, context.Context) {
 	t.Helper()
 	entClient := enttest.NewEntClientForTest(t)

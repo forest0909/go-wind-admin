@@ -70,25 +70,24 @@ func (r *PermissionMenuRepo) AssignMenus(ctx context.Context, permissionID uint3
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	// 清理失效关联失败不阻断分配（仅告警），理由同 CleanNotExistApis
 	if err := r.CleanNotExistMenus(ctx, tx, permissionID, menuIDs); err != nil {
 		r.log.Warnf(ctx, "clean not exist menus for permission [%d] failed: %s", permissionID, err.Error())
 	}
 
-	return r.AssignMenusWithTx(ctx, tx, permissionID, menuIDs)
+	if err = r.AssignMenusWithTx(ctx, tx, permissionID, menuIDs); err != nil {
+		return err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
 }
 
 // AssignMenusWithTx 给权限分配菜单

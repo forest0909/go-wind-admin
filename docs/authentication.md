@@ -73,7 +73,7 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 | 路径 | 前端 | 后端 |
 |---|---|---|
 | 登录 | 登录表单 | `FindUserCredential`，`NeedDecrypt: true` |
-| 创建用户 | `src/api/hooks/user.ts` 的 `useCreateUser` | `UserService.Create`：非空密码先 `decryptTransportPassword`。用户行、角色/组织/岗位关联和凭据在同一个事务里写。复杂度不够时整笔回滚，不会留下没有密码的用户 |
+| 创建用户 | `src/api/hooks/user.ts` 的 `useCreateUser` | `UserService.Create`：非空密码先 `decryptTransportPassword`。用户行、角色/组织/岗位关联和凭据在同一个事务里写。复杂度不够，或凭据写入过程 panic，整笔回滚，不会留下没有密码的用户 |
 | 管理员重置 / 更新时改密 | `useUpdateUser`、`useEditUserPassword` | `ResetCredential`，`NeedDecrypt: true` |
 | 个人中心改密 | `useUpdateUserProfile` | `ChangeCredential`，`NeedDecrypt: true` |
 

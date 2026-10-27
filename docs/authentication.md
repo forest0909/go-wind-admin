@@ -236,10 +236,11 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
   `org_units` 不在 mask 里时保留原集合（管理端只在 SELECTED_UNITS 档提交这个字段），这不算变更。
   受保护角色被剥掉的 `status`、`code`、`type` 不参与比较。管理端保存会把未改的权限、字段权限、
   code、status、dataScope 一并放进 mask；值和原来一样时只改名称不吊销。
-  `Delete` 一律吊销。持有人用
-  `userRoleRepo.ListUserIDsByRoleIDs`（不过滤过期关联）查出后逐个
-  `RevokeUserTokenAllClientTypes`。列举或吊销失败只记日志，不把已经提交的写操作判失败
-  （列举失败时不知道该踢谁，已提交的更新或删除仍然成功）。刷新轮换仍不删除尚未过期的旧 access token；
+  `Delete` 一律吊销。判定为授权变更的 `Update`，以及 `Delete`，都在写库之前用
+  `userRoleRepo.ListUserIDsByRoleIDs`（不过滤过期关联）列出持有人。列举失败直接返回错误，
+  不执行更新或删除，避免库里的授权已经换了、旧令牌仍按变更前的快照生效。写成功后再对这份名单逐个
+  `RevokeUserTokenAllClientTypes`。吊销失败只记日志，不把已经提交的写操作判失败。
+  只改名称等非授权字段时不列举持有人。刷新轮换仍不删除尚未过期的旧 access token；
 - `WhoAmI` 返回操作者 uid/username（operator 上下文）；注册入口已整体移除
   （账号一律管理员建，避免半注册孤儿）。
 

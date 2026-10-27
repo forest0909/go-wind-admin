@@ -34,9 +34,14 @@ type RoleService struct {
 
 	roleRepo     *data.RoleRepo
 	tenantRepo   *data.TenantRepo
-	userRoleRepo *data.UserRoleRepo
+	userRoleRepo roleHolderLister
 
 	authenticator *data.Authenticator
+}
+
+// roleHolderLister 列出角色持有人。生产实现是 *data.UserRoleRepo。
+type roleHolderLister interface {
+	ListUserIDsByRoleIDs(ctx context.Context, roleIDs []uint32, excludeExpired bool) ([]uint32, error)
 }
 
 func NewRoleService(
@@ -254,6 +259,17 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 	// 页面保存会带上未改动的权限和数据范围，值相同则不吊销。
 	revokeHolders := roleUpdateChangesGrant(r, req)
 
+	// 授权要变时先记下持有人。列不出来就返回错误、不更新：
+	// 否则库里的授权已经换了，旧令牌仍按变更前的快照生效，又不知道该踢谁。
+	var holderIDs []uint32
+	if revokeHolders {
+		holderIDs, err = s.listRoleHolderIDs(ctx, req.GetId())
+		if err != nil {
+			s.log.Errorf(ctx, "list role holders before update failed for role [%d]: %v", req.GetId(), err)
+			return nil, err
+		}
+	}
+
 	if err = s.roleRepo.Update(ctx, req); err != nil {
 		s.log.Errorf(ctx, "update role error: %v", err)
 		return nil, err
@@ -264,7 +280,7 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 	}
 
 	if revokeHolders {
-		s.revokeRoleHolders(ctx, req.GetId())
+		s.revokeUsers(ctx, holderIDs)
 	}
 
 	return &emptypb.Empty{}, nil
@@ -272,11 +288,14 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 
 func (s *RoleService) Delete(ctx context.Context, req *permissionV1.DeleteRoleRequest) (*emptypb.Empty, error) {
 	// sys_user_roles.role_id 没有外键级联。先记下持有人，删除成功后再吊销。
-	// 列举失败只记日志：角色已经要删，不能因为列不出持有人就把删除判失败，
-	// 但这时也不知道该踢谁。
-	holderIDs, listErr := s.listRoleHolderIDs(ctx, req.GetId())
+	// 列不出来就返回错误、不删除：否则角色已经没了，持有人的旧令牌仍按删除前的授权生效。
+	holderIDs, err := s.listRoleHolderIDs(ctx, req.GetId())
+	if err != nil {
+		s.log.Errorf(ctx, "list role holders before delete failed for role [%d]: %v", req.GetId(), err)
+		return nil, err
+	}
 
-	if err := s.roleRepo.Delete(ctx, req); err != nil {
+	if err = s.roleRepo.Delete(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -284,11 +303,7 @@ func (s *RoleService) Delete(ctx context.Context, req *permissionV1.DeleteRoleRe
 		s.log.Errorf(ctx, "reset policies error: %v", err)
 	}
 
-	if listErr != nil {
-		s.log.Errorf(ctx, "list role holders before delete failed for role [%d]: %v", req.GetId(), listErr)
-	} else {
-		s.revokeUsers(ctx, holderIDs)
-	}
+	s.revokeUsers(ctx, holderIDs)
 
 	return &emptypb.Empty{}, nil
 }
@@ -493,15 +508,6 @@ func normalizeFieldPermissions(entries []*permissionV1.RoleFieldPermission) map[
 		}
 	}
 	return out
-}
-
-func (s *RoleService) revokeRoleHolders(ctx context.Context, roleID uint32) {
-	ids, err := s.listRoleHolderIDs(ctx, roleID)
-	if err != nil {
-		s.log.Errorf(ctx, "list role holders failed for role [%d]: %v", roleID, err)
-		return
-	}
-	s.revokeUsers(ctx, ids)
 }
 
 func (s *RoleService) listRoleHolderIDs(ctx context.Context, roleID uint32) ([]uint32, error) {

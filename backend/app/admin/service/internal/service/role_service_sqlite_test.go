@@ -13,6 +13,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -683,4 +684,43 @@ func pageRoleData(src *permissionV1.Role, includeOrgUnits bool, mutate func(*per
 		mutate(data)
 	}
 	return data
+}
+
+type roleHolderListErrStub struct{}
+
+func (roleHolderListErrStub) ListUserIDsByRoleIDs(context.Context, []uint32, bool) ([]uint32, error) {
+	return nil, errors.New("user role query failed")
+}
+
+// 列不出持有人时不能先改授权或删角色，否则旧快照继续有效。
+func TestRoleServiceSqlite_HolderListErrorAbortsGrantChange(t *testing.T) {
+	e := newRoleGrantEnv(t)
+	e.svc.userRoleRepo = roleHolderListErrStub{}
+	op := opCtx(e.sys, roleGrantHolderID, 0, true)
+
+	roleID := e.createRole(t, "ROLESVC_HOLDER_LIST_ERR", "列持有人失败")
+	before := e.mustGetRole(t, roleID)
+
+	_, err := e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: roleID,
+		Data: &permissionV1.Role{
+			Name:      trans.Ptr(before.GetName()),
+			DataScope: identityV1.DataScope_SELF.Enum(),
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name", "data_scope"}},
+	})
+	require.Error(t, err)
+	after := e.mustGetRole(t, roleID)
+	require.Equal(t, before.GetDataScope(), after.GetDataScope(), "列举失败时数据范围不能变")
+	require.Equal(t, before.GetName(), after.GetName())
+	require.Equal(t, before.GetCode(), after.GetCode())
+
+	_, err = e.svc.Delete(op, &permissionV1.DeleteRoleRequest{
+		QueryBy: &permissionV1.DeleteRoleRequest_Id{Id: roleID},
+	})
+	require.Error(t, err)
+	still := e.mustGetRole(t, roleID)
+	require.Equal(t, roleID, still.GetId(), "列举失败时角色不能被删除")
+	require.Equal(t, before.GetDataScope(), still.GetDataScope())
+	require.Equal(t, before.GetCode(), still.GetCode())
 }

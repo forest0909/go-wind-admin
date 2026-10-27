@@ -251,7 +251,7 @@ const InboxList = () => {
           actionRef={actionRef}
           columns={columns}
           params={{ userId }}
-          request={async (params, _sorter, _filter) => {
+          request={async (params) => {
             // 收件箱只看自己的：不传 recipient_user_id 会按租户过滤，列出其他用户的收件记录。
             // userId 未就绪（静默恢复期 profile 拉取失败等半残会话）时绝不能发请求——
             // String(undefined) 会把字面量 "undefined" 当用户 ID 发出去，后端解析直接 500；

@@ -301,7 +301,7 @@ const { hasAccessByRoles } = useAccess();
 
 字段级权限是路由与按钮之外的第三个权限轴：角色可配置一组「黑名单字段」，受限用户在界面上看不到这些字段，服务端响应中这些字段同样被裁剪。当前试点资源为用户表。
 
-* **服务端强制**：角色配置的黑名单字段集在登录 / 刷新令牌时聚合进令牌的 `hfs` claim；服务端在读路径按黑名单清值（字段自响应中消失），对写路径清值并从 `field_mask` 中剔除对应字段（越权字段被静默剥离，不会因显式置零覆盖原值）。落点是 service 层切面 `internal/service/user_field_permission.go`（`fieldperm.ApplyReadMask*` / `StripWriteFields`，工具在 `pkg/fieldperm/`），不在 ent 隐私层——所以它只覆盖接了这个切面的资源。`/me` 端点刻意不裁剪（自编辑需要全字段）。
+* **服务端强制**：角色配置的黑名单字段集在登录 / 刷新令牌时聚合进令牌的 `hfs` claim。平台管理员（令牌 `is_platform_admin`，`fillAdminFlags` 按角色码 `platform:admin` 置位）不聚合，字段全可见。`tenant_id==0` 不再跳过：单租户下普通用户的租户也是 0，仍按角色写入 `hfs`。服务端在读路径按黑名单清值（字段自响应中消失），对写路径清值并从 `field_mask` 中剔除对应字段（越权字段被静默剥离，不会因显式置零覆盖原值）。落点是 service 层切面 `internal/service/user_field_permission.go`（`fieldperm.ApplyReadMask*` / `StripWriteFields`，工具在 `pkg/fieldperm/`），不在 ent 隐私层——所以它只覆盖接了这个切面的资源。`/me` 端点刻意不裁剪（自编辑需要全字段）。
 * **前端消费**：`ListPermissionCode`（perm-codes）响应在权限码之外同时下发 `hiddenFields`——
   **一条扁平的 `repeated string`，每项是 `"资源.字段"` 串**（如 `User.phone`；proto 见
   `admin/service/v1/i_admin_portal.proto:42`），不是按资源分组的对象。分组是各端自己做的
@@ -313,7 +313,6 @@ const { hasAccessByRoles } = useAccess();
 ## 项目代码
 
 * [go-wind-admin Gitee](https://gitee.com/tx7do/go-wind-admin)
-* [go-wind-admin Github](https://github.com/tx7do/go-wind-admin)
 
 ## 参考资料
 

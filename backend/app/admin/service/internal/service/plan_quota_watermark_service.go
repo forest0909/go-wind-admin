@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tx7do/go-crud/viewer"
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-crud/viewer"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
 	"go-wind-admin/app/admin/service/internal/data"
@@ -23,18 +23,17 @@ import (
 	"go-wind-admin/pkg/task"
 )
 
-// PlanQuotaWatermarkService 套餐配额水位通知：定时扫描全部 ON 租户四类配额
-// （USER_LIMIT / STORAGE / API_CALL / AI_TOKENS 月度）的用量水位（数据层
-// ScanQuotaWatermarks，与计量同源），对达到阈值的租户按其管理员偏好语言渲染
+// PlanQuotaWatermarkService 套餐配额水位通知：定时扫描全部 ON 租户的用量水位
+// （数据层 ScanQuotaWatermarks，与计量同源），对达到阈值的租户按其管理员偏好语言渲染
 // 站内信告警并投递给租户管理员（sys_tenants.admin_user_id）。
+// USER_LIMIT 与 STORAGE 仍计量。API_CALL 计数恒为 0，这一维不会命中。
 //
-// 与硬执行（quota_enforcer / quota_gate，超限拒绝）互补：这里是到达上限之前的
+// 与硬执行（quota_enforcer，超限拒绝）互补：这里是到达上限之前的
 // 提前告警。扫描频率即告警频率上限（每日一条，无状态：不记录"已通知"）。
 type PlanQuotaWatermarkService struct {
 	log *bLogger.Helper
 
 	tenantUsageRepo  *data.TenantUsageRepo
-	aiUsageLogRepo   *data.AiUsageLogRepo
 	internalMessages *InternalMessageService
 	internalMsgRepo  *data.InternalMessageRepo
 	entClient        *entCrud.EntClient[*ent.Client]
@@ -43,7 +42,6 @@ type PlanQuotaWatermarkService struct {
 func NewPlanQuotaWatermarkService(
 	ctx *bootstrap.Context,
 	tenantUsageRepo *data.TenantUsageRepo,
-	aiUsageLogRepo *data.AiUsageLogRepo,
 	internalMessages *InternalMessageService,
 	internalMsgRepo *data.InternalMessageRepo,
 	entClient *entCrud.EntClient[*ent.Client],
@@ -51,7 +49,6 @@ func NewPlanQuotaWatermarkService(
 	return &PlanQuotaWatermarkService{
 		log:              ctx.NewLoggerHelper("plan-quota-watermark/service/admin-service"),
 		tenantUsageRepo:  tenantUsageRepo,
-		aiUsageLogRepo:   aiUsageLogRepo,
 		internalMessages: internalMessages,
 		internalMsgRepo:  internalMsgRepo,
 		entClient:        entClient,
@@ -65,10 +62,7 @@ func (s *PlanQuotaWatermarkService) AsyncPlanQuotaWatermarkScan(taskType string,
 	// asynq ctx 不带 viewer；跨租户扫描与站内信落库都需要 viewer，用系统查看器。
 	ctx := viewer.WithSystemContext(context.Background())
 
-	now := time.Now()
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-
-	hits, err := s.tenantUsageRepo.ScanQuotaWatermarks(ctx, s.aiUsageLogRepo, monthStart)
+	hits, err := s.tenantUsageRepo.ScanQuotaWatermarks(ctx)
 	if err != nil {
 		s.log.Errorf(ctx, "quota watermark: scan failed: %v", err)
 		return err
@@ -128,9 +122,7 @@ func (s *PlanQuotaWatermarkService) AsyncPlanQuotaWatermarkScan(taskType string,
 	return nil
 }
 
-// deliverOne 建一条站内信行并向单个收件人投递收件行（审计日报 deliverMessage 的
-// 单收件人形态）。静音时段由 sendNotification 内核处理（只抑制实时推送，收件行
-// 照落）。
+// deliverOne 建一条站内信行并向单个收件人投递收件行，同时推 SSE。
 func (s *PlanQuotaWatermarkService) deliverOne(ctx context.Context, recipientUserID uint32, title, content string) error {
 	now := time.Now()
 	msg, err := s.internalMsgRepo.Create(ctx, &internalMessageV1.CreateInternalMessageRequest{
@@ -151,7 +143,7 @@ func (s *PlanQuotaWatermarkService) deliverOne(ctx context.Context, recipientUse
 
 // ---- 水位告警文案（站内信，按租户管理员偏好语言渲染） ----
 //
-// 与 ai_digest_service.go 的日报文案同一条链：站内信不是事务性邮件，文案不进
+// 站内信不是事务性邮件，文案不进
 // pkg/mailtext；语言标签归一复用 mailtext.Locale/LocaleOfTag，文案表留在本
 // 服务内、是其唯一出口，未设置或未识别回落中文。配额类型名不做翻译
 // （USER_LIMIT 等技术名与用量页 / 闸门报错口径一致）。

@@ -11,16 +11,16 @@ import (
 	"strings"
 	"time"
 
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	"github.com/tx7do/go-utils/jwtutil"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/jwtutil"
+	"go-wind-admin/third_party/go-utils/trans"
 
-	authnEngine "github.com/tx7do/kratos-authn/engine"
-	authnJwt "github.com/tx7do/kratos-authn/engine/jwt"
+	authnEngine "go-wind-admin/third_party/kratos-authn/engine"
+	authnJwt "go-wind-admin/third_party/kratos-authn/engine/jwt"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 
@@ -413,37 +413,6 @@ func (a *Authenticator) AddTokenLineage(
 	return a.userTokenCache.AddTokenLineage(ctx, clientType, userId, newJti, prevJti, a.GetAccessTokenExpires(clientType))
 }
 
-// CreateMachineToken 签发机器令牌（AK/SK 令牌交换专用）：
-// 仅签发 access token（短期、无 refresh、不进在线会话缓存）——
-// 机器令牌无对应用户行，走 CreateUserToken 的 userId 缓存键与 refresh 链路都不适用。
-func (a *Authenticator) CreateMachineToken(
-	ctx context.Context,
-	tokenPayload *authenticationV1.UserTokenPayload,
-) (accessToken string, expires time.Duration, err error) {
-	if tokenPayload == nil {
-		return "", 0, authenticationV1.ErrorBadRequest("token payload is nil")
-	}
-
-	var jti string
-	if jti = a.newJwtId(); jti == "" {
-		return "", 0, authenticationV1.ErrorServiceUnavailable("create jwt id failed")
-	}
-	tokenPayload.Jti = trans.Ptr(jti)
-
-	if accessToken, err = a.newAccessToken(0, tokenPayload); accessToken == "" || err != nil {
-		return "", 0, authenticationV1.ErrorServiceUnavailable("create access token failed")
-	}
-
-	// 访问令牌必须进 Redis 缓存：auth 中间件的校验器会核对缓存中的令牌，
-	// 未入缓存的令牌会被判为"已吊销/过期"。机器令牌无 refresh。
-	expires = a.GetAccessTokenExpires(0)
-	if err = a.userTokenCache.AddAccessToken(ctx, 0, tokenPayload.GetUserId(), jti, accessToken, expires); err != nil {
-		return "", 0, authenticationV1.ErrorServiceUnavailable("cache machine token failed")
-	}
-
-	return accessToken, expires, nil
-}
-
 // RevokeUserToken 撤销用户令牌
 func (a *Authenticator) RevokeUserToken(ctx context.Context, clientType authenticationV1.ClientType, userId uint32) error {
 	if a.userTokenCache == nil {
@@ -633,7 +602,7 @@ func (a *Authenticator) UnblockToken(
 // ==============================
 
 // SaveSessionMeta 记录会话元数据，TTL 与 refresh token 对齐。
-// 在登录 / 刷新轮换 / MFA 验证通过签发新令牌对后由 service 层调用。
+// 在登录 / 刷新轮换签发新令牌对后由 service 层调用。
 func (a *Authenticator) SaveSessionMeta(
 	ctx context.Context,
 	clientType authenticationV1.ClientType,
@@ -661,7 +630,7 @@ func (a *Authenticator) ListSessionEntries(ctx context.Context) ([]SessionEntry,
 }
 
 // RevokeUserTokenAllClientTypes 吊销用户全部客户端类型的所有令牌与会话记录。
-// 用于改密 / 重置密码后的强制下线：被改密用户的所有已签发令牌立即失效。
+// 用于改密、重置密码，以及用户角色集合成员变更后的强制下线：已签发令牌立即失效。
 func (a *Authenticator) RevokeUserTokenAllClientTypes(ctx context.Context, userId uint32) error {
 	// 显式枚举合法客户端类型（与 RevokeTokenByJti 的 nil 分支同形）。
 	// 此前遍历 ClientType_value 名字表：后续枚举若新增无效/未实现类型会被

@@ -6,7 +6,7 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-	"github.com/tx7do/go-crud/entgo/mixin"
+	"go-wind-admin/third_party/go-crud/entgo/mixin"
 )
 
 // Api holds the schema definition for the Api entity.
@@ -57,7 +57,6 @@ func (Api) Fields() []ent.Field {
 				"InternalMessage", "INTERNAL_MESSAGE",
 				"File", "FILE",
 				"Task", "TASK",
-				"Ai", "AI",
 			).
 			Optional().
 			Nillable(),

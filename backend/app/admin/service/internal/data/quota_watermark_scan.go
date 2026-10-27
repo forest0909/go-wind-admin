@@ -3,9 +3,8 @@ package data
 import (
 	"context"
 	"math"
-	"time"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
@@ -16,9 +15,8 @@ import (
 //
 // 与 §7.2 的硬执行（超限拒绝）互补：这里是只读扫描 + 提前告警——在用量到达
 // 上限之前把水位事实通知租户管理员，让租户有机会提前扩容。扫描与计量同源：
-// USER_LIMIT / STORAGE / API_CALL 复用 CountUsersInTenant / SumStorageInTenant /
-// CountApiCallsInTenant（与 GetUsage 同一查询），AI_TOKENS 为月度口径
-//（SumTokensByTenantSince，本月 1 日起）。
+// USER_LIMIT / STORAGE 复用 CountUsersInTenant / SumStorageInTenant。
+// API_CALL 不再计量，CountApiCallsInTenant 恒为 0，这一维不会命中。
 //
 // 阈值是运维口径常量（非套餐数据、当前无配置面）：用量/上限达到 80% 即命中。
 // 单维度计量查询失败记日志后跳过该维度——扫描不因计量抖动中断，也不因
@@ -64,7 +62,7 @@ func ratioPct(used, limit uint64) uint64 {
 
 // ScanQuotaWatermarks 扫描全部 ON 租户的配额水位，返回命中清单。
 // 只读：不拒绝任何请求、不写任何业务行；投递由服务层（站内信）完成。
-func (r *TenantUsageRepo) ScanQuotaWatermarks(ctx context.Context, aiRepo *AiUsageLogRepo, monthStart time.Time) ([]QuotaWatermarkHit, error) {
+func (r *TenantUsageRepo) ScanQuotaWatermarks(ctx context.Context) ([]QuotaWatermarkHit, error) {
 	sysCtx := viewer.WithSystemContext(ctx)
 
 	tenants, err := r.entClient.Client().Tenant.Query().
@@ -107,13 +105,6 @@ func (r *TenantUsageRepo) ScanQuotaWatermarks(ctx context.Context, aiRepo *AiUsa
 			r.log.Errorf(ctx, "quota watermark scan: count api calls for tenant %d failed: %v", t.ID, aerr)
 		} else {
 			usage[planquota.QuotaTypeApiCall] = n
-		}
-		if aiRepo != nil {
-			if n, terr := aiRepo.SumTokensByTenantSince(sysCtx, t.ID, monthStart); terr != nil {
-				r.log.Errorf(ctx, "quota watermark scan: sum ai tokens for tenant %d failed: %v", t.ID, terr)
-			} else {
-				usage[planquota.QuotaTypeAiTokens] = n
-			}
 		}
 
 		for _, q := range t.Edges.Plan.Edges.Quotas {

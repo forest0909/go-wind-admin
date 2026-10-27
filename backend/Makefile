@@ -29,23 +29,22 @@ init: plugin cli
 
 # install protoc plugin
 plugin:
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-	go install github.com/go-kratos/kratos/cmd/protoc-gen-go-http/v2@latest
-	go install github.com/go-kratos/kratos/cmd/protoc-gen-go-errors/v2@latest
-	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
-	go install github.com/envoyproxy/protoc-gen-validate@latest
-	go install github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact@latest
-	go install github.com/tx7do/go-wind-toolkit/protoc-gen-typescript-http@latest
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.2
+	go install github.com/go-kratos/kratos/cmd/protoc-gen-go-http/v2@v2.0.0-20260404020628-f149714c1d54
+	go install github.com/go-kratos/kratos/cmd/protoc-gen-go-errors/v2@v2.0.0-20260404020628-f149714c1d54
+	go install github.com/google/gnostic/cmd/protoc-gen-openapi@v0.7.1
+	go install github.com/envoyproxy/protoc-gen-validate@v1.3.3
+	go install ./third_party/tools/protoc-gen-go-redact
+	go install ./third_party/tools/protoc-gen-typescript-http
 
 # install cli tools
 cli:
-	go install github.com/go-kratos/kratos/cmd/kratos/v2@latest
-	go install github.com/google/gnostic@latest
-	go install github.com/bufbuild/buf/cmd/buf@latest
-	go install entgo.io/ent/cmd/ent@latest
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest
+	go install github.com/go-kratos/kratos/cmd/kratos/v2@v2.0.0-20260404020628-f149714c1d54
+	go install github.com/google/gnostic@v0.7.1
+	go install github.com/bufbuild/buf/cmd/buf@v1.55.1
+	go install entgo.io/ent/cmd/ent@v0.14.6
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 
 # download dependencies of module
 dep:
@@ -88,18 +87,17 @@ register:
 # generate protobuf api go code
 api:
 	cd api && \
-	buf generate
+	buf generate && \
+	buf generate --template buf.gen.conf.yaml
 
 # generate protobuf api OpenAPI v3 docs.
 openapi:
 	cd api && \
 	buf generate --template buf.admin.openapi.gen.yaml
 
-# generate protobuf api Typescript code
+# generate protobuf api Typescript code (React only)
 ts:
 	cd api && \
-	buf generate --template buf.vue-vben.admin.typescript.gen.yaml && \
-	buf generate --template buf.vue-element.admin.typescript.gen.yaml && \
 	buf generate --template buf.react.admin.typescript.gen.yaml
 
 # build all service applications

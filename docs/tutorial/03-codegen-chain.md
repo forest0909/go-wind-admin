@@ -6,16 +6,12 @@
 
 | 链 | 输入 | 输出 | 命令（`backend/` 下） |
 |---|---|---|---|
-| proto → Go | `api/protos/**/*.proto` | `api/gen/go/**`（message 类型、HTTP server 注册函数、错误码） | `gow api`（等价 `make api`） |
+| proto → Go | `api/protos/**/*.proto` | `api/gen/go/**`（message 类型、HTTP server 注册函数、错误码） | `make api` |
 | proto → OpenAPI | 同上 | `app/admin/service/cmd/server/assets/openapi.yaml`（编译期内嵌，`/docs` 挂 Swagger，受 `configs/server.yaml:5` 的 `enable_swagger` 开关控制） | `make openapi` |
-| BFF proto → TS | `api/protos/admin/service/v1/i_*.proto` | 三端的 `api/generated/**`（含 `apiClient.<Entity>Service` 客户端） | `make ts`（一次生成三端） |
-| ent schema → ORM | `app/admin/service/internal/data/ent/schema/*.go` | 同目录下除 `schema/` 外全部（client、predicate、迁移） | `gow ent admin` |
+| BFF proto → TS | `api/protos/admin/service/v1/i_*.proto` | React 的 `api/generated/**`（含 `apiClient.<Entity>Service` 客户端） | `make ts` |
+| ent schema → ORM | `app/admin/service/internal/data/ent/schema/*.go` | 同目录下除 `schema/` 外全部（client、predicate、迁移） | `make ent` |
 
-另有一条**反向链**：从数据库表生成 CRUD 代码（DSN 驱动，`gow generate`，`--proto-only` 只出 proto）。
-这是配套工具链（[gowind-uiapp](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp) 桌面端/CLI）的
-能力，产物仍须按本仓约定验收补齐——见[第 4 章末尾](./04-first-crud-module.md)与根 AGENTS.md。
-
-**工具分工约定**：`gow` CLI 优先（`gow run / gow ent / gow api`），`make ts`、`make openapi` 等 gow 未覆盖的走 Makefile。这是仓库铁律，别混用别自造。
+命令都在 `backend/` 下执行。本仓不再使用 gow。新模块按 `docs/crud_module_guide/` 写，不从外部脚手架生成。
 
 ## 2. 两层 proto：domain 与 BFF
 
@@ -41,14 +37,14 @@ api/protos/admin/service/v1/i_<entity>.proto         BFF 层：只声明 HTTP �
 
 `backend/api/` 下的 `buf.*.gen.yaml` 各管一条生成链（清单见
 [backend_project_struct.md](../backend_project_struct.md)）：Go 代码、OpenAPI、三个前端各自的 TS。
-**新建一个全新 domain 时**要往 `buf.gen.yaml` 的 `go_package` overrides 加一行，否则 `gow api`
+**新建一个全新 domain 时**要往 `buf.gen.yaml` 的 `go_package` overrides 加一行，否则 `make api`
 不知道新包往哪吐——这是新模块流程里唯一需要动 buf 配置的场景。
 
 ## 4. ent：schema 是手写的，其余全是生成物
 
 ```
 internal/data/ent/schema/<entity>.go     ✍ 手写：Fields() / Mixin() / Indexes() / Annotations()
-internal/data/ent/<entity>/**            🤖 gow ent 生成：查询构建器、predicate、迁移 DDL
+internal/data/ent/<entity>/**            🤖 make ent 生成：查询构建器、predicate、迁移 DDL
 ```
 
 手写 schema 的三个要点（样例 `schema/api.go`、带租户与边的 `schema/dict_type.go`）：
@@ -62,7 +58,7 @@ internal/data/ent/<entity>/**            🤖 gow ent 生成：查询构建器�
   （不一致会在运行时 500，转换器按名字直传）；
 - `Indexes()` 里不能引用 edge 外键列（ent 报 unknown index field）。
 
-`gow ent` **不会清目录、不会冲掉 schema/ 里的手写文件**——只重写固定的生成文件名集合，放心跑。
+`make ent` **不会清目录、不会冲掉 schema/ 里的手写文件**——只重写固定的生成文件名集合，放心跑。
 不是嘴上说安全：`internal/data/ent/` 根下就有三个手写的 `*_test.go`（`data_scope_guard_test.go` 等），
 和生成物同目录共存至今。
 
@@ -70,10 +66,10 @@ internal/data/ent/<entity>/**            🤖 gow ent 生成：查询构建器�
 
 | 想改的东西 | 正确做法 |
 |---|---|
-| `api/gen/go/**` 里的类型/服务 | 改 `api/protos/**` → `gow api` |
-| 三端 `api/generated/**` 缺方法 | 确认 BFF proto 有该 RPC → `make ts` |
-| `internal/data/ent/**`（非 schema）的查询行为 | 改 `schema/**` → `gow ent` |
-| `i_*.proto` 的路由 | 改注解 → `gow api` + `make openapi`，部署侧记得接口同步（第 6/9 章） |
+| `api/gen/go/**` 里的类型/服务 | 改 `api/protos/**` → `make api` |
+| React `api/generated/**` 缺方法 | 确认 BFF proto 有该 RPC → `make ts` |
+| `internal/data/ent/**`（非 schema）的查询行为 | 改 `schema/**` → `make ent` |
+| `i_*.proto` 的路由 | 改注解 → `make api` + `make openapi`，部署侧记得接口同步（第 6/9 章） |
 | Swagger 没更新 | `make openapi` |
 
 另外：`cmd/server/wiring_*.go` 是**手写 DI**（本仓已弃用 Wire 工具，文件名是历史遗留），新模块的

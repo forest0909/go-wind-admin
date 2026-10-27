@@ -81,9 +81,14 @@ install_go_plugins() {
         "github.com/go-kratos/kratos/cmd/protoc-gen-go-http/v2@latest" \
         "github.com/go-kratos/kratos/cmd/protoc-gen-go-errors/v2@latest" \
         "github.com/google/gnostic/cmd/protoc-gen-openapi@latest" \
-        "github.com/envoyproxy/protoc-gen-validate@latest" \
-        "github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact@latest" \
-        "github.com/tx7do/go-wind-toolkit/protoc-gen-typescript-http@latest"
+        "github.com/envoyproxy/protoc-gen-validate@latest"
+}
+
+install_local_plugins() {
+    local backend_dir
+    backend_dir="$(cd "$(dirname "$0")/../.." && pwd)"
+    log "安装本仓里的 protoc 插件..."
+    (cd "$backend_dir" && go install ./third_party/tools/protoc-gen-go-redact ./third_party/tools/protoc-gen-typescript-http)
 }
 
 install_go_cli_tools() {
@@ -94,8 +99,7 @@ install_go_cli_tools() {
         "github.com/google/gnostic@latest" \
         "github.com/bufbuild/buf/cmd/buf@latest" \
         "entgo.io/ent/cmd/ent@latest" \
-        "github.com/golangci/golangci-lint/cmd/golangci-lint@latest" \
-        "github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest"
+        "github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
 }
 
 install_go_dev_tools() {
@@ -119,6 +123,7 @@ install_go_dev_tools() {
 
     # 3. 安装 Protobuf 插件（带检测）
     install_go_plugins
+    install_local_plugins
 
     # 4. 安装 CLI 脚手架工具（带检测）
     install_go_cli_tools

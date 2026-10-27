@@ -5,12 +5,12 @@ import (
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/pkg/middleware/auth"

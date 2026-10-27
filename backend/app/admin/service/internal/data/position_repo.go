@@ -5,15 +5,15 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/timeutil"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
@@ -172,7 +172,7 @@ func (r *PositionRepo) Get(ctx context.Context, req *identityV1.GetPositionReque
 // 读路径本就如实流通，无需回填。被丢弃的是**混合形态**：实体侧为值型
 // 枚举列（带 Default 且无 Nillable，如本仓 type）而 DTO 侧为可选指针
 // 字段——值型源与指针对键失配，copier 转而给 DTO 指针分配零值。故此处
-// 只对 type 做二次查询回填（对齐 notification_channel 的 Type 同型修复）。
+// 只对 type 做二次查询回填（同型问题）。
 func (r *PositionRepo) queryEnumsAndBackfill(ctx context.Context, items []*identityV1.Position) {
 	if len(items) == 0 {
 		return

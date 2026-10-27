@@ -1,10 +1,8 @@
 # 任务调度系统（Task System）参考文档
 
 > **定位**：本仓 asynq 任务调度体系的唯一权威说明——配置与启动链、任务数据模型、调度
-> 生命周期、系统级常驻任务（含跨链路的到期扫描 / 审计归档 / 备份 / 站内信广播 / 通知异步派发 /
-> 通知台账清扫）、脚本任务桥、管理页、多租户语义与运维排障。给任务系统加新类型、排"任务没跑"的问题、或接入新调度需求前先读它。
-> 脚本任务桥的脚本侧语义（处理器注册/代际清理）见 [script_system.md](./script_system.md)；
-> 到期扫描与备份的业务语义分别见 [plan_billing.md](./plan_billing.md)、下文第 5.3 节。
+> 生命周期、系统级常驻任务（含跨链路的到期扫描 / 审计归档 / 站内信广播 / 配额水位）、管理页、多租户语义与运维排障。给任务系统加新类型、排"任务没跑"的问题、或接入新调度需求前先读它。
+> 到期扫描的业务语义见 [plan_billing.md](./plan_billing.md)。数据库备份不在程序内，用数据库自带工具或运维平台。
 
 ## 1. 组件地图
 
@@ -12,12 +10,11 @@
 配置      cfg.Server.Asynq（bootstrap 配置，Redis 连接）——未配置则 NewAsynqServer 返回 nil，
           整个任务子系统（含系统级任务）不启动
 启动链    NewAsynqServer（internal/server/asynq_server.go）
-          ├─ 固定类型订阅注册（handler 路由表）：backup / tenant_expiry_scan /
-          │  audit_log_archive / broadcast_message / notification_dispatch /
-          │  notification_delivery_sweep + script_task（桥，见第 6 节）
+          ├─ 固定类型订阅注册（handler 路由表）：tenant_expiry_scan /
+          │  audit_log_archive / broadcast_message / plan_quota_watermark_scan
           ├─ RegisterTaskScheduler：把调度器句柄注入 TaskService（后续所有调度动作经它）
-          ├─ RegisterTaskEnqueuer：站内信服务（广播 fan-out）与通知域服务（异步派发）
-          │  各自获得一次性任务入队能力；未注入时两处都退回同步路径
+          ├─ RegisterTaskEnqueuer：站内信服务（广播 fan-out）获得一次性任务入队能力；
+          │  未注入时退回同步路径
           └─ StartAllTask（SystemContext 上下文）：装载 sys_tasks + 重注册系统级 cron
 数据      sys_tasks（任务表，带租户列）+ task_options（asynq 选项映射）
 执行      asynq 调度器（Redis 队列，周期任务 cron entry + 一次性任务队列）
@@ -29,26 +26,19 @@
 - `configs/server.yaml` 的 `server.asynq.uri`（Redis 连接串）；缺失/未配置 →
   `NewAsynqServer` 直接 `return nil, nil`，任务子系统整体不可用，`hasScheduler()` 全链路
   nil 防护（ListTaskTypeName 返回空表、ControlTask 拒绝、StartAllTask 空转）。
-- 订阅注册（启动期一次性，asynq 的 mux 拒绝 Start 之后注册 handler——这是脚本桥采用
-  固定分发类型的根因，见第 6 节）：
+- 订阅注册（启动期一次性，asynq 的 mux 拒绝 Start 之后注册 handler）：
 
 | 固定类型常量 | handler | 形态 |
 |---|---|---|
-| `backup` | `TaskService.AsyncBackup` | 一次性（见 5.3） |
 | `tenant_expiry_scan` | `TaskService.AsyncTenantExpiryScan` | 系统级 cron，每小时（见 5.1） |
 | `audit_log_archive` | `TaskService.AsyncAuditLogArchive` | 系统级 cron，每日 03:30（见 5.2） |
 | `broadcast_message` | `InternalMessageService.AsyncBroadcastMessage` | 一次性、幂等（见 5.4） |
-| `notification_dispatch` | `NotificationService.AsyncNotificationDispatch` | 一次性、幂等（见 5.5） |
-| `notification_delivery_sweep` | `NotificationService.AsyncDeliverySweep` | 系统级 cron，每 5 分钟（见 5.6） |
-| `monitor_alert_scan` | `MonitorAlertService.AsyncMonitorAlertScan` | 系统级 cron，每 5 分钟（评估启用的告警规则；handler 在监控告警域） |
-| `ai_audit_digest` | `AiDigestService.AsyncAiAuditDigest` | 系统级 cron，每日 08:00（见 [ai_module.md](./ai_module.md)「审计日报」） |
 | `plan_quota_watermark_scan` | `PlanQuotaWatermarkService.AsyncPlanQuotaWatermarkScan` | 系统级 cron，每日 09:00（见 5.7、[plan_billing.md](./plan_billing.md) §7.3） |
-| `script_task` | `ScriptRuntime.RunScriptTaskHandler`（经桥） | sys_tasks 型 PERIODIC，载荷带处理器名（见 6） |
 
 订阅有两种形态：`RegisterSubscriber[T]` 的 handler 签名不带 ctx，`RegisterSubscriberWithCtx[T]`
 带（`func(ctx, taskType, *T) error`）。**只有需要任务超时真正生效的那一类要用 WithCtx**：
 `asynq.Timeout` 是挂在任务 ctx 上的 deadline，handler 拿不到 ctx 就等于把超时只用在"杀任务"上、
-掐不断正在进行的 I/O（见 5.5 里的 SMTP 拨号）。两者的 handler 返回值都原样交给 asynq，
+掐不断正在进行的 I/O。两者的 handler 返回值都原样交给 asynq，
 所以 `asynq.SkipRetry` / 归档语义在两种形态下都可用（用 `errors.Is` 判定）。
 
 ## 3. 任务数据模型（`sys_tasks`）
@@ -89,17 +79,10 @@ cron `0 * * * *`（`pkg/task/tenant_expiry.go`）。handler 语义完整见
 
 ### 5.2 审计日志归档（`audit_log_archive`）
 
-cron `30 3 * * *`。把超过保留期的六类审计行导出 JSONL 归档文件后从库中删除
+cron `30 3 * * *`。把超过保留期的登录日志和操作日志导出 JSONL 归档文件后从库中删除
 （库瘦身 + ≥6 个月留痕的等保平衡）。环境变量：`AUDIT_ARCHIVE_DIR`（默认
 `./data/audit-archive`）、`AUDIT_RETENTION_DAYS`（默认 180）。采集与字段语义见
 [audit-log-producer-design.md](./audit-log-producer-design.md)。
-
-### 5.3 备份（`backup`，一次性）
-
-`AsyncBackup`：SystemContext 全量导出核心表 → JSON 序列化 → gzip → 上传 MinIO 桶
-`backups`（对象名 `<日期>/<名称>-<时间>.json.gz`）。**这是应用级逻辑备份**，
-与 `scripts/backup/pg_backup.sh`（pg_dump 物理备份，30 份轮换）互补、互不替代。
-桶内对象的保留/清理策略当前无自动化（见第 10 节）。
 
 ### 5.4 站内信广播（`broadcast_message`，一次性 + 幂等）
 
@@ -107,65 +90,6 @@ cron `30 3 * * *`。把超过保留期的六类审计行导出 JSONL 归档文�
 批量插投递记录。断点恢复（进程重启后未完成投递自动重试）+ 幂等
 （(message_id, recipient_user_id) 唯一约束 + CreateBulk `ON CONFLICT DO NOTHING`）。
 载荷只带 messageId（消息本体留在库里，载荷不带大字段）。语义属站内信子系统。
-
-### 5.5 通知异步派发（`notification_dispatch`，一次性 + 台账幂等）
-
-通知域里"调用方不需要投递结论"的那几个事件（找回密码 / 换绑验证码）在 `SendDirect` 落完台账行后
-入队，SMTP 往返不再占住 HTTP；渠道测试邮件与站内信**故意保持同步**，判据与白名单见
-[notification_domain_design.md](./notification_domain_design.md) §4 P2-3。要点（本任务是"幂等门不在
-asynq 侧、在业务侧"的那个例外）：
-
-- **载荷 `{delivery_id, target, title, content}`**：台账既不存正文、`target` 又是脱敏串，handler 无法从
-  库里读回可投递的三元组，所以正文进载荷（代价与取舍记在通知域 §6 决策点 7）。这与 5.4 广播"载荷只带
-  messageId"相反 —— 广播的本体在库里，验证码不在。
-- **幂等门 = 台账状态**：handler 读回该行，`status != SENDING` 直接返回 nil（重投/归档后手工重跑都 no-op）。
-  推论：**还有重试额度的失败必须留在 SENDING**，只写 `last_error` + `attempts`，否则第一次瞬态错误落了
-  终态就把额度静默作废 —— 加新任务型时容易反过来写（写终态更"顺手"）。
-- **选项写死在代码里**，不走 `sys_tasks.task_options`：`asynq.MaxRetry(3)`（⇒ 最多 4 次尝试，第 4 次才落
-  终态 FAILED）+ `asynq.Timeout(30s)`（`pkg/mailer` 用 `DialContext`，配 `RegisterSubscriberWithCtx` 才真掐得断
-  卡死的握手）。配置类错误（渠道没配/没启用/类型不对）与未注册渠道一律包 `asynq.SkipRetry`：
-  重试不会让配置变好，只会把一个 OTP 载荷送进归档队列。
-- **不入 `sys_tasks`**，与 5.1/5.2 同为"代码常驻"。但它确实进了 `ListTaskTypeName` 的注册面，
-  所以管理页的类型下拉今天能选到它 —— 手工建一条这样的行只会在 handler 第一道守卫处报错
-  （载荷缺 delivery_id），不会误发信；5.4 的 `broadcast_message` 同形。
-- **运行期实测（2026-09-20，含"重试额度走完"的 4 次尝试轨迹）**：见通知域 §4 P2-3 的观测表。
-
-### 5.6 通知台账超时清扫（`notification_delivery_sweep`）
-
-cron `*/5 * * * *`（`pkg/task/notification_delivery_sweep.go`）。把 `sys_notification_deliveries` 里
-`status = SENDING` 且 `created_at` 已超期 threshold 的行结算为 `FAILED`，`last_error` 写
-`swept by notification_delivery_sweep: …`，**`attempts` 原样保留**——"拨过号却没回写结论"这条线索
-正是它存在的理由。
-
-补的是 5.5 的收口问题：台账先落 SENDING 再投递，于是"进程死在握手中途"、"结论回写失败
-（通知域 P2-5 之后这一条会上抛给 asynq 重投，但同步侧不能因此回错给业务调用方、两支 `SkipRetry`
-也不为重投 —— 留在账上的仍是没有结论的那一行）"、"Redis 里有任务但没有消费者"三种情况都会
-留下一行永远停在 SENDING 的记录。代码里给这一行写 SENDING 的地方有四处（ent 列默认值
-`notification_delivery.go:95`、同步与异步两条建账路径 `notification_service.go:156,:333`，
-以及"还有重试额度时故意不写终态"的 `:413`），**没有一处会把它推向终态**。
-
-- **handler 在通知域、调度项在这里注册**：与 5.1/5.2 同因——只有 `startAllTask` 会在
-  `RestartAllTask`（先 `RemoveAllPeriodicTask`）之后被再次调用，调度项放别处就会在那条路径上丢失。
-- **阈值** `NOTIFICATION_DELIVERY_STALE_MINUTES`（分钟，默认 15，下限 10）。默认值照着 5.5 的预算放。
-  预算 = 最多 4 次尝试 × asynq **v0.26** 的 `Timeout(30s)`，加上默认退避 `n^4 + 15 + rand(0..29)×(n+1)` 秒。
-  **`n` 取的是 `msg.Retried`，而 asynq 只在写 retry 状态时才自增它**，所以第一次失败用的是 `n=0`：
-  三次退避落在 15~44 / 16~74 / 31~118 秒（第 4 次失败时 `Retried` 已等于 `MaxRetry(3)`，直接归档、
-  不再退避）⇒ **退避合计 62~236 秒**，再叠满 4×30s 的处理时间 ⇒ **预算 182~356 秒，最坏 ≈5.9 分钟**。
-  缺省 15 分钟 = 最坏预算的 2.5 倍，多出来的余量是给队列积压的。
-  **下限不许更低**：阈值小于预算会把"还在重试"的行定案，而定案的行会被 5.5 的幂等门挡掉，等于清扫亲手取消了
-  一次还能救的投递。坏值按缺省、低于下限的值抬到下限，两种都会留一条 WARN。
-  （下限首稿是 5 分钟：它当时照着旧版 asynq 的"2s/17s/82s ≈ 221 秒"算，那个公式没有随机项。
-  通知域 P2-5 实测 4 次尝试跨 178.9 秒后抬到 10 分钟——按上式重算，5 分钟(300s) 也确实落在 356s 之内，
-  结论不变。中间一版把 `n` 当成从 1 起算，得出"96~210 秒 ⇒ 最坏 504s ≈ 8.4 分钟"，两个上界都偏高。
-  两次实测值 ~101s / ~179s 都落在"退避合计 62~236s"里（说明那两次尝试本身很快），
-  **别拿单次实测当上界**。）
-- **代价**：与"迟但会到"互斥。队列积压超过阈值时，清扫先定案、消费者后到达 → 那封通知不会发。
-  运维上正确姿势是**放宽阈值**（或修队列），不是关掉清扫。
-- **并发安全**：写入是一条带 `status = SENDING` 谓词的批量 UPDATE（先取候选 ID 再更新），
-  比较交给 DB，所以同一瞬间被 handler 定案的行不会被扫回 FAILED。
-- **运行期实测（2026-09-20）**：见通知域 §4 P2-4 的观测表。P2-5 又跑了一轮更狠的：结论回写被 Postgres
-  触发器挡下 ⇒ 同一行 4 次尝试全部写不回、最后由本任务定案（`attempts=4` 保留），期间清扫任务自己也被
-  同一个故障咬了一次并靠 asynq 重试自愈 —— 见通知域 §4 P2-5 的观测表。
 
 ### 5.7 套餐配额水位扫描（`plan_quota_watermark_scan`）
 
@@ -177,15 +101,6 @@ cron `*/5 * * * *`（`pkg/task/notification_delivery_sweep.go`）。把 `sys_not
 该文档 §7.1 计量完全同源；达到 80% 水位的 ON 租户按其管理员偏好语言投递站内信告警（一个租户一条消息）；
 扫描频率即告警频率上限。投递复用审计日报的站内信内核（消息行 + 收件行；单收件人失败不阻断、全部失败才
 报错重试）。判定与百分数是纯函数、有单测；扫描另有 SQLite 接线级单测与文案表双语单测。
-
-## 6. 脚本任务桥（`script_task`）
-
-asynq mux 的"Start 后不能注册 handler"约束 vs 脚本处理器运行期动态增删——故启动期注册
-**一个固定分发类型**，处理器名放载荷 `handler` 字段，由 `ScriptRuntime.RunScriptTaskHandler`
-按名分发。sys_tasks 行写法：`type=PERIODIC`、`type_name="script_task"`、`task_payload=
-{"handler":"<名>","params":{...}}`。脚本删除/禁用后处理器在 Resync 时按代际清理。
-`task.register_handler` 的签名与 `opts` 默认值见 [script_system.md](./script_system.md)
-「五类扩展点 → 2. 定时任务」，沙箱与资源限制在「语言与沙箱」一节（不是同一节，别只点前者）。
 
 ## 7. 管理页（三端 `system/task`）
 
@@ -209,18 +124,16 @@ asynq mux 的"Start 后不能注册 handler"约束 vs 脚本处理器运行期�
 |---|---|
 | 任务没跑 | ① `enable` 位；② typeName 是否在注册面（ListTaskTypeName / 启动日志里三条 `…定时任务已注册（cron=…）`：三条前后缀并不一致，只有到期扫描那条带"系统级"字样，检索请用 `定时任务已注册` 而不是 `系统级`）；③ H8 拒绝创建的报错（未注册类型）；④ 调度器是否配置（`server.asynq.uri`，未配置整个子系统静默缺失）；⑤ 同名任务被 startAllTask 去重跳过的告警日志 |
 | StopAllTask 后系统任务还在 | 正常——StartAllTask 末尾自动重注册；要彻底停系统任务只能停服务或改代码 |
-| 备份对象 | MinIO `backups` 桶，日期分层对象名；恢复 = 下载 JSON 反序列化（当前无自动恢复流程） |
 | 归档目录/保留期 | `AUDIT_ARCHIVE_DIR` / `AUDIT_RETENTION_DAYS`（改后下个 03:30 周期生效） |
 | 改了 cron 没生效 | Update 走 stop→start 重装载；确认后看管理页行内状态与调度器日志 |
-| 通知台账一直 `SENDING` / 验证码邮件迟迟不来 | ① 先确认还在不在阈值内（默认 15 分钟）：超期的行会被 5.6 扫成 `FAILED`，`last_error` 里带 `swept by notification_delivery_sweep` 就说明"没人给它结论"已经是既成事实，重点转向②③；② `server.asynq.uri` 是否配置（没配 ⇒ 通知整体退回同步投递，属预期不是故障）；③ 任务有没有被同机的别的项目抢走（第 10 节"队列无命名空间"）：`asynq:{default}:retry` / `:archived` 里躺着它，而 `asynq:servers:*` 心跳里有多个进程 ⇒ 就是这个；④ 读台账的 `attempts` 与 `last_error`：`attempts=0` 且 `SKIPPED` = 入队前的配置预检就没过，是渠道配置问题，与队列无关；`attempts>0` 而状态被扫定案 = 拨过号但结论没写回来 |
+| 验证码邮件或短信发不出去 | 查 `app/admin/service/configs/mail.yaml`。`smtp.host` 为空或 `smtp.port` 为 0、短信 `provider` 为空，请求里直接返回未配置。发送在这次 HTTP 请求里同步完成，不再进 asynq |
 
 ## 10. 边界与已知问题
 
 | 项 | 现状 |
 |---|---|
 | typeName 路由/去重键合一 | 库层限制，跨租户同名互斥（第 8 节），库改造 TODO |
-| 备份恢复流程 | 导出上传 + 桶生命周期清理已备；**恢复侧已补（2026-10-03）**：`BackupRepo.RestoreCoreTables`（备份 JSON data 段 → 8 张核心表，保留原 ID、单事务、仅允许空库非空即中止；动态 INSERT 表无关实现，逻辑名→sys_ 物理表映射）。**演练流程见 docs/backup-restore-drill.md**。restore 管理页/RPC 未做（演练走测试/一次性程序，避免活库误恢复入口） |~~桶内对象无生命周期清理~~ 已补（2026-10-03）：AsyncBackup 上传成功后顺手清理超过保留期的旧备份——`BACKUP_RETENTION_DAYS` 环境变量（默认 30 天；<=0 显式关闭）；清理为 best-effort，单个删除失败留日志并继续，不影响任务结论；列举/删除失败 Errorf 留痕 |
 | WAIT_RESULT 型 | 枚举与装载路径在，无内置消费方示范；语义同 asynq wait-result |
-| 系统级任务的可见性 | 不入 sys_tasks，管理页不可见、不可停（现共五个：到期扫描 5.1、审计归档 5.2、台账清扫 5.6、监控告警扫描 5.7、AI 日报 5.8）——监控只能靠服务日志（"系统级…定时任务已注册"/"scan done:"等前缀）。**可视化的设计权衡已备**（2026-10-03 修订，动工前先读）：**推荐 C'——asynq Inspector 只读视图，零新表**（初版推荐的 C"新表 sys_task_runs 记执行流水"过重，已否）：v0.26 的 `Inspector` 免费给出核心数据——`SchedulerEntries()` 返回各常驻任务的 cron + Next/Prev 入队时间（Prev 零值=从未跑过）、各类型队列的 active/retry/archived 状态与失败明细（`TaskInfo.LastErr/LastFailedAt/Retried`）；Inspector 用 `server.asynq` 同一 Redis 配置构造即可（队列无命名空间的坑在此自动自洽——看到的就是本实例队列）。后端加平台管理员守卫的只读服务 + 任务页"系统级任务"标签页。asynq 给不了的只有成功执行的持久历史与领域级结果（后者本就在领域台账：通知投递表/审计归档 JSONL）——前者若将来需要，配 asynq Retention 留存 completed 任务（仍零表）或再考虑执行流水表。原方案 A（静态卡片）/B（upsert 进 sys_tasks + is_system 标记、startTask 跳过）否决理由不变 |
-| **时间窗谓词要看驱动怎么渲染时间** | `created_at` 这类经 `timestamptz`（Postgres）存的列按"瞬间"比较，任何时区渲染都对；但同一句谓词跑在把时间渲染成**带时区文本**的驱动上（本机 sqlite 回归测试即此形）就成了字典序比较。坑的来源是写入侧：`SendDirect` 的 `created_at` 经过 `timestamppb` 往返（渲染成 UTC），而谓词参数 `time.Now()` 带本地时区（+08）—— 实测会把"一分钟前"的行判成"十五分钟前"。`SweepStaleSending` 因此把比较侧统一 `.UTC()`；**新写按时间窗筛行的任务时同样注意**（审计归档 `CreatedAtLT`、到期扫描 `ExpiredAtLTE` 目前只在 Postgres 上实测过） |
+| 系统级任务的可见性 | 不入 sys_tasks，管理页不可见、不可停（现共三个：到期扫描 5.1、审计归档 5.2、配额水位 5.7）——监控只能靠服务日志（"系统级…定时任务已注册"/"scan done:"等前缀）。曾有的 asynq Inspector 只读视图（任务监控）已随裁剪删除 |
+| **时间窗谓词要看驱动怎么渲染时间** | `created_at` 这类经 `timestamptz`（Postgres）存的列按"瞬间"比较，任何时区渲染都对；但同一句谓词跑在把时间渲染成**带时区文本**的驱动上（本机 sqlite 回归测试即此形）就成了字典序比较。写入侧若把 `timestamppb` 往返渲染成 UTC，而谓词参数 `time.Now()` 带本地时区（+08），字典序会把"一分钟前"判成更早。比较侧应统一 `.UTC()`。审计归档 `CreatedAtLT`、到期扫描 `ExpiredAtLTE` 目前只在 Postgres 上实测过 |
 | **asynq 队列没有命名空间** | 键形如 `asynq:{<queue>}:…`，**不带应用前缀** ⇒ "同一个 Redis DB + 同一个队列名"就是同一个队列。两个项目共库时互相抢任务，抢到的一方没有 handler 就 `handler not found` 退避重试直至归档（本机 DB 1 上实测读到过本仓 `tenant_expiry_scan` 躺在 `asynq:{default}:retry` 里，而同一 DB 里同时活着另一项目的 worker）。唯一的隔离手段是 `server.asynq.uri` 换 DB（或改 `queues` 名字），**部署时共库必须显式错开**；库层不提供"按消费者组区分"的能力 |

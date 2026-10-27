@@ -42,10 +42,10 @@
 ### 3. 生成 Go 代码
 
 ```bash
-cd backend && gow api && make openapi
+cd backend && make api && make openapi
 ```
 
-产物含 `Register<Entity>ServiceHTTPServer`。前端在范围内则接着 `make ts` 重新生成三端 TS。
+产物含 `Register<Entity>ServiceHTTPServer`。前端在范围内则接着 `make ts` 重新生成 React 的 TS。
 
 ### 4–5. ent schema + 生成
 
@@ -66,11 +66,10 @@ cd backend && gow api && make openapi
 所以"树"对后端只是多一个 `parent_id` 列，不要为此给 DTO 加嵌套字段。
 
 ```bash
-cd backend && gow ent admin
+cd backend && make ent
 ```
 
-`gow ent` 的服务名参数可以省：不带参数时它按当前工作目录推断所属服务，推断不出来才回退成"全部服务"。
-在 `backend/` 下不带参数跑，等价于给所有服务各生成一遍——比只跑 `admin` 慢，别这么用。
+在 `backend/` 下执行。`make ent` 会扫到 `app/admin/service` 的 schema。
 
 ### 6. Repository
 

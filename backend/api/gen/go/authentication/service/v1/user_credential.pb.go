@@ -8,7 +8,8 @@ package authenticationpb
 
 import (
 	_ "github.com/google/gnostic/openapiv3"
-	v1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	v1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	_ "go-wind-admin/third_party/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
@@ -1133,7 +1134,7 @@ var File_authentication_service_v1_user_credential_proto protoreflect.FileDescri
 
 const file_authentication_service_v1_user_credential_proto_rawDesc = "" +
 	"\n" +
-	"/authentication/service/v1/user_credential.proto\x12\x19authentication.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1epagination/v1/pagination.proto\"\xa7\x18\n" +
+	"/authentication/service/v1/user_credential.proto\x12\x19authentication.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1epagination/v1/pagination.proto\x1a\x16redact/v1/redact.proto\"\xad\x18\n" +
 	"\x0eUserCredential\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12;\n" +
 	"\auser_id\x18\x02 \x01(\rB\x1d\xbaG\x1a\x92\x02\x17关联主表的用户IDH\x00R\x06userId\x88\x01\x01\x120\n" +
@@ -1143,9 +1144,9 @@ const file_authentication_service_v1_user_credential_proto_rawDesc = "" +
 	"\n" +
 	"identifier\x18\v \x01(\tB\xfd\x01\xbaG\xf9\x01\x92\x02\xf5\x01身份唯一标识符，如果是密码登录，则是用户名；如果是邮箱登录，则是邮箱地址；如果是手机号登录，则是手机号；如果是第三方平台登录，则是第三方平台的唯一ID（如微信的OpenID）H\x03R\n" +
 	"identifier\x88\x01\x01\x12\xad\x01\n" +
-	"\x0fcredential_type\x18\x14 \x01(\x0e28.authentication.service.v1.UserCredential.CredentialTypeBE\xbaGB\x92\x02?凭证类型，如加密密码、访问令牌、刷新令牌等H\x04R\x0ecredentialType\x88\x01\x01\x12\x99\x02\n" +
+	"\x0fcredential_type\x18\x14 \x01(\x0e28.authentication.service.v1.UserCredential.CredentialTypeBE\xbaGB\x92\x02?凭证类型，如加密密码、访问令牌、刷新令牌等H\x04R\x0ecredentialType\x88\x01\x01\x12\x9f\x02\n" +
 	"\n" +
-	"credential\x18\x15 \x01(\tB\xf3\x01\xbaG\xef\x01\x92\x02\xeb\x01凭证，如果是密码登录，则是密码的hash值；如果是邮箱登录，则是邮箱的验证码；如果是手机号登录，则是手机号的验证码；如果是第三方平台登录，则是第三方平台的access_tokenH\x05R\n" +
+	"credential\x18\x15 \x01(\tB\xf9\x01\xbaG\xef\x01\x92\x02\xeb\x01凭证，如果是密码登录，则是密码的hash值；如果是邮箱登录，则是邮箱的验证码；如果是手机号登录，则是手机号的验证码；如果是第三方平台登录，则是第三方平台的access_tokenڶ\x1a\x02z\x00H\x05R\n" +
 	"credential\x88\x01\x01\x12\xa2\x01\n" +
 	"\n" +
 	"is_primary\x18\x1e \x01(\bB~\xbaG{\x92\x02x是否主认证方式，如果用户同时绑定了邮箱和手机号，那么可以指定邮箱为主要认证方式。H\x06R\tisPrimary\x88\x01\x01\x12a\n" +
@@ -1262,32 +1263,32 @@ const file_authentication_service_v1_user_credential_proto_rawDesc = "" +
 	"\ridentity_type\x18\x01 \x01(\x0e26.authentication.service.v1.UserCredential.IdentityTypeB\x12\xbaG\x0f\x92\x02\f身份类型R\fidentityType\x12;\n" +
 	"\n" +
 	"identifier\x18\x02 \x01(\tB\x1b\xbaG\x18\x92\x02\x15身份唯一标识符R\n" +
-	"identifier\"\xb2\x02\n" +
+	"identifier\"\xb8\x02\n" +
 	"\x17VerifyCredentialRequest\x12o\n" +
 	"\ridentity_type\x18\x01 \x01(\x0e26.authentication.service.v1.UserCredential.IdentityTypeB\x12\xbaG\x0f\x92\x02\f身份类型R\fidentityType\x12;\n" +
 	"\n" +
 	"identifier\x18\x02 \x01(\tB\x1b\xbaG\x18\x92\x02\x15身份唯一标识符R\n" +
-	"identifier\x12,\n" +
+	"identifier\x122\n" +
 	"\n" +
-	"credential\x18\x03 \x01(\tB\f\xbaG\t\x92\x02\x06凭证R\n" +
+	"credential\x18\x03 \x01(\tB\x12\xbaG\t\x92\x02\x06凭证ڶ\x1a\x02z\x00R\n" +
 	"credential\x12;\n" +
 	"\fneed_decrypt\x18\x04 \x01(\bB\x18\xbaG\x15\x92\x02\x12是否需要解码R\vneedDecrypt\"4\n" +
 	"\x18VerifyCredentialResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xf4\x02\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x80\x03\n" +
 	"\x17ChangeCredentialRequest\x12o\n" +
 	"\ridentity_type\x18\x01 \x01(\x0e26.authentication.service.v1.UserCredential.IdentityTypeB\x12\xbaG\x0f\x92\x02\f身份类型R\fidentityType\x12;\n" +
 	"\n" +
 	"identifier\x18\x02 \x01(\tB\x1b\xbaG\x18\x92\x02\x15身份唯一标识符R\n" +
-	"identifier\x126\n" +
-	"\x0eold_credential\x18\x03 \x01(\tB\x0f\xbaG\f\x92\x02\t旧凭证R\roldCredential\x126\n" +
-	"\x0enew_credential\x18\x04 \x01(\tB\x0f\xbaG\f\x92\x02\t新凭证R\rnewCredential\x12;\n" +
-	"\fneed_decrypt\x18\x05 \x01(\bB\x18\xbaG\x15\x92\x02\x12是否需要解码R\vneedDecrypt\"\xbb\x02\n" +
+	"identifier\x12<\n" +
+	"\x0eold_credential\x18\x03 \x01(\tB\x15\xbaG\f\x92\x02\t旧凭证ڶ\x1a\x02z\x00R\roldCredential\x12<\n" +
+	"\x0enew_credential\x18\x04 \x01(\tB\x15\xbaG\f\x92\x02\t新凭证ڶ\x1a\x02z\x00R\rnewCredential\x12;\n" +
+	"\fneed_decrypt\x18\x05 \x01(\bB\x18\xbaG\x15\x92\x02\x12是否需要解码R\vneedDecrypt\"\xc1\x02\n" +
 	"\x16ResetCredentialRequest\x12o\n" +
 	"\ridentity_type\x18\x01 \x01(\x0e26.authentication.service.v1.UserCredential.IdentityTypeB\x12\xbaG\x0f\x92\x02\f身份类型R\fidentityType\x12;\n" +
 	"\n" +
 	"identifier\x18\x02 \x01(\tB\x1b\xbaG\x18\x92\x02\x15身份唯一标识符R\n" +
-	"identifier\x126\n" +
-	"\x0enew_credential\x18\x03 \x01(\tB\x0f\xbaG\f\x92\x02\t新凭证R\rnewCredential\x12;\n" +
+	"identifier\x12<\n" +
+	"\x0enew_credential\x18\x03 \x01(\tB\x15\xbaG\f\x92\x02\t新凭证ڶ\x1a\x02z\x00R\rnewCredential\x12;\n" +
 	"\fneed_decrypt\x18\x04 \x01(\bB\x18\xbaG\x15\x92\x02\x12是否需要解码R\vneedDecrypt\"3\n" +
 	"\x1bCountUserCredentialResponse\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x04R\x05count2\x90\b\n" +

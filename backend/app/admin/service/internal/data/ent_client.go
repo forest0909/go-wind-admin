@@ -10,10 +10,10 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/lib/pq"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	entBootstrap "github.com/tx7do/kratos-bootstrap/database/ent"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	entBootstrap "go-wind-admin/third_party/kratos-bootstrap/database/ent"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/migrate"
@@ -32,7 +32,7 @@ func NewEntClient(ctx *bootstrap.Context) (*entCrud.EntClient[*ent.Client], func
 
 	cli, err := entBootstrap.NewEntClient(cfg, func(drv *sql.Driver) *ent.Client {
 		client := ent.NewClient(
-			ent.Driver(&auditDriver{drv}),
+			ent.Driver(drv),
 			ent.Log(func(a ...any) {
 				l.Debug(context.Background(), fmt.Sprint(a...))
 			}),

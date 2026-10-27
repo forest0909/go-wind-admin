@@ -36,7 +36,7 @@ export function createVitePlugins() {
             timePlugin(),
             // 生产期注入 CSP meta（阻断 XSS 内联脚本执行）
             cspMetaPlugin(),
-            // 构建完成后将 dist 打包为 dist.zip（对齐 vue-vben 构建产物行为）
+            // 构建完成后将 dist 打包为 dist.zip，便于交付部署
             archiverPlugin(),
         );
 

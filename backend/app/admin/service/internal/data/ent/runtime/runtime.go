@@ -5,19 +5,7 @@ package runtime
 import (
 	"context"
 	permissionpb "go-wind-admin/api/gen/go/permission/service/v1"
-	"go-wind-admin/app/admin/service/internal/data/ent/accesskey"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiagentapp"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiagentrun"
-	"go-wind-admin/app/admin/service/internal/data/ent/aichunk"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiconversation"
-	"go-wind-admin/app/admin/service/internal/data/ent/aidoc"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiknowledgebase"
-	"go-wind-admin/app/admin/service/internal/data/ent/aimessage"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiprovider"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiusagelog"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
-	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentry"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentryi18n"
 	"go-wind-admin/app/admin/service/internal/data/ent/dicttype"
@@ -27,30 +15,21 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessagerecipient"
 	"go-wind-admin/app/admin/service/internal/data/ent/language"
 	"go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/loginpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/membership"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiporgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershipposition"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiprole"
 	"go-wind-admin/app/admin/service/internal/data/ent/menu"
-	"go-wind-admin/app/admin/service/internal/data/ent/monitoralertrule"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationchannel"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationdelivery"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationpreference"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationrule"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationtemplate"
 	"go-wind-admin/app/admin/service/internal/data/ent/operationauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/orgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/permission"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
-	"go-wind-admin/app/admin/service/internal/data/ent/permissionauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionmenu"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/plan"
 	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
-	"go-wind-admin/app/admin/service/internal/data/ent/policyevaluationlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolefieldpermission"
@@ -58,14 +37,11 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/roleorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolepermission"
 	"go-wind-admin/app/admin/service/internal/data/ent/schema"
-	"go-wind-admin/app/admin/service/internal/data/ent/script"
-	"go-wind-admin/app/admin/service/internal/data/ent/scriptlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/sysconfig"
 	"go-wind-admin/app/admin/service/internal/data/ent/task"
 	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
-	"go-wind-admin/app/admin/service/internal/data/ent/usermfafactor"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/userposition"
 	"go-wind-admin/app/admin/service/internal/data/ent/userrole"
@@ -78,267 +54,6 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
-	accesskeyMixin := schema.AccessKey{}.Mixin()
-	accesskey.Policy = privacy.NewPolicies(accesskeyMixin[4], schema.AccessKey{})
-	accesskey.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := accesskey.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	accesskeyMixinFields0 := accesskeyMixin[0].Fields()
-	_ = accesskeyMixinFields0
-	accesskeyMixinFields3 := accesskeyMixin[3].Fields()
-	_ = accesskeyMixinFields3
-	accesskeyMixinFields4 := accesskeyMixin[4].Fields()
-	_ = accesskeyMixinFields4
-	accesskeyFields := schema.AccessKey{}.Fields()
-	_ = accesskeyFields
-	// accesskeyDescTenantID is the schema descriptor for tenant_id field.
-	accesskeyDescTenantID := accesskeyMixinFields4[0].Descriptor()
-	// accesskey.DefaultTenantID holds the default value on creation for the tenant_id field.
-	accesskey.DefaultTenantID = accesskeyDescTenantID.Default.(uint32)
-	// accesskeyDescID is the schema descriptor for id field.
-	accesskeyDescID := accesskeyMixinFields0[0].Descriptor()
-	// accesskey.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	accesskey.IDValidator = accesskeyDescID.Validators[0].(func(uint32) error)
-	aiagentappMixin := schema.AiAgentApp{}.Mixin()
-	aiagentapp.Policy = privacy.NewPolicies(aiagentappMixin[3], schema.AiAgentApp{})
-	aiagentapp.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aiagentapp.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aiagentappMixinFields0 := aiagentappMixin[0].Fields()
-	_ = aiagentappMixinFields0
-	aiagentappMixinFields3 := aiagentappMixin[3].Fields()
-	_ = aiagentappMixinFields3
-	aiagentappFields := schema.AiAgentApp{}.Fields()
-	_ = aiagentappFields
-	// aiagentappDescTenantID is the schema descriptor for tenant_id field.
-	aiagentappDescTenantID := aiagentappMixinFields3[0].Descriptor()
-	// aiagentapp.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aiagentapp.DefaultTenantID = aiagentappDescTenantID.Default.(uint32)
-	// aiagentappDescName is the schema descriptor for name field.
-	aiagentappDescName := aiagentappFields[0].Descriptor()
-	// aiagentapp.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	aiagentapp.NameValidator = aiagentappDescName.Validators[0].(func(string) error)
-	// aiagentappDescEnabled is the schema descriptor for enabled field.
-	aiagentappDescEnabled := aiagentappFields[3].Descriptor()
-	// aiagentapp.DefaultEnabled holds the default value on creation for the enabled field.
-	aiagentapp.DefaultEnabled = aiagentappDescEnabled.Default.(bool)
-	// aiagentappDescID is the schema descriptor for id field.
-	aiagentappDescID := aiagentappMixinFields0[0].Descriptor()
-	// aiagentapp.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aiagentapp.IDValidator = aiagentappDescID.Validators[0].(func(uint32) error)
-	aiagentrunMixin := schema.AiAgentRun{}.Mixin()
-	aiagentrun.Policy = privacy.NewPolicies(aiagentrunMixin[3], schema.AiAgentRun{})
-	aiagentrun.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aiagentrun.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aiagentrunMixinFields0 := aiagentrunMixin[0].Fields()
-	_ = aiagentrunMixinFields0
-	aiagentrunMixinFields3 := aiagentrunMixin[3].Fields()
-	_ = aiagentrunMixinFields3
-	aiagentrunFields := schema.AiAgentRun{}.Fields()
-	_ = aiagentrunFields
-	// aiagentrunDescTenantID is the schema descriptor for tenant_id field.
-	aiagentrunDescTenantID := aiagentrunMixinFields3[0].Descriptor()
-	// aiagentrun.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aiagentrun.DefaultTenantID = aiagentrunDescTenantID.Default.(uint32)
-	// aiagentrunDescPromptTokens is the schema descriptor for prompt_tokens field.
-	aiagentrunDescPromptTokens := aiagentrunFields[6].Descriptor()
-	// aiagentrun.DefaultPromptTokens holds the default value on creation for the prompt_tokens field.
-	aiagentrun.DefaultPromptTokens = aiagentrunDescPromptTokens.Default.(uint32)
-	// aiagentrunDescCompletionTokens is the schema descriptor for completion_tokens field.
-	aiagentrunDescCompletionTokens := aiagentrunFields[7].Descriptor()
-	// aiagentrun.DefaultCompletionTokens holds the default value on creation for the completion_tokens field.
-	aiagentrun.DefaultCompletionTokens = aiagentrunDescCompletionTokens.Default.(uint32)
-	// aiagentrunDescTotalTokens is the schema descriptor for total_tokens field.
-	aiagentrunDescTotalTokens := aiagentrunFields[8].Descriptor()
-	// aiagentrun.DefaultTotalTokens holds the default value on creation for the total_tokens field.
-	aiagentrun.DefaultTotalTokens = aiagentrunDescTotalTokens.Default.(uint32)
-	// aiagentrunDescDurationMs is the schema descriptor for duration_ms field.
-	aiagentrunDescDurationMs := aiagentrunFields[9].Descriptor()
-	// aiagentrun.DefaultDurationMs holds the default value on creation for the duration_ms field.
-	aiagentrun.DefaultDurationMs = aiagentrunDescDurationMs.Default.(uint32)
-	// aiagentrunDescID is the schema descriptor for id field.
-	aiagentrunDescID := aiagentrunMixinFields0[0].Descriptor()
-	// aiagentrun.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aiagentrun.IDValidator = aiagentrunDescID.Validators[0].(func(uint32) error)
-	aichunkMixin := schema.AiChunk{}.Mixin()
-	aichunk.Policy = privacy.NewPolicies(aichunkMixin[2], schema.AiChunk{})
-	aichunk.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aichunk.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aichunkMixinFields0 := aichunkMixin[0].Fields()
-	_ = aichunkMixinFields0
-	aichunkMixinFields2 := aichunkMixin[2].Fields()
-	_ = aichunkMixinFields2
-	aichunkFields := schema.AiChunk{}.Fields()
-	_ = aichunkFields
-	// aichunkDescTenantID is the schema descriptor for tenant_id field.
-	aichunkDescTenantID := aichunkMixinFields2[0].Descriptor()
-	// aichunk.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aichunk.DefaultTenantID = aichunkDescTenantID.Default.(uint32)
-	// aichunkDescID is the schema descriptor for id field.
-	aichunkDescID := aichunkMixinFields0[0].Descriptor()
-	// aichunk.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aichunk.IDValidator = aichunkDescID.Validators[0].(func(uint32) error)
-	aiconversationMixin := schema.AiConversation{}.Mixin()
-	aiconversation.Policy = privacy.NewPolicies(aiconversationMixin[3], schema.AiConversation{})
-	aiconversation.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aiconversation.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aiconversationMixinFields0 := aiconversationMixin[0].Fields()
-	_ = aiconversationMixinFields0
-	aiconversationMixinFields3 := aiconversationMixin[3].Fields()
-	_ = aiconversationMixinFields3
-	aiconversationFields := schema.AiConversation{}.Fields()
-	_ = aiconversationFields
-	// aiconversationDescTenantID is the schema descriptor for tenant_id field.
-	aiconversationDescTenantID := aiconversationMixinFields3[0].Descriptor()
-	// aiconversation.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aiconversation.DefaultTenantID = aiconversationDescTenantID.Default.(uint32)
-	// aiconversationDescID is the schema descriptor for id field.
-	aiconversationDescID := aiconversationMixinFields0[0].Descriptor()
-	// aiconversation.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aiconversation.IDValidator = aiconversationDescID.Validators[0].(func(uint32) error)
-	aidocMixin := schema.AiDoc{}.Mixin()
-	aidoc.Policy = privacy.NewPolicies(aidocMixin[3], schema.AiDoc{})
-	aidoc.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aidoc.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aidocMixinFields0 := aidocMixin[0].Fields()
-	_ = aidocMixinFields0
-	aidocMixinFields3 := aidocMixin[3].Fields()
-	_ = aidocMixinFields3
-	aidocFields := schema.AiDoc{}.Fields()
-	_ = aidocFields
-	// aidocDescTenantID is the schema descriptor for tenant_id field.
-	aidocDescTenantID := aidocMixinFields3[0].Descriptor()
-	// aidoc.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aidoc.DefaultTenantID = aidocDescTenantID.Default.(uint32)
-	// aidocDescID is the schema descriptor for id field.
-	aidocDescID := aidocMixinFields0[0].Descriptor()
-	// aidoc.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aidoc.IDValidator = aidocDescID.Validators[0].(func(uint32) error)
-	aiknowledgebaseMixin := schema.AiKnowledgeBase{}.Mixin()
-	aiknowledgebase.Policy = privacy.NewPolicies(aiknowledgebaseMixin[3], schema.AiKnowledgeBase{})
-	aiknowledgebase.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aiknowledgebase.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aiknowledgebaseMixinFields0 := aiknowledgebaseMixin[0].Fields()
-	_ = aiknowledgebaseMixinFields0
-	aiknowledgebaseMixinFields3 := aiknowledgebaseMixin[3].Fields()
-	_ = aiknowledgebaseMixinFields3
-	aiknowledgebaseFields := schema.AiKnowledgeBase{}.Fields()
-	_ = aiknowledgebaseFields
-	// aiknowledgebaseDescTenantID is the schema descriptor for tenant_id field.
-	aiknowledgebaseDescTenantID := aiknowledgebaseMixinFields3[0].Descriptor()
-	// aiknowledgebase.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aiknowledgebase.DefaultTenantID = aiknowledgebaseDescTenantID.Default.(uint32)
-	// aiknowledgebaseDescID is the schema descriptor for id field.
-	aiknowledgebaseDescID := aiknowledgebaseMixinFields0[0].Descriptor()
-	// aiknowledgebase.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aiknowledgebase.IDValidator = aiknowledgebaseDescID.Validators[0].(func(uint32) error)
-	aimessageMixin := schema.AiMessage{}.Mixin()
-	aimessage.Policy = privacy.NewPolicies(aimessageMixin[3], schema.AiMessage{})
-	aimessage.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aimessage.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aimessageMixinFields0 := aimessageMixin[0].Fields()
-	_ = aimessageMixinFields0
-	aimessageMixinFields3 := aimessageMixin[3].Fields()
-	_ = aimessageMixinFields3
-	aimessageFields := schema.AiMessage{}.Fields()
-	_ = aimessageFields
-	// aimessageDescTenantID is the schema descriptor for tenant_id field.
-	aimessageDescTenantID := aimessageMixinFields3[0].Descriptor()
-	// aimessage.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aimessage.DefaultTenantID = aimessageDescTenantID.Default.(uint32)
-	// aimessageDescID is the schema descriptor for id field.
-	aimessageDescID := aimessageMixinFields0[0].Descriptor()
-	// aimessage.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aimessage.IDValidator = aimessageDescID.Validators[0].(func(uint32) error)
-	aiproviderMixin := schema.AiProvider{}.Mixin()
-	aiproviderMixinFields0 := aiproviderMixin[0].Fields()
-	_ = aiproviderMixinFields0
-	aiproviderMixinFields3 := aiproviderMixin[3].Fields()
-	_ = aiproviderMixinFields3
-	aiproviderFields := schema.AiProvider{}.Fields()
-	_ = aiproviderFields
-	// aiproviderDescIsEnabled is the schema descriptor for is_enabled field.
-	aiproviderDescIsEnabled := aiproviderMixinFields3[0].Descriptor()
-	// aiprovider.DefaultIsEnabled holds the default value on creation for the is_enabled field.
-	aiprovider.DefaultIsEnabled = aiproviderDescIsEnabled.Default.(bool)
-	// aiproviderDescIsDefault is the schema descriptor for is_default field.
-	aiproviderDescIsDefault := aiproviderFields[11].Descriptor()
-	// aiprovider.DefaultIsDefault holds the default value on creation for the is_default field.
-	aiprovider.DefaultIsDefault = aiproviderDescIsDefault.Default.(bool)
-	// aiproviderDescID is the schema descriptor for id field.
-	aiproviderDescID := aiproviderMixinFields0[0].Descriptor()
-	// aiprovider.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aiprovider.IDValidator = aiproviderDescID.Validators[0].(func(uint32) error)
-	aiusagelogMixin := schema.AiUsageLog{}.Mixin()
-	aiusagelog.Policy = privacy.NewPolicies(aiusagelogMixin[2], schema.AiUsageLog{})
-	aiusagelog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := aiusagelog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	aiusagelogMixinFields0 := aiusagelogMixin[0].Fields()
-	_ = aiusagelogMixinFields0
-	aiusagelogMixinFields2 := aiusagelogMixin[2].Fields()
-	_ = aiusagelogMixinFields2
-	aiusagelogFields := schema.AiUsageLog{}.Fields()
-	_ = aiusagelogFields
-	// aiusagelogDescTenantID is the schema descriptor for tenant_id field.
-	aiusagelogDescTenantID := aiusagelogMixinFields2[0].Descriptor()
-	// aiusagelog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	aiusagelog.DefaultTenantID = aiusagelogDescTenantID.Default.(uint32)
-	// aiusagelogDescID is the schema descriptor for id field.
-	aiusagelogDescID := aiusagelogMixinFields0[0].Descriptor()
-	// aiusagelog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	aiusagelog.IDValidator = aiusagelogDescID.Validators[0].(func(uint32) error)
 	apiMixin := schema.Api{}.Mixin()
 	apiMixinFields0 := apiMixin[0].Fields()
 	_ = apiMixinFields0
@@ -350,54 +65,6 @@ func init() {
 	apiDescID := apiMixinFields0[0].Descriptor()
 	// api.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	api.IDValidator = apiDescID.Validators[0].(func(uint32) error)
-	apiauditlogMixin := schema.ApiAuditLog{}.Mixin()
-	apiauditlog.Policy = privacy.NewPolicies(apiauditlogMixin[2], schema.ApiAuditLog{})
-	apiauditlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := apiauditlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	apiauditlogMixinFields0 := apiauditlogMixin[0].Fields()
-	_ = apiauditlogMixinFields0
-	apiauditlogMixinFields2 := apiauditlogMixin[2].Fields()
-	_ = apiauditlogMixinFields2
-	apiauditlogFields := schema.ApiAuditLog{}.Fields()
-	_ = apiauditlogFields
-	// apiauditlogDescTenantID is the schema descriptor for tenant_id field.
-	apiauditlogDescTenantID := apiauditlogMixinFields2[0].Descriptor()
-	// apiauditlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	apiauditlog.DefaultTenantID = apiauditlogDescTenantID.Default.(uint32)
-	// apiauditlogDescID is the schema descriptor for id field.
-	apiauditlogDescID := apiauditlogMixinFields0[0].Descriptor()
-	// apiauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	apiauditlog.IDValidator = apiauditlogDescID.Validators[0].(func(uint32) error)
-	dataaccessauditlogMixin := schema.DataAccessAuditLog{}.Mixin()
-	dataaccessauditlog.Policy = privacy.NewPolicies(dataaccessauditlogMixin[2], schema.DataAccessAuditLog{})
-	dataaccessauditlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := dataaccessauditlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	dataaccessauditlogMixinFields0 := dataaccessauditlogMixin[0].Fields()
-	_ = dataaccessauditlogMixinFields0
-	dataaccessauditlogMixinFields2 := dataaccessauditlogMixin[2].Fields()
-	_ = dataaccessauditlogMixinFields2
-	dataaccessauditlogFields := schema.DataAccessAuditLog{}.Fields()
-	_ = dataaccessauditlogFields
-	// dataaccessauditlogDescTenantID is the schema descriptor for tenant_id field.
-	dataaccessauditlogDescTenantID := dataaccessauditlogMixinFields2[0].Descriptor()
-	// dataaccessauditlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	dataaccessauditlog.DefaultTenantID = dataaccessauditlogDescTenantID.Default.(uint32)
-	// dataaccessauditlogDescID is the schema descriptor for id field.
-	dataaccessauditlogDescID := dataaccessauditlogMixinFields0[0].Descriptor()
-	// dataaccessauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	dataaccessauditlog.IDValidator = dataaccessauditlogDescID.Validators[0].(func(uint32) error)
 	dictentryMixin := schema.DictEntry{}.Mixin()
 	dictentry.Policy = privacy.NewPolicies(dictentryMixin[5], schema.DictEntry{})
 	dictentry.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -697,30 +364,6 @@ func init() {
 	loginauditlogDescID := loginauditlogMixinFields0[0].Descriptor()
 	// loginauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	loginauditlog.IDValidator = loginauditlogDescID.Validators[0].(func(uint32) error)
-	loginpolicyMixin := schema.LoginPolicy{}.Mixin()
-	loginpolicy.Policy = privacy.NewPolicies(loginpolicyMixin[3], schema.LoginPolicy{})
-	loginpolicy.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := loginpolicy.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	loginpolicyMixinFields0 := loginpolicyMixin[0].Fields()
-	_ = loginpolicyMixinFields0
-	loginpolicyMixinFields3 := loginpolicyMixin[3].Fields()
-	_ = loginpolicyMixinFields3
-	loginpolicyFields := schema.LoginPolicy{}.Fields()
-	_ = loginpolicyFields
-	// loginpolicyDescTenantID is the schema descriptor for tenant_id field.
-	loginpolicyDescTenantID := loginpolicyMixinFields3[0].Descriptor()
-	// loginpolicy.DefaultTenantID holds the default value on creation for the tenant_id field.
-	loginpolicy.DefaultTenantID = loginpolicyDescTenantID.Default.(uint32)
-	// loginpolicyDescID is the schema descriptor for id field.
-	loginpolicyDescID := loginpolicyMixinFields0[0].Descriptor()
-	// loginpolicy.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	loginpolicy.IDValidator = loginpolicyDescID.Validators[0].(func(uint32) error)
 	membershipMixin := schema.Membership{}.Mixin()
 	membership.Policy = privacy.NewPolicies(membershipMixin[3], schema.Membership{})
 	membership.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -852,138 +495,6 @@ func init() {
 	menuDescID := menuMixinFields0[0].Descriptor()
 	// menu.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	menu.IDValidator = menuDescID.Validators[0].(func(uint32) error)
-	monitoralertruleMixin := schema.MonitorAlertRule{}.Mixin()
-	monitoralertruleMixinFields0 := monitoralertruleMixin[0].Fields()
-	_ = monitoralertruleMixinFields0
-	monitoralertruleFields := schema.MonitorAlertRule{}.Fields()
-	_ = monitoralertruleFields
-	// monitoralertruleDescName is the schema descriptor for name field.
-	monitoralertruleDescName := monitoralertruleFields[0].Descriptor()
-	// monitoralertrule.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	monitoralertrule.NameValidator = monitoralertruleDescName.Validators[0].(func(string) error)
-	// monitoralertruleDescCooldownMinutes is the schema descriptor for cooldown_minutes field.
-	monitoralertruleDescCooldownMinutes := monitoralertruleFields[4].Descriptor()
-	// monitoralertrule.DefaultCooldownMinutes holds the default value on creation for the cooldown_minutes field.
-	monitoralertrule.DefaultCooldownMinutes = monitoralertruleDescCooldownMinutes.Default.(uint32)
-	// monitoralertruleDescTarget is the schema descriptor for target field.
-	monitoralertruleDescTarget := monitoralertruleFields[6].Descriptor()
-	// monitoralertrule.TargetValidator is a validator for the "target" field. It is called by the builders before save.
-	monitoralertrule.TargetValidator = monitoralertruleDescTarget.Validators[0].(func(string) error)
-	// monitoralertruleDescIsEnabled is the schema descriptor for is_enabled field.
-	monitoralertruleDescIsEnabled := monitoralertruleFields[7].Descriptor()
-	// monitoralertrule.DefaultIsEnabled holds the default value on creation for the is_enabled field.
-	monitoralertrule.DefaultIsEnabled = monitoralertruleDescIsEnabled.Default.(bool)
-	// monitoralertruleDescLastFiring is the schema descriptor for last_firing field.
-	monitoralertruleDescLastFiring := monitoralertruleFields[8].Descriptor()
-	// monitoralertrule.DefaultLastFiring holds the default value on creation for the last_firing field.
-	monitoralertrule.DefaultLastFiring = monitoralertruleDescLastFiring.Default.(bool)
-	// monitoralertruleDescID is the schema descriptor for id field.
-	monitoralertruleDescID := monitoralertruleMixinFields0[0].Descriptor()
-	// monitoralertrule.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	monitoralertrule.IDValidator = monitoralertruleDescID.Validators[0].(func(uint32) error)
-	notificationchannelMixin := schema.NotificationChannel{}.Mixin()
-	notificationchannelMixinFields0 := notificationchannelMixin[0].Fields()
-	_ = notificationchannelMixinFields0
-	notificationchannelMixinFields4 := notificationchannelMixin[4].Fields()
-	_ = notificationchannelMixinFields4
-	notificationchannelFields := schema.NotificationChannel{}.Fields()
-	_ = notificationchannelFields
-	// notificationchannelDescName is the schema descriptor for name field.
-	notificationchannelDescName := notificationchannelFields[0].Descriptor()
-	// notificationchannel.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	notificationchannel.NameValidator = notificationchannelDescName.Validators[0].(func(string) error)
-	// notificationchannelDescID is the schema descriptor for id field.
-	notificationchannelDescID := notificationchannelMixinFields0[0].Descriptor()
-	// notificationchannel.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	notificationchannel.IDValidator = notificationchannelDescID.Validators[0].(func(uint32) error)
-	notificationdeliveryMixin := schema.NotificationDelivery{}.Mixin()
-	notificationdeliveryMixinFields0 := notificationdeliveryMixin[0].Fields()
-	_ = notificationdeliveryMixinFields0
-	notificationdeliveryFields := schema.NotificationDelivery{}.Fields()
-	_ = notificationdeliveryFields
-	// notificationdeliveryDescRequestID is the schema descriptor for request_id field.
-	notificationdeliveryDescRequestID := notificationdeliveryFields[8].Descriptor()
-	// notificationdelivery.RequestIDValidator is a validator for the "request_id" field. It is called by the builders before save.
-	notificationdelivery.RequestIDValidator = notificationdeliveryDescRequestID.Validators[0].(func(string) error)
-	// notificationdeliveryDescAttempts is the schema descriptor for attempts field.
-	notificationdeliveryDescAttempts := notificationdeliveryFields[9].Descriptor()
-	// notificationdelivery.DefaultAttempts holds the default value on creation for the attempts field.
-	notificationdelivery.DefaultAttempts = notificationdeliveryDescAttempts.Default.(uint32)
-	// notificationdeliveryDescID is the schema descriptor for id field.
-	notificationdeliveryDescID := notificationdeliveryMixinFields0[0].Descriptor()
-	// notificationdelivery.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	notificationdelivery.IDValidator = notificationdeliveryDescID.Validators[0].(func(uint32) error)
-	notificationpreferenceMixin := schema.NotificationPreference{}.Mixin()
-	notificationpreferenceMixinFields0 := notificationpreferenceMixin[0].Fields()
-	_ = notificationpreferenceMixinFields0
-	notificationpreferenceFields := schema.NotificationPreference{}.Fields()
-	_ = notificationpreferenceFields
-	// notificationpreferenceDescQuietEnabled is the schema descriptor for quiet_enabled field.
-	notificationpreferenceDescQuietEnabled := notificationpreferenceFields[1].Descriptor()
-	// notificationpreference.DefaultQuietEnabled holds the default value on creation for the quiet_enabled field.
-	notificationpreference.DefaultQuietEnabled = notificationpreferenceDescQuietEnabled.Default.(bool)
-	// notificationpreferenceDescQuietStartMinute is the schema descriptor for quiet_start_minute field.
-	notificationpreferenceDescQuietStartMinute := notificationpreferenceFields[2].Descriptor()
-	// notificationpreference.DefaultQuietStartMinute holds the default value on creation for the quiet_start_minute field.
-	notificationpreference.DefaultQuietStartMinute = notificationpreferenceDescQuietStartMinute.Default.(int32)
-	// notificationpreferenceDescQuietEndMinute is the schema descriptor for quiet_end_minute field.
-	notificationpreferenceDescQuietEndMinute := notificationpreferenceFields[3].Descriptor()
-	// notificationpreference.DefaultQuietEndMinute holds the default value on creation for the quiet_end_minute field.
-	notificationpreference.DefaultQuietEndMinute = notificationpreferenceDescQuietEndMinute.Default.(int32)
-	// notificationpreferenceDescID is the schema descriptor for id field.
-	notificationpreferenceDescID := notificationpreferenceMixinFields0[0].Descriptor()
-	// notificationpreference.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	notificationpreference.IDValidator = notificationpreferenceDescID.Validators[0].(func(uint32) error)
-	notificationruleMixin := schema.NotificationRule{}.Mixin()
-	notificationruleMixinFields0 := notificationruleMixin[0].Fields()
-	_ = notificationruleMixinFields0
-	notificationruleMixinFields3 := notificationruleMixin[3].Fields()
-	_ = notificationruleMixinFields3
-	notificationruleFields := schema.NotificationRule{}.Fields()
-	_ = notificationruleFields
-	// notificationruleDescIsEnabled is the schema descriptor for is_enabled field.
-	notificationruleDescIsEnabled := notificationruleMixinFields3[0].Descriptor()
-	// notificationrule.DefaultIsEnabled holds the default value on creation for the is_enabled field.
-	notificationrule.DefaultIsEnabled = notificationruleDescIsEnabled.Default.(bool)
-	// notificationruleDescIsAsync is the schema descriptor for is_async field.
-	notificationruleDescIsAsync := notificationruleFields[2].Descriptor()
-	// notificationrule.DefaultIsAsync holds the default value on creation for the is_async field.
-	notificationrule.DefaultIsAsync = notificationruleDescIsAsync.Default.(bool)
-	// notificationruleDescID is the schema descriptor for id field.
-	notificationruleDescID := notificationruleMixinFields0[0].Descriptor()
-	// notificationrule.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	notificationrule.IDValidator = notificationruleDescID.Validators[0].(func(uint32) error)
-	notificationtemplateMixin := schema.NotificationTemplate{}.Mixin()
-	notificationtemplateMixinFields0 := notificationtemplateMixin[0].Fields()
-	_ = notificationtemplateMixinFields0
-	notificationtemplateMixinFields3 := notificationtemplateMixin[3].Fields()
-	_ = notificationtemplateMixinFields3
-	notificationtemplateFields := schema.NotificationTemplate{}.Fields()
-	_ = notificationtemplateFields
-	// notificationtemplateDescIsEnabled is the schema descriptor for is_enabled field.
-	notificationtemplateDescIsEnabled := notificationtemplateMixinFields3[0].Descriptor()
-	// notificationtemplate.DefaultIsEnabled holds the default value on creation for the is_enabled field.
-	notificationtemplate.DefaultIsEnabled = notificationtemplateDescIsEnabled.Default.(bool)
-	// notificationtemplateDescName is the schema descriptor for name field.
-	notificationtemplateDescName := notificationtemplateFields[0].Descriptor()
-	// notificationtemplate.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	notificationtemplate.NameValidator = notificationtemplateDescName.Validators[0].(func(string) error)
-	// notificationtemplateDescCode is the schema descriptor for code field.
-	notificationtemplateDescCode := notificationtemplateFields[1].Descriptor()
-	// notificationtemplate.CodeValidator is a validator for the "code" field. It is called by the builders before save.
-	notificationtemplate.CodeValidator = notificationtemplateDescCode.Validators[0].(func(string) error)
-	// notificationtemplateDescTitleTemplate is the schema descriptor for title_template field.
-	notificationtemplateDescTitleTemplate := notificationtemplateFields[2].Descriptor()
-	// notificationtemplate.TitleTemplateValidator is a validator for the "title_template" field. It is called by the builders before save.
-	notificationtemplate.TitleTemplateValidator = notificationtemplateDescTitleTemplate.Validators[0].(func(string) error)
-	// notificationtemplateDescContentTemplate is the schema descriptor for content_template field.
-	notificationtemplateDescContentTemplate := notificationtemplateFields[3].Descriptor()
-	// notificationtemplate.ContentTemplateValidator is a validator for the "content_template" field. It is called by the builders before save.
-	notificationtemplate.ContentTemplateValidator = notificationtemplateDescContentTemplate.Validators[0].(func(string) error)
-	// notificationtemplateDescID is the schema descriptor for id field.
-	notificationtemplateDescID := notificationtemplateMixinFields0[0].Descriptor()
-	// notificationtemplate.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	notificationtemplate.IDValidator = notificationtemplateDescID.Validators[0].(func(uint32) error)
 	operationauditlogMixin := schema.OperationAuditLog{}.Mixin()
 	operationauditlog.Policy = privacy.NewPolicies(operationauditlogMixin[2], schema.OperationAuditLog{})
 	operationauditlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -1078,30 +589,6 @@ func init() {
 	permissionapiDescID := permissionapiMixinFields0[0].Descriptor()
 	// permissionapi.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	permissionapi.IDValidator = permissionapiDescID.Validators[0].(func(uint32) error)
-	permissionauditlogMixin := schema.PermissionAuditLog{}.Mixin()
-	permissionauditlog.Policy = privacy.NewPolicies(permissionauditlogMixin[2], schema.PermissionAuditLog{})
-	permissionauditlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := permissionauditlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	permissionauditlogMixinFields0 := permissionauditlogMixin[0].Fields()
-	_ = permissionauditlogMixinFields0
-	permissionauditlogMixinFields2 := permissionauditlogMixin[2].Fields()
-	_ = permissionauditlogMixinFields2
-	permissionauditlogFields := schema.PermissionAuditLog{}.Fields()
-	_ = permissionauditlogFields
-	// permissionauditlogDescTenantID is the schema descriptor for tenant_id field.
-	permissionauditlogDescTenantID := permissionauditlogMixinFields2[0].Descriptor()
-	// permissionauditlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	permissionauditlog.DefaultTenantID = permissionauditlogDescTenantID.Default.(uint32)
-	// permissionauditlogDescID is the schema descriptor for id field.
-	permissionauditlogDescID := permissionauditlogMixinFields0[0].Descriptor()
-	// permissionauditlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	permissionauditlog.IDValidator = permissionauditlogDescID.Validators[0].(func(uint32) error)
 	permissiongroupMixin := schema.PermissionGroup{}.Mixin()
 	permissiongroupMixinFields0 := permissiongroupMixin[0].Fields()
 	_ = permissiongroupMixinFields0
@@ -1192,34 +679,6 @@ func init() {
 	planquotaDescID := planquotaMixinFields0[0].Descriptor()
 	// planquota.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	planquota.IDValidator = planquotaDescID.Validators[0].(func(uint32) error)
-	policyevaluationlogMixin := schema.PolicyEvaluationLog{}.Mixin()
-	policyevaluationlog.Policy = privacy.NewPolicies(policyevaluationlogMixin[2], schema.PolicyEvaluationLog{})
-	policyevaluationlog.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := policyevaluationlog.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	policyevaluationlogMixinFields0 := policyevaluationlogMixin[0].Fields()
-	_ = policyevaluationlogMixinFields0
-	policyevaluationlogMixinFields2 := policyevaluationlogMixin[2].Fields()
-	_ = policyevaluationlogMixinFields2
-	policyevaluationlogFields := schema.PolicyEvaluationLog{}.Fields()
-	_ = policyevaluationlogFields
-	// policyevaluationlogDescTenantID is the schema descriptor for tenant_id field.
-	policyevaluationlogDescTenantID := policyevaluationlogMixinFields2[0].Descriptor()
-	// policyevaluationlog.DefaultTenantID holds the default value on creation for the tenant_id field.
-	policyevaluationlog.DefaultTenantID = policyevaluationlogDescTenantID.Default.(uint32)
-	// policyevaluationlogDescResult is the schema descriptor for result field.
-	policyevaluationlogDescResult := policyevaluationlogFields[6].Descriptor()
-	// policyevaluationlog.DefaultResult holds the default value on creation for the result field.
-	policyevaluationlog.DefaultResult = policyevaluationlogDescResult.Default.(bool)
-	// policyevaluationlogDescID is the schema descriptor for id field.
-	policyevaluationlogDescID := policyevaluationlogMixinFields0[0].Descriptor()
-	// policyevaluationlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	policyevaluationlog.IDValidator = policyevaluationlogDescID.Validators[0].(func(uint32) error)
 	positionMixin := schema.Position{}.Mixin()
 	position.Policy = privacy.NewPolicies(positionMixin[5], schema.Position{})
 	position.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -1434,58 +893,6 @@ func init() {
 	rolepermissionDescID := rolepermissionMixinFields0[0].Descriptor()
 	// rolepermission.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	rolepermission.IDValidator = rolepermissionDescID.Validators[0].(func(uint32) error)
-	scriptMixin := schema.Script{}.Mixin()
-	scriptMixinFields0 := scriptMixin[0].Fields()
-	_ = scriptMixinFields0
-	scriptMixinFields3 := scriptMixin[3].Fields()
-	_ = scriptMixinFields3
-	scriptFields := schema.Script{}.Fields()
-	_ = scriptFields
-	// scriptDescIsEnabled is the schema descriptor for is_enabled field.
-	scriptDescIsEnabled := scriptMixinFields3[0].Descriptor()
-	// script.DefaultIsEnabled holds the default value on creation for the is_enabled field.
-	script.DefaultIsEnabled = scriptDescIsEnabled.Default.(bool)
-	// scriptDescPriority is the schema descriptor for priority field.
-	scriptDescPriority := scriptFields[4].Descriptor()
-	// script.DefaultPriority holds the default value on creation for the priority field.
-	script.DefaultPriority = scriptDescPriority.Default.(int32)
-	// scriptDescCritical is the schema descriptor for critical field.
-	scriptDescCritical := scriptFields[6].Descriptor()
-	// script.DefaultCritical holds the default value on creation for the critical field.
-	script.DefaultCritical = scriptDescCritical.Default.(bool)
-	// scriptDescVersion is the schema descriptor for version field.
-	scriptDescVersion := scriptFields[7].Descriptor()
-	// script.DefaultVersion holds the default value on creation for the version field.
-	script.DefaultVersion = scriptDescVersion.Default.(uint32)
-	// scriptDescID is the schema descriptor for id field.
-	scriptDescID := scriptMixinFields0[0].Descriptor()
-	// script.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	script.IDValidator = scriptDescID.Validators[0].(func(uint32) error)
-	scriptlogMixin := schema.ScriptLog{}.Mixin()
-	scriptlogMixinFields0 := scriptlogMixin[0].Fields()
-	_ = scriptlogMixinFields0
-	scriptlogFields := schema.ScriptLog{}.Fields()
-	_ = scriptlogFields
-	// scriptlogDescScriptID is the schema descriptor for script_id field.
-	scriptlogDescScriptID := scriptlogFields[0].Descriptor()
-	// scriptlog.DefaultScriptID holds the default value on creation for the script_id field.
-	scriptlog.DefaultScriptID = scriptlogDescScriptID.Default.(uint32)
-	// scriptlogDescVersion is the schema descriptor for version field.
-	scriptlogDescVersion := scriptlogFields[5].Descriptor()
-	// scriptlog.DefaultVersion holds the default value on creation for the version field.
-	scriptlog.DefaultVersion = scriptlogDescVersion.Default.(uint32)
-	// scriptlogDescSuccess is the schema descriptor for success field.
-	scriptlogDescSuccess := scriptlogFields[6].Descriptor()
-	// scriptlog.DefaultSuccess holds the default value on creation for the success field.
-	scriptlog.DefaultSuccess = scriptlogDescSuccess.Default.(bool)
-	// scriptlogDescDurationMs is the schema descriptor for duration_ms field.
-	scriptlogDescDurationMs := scriptlogFields[7].Descriptor()
-	// scriptlog.DefaultDurationMs holds the default value on creation for the duration_ms field.
-	scriptlog.DefaultDurationMs = scriptlogDescDurationMs.Default.(int64)
-	// scriptlogDescID is the schema descriptor for id field.
-	scriptlogDescID := scriptlogMixinFields0[0].Descriptor()
-	// scriptlog.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	scriptlog.IDValidator = scriptlogDescID.Validators[0].(func(uint32) error)
 	sysconfigMixin := schema.SysConfig{}.Mixin()
 	sysconfigMixinFields0 := sysconfigMixin[0].Fields()
 	_ = sysconfigMixinFields0
@@ -1648,52 +1055,6 @@ func init() {
 	usercredentialDescID := usercredentialMixinFields1[0].Descriptor()
 	// usercredential.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	usercredential.IDValidator = usercredentialDescID.Validators[0].(func(uint32) error)
-	usermfafactorMixin := schema.UserMfaFactor{}.Mixin()
-	usermfafactor.Policy = privacy.NewPolicies(usermfafactorMixin[2], schema.UserMfaFactor{})
-	usermfafactor.Hooks[0] = func(next ent.Mutator) ent.Mutator {
-		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-			if err := usermfafactor.Policy.EvalMutation(ctx, m); err != nil {
-				return nil, err
-			}
-			return next.Mutate(ctx, m)
-		})
-	}
-	usermfafactorMixinFields1 := usermfafactorMixin[1].Fields()
-	_ = usermfafactorMixinFields1
-	usermfafactorMixinFields2 := usermfafactorMixin[2].Fields()
-	_ = usermfafactorMixinFields2
-	usermfafactorFields := schema.UserMfaFactor{}.Fields()
-	_ = usermfafactorFields
-	// usermfafactorDescTenantID is the schema descriptor for tenant_id field.
-	usermfafactorDescTenantID := usermfafactorMixinFields2[0].Descriptor()
-	// usermfafactor.DefaultTenantID holds the default value on creation for the tenant_id field.
-	usermfafactor.DefaultTenantID = usermfafactorDescTenantID.Default.(uint32)
-	// usermfafactorDescSecretHash is the schema descriptor for secret_hash field.
-	usermfafactorDescSecretHash := usermfafactorFields[2].Descriptor()
-	// usermfafactor.SecretHashValidator is a validator for the "secret_hash" field. It is called by the builders before save.
-	usermfafactor.SecretHashValidator = func() func(string) error {
-		validators := usermfafactorDescSecretHash.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(secret_hash string) error {
-			for _, fn := range fns {
-				if err := fn(secret_hash); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// usermfafactorDescDisplayName is the schema descriptor for display_name field.
-	usermfafactorDescDisplayName := usermfafactorFields[3].Descriptor()
-	// usermfafactor.DisplayNameValidator is a validator for the "display_name" field. It is called by the builders before save.
-	usermfafactor.DisplayNameValidator = usermfafactorDescDisplayName.Validators[0].(func(string) error)
-	// usermfafactorDescID is the schema descriptor for id field.
-	usermfafactorDescID := usermfafactorMixinFields1[0].Descriptor()
-	// usermfafactor.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	usermfafactor.IDValidator = usermfafactorDescID.Validators[0].(func(uint32) error)
 	userorgunitMixin := schema.UserOrgUnit{}.Mixin()
 	userorgunit.Policy = privacy.NewPolicies(userorgunitMixin[3], schema.UserOrgUnit{})
 	userorgunit.Hooks[0] = func(next ent.Mutator) ent.Mutator {

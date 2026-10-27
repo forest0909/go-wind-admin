@@ -4,13 +4,13 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/tx7do/go-utils/captcha"
-	"github.com/tx7do/go-utils/password"
+	"go-wind-admin/third_party/go-utils/captcha"
+	"go-wind-admin/third_party/go-utils/password"
 
 	klog "github.com/go-kratos/kratos/v2/log"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	redisClient "github.com/tx7do/kratos-bootstrap/cache/redis"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	redisClient "go-wind-admin/third_party/kratos-bootstrap/cache/redis"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 

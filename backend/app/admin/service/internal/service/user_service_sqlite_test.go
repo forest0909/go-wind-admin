@@ -14,7 +14,7 @@
 // Create（入参守卫 / 操作人与租户注入 / 角色存在性与类型校验(经 roleRepo 真实
 // 分页过滤) / 默认密码落凭证(经 userCredentialRepo 真实 bcrypt+复杂度校验)）、
 // Update（角色校验 / 跨租户重置密码拒绝 / 平台管理员与租户内重置(真实
-// ResetCredential) / 重置后吊销 / UpdatedBy+mask 注入）、Delete（默认管理员、
+// ResetCredential) / 重置后吊销 / 角色集合变化后吊销 / UpdatedBy+mask 注入）、Delete（默认管理员、
 // 自删守卫与正常删除）、EditUserPassword（跨租户拒绝与同租户/平台重置）、
 // init / createDefaultUser / createDefaultUserCredentials（空库播种、凭证自愈补种、
 // overrideUserID 绑定）。
@@ -33,21 +33,24 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/password"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/password"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
 	"go-wind-admin/app/admin/service/internal/data"
+	"go-wind-admin/app/admin/service/internal/data/ent"
+	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
@@ -55,19 +58,27 @@ import (
 
 // userServiceUserRepoStub 是 UserService 测试专用的 data.UserRepo 桩：
 // 嵌入接口获得默认方法集（未覆写方法一旦被调用即 nil 接口 panic，测试即失败）。
-// 只覆写服务层会用到的八个方法：Get（按 id 回放）、List（回放固定列表）、
-// Count（回放固定计数）、Create（记录并回放占位用户）、Update / Delete /
-// AssignUserRole（记录调用）、UserExists（回放固定响应）。
-// 桩数据与实体表无关；真实落库的只有凭证表（经真实 userCredentialRepo）。
+// 只覆写服务层会用到的方法：Get（按 id 回放）、List（回放固定列表）、
+// Count（回放固定计数）、Create / CreateWithTx（记录并回放占位用户）、
+// BeginTx（与凭证仓储共用 ent client，好让 Create 的事务能提交凭证）、
+// Update / Delete / AssignUserRole（记录调用）、UserExists（回放固定响应）、
+// ListRoleIDsByUserID（按用户回放角色 ID，供更新前比较）。
+// 桩不写用户行；真实落库的只有凭证表（经真实 userCredentialRepo）。
+// 用户行和凭证同事务回滚的断言见 TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected，
+// 那条用真实 userRepo。
 type userServiceUserRepoStub struct {
 	data.UserRepo
-	usersByID     map[uint32]*identityV1.User
-	listUsers     []*identityV1.User
-	count         int
-	creates       []*identityV1.CreateUserRequest
-	updates       []*identityV1.UpdateUserRequest
-	deletes       []uint32
-	assignedRoles []*permissionV1.UserRole
+	client           *ent.Client
+	usersByID        map[uint32]*identityV1.User
+	listUsers        []*identityV1.User
+	count            int
+	creates          []*identityV1.CreateUserRequest
+	updates          []*identityV1.UpdateUserRequest
+	deletes          []uint32
+	assignedRoles    []*permissionV1.UserRole
+	roleIDsByUser    map[uint32][]uint32
+	listRoleIDsErr   error
+	listRoleIDsCalls int
 }
 
 func (s *userServiceUserRepoStub) Get(_ context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
@@ -91,6 +102,18 @@ func (s *userServiceUserRepoStub) Create(_ context.Context, req *identityV1.Crea
 	return &identityV1.User{Id: trans.Ptr(uint32(66001)), TenantId: req.Data.TenantId}, nil
 }
 
+func (s *userServiceUserRepoStub) BeginTx(ctx context.Context) (*ent.Tx, error) {
+	if s.client == nil {
+		return nil, fmt.Errorf("userService stub BeginTx: ent client is nil")
+	}
+	return s.client.Tx(ctx)
+}
+
+func (s *userServiceUserRepoStub) CreateWithTx(_ context.Context, _ *ent.Tx, data *identityV1.User) (*identityV1.User, error) {
+	s.creates = append(s.creates, &identityV1.CreateUserRequest{Data: data})
+	return &identityV1.User{Id: trans.Ptr(uint32(66001)), TenantId: data.TenantId, Username: data.Username}, nil
+}
+
 func (s *userServiceUserRepoStub) Update(_ context.Context, req *identityV1.UpdateUserRequest) error {
 	s.updates = append(s.updates, req)
 	return nil
@@ -108,6 +131,17 @@ func (s *userServiceUserRepoStub) UserExists(_ context.Context, _ *identityV1.Us
 func (s *userServiceUserRepoStub) AssignUserRole(_ context.Context, data *permissionV1.UserRole) error {
 	s.assignedRoles = append(s.assignedRoles, data)
 	return nil
+}
+
+func (s *userServiceUserRepoStub) ListRoleIDsByUserID(_ context.Context, userID uint32) ([]uint32, error) {
+	s.listRoleIDsCalls++
+	if s.listRoleIDsErr != nil {
+		return nil, s.listRoleIDsErr
+	}
+	ids := s.roleIDsByUser[userID]
+	out := make([]uint32, len(ids))
+	copy(out, ids)
+	return out, nil
 }
 
 // userServiceEnv 聚合 UserService 测试装配（每测试全新 enttest client + 全新 miniredis）。
@@ -137,7 +171,10 @@ func newUserServiceForTest(t *testing.T) *userServiceEnv {
 	authenticator, err := data.NewAuthenticatorForTest(jwtCfg, userTokenCache)
 	require.NoError(t, err)
 
-	stub := &userServiceUserRepoStub{usersByID: make(map[uint32]*identityV1.User)}
+	stub := &userServiceUserRepoStub{
+		usersByID: make(map[uint32]*identityV1.User),
+		client:    entClient.Client(),
+	}
 
 	svc := &UserService{
 		log:                bLogger.NewHelper(bLogger.NopLogger()),
@@ -452,8 +489,9 @@ func TestUserServiceSqlite_CreateGuards(t *testing.T) {
 }
 
 // TestUserServiceSqlite_CreatePlatform 验证平台操作人的创建路径：
-// 未显式给密码时注入默认密码，凭证行经真实 bcrypt 落库（自定义密码同理）；
-// 弱密码被复杂度策略拒绝；CreatedBy 注入操作人。
+// 未显式给密码时注入默认密码（明文常量，不解密），凭证行经真实 bcrypt 落库；
+// 自定义密码按创建契约传入 AES 密文，解密后能登录；
+// 不满足复杂度的密文被拒绝；CreatedBy 注入操作人。
 func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 	e := newUserServiceForTest(t)
 	systemRoleID := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_SYSTEM_CREATE")
@@ -476,13 +514,13 @@ func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 	require.Len(t, e.stub.creates, 1)
 	require.Equal(t, uint32(9001), e.stub.creates[0].Data.GetCreatedBy(), "CreatedBy 应注入操作人")
 
-	// 自定义密码路径。
+	// 自定义密码路径：与前端 useCreateUser 一样传 AES 密文。
 	_, err = e.svc.Create(platformOp, &identityV1.CreateUserRequest{
 		Data: &identityV1.User{
 			Username: trans.Ptr("usersvc-custom-pw"),
 			RoleIds:  []uint32{systemRoleID},
 		},
-		Password: trans.Ptr("CustomP@ss777"),
+		Password: trans.Ptr(encryptLoginPassword(t, "CustomP@ss777")),
 	})
 	require.NoError(t, err)
 	require.Equal(t, 2, e.credentialCount(t))
@@ -499,12 +537,281 @@ func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 			Username: trans.Ptr("usersvc-weak-pw"),
 			RoleIds:  []uint32{systemRoleID},
 		},
-		Password: trans.Ptr("short"),
+		Password: trans.Ptr(encryptLoginPassword(t, "short")),
 	})
 	require.Error(t, err)
 	require.True(t, adminV1.IsBadRequest(err), "弱密码应被复杂度策略拒绝")
 	require.Contains(t, err.Error(), "password too short", "复杂度拒绝的具体原因应透传（长度不足）")
 	require.Equal(t, 2, e.credentialCount(t), "弱密码不应落库")
+}
+
+// TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected 用真实 userRepo：
+// 弱密码时用户行和角色/组织/岗位关联一起回滚；正常创建后用户、关联、凭据都在；
+// 不传密码时默认密码能通过登录用的凭证校验。
+func TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected(t *testing.T) {
+	svc, client, sys := newUserServiceWithRealUserRepo(t)
+
+	opRow, err := client.User.Create().SetUsername("usersvc-tx-operator").Save(sys)
+	require.NoError(t, err)
+	platformOp := opCtx(sys, opRow.ID, 0, true)
+
+	roleID := seedUserSvcRoleOn(t, svc.roleRepo, sys, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_TX")
+	require.NoError(t, svc.orgUnitRepo.Create(sys, &identityV1.CreateOrgUnitRequest{
+		Data: &identityV1.OrgUnit{
+			Name:   trans.Ptr("UserService 事务组织"),
+			Code:   trans.Ptr("USERSVC_ORGUNIT_TX"),
+			Status: identityV1.OrgUnit_ON.Enum(),
+			Type:   identityV1.OrgUnit_DEPARTMENT.Enum(),
+		},
+	}))
+	orgList, err := svc.orgUnitRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var orgUnitID uint32
+	for _, item := range orgList.GetItems() {
+		if item.GetCode() == "USERSVC_ORGUNIT_TX" {
+			orgUnitID = item.GetId()
+		}
+	}
+	require.NotZero(t, orgUnitID)
+	require.NoError(t, svc.positionRepo.Create(sys, &identityV1.CreatePositionRequest{
+		Data: &identityV1.Position{
+			OrgUnitId: trans.Ptr(orgUnitID),
+			Name:      trans.Ptr("UserService 事务职位"),
+			Code:      trans.Ptr("USERSVC_POSITION_TX"),
+			Status:    identityV1.Position_ON.Enum(),
+			Type:      identityV1.Position_LEADER.Enum(),
+		},
+	}))
+	posList, err := svc.positionRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var positionID uint32
+	for _, item := range posList.GetItems() {
+		if item.GetCode() == "USERSVC_POSITION_TX" {
+			positionID = item.GetId()
+		}
+	}
+	require.NotZero(t, positionID)
+
+	_, err = svc.Create(platformOp, &identityV1.CreateUserRequest{
+		Data: &identityV1.User{
+			Username:    trans.Ptr("usersvc-tx-weak"),
+			RoleIds:     []uint32{roleID},
+			OrgUnitIds:  []uint32{orgUnitID},
+			PositionIds: []uint32{positionID},
+		},
+		Password: trans.Ptr(encryptLoginPassword(t, "short")),
+	})
+	require.Error(t, err)
+	require.True(t, adminV1.IsBadRequest(err))
+	require.Equal(t, 0, countUsersByUsername(t, client, sys, "usersvc-tx-weak"), "弱密码回滚后用户名不应留在用户表")
+	roleN, err := client.UserRole.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, roleN, "弱密码应回滚角色关联")
+	orgN, err := client.UserOrgUnit.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, orgN, "弱密码应回滚组织关联")
+	posN, err := client.UserPosition.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, posN, "弱密码应回滚岗位关联")
+	credN, cerr := svc.userCredentialRepo.Count(sys, nil)
+	require.NoError(t, cerr)
+	require.Equal(t, 0, credN, "弱密码不应留下凭据")
+
+	_, err = svc.Create(platformOp, &identityV1.CreateUserRequest{
+		Data: &identityV1.User{
+			Username:    trans.Ptr("usersvc-tx-ok"),
+			RoleIds:     []uint32{roleID},
+			OrgUnitIds:  []uint32{orgUnitID},
+			PositionIds: []uint32{positionID},
+		},
+		Password: trans.Ptr(encryptLoginPassword(t, "CustomP@ss777")),
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, countUsersByUsername(t, client, sys, "usersvc-tx-ok"))
+	okRow, err := client.User.Query().Where(user.UsernameEQ("usersvc-tx-ok")).Only(sys)
+	require.NoError(t, err)
+	roleIDs, err := svc.userRepo.ListRoleIDsByUserID(sys, okRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, []uint32{roleID}, roleIDs)
+	orgIDs, err := svc.userRepo.ListOrgUnitIDsByUserID(sys, okRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, []uint32{orgUnitID}, orgIDs)
+	posIDs, err := svc.userRepo.ListPositionIDsByUserID(sys, okRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, []uint32{positionID}, posIDs)
+	matched, ferr := svc.userCredentialRepo.FindUserCredential(sys, 0,
+		authenticationV1.UserCredential_USERNAME, "usersvc-tx-ok", "CustomP@ss777", false)
+	require.NoError(t, ferr)
+	require.Equal(t, okRow.ID, matched)
+
+	_, err = svc.Create(platformOp, &identityV1.CreateUserRequest{
+		Data: &identityV1.User{
+			Username: trans.Ptr("usersvc-tx-default"),
+			RoleIds:  []uint32{roleID},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, countUsersByUsername(t, client, sys, "usersvc-tx-default"))
+	defaultRow, err := client.User.Query().Where(user.UsernameEQ("usersvc-tx-default")).Only(sys)
+	require.NoError(t, err)
+	matched, ferr = svc.userCredentialRepo.FindUserCredential(sys, 0,
+		authenticationV1.UserCredential_USERNAME, "usersvc-tx-default", constants.DefaultUserPassword, false)
+	require.NoError(t, ferr, "未传密码时应能用默认密码通过登录凭证校验")
+	require.Equal(t, defaultRow.ID, matched)
+}
+
+// userRepoOperatorLookupStub 让 Create 能通过操作人存在性检查，但不往用户表插行。
+// 这样 panic 回滚之后，用户表应当是 0 行，而不是留下测试自己种的操作人。
+type userRepoOperatorLookupStub struct {
+	data.UserRepo
+}
+
+func (userRepoOperatorLookupStub) Get(_ context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
+	return &identityV1.User{Id: trans.Ptr(req.GetId())}, nil
+}
+
+// TestUserServiceSqlite_CreatePanicRollsBackUser 凭据写入 panic 时，
+// 用户行、三张关联和凭据都不得提交。
+func TestUserServiceSqlite_CreatePanicRollsBackUser(t *testing.T) {
+	svc, client, sys := newUserServiceWithRealUserRepo(t)
+	svc.userRepo = userRepoOperatorLookupStub{UserRepo: svc.userRepo}
+	platformOp := opCtx(sys, 1, 0, true)
+
+	roleID := seedUserSvcRoleOn(t, svc.roleRepo, sys, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_PANIC")
+	require.NoError(t, svc.orgUnitRepo.Create(sys, &identityV1.CreateOrgUnitRequest{
+		Data: &identityV1.OrgUnit{
+			Name:   trans.Ptr("UserService panic 组织"),
+			Code:   trans.Ptr("USERSVC_ORGUNIT_PANIC"),
+			Status: identityV1.OrgUnit_ON.Enum(),
+			Type:   identityV1.OrgUnit_DEPARTMENT.Enum(),
+		},
+	}))
+	orgList, err := svc.orgUnitRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var orgUnitID uint32
+	for _, item := range orgList.GetItems() {
+		if item.GetCode() == "USERSVC_ORGUNIT_PANIC" {
+			orgUnitID = item.GetId()
+		}
+	}
+	require.NotZero(t, orgUnitID)
+	require.NoError(t, svc.positionRepo.Create(sys, &identityV1.CreatePositionRequest{
+		Data: &identityV1.Position{
+			OrgUnitId: trans.Ptr(orgUnitID),
+			Name:      trans.Ptr("UserService panic 职位"),
+			Code:      trans.Ptr("USERSVC_POSITION_PANIC"),
+			Status:    identityV1.Position_ON.Enum(),
+			Type:      identityV1.Position_LEADER.Enum(),
+		},
+	}))
+	posList, err := svc.positionRepo.List(sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	var positionID uint32
+	for _, item := range posList.GetItems() {
+		if item.GetCode() == "USERSVC_POSITION_PANIC" {
+			positionID = item.GetId()
+		}
+	}
+	require.NotZero(t, positionID)
+
+	userCreateCredentialHook = func() { panic("credential write") }
+	t.Cleanup(func() { userCreateCredentialHook = nil })
+
+	panicked := false
+	func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				panicked = true
+			}
+		}()
+		_, _ = svc.Create(platformOp, &identityV1.CreateUserRequest{
+			Data: &identityV1.User{
+				Username:    trans.Ptr("usersvc-tx-panic"),
+				RoleIds:     []uint32{roleID},
+				OrgUnitIds:  []uint32{orgUnitID},
+				PositionIds: []uint32{positionID},
+			},
+		})
+	}()
+	require.True(t, panicked, "凭据写入 hook 应该 panic 出来")
+
+	userN, err := client.User.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, userN, "panic 后用户表应为 0 行")
+	roleN, err := client.UserRole.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, roleN, "panic 后角色关联应为 0 行")
+	orgN, err := client.UserOrgUnit.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, orgN, "panic 后组织关联应为 0 行")
+	posN, err := client.UserPosition.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, posN, "panic 后岗位关联应为 0 行")
+	credN, err := client.UserCredential.Query().Count(sys)
+	require.NoError(t, err)
+	require.Equal(t, 0, credN, "panic 后凭据表应为 0 行")
+}
+
+func newUserServiceWithRealUserRepo(t *testing.T) (*UserService, *ent.Client, context.Context) {
+	t.Helper()
+	entClient := enttest.NewEntClientForTest(t)
+	sys := enttest.NewSystemContext(context.Background())
+	boot := bootstrap.NewContextWithParam(context.Background(), nil, nil, bLogger.NopLogger())
+
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	passwordCrypto := password.NewBCryptCrypto()
+	configRepo := data.NewConfigRepoForTest(entClient, rdb)
+	svc := &UserService{
+		log: bLogger.NewHelper(bLogger.NopLogger()),
+		userRepo: data.NewUserRepo(boot, entClient,
+			data.NewUserRoleRepo(boot, entClient),
+			data.NewUserOrgUnitRepo(boot, entClient),
+			data.NewUserPositionRepo(boot, entClient),
+			nil,
+		),
+		userCredentialRepo: data.NewUserCredentialRepoForTest(entClient, passwordCrypto, configRepo),
+		roleRepo:           data.NewRoleRepoForTest(entClient),
+		positionRepo:       data.NewPositionRepoForTest(entClient),
+		orgUnitRepo:        data.NewOrgUnitRepoForTest(entClient),
+		tenantRepo:         data.NewTenantRepoForTest(entClient),
+	}
+	return svc, entClient.Client(), sys
+}
+
+func seedUserSvcRoleOn(t *testing.T, repo *data.RoleRepo, ctx context.Context, tenantID *uint32, roleType permissionV1.Role_Type, roleCode string) uint32 {
+	t.Helper()
+	require.NoError(t, repo.Create(ctx, &permissionV1.CreateRoleRequest{
+		Data: &permissionV1.Role{
+			TenantId: tenantID,
+			Name:     trans.Ptr("UserService 角色 " + roleCode),
+			Code:     trans.Ptr(roleCode),
+			Status:   permissionV1.Role_ON.Enum(),
+			Type:     roleType.Enum(),
+		},
+	}))
+	var wantTenant uint32
+	if tenantID != nil {
+		wantTenant = *tenantID
+	}
+	listResp, err := repo.List(ctx, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	for _, item := range listResp.GetItems() {
+		if item.GetCode() == roleCode && item.GetTenantId() == wantTenant {
+			return item.GetId()
+		}
+	}
+	t.Fatalf("角色 (%d, %s) 未在列表中反查到", wantTenant, roleCode)
+	return 0
+}
+
+func countUsersByUsername(t *testing.T, client *ent.Client, ctx context.Context, username string) int {
+	t.Helper()
+	n, err := client.User.Query().Where(user.UsernameEQ(username)).Count(ctx)
+	require.NoError(t, err)
+	return n
 }
 
 // TestUserServiceSqlite_CreateTenant 验证租户操作人的创建路径：
@@ -620,6 +927,125 @@ func TestUserServiceSqlite_UpdatePasswordReset(t *testing.T) {
 	require.Nil(t, resp)
 	_, ferr = e.findCred(t, tenantB, "usersvc-cross-tenant-target", constants.DefaultUserPassword)
 	require.NoError(t, ferr, "跨租户目标的密码不应被改动")
+}
+
+// TestUserServiceSqlite_UpdateRoleChangeRevokesTokens 验证用户角色集合变化后旧访问令牌立即失效：
+// 全量或 role_ids 掩码且集合与库中一致时令牌仍有效；掩码不含角色时不比较、不吊销；
+// 集合变化后 Authenticate 失败；列举当前角色失败时仍吊销。其他用户的令牌不受影响。
+func TestUserServiceSqlite_UpdateRoleChangeRevokesTokens(t *testing.T) {
+	e := newUserServiceForTest(t)
+	roleA := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_REVOKE_A")
+	roleB := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_REVOKE_B")
+
+	const target uint32 = 10701
+	const bystander uint32 = 10702
+	e.stub.usersByID[target] = &identityV1.User{Id: trans.Ptr(target), Username: trans.Ptr("usersvc-role-target")}
+	e.stub.roleIDsByUser = map[uint32][]uint32{
+		target: {roleA, roleA},
+	}
+	e.registerOperator(9001)
+	platformOp := opCtx(e.ctx, 9001, 0, true)
+
+	access := issueAdminAccessToken(t, e, target, "usersvc-role-target")
+	bystanderAccess := issueAdminAccessToken(t, e, bystander, "usersvc-role-bystander")
+	requireAccessTokenValid(t, e, access, true)
+	requireAccessTokenValid(t, e, bystanderAccess, true)
+
+	_, err := e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleA},
+		},
+	})
+	require.NoError(t, err, "全量更新且角色集合不变应成功")
+	requireAccessTokenValid(t, e, access, true)
+
+	callsBefore := e.stub.listRoleIDsCalls
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"nickname"}},
+	})
+	require.NoError(t, err, "只改昵称应成功")
+	require.Equal(t, callsBefore, e.stub.listRoleIDsCalls, "掩码不含角色时不应读取当前角色")
+	requireAccessTokenValid(t, e, access, true)
+
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"roleIds"}},
+	})
+	require.NoError(t, err, "camelCase 掩码更新应成功")
+	require.Equal(t, callsBefore, e.stub.listRoleIDsCalls, "repo 不识别的 roleIds 不应触发角色比较")
+	requireAccessTokenValid(t, e, access, true)
+
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleA},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role_ids"}},
+	})
+	require.NoError(t, err, "角色集合相同的更新应成功")
+	requireAccessTokenValid(t, e, access, true)
+
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role_ids"}},
+	})
+	require.NoError(t, err, "角色集合变化的更新应成功")
+	requireAccessTokenValid(t, e, access, false)
+	requireAccessTokenValid(t, e, bystanderAccess, true)
+
+	access = issueAdminAccessToken(t, e, target, "usersvc-role-target")
+	e.stub.roleIDsByUser[target] = []uint32{roleB}
+	e.stub.listRoleIDsErr = fmt.Errorf("list roles failed")
+	_, err = e.svc.Update(platformOp, &identityV1.UpdateUserRequest{
+		Id: target,
+		Data: &identityV1.User{
+			RoleIds: []uint32{roleB},
+		},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"role_ids"}},
+	})
+	require.NoError(t, err, "列举角色失败时用户更新仍应成功")
+	requireAccessTokenValid(t, e, access, false)
+}
+
+func issueAdminAccessToken(t *testing.T, e *userServiceEnv, userID uint32, username string) string {
+	t.Helper()
+	access, _, err := e.svc.authenticator.CreateUserToken(context.Background(), authenticationV1.ClientType_admin, &authenticationV1.UserTokenPayload{
+		UserId:   userID,
+		Username: trans.Ptr(username),
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, access)
+	return access
+}
+
+func requireAccessTokenValid(t *testing.T, e *userServiceEnv, access string, valid bool) {
+	t.Helper()
+	resp, err := e.svc.authenticator.Authenticate(context.Background(), &authenticationV1.ValidateTokenRequest{
+		Token:         access,
+		ClientType:    authenticationV1.ClientType_admin,
+		TokenCategory: authenticationV1.TokenCategory_ACCESS,
+	})
+	if valid {
+		require.NoError(t, err)
+		require.True(t, resp.GetIsValid())
+		return
+	}
+	require.Error(t, err)
+	require.True(t, authenticationV1.IsUnauthorized(err))
+	if resp != nil {
+		require.False(t, resp.GetIsValid())
+	}
 }
 
 // TestUserServiceSqlite_EditUserPassword 验证 EditUserPassword：

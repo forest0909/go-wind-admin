@@ -20,16 +20,13 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
-const OperationDashboardServiceGetAiInsights = "/admin.service.v1.DashboardService/GetAiInsights"
 const OperationDashboardServiceGetLoginStatusDistribution = "/admin.service.v1.DashboardService/GetLoginStatusDistribution"
 const OperationDashboardServiceGetLoginTrend = "/admin.service.v1.DashboardService/GetLoginTrend"
 const OperationDashboardServiceGetOperationActionDistribution = "/admin.service.v1.DashboardService/GetOperationActionDistribution"
 const OperationDashboardServiceGetOverview = "/admin.service.v1.DashboardService/GetOverview"
 
 type DashboardServiceHTTPServer interface {
-	// GetAiInsights 登录审计按 status 分布
-	// AI 安全与异常洞察：审计明细行为模式挖掘（平台用户专属——数据会外发到模型端点）
-	GetAiInsights(context.Context, *AiInsightsRequest) (*AiInsightsResponse, error)
+	// GetLoginStatusDistribution 登录审计按 status 分布
 	GetLoginStatusDistribution(context.Context, *emptypb.Empty) (*StatusDistributionResponse, error)
 	// GetLoginTrend 获取近 N 天每日登录次数趋势
 	GetLoginTrend(context.Context, *GetLoginTrendRequest) (*LoginTrendResponse, error)
@@ -44,7 +41,6 @@ func RegisterDashboardServiceHTTPServer(s *http.Server, srv DashboardServiceHTTP
 	r.GET("/admin/v1/dashboard/overview", _DashboardService_GetOverview0_HTTP_Handler(srv))
 	r.GET("/admin/v1/dashboard/login-trend", _DashboardService_GetLoginTrend0_HTTP_Handler(srv))
 	r.GET("/admin/v1/dashboard/operation-action-distribution", _DashboardService_GetOperationActionDistribution0_HTTP_Handler(srv))
-	r.POST("/admin/v1/dashboard/ai-insights", _DashboardService_GetAiInsights0_HTTP_Handler(srv))
 	r.GET("/admin/v1/dashboard/login-status-distribution", _DashboardService_GetLoginStatusDistribution0_HTTP_Handler(srv))
 }
 
@@ -105,28 +101,6 @@ func _DashboardService_GetOperationActionDistribution0_HTTP_Handler(srv Dashboar
 	}
 }
 
-func _DashboardService_GetAiInsights0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in AiInsightsRequest
-		if err := ctx.Bind(&in); err != nil {
-			return err
-		}
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationDashboardServiceGetAiInsights)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.GetAiInsights(ctx, req.(*AiInsightsRequest))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*AiInsightsResponse)
-		return ctx.Result(200, reply)
-	}
-}
-
 func _DashboardService_GetLoginStatusDistribution0_HTTP_Handler(srv DashboardServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in emptypb.Empty
@@ -147,9 +121,7 @@ func _DashboardService_GetLoginStatusDistribution0_HTTP_Handler(srv DashboardSer
 }
 
 type DashboardServiceHTTPClient interface {
-	// GetAiInsights 登录审计按 status 分布
-	// AI 安全与异常洞察：审计明细行为模式挖掘（平台用户专属——数据会外发到模型端点）
-	GetAiInsights(ctx context.Context, req *AiInsightsRequest, opts ...http.CallOption) (rsp *AiInsightsResponse, err error)
+	// GetLoginStatusDistribution 登录审计按 status 分布
 	GetLoginStatusDistribution(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *StatusDistributionResponse, err error)
 	// GetLoginTrend 获取近 N 天每日登录次数趋势
 	GetLoginTrend(ctx context.Context, req *GetLoginTrendRequest, opts ...http.CallOption) (rsp *LoginTrendResponse, err error)
@@ -167,21 +139,7 @@ func NewDashboardServiceHTTPClient(client *http.Client) DashboardServiceHTTPClie
 	return &DashboardServiceHTTPClientImpl{client}
 }
 
-// GetAiInsights 登录审计按 status 分布
-// AI 安全与异常洞察：审计明细行为模式挖掘（平台用户专属——数据会外发到模型端点）
-func (c *DashboardServiceHTTPClientImpl) GetAiInsights(ctx context.Context, in *AiInsightsRequest, opts ...http.CallOption) (*AiInsightsResponse, error) {
-	var out AiInsightsResponse
-	pattern := "/admin/v1/dashboard/ai-insights"
-	path := binding.EncodeURL(pattern, in, false)
-	opts = append(opts, http.Operation(OperationDashboardServiceGetAiInsights))
-	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
+// GetLoginStatusDistribution 登录审计按 status 分布
 func (c *DashboardServiceHTTPClientImpl) GetLoginStatusDistribution(ctx context.Context, in *emptypb.Empty, opts ...http.CallOption) (*StatusDistributionResponse, error) {
 	var out StatusDistributionResponse
 	pattern := "/admin/v1/dashboard/login-status-distribution"

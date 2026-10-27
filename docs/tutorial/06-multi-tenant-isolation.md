@@ -35,13 +35,13 @@ Create 强制覆盖 tenant_id 防伪造；显式改 tenant_id 值仅放行"同�
 **仓内冗余层（`schema/tenant_mutation_guard.go` 的 `TenantMutationGuardPolicy`，全部带租户表挂载）**：
 与库层同谓词的第二道防线（纵深防御）——它诞生于库旧版只覆盖 Create 的时代，
 当前库版（v0.0.55）已补齐全形态，两层叠加。守卫行为由
-`tenant_guard_test.go`（含 `sys_access_keys` 用例）钉住。
+`tenant_guard_test.go` 钉住。
 
 组合策略：`TenantAndDataScopePolicy`（`schema/data_scope_guard.go`）把租户变更防护与
 数据范围查询过滤链在一起——任一子策略拒绝即整体拒绝。
 
 **接新表**：`Mixin()` 加 `mixin.TenantID[uint32]{}`（库层全形态隔离自动生效），
-且 `Policy()` 返回 `&TenantMutationGuardPolicy{}`——现有 33 张租户表**无一例外**都挂了
+且 `Policy()` 返回 `&TenantMutationGuardPolicy{}`——现有 26 张租户表都挂了
 （其中岗位表 `position.go:188` 返的是组合策略 `TenantAndDataScopePolicy{}`，见第 4 节）。
 完整步骤与守卫单测范式见参考文档第 7 节。
 
@@ -60,7 +60,7 @@ Create 强制覆盖 tenant_id 防伪造；显式改 tenant_id 值仅放行"同�
 - 应用层自有缓存（Redis key 构造）；
 - 对象存储路径（OSS / MinIO 对象 key）；
 - 异步任务载荷（asynq 任务体）；
-- 任何绕过 ent 的直连 SQL / GORM 路径。
+- 任何绕过 ent 的直连 SQL 路径。
 
 接入新存储或新队列时，先想清楚租户维度怎么进 key / 路径 / 载荷，再写代码。
 
@@ -75,7 +75,7 @@ Create 强制覆盖 tenant_id 防伪造；显式改 tenant_id 值仅放行"同�
 
 ## 深读
 
-- [tenant_isolation.md](../tenant_isolation.md) —— 租户隔离唯一权威：上下文链路、HTTP 闸门、数据层读写隔离全形态、覆盖边界（含 `sys_access_keys` 曾缺冗余层守卫、2026-09-13 补挂的修复记录）、接入步骤、租户 403 排障决策树
+- [tenant_isolation.md](../tenant_isolation.md) —— 租户隔离唯一权威：上下文链路、HTTP 闸门、数据层读写隔离全形态、覆盖边界、接入步骤、租户 403 排障决策树
 - [plan_billing.md](../plan_billing.md) —— 套餐与计费管控唯一权威：三档到期策略全链路、模块白名单上线 checklist、配额与用量计量、租户数据清理
 - [data_scope_design.md](../data_scope_design.md) —— 数据范围唯一权威（五档/聚合/接入/运维/边界）
 - [frontend_authority.md](../frontend_authority.md) —— 字段级权限（字段轴，与本章行级轴正交）

@@ -20,7 +20,7 @@ npm -v
 ./scripts/docker/full_deploy.sh
 
 # 步骤 4：开发
-gow run admin
+make -C app/admin/service run
 ```
 
 #### 后续开发（每天）
@@ -28,11 +28,11 @@ gow run admin
 ```bash
 # 方式 A：启动所有服务（如果需要完整环境）
 ./scripts/docker/full_deploy.sh
-gow run admin
+make -C app/admin/service run
 
 # 方式 B：启动仅依赖（推荐本地开发）
 ./scripts/docker/libs_only.sh
-gow run admin
+make -C app/admin/service run
 ```
 
 ---
@@ -67,7 +67,7 @@ gow run admin
 ssh user@server.com
 
 # 步骤 2：克隆项目
-git clone https://github.com/tx7do/go-wind-admin.git
+git clone <本仓库地址>
 cd go-wind-admin/backend
 
 # 步骤 3：准备生产环境
@@ -133,18 +133,18 @@ pm2 logs
 
 ```bash
 # 项目负责人
-git clone https://github.com/tx7do/go-wind-admin.git
+git clone <本仓库地址>
 cd go-wind-admin/backend
 ./scripts/env/install_unix_dev.sh
 ./scripts/docker/full_deploy.sh
 git push  # 确保项目配置已推送
 
 # 其他开发者
-git clone https://github.com/tx7do/go-wind-admin.git
+git clone <本仓库地址>
 cd go-wind-admin/backend
 ./scripts/env/install_unix_dev.sh  # 一次性
 ./scripts/docker/libs_only.sh      # 每天开发时
-gow run admin
+make -C app/admin/service run
 ```
 
 ---
@@ -296,7 +296,7 @@ docker exec -i postgres psql < backup.sql
 
 # 方式 2：完整重启
 ./scripts/docker/full_deploy.sh  # 重启所有
-gow run admin
+make -C app/admin/service run
 
 # 方式 3：PM2 重启
 pm2 restart all
@@ -311,7 +311,7 @@ pm2 restart all
 
 # 方式 2：完整重启
 .\scripts\docker\full_deploy.ps1  # 重启所有
-gow run admin
+make -C app/admin/service run
 
 # 方式 3：PM2 重启（如已安装）
 pm2 restart all
@@ -331,7 +331,7 @@ pm2 restart all
 # 编辑 app/go.mod
 # 运行
 go mod tidy
-gow run admin
+make -C app/admin/service run
 ```
 
 ### 场景 4：Docker 卷满了

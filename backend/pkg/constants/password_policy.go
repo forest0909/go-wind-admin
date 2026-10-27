@@ -4,7 +4,7 @@ package constants
 // （等保要求）。阈值经参数管理页（sys_configs，is_built_in）可改，
 // 修改落库后即时生效（ConfigRepo 缓存写路径同步失效）。
 //
-// 复杂度校验算法在 github.com/tx7do/go-utils/password（ValidateComplexity），
+// 复杂度校验算法在 go-wind-admin/third_party/go-utils/password（ValidateComplexity），
 // 本文件只保留平台参数键名与播种默认值。
 const (
 	// ConfigKeyPasswordMinLen 最小长度，默认 DefaultPasswordMinLen。

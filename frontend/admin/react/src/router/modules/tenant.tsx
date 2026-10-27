@@ -13,6 +13,7 @@ export const tenantRoutes: AppRouteObject[] = [
       title: 'routes:tenant',
       icon: 'lucide:building-2', // Iconify 格式
       order: 2000,
+      hideInMenu: true, // 单租户使用时侧栏不展示；路由仍在，直接打开 /tenant 可进
       // permission: 'sys:platform_admin', // 平台管理员权限（开发阶段暂时注释）
     },
     children: [
@@ -24,6 +25,7 @@ export const tenantRoutes: AppRouteObject[] = [
           title: 'routes:tenant-members',
           icon: 'lucide:users', // Iconify 格式
           order: 1,
+          hideInMenu: true,
           // permission: 'sys:platform_admin', // 平台管理员权限（开发阶段暂时注释）
         },
       },
@@ -35,6 +37,7 @@ export const tenantRoutes: AppRouteObject[] = [
           title: 'routes:tenant-plans',
           icon: 'lucide:package', // Iconify 格式
           order: 2,
+          hideInMenu: true,
           // permission: 'sys:platform_admin', // 平台管理员权限（开发阶段暂时注释）
         },
       },

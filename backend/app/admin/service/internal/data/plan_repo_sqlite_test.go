@@ -5,13 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	"go-wind-admin/app/admin/service/internal/data/ent"
@@ -204,8 +204,8 @@ func TestPlanRepoSqlite_Update(t *testing.T) {
 // （*plan.Version / *plan.ExpiryPolicy），DTO 侧为可选指针字段。mapper 的
 // 枚举转换对（EnumTypeConverter.NewConverterPair → NewGenericTypeConverterPair，
 // 经 &srcType/&dstType 取址注册）恰为指针↔指针形态的键，指针对字段能被
-// copier 直接转换赋值——与值型实体枚举列（如 position.type、
-// notification_channel.type，带列默认、无指针）读侧被丢弃的情形不同。
+// copier 直接转换赋值——与值型实体枚举列（如 position.type，
+// 带列默认、无指针）读侧被丢弃的情形不同。
 // 本测试将该读视图行为钉死：若日后注册形态或 copier 匹配语义变化导致
 // 读丢弃，此处会立即翻红。
 func TestPlanRepoSqlite_EnumReadView(t *testing.T) {

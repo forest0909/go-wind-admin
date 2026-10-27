@@ -1,21 +1,18 @@
 package service
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/hibiken/asynq"
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"go-wind-admin/app/admin/service/internal/data"
@@ -23,10 +20,9 @@ import (
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	taskV1 "go-wind-admin/api/gen/go/task/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
 	"go-wind-admin/pkg/middleware/auth"
-	"go-wind-admin/pkg/oss"
 	"go-wind-admin/pkg/task"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // TaskScheduler 任务调度接口
@@ -42,9 +38,6 @@ type TaskScheduler interface {
 	RemoveAllPeriodicTask()
 }
 
-// backupBucket 备份文件存放的 OSS 桶名。
-const backupBucket = "backups"
-
 // TaskService 任务服务
 type TaskService struct {
 	adminV1.TaskServiceHTTPServer
@@ -55,29 +48,23 @@ type TaskService struct {
 
 	userRepo            data.UserRepo
 	taskRepo            *data.TaskRepo
-	backupRepo          *data.BackupRepo
 	tenantUsageRepo     *data.TenantUsageRepo
 	auditLogArchiveRepo *data.AuditLogArchiveRepo
-	mc                  *oss.MinIOClient
 }
 
 func NewTaskService(
 	ctx *bootstrap.Context,
 	taskRepo *data.TaskRepo,
 	userRepo data.UserRepo,
-	backupRepo *data.BackupRepo,
 	tenantUsageRepo *data.TenantUsageRepo,
 	auditLogArchiveRepo *data.AuditLogArchiveRepo,
-	mc *oss.MinIOClient,
 ) *TaskService {
 	svc := &TaskService{
 		log:                 ctx.NewLoggerHelper("task/service/admin-service"),
 		taskRepo:            taskRepo,
 		userRepo:            userRepo,
-		backupRepo:          backupRepo,
 		tenantUsageRepo:     tenantUsageRepo,
 		auditLogArchiveRepo: auditLogArchiveRepo,
-		mc:                  mc,
 	}
 
 	return svc
@@ -377,43 +364,7 @@ func (s *TaskService) startAllTask(ctx context.Context) (int32, error) {
 			s.log.Infof(ctx, "审计日志归档定时任务已注册（cron=%s）", task.AuditLogArchiveCronSpec)
 		}
 
-		// 通知台账超时清扫：把超期仍停在 SENDING 的投递行结算为 FAILED。
-		// handler 属通知域（NotificationService.AsyncDeliverySweep），调度项仍在这里注册，
-		// 因为只有本函数会在 RestartAllTask（先 RemoveAllPeriodicTask）之后被再次调用。
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.NotificationDeliverySweepCronSpec,
-			task.NotificationDeliverySweepTaskType,
-			&task.NotificationDeliverySweepTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册通知台账清扫定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "通知台账清扫定时任务已注册（cron=%s）", task.NotificationDeliverySweepCronSpec)
-		}
-
-		// 监控告警扫描：每 5 分钟评估全部启用的告警规则（handler 属监控告警域）。
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.MonitorAlertScanCronSpec,
-			task.MonitorAlertScanTaskType,
-			&task.MonitorAlertScanTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册监控告警扫描定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "监控告警扫描定时任务已注册（cron=%s）", task.MonitorAlertScanCronSpec)
-		}
-
-		// 审计日报 AI 摘要：昨日操作审计统计 → 默认模型摘要 → 站内信投递平台用户。
-		// handler 属 AI 域（AiDigestService.AsyncAiAuditDigest），调度项在此注册（同上理由）。
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.AiAuditDigestCronSpec,
-			task.AiAuditDigestTaskType,
-			&task.AiAuditDigestTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册审计日报 AI 摘要定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "审计日报 AI 摘要定时任务已注册（cron=%s）", task.AiAuditDigestCronSpec)
-		}
-
-		// 套餐配额水位扫描：扫全部 ON 租户四类配额水位，命中租户的告警经站内信
+		// 套餐配额水位扫描：扫全部 ON 租户三类配额水位，命中租户的告警经站内信
 		// 投递其管理员。handler 属套餐计费域（PlanQuotaWatermarkService.
 		// AsyncPlanQuotaWatermarkScan），调度项在此注册（同上理由）。
 		if _, err := s.taskScheduler.NewPeriodicTask(
@@ -599,105 +550,6 @@ func (s *TaskService) AsyncAuditLogArchive(taskType string, taskData *task.Audit
 		s.log.Infof(ctx, "audit log archived: %s -> %d rows (dir=%s)", table, n, outDir)
 	}
 	return nil
-}
-
-// AsyncBackup 异步备份任务的实际执行逻辑。
-//
-// H8：实现真正的备份——导出核心业务表为 JSON，gzip 压缩后上传到 OSS 的 backups 桶。
-// 纯 Go 实现，跨数据库驱动（MySQL/PostgreSQL/SQLite）。
-// 当前覆盖核心身份/权限/组织表；审计日志等大体量表暂不纳入（可按需扩展 BackupRepo.ExportCoreTables）。
-func (s *TaskService) AsyncBackup(taskType string, taskData *task.BackupTaskData) error {
-	// taskData 可能为 nil（下方有判空分支），直接解引用 taskData.Name 会在 nil 时 panic
-	backupName := ""
-	if taskData != nil {
-		backupName = taskData.Name
-	}
-	s.log.Infof(context.Background(), "AsyncBackup [%s] [%+v] [%s]", taskType, taskData, backupName)
-
-	// 用 SystemContext 包裹：备份需要导出全部租户的核心表，
-	// 而 TenantPrivacy 在 viewer 缺失时会返回 error 导致带 tenant_id 的表全部查询失败。
-	// SystemContext 的 IsSystemContext()==true，使 TenantPrivacy.EvalQuery 放行全量数据。
-	ctx := viewer.WithSystemContext(context.Background())
-	if backupName == "" {
-		backupName = fmt.Sprintf("backup-%s", time.Now().UTC().Format("20060102-150405"))
-	}
-
-	if s.backupRepo == nil || !s.backupRepo.IsConfigured() || s.mc == nil {
-		return fmt.Errorf("backup dependencies not configured (backupRepo or minio is nil)")
-	}
-
-	// 1. 导出核心表（ent 访问收敛在 data 层的 BackupRepo 内）
-	tables, err := s.backupRepo.ExportCoreTables(ctx)
-	if err != nil {
-		return fmt.Errorf("export core tables failed: %w", err)
-	}
-
-	// 2. 序列化为 JSON
-	jsonBytes, err := json.MarshalIndent(map[string]any{
-		"_meta": map[string]any{
-			"exportedAt": time.Now().UTC().Format(time.RFC3339),
-			"name":       backupName,
-			"tables":     tableNamesOf(tables),
-		},
-		"data": tables,
-	}, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal backup json failed: %w", err)
-	}
-
-	// 3. gzip 压缩
-	compressed, err := gzipBytes(jsonBytes)
-	if err != nil {
-		return fmt.Errorf("gzip backup failed: %w", err)
-	}
-
-	// 4. 上传到 OSS
-	objectName := fmt.Sprintf("%s/%s-%s.json.gz",
-		time.Now().UTC().Format("2006/01/02"),
-		backupName,
-		time.Now().UTC().Format("150405"),
-	)
-
-	s.log.Infof(context.Background(), "backup: uploading %s (%d bytes raw, %d bytes compressed) to bucket %q",
-		objectName, len(jsonBytes), len(compressed), backupBucket)
-
-	if _, _, _, err = s.mc.UploadFile(ctx, backupBucket, objectName, "application/gzip", compressed); err != nil {
-		s.log.Errorf(context.Background(), "backup: upload to oss failed: %s", err.Error())
-		return fmt.Errorf("upload backup to oss failed: %w", err)
-	}
-
-	s.log.Infof(context.Background(), "backup: completed successfully, object=%s", objectName)
-
-	// 5. 顺手清理超过保留期的旧备份（best-effort）：备份本体已成功，
-	// 清理失败只留日志，不影响任务结论（否则告警指向错误的故障点）。
-	if cleaner := newMinioBackupCleaner(s.mc); cleaner != nil {
-		s.cleanupOldBackups(ctx, cleaner)
-	}
-
-	return nil
-}
-
-// tableNamesOf 返回 map 的键列表（用于备份元信息）。
-func tableNamesOf(tables map[string]any) []string {
-	names := make([]string, 0, len(tables))
-	for k := range tables {
-		names = append(names, k)
-	}
-	return names
-}
-
-// gzipBytes 使用标准库 gzip 压缩字节切片。
-func gzipBytes(data []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-	if _, err := gz.Write(data); err != nil {
-		_ = gz.Close()
-		return nil, err
-	}
-	if err := gz.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
 
 // AsyncTenantExpiryScan 租户到期扫描任务的实际执行逻辑。

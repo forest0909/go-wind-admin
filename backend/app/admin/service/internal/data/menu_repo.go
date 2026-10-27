@@ -6,22 +6,22 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
-	entgoUpdate "github.com/tx7do/go-crud/entgo/update"
-	"github.com/tx7do/go-crud/pagination"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
+	entgoUpdate "go-wind-admin/third_party/go-crud/entgo/update"
+	"go-wind-admin/third_party/go-crud/pagination"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/menu"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/trans"
 	"google.golang.org/protobuf/proto"
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
@@ -384,18 +384,10 @@ func (r *MenuRepo) SyncMenus(ctx context.Context, items []*permissionV1.Menu, mo
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return 0, permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	client := tx.Client()
 
@@ -404,14 +396,30 @@ func (r *MenuRepo) SyncMenus(ctx context.Context, items []*permissionV1.Menu, mo
 		if mapErr != nil {
 			return 0, mapErr
 		}
-		return r.syncMergeTree(ctx, client, items, nil, "", existing, operatorId)
+		count, err = r.syncMergeTree(ctx, client, items, nil, "", existing, operatorId)
+		if err != nil {
+			return count, err
+		}
+		if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+			return count, permissionV1.ErrorInternalServerError("transaction commit failed")
+		}
+		return count, nil
 	}
 
 	if _, err = client.Menu.Delete().Exec(ctx); err != nil {
 		r.log.Errorf(ctx, "truncate menus failed: %s", err.Error())
 		return 0, permissionV1.ErrorInternalServerError("truncate menus failed")
 	}
-	return r.syncInsertTree(ctx, client, items, nil, operatorId)
+	count, err = r.syncInsertTree(ctx, client, items, nil, operatorId)
+	if err != nil {
+		return count, err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return count, permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return count, nil
 }
 
 // syncInsertTree 递归插入菜单树：先插父节点拿 ID，再递归子节点（REPLACE 模式）

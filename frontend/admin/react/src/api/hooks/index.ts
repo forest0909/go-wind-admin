@@ -4,7 +4,6 @@
  */
 
 // 认证相关
-export * from './access-key';
 export * from './auth';
 
 // 管理门户相关
@@ -36,57 +35,18 @@ export * from './dict';
 export * from './file';
 export * from './file-transfer';
 export * from './task';
-export * from './login-policy';
 export * from './language';
 export * from './config';
 
 // 日志审计
 export * from './login-audit-log';
-export * from './api-audit-log';
 export * from './operation-audit-log';
-export * from './data-access-audit-log';
-export * from './permission-audit-log';
-export * from './policy-evaluation-log';
-
-// 缓存监控
-export * from './redis-cache-monitor';
 
 // 在线会话
 export * from './online-session';
-
-// 服务监控
-export * from './server-monitor';
-
-// 通知渠道
-export * from './notification-channel';
-
-// 通知路由规则
-export * from './notification-rule';
 
 // 首页分析概览
 export * from './dashboard';
 
 // 内部消息
 export * from './internal-message';
-
-// 脚本管理
-export * from './script';
-
-// 脚本执行日志
-export * from './script-log';
-
-// AI 提供商
-export * from './ai-provider';
-
-// AI 对话
-export * from './ai-chat';
-
-// AI 知识库
-export * from './ai-knowledge';
-
-// 智能问数
-export * from './ai-query';
-export * from './ai-usage';
-
-// AI 内容生成
-export * from './ai-content';

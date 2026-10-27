@@ -21,17 +21,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthenticationService_Login_FullMethodName               = "/admin.service.v1.AuthenticationService/Login"
-	AuthenticationService_Logout_FullMethodName              = "/admin.service.v1.AuthenticationService/Logout"
-	AuthenticationService_ForgotPassword_FullMethodName      = "/admin.service.v1.AuthenticationService/ForgotPassword"
-	AuthenticationService_ResetPasswordByCode_FullMethodName = "/admin.service.v1.AuthenticationService/ResetPasswordByCode"
-	AuthenticationService_RefreshToken_FullMethodName        = "/admin.service.v1.AuthenticationService/RefreshToken"
-	AuthenticationService_GenerateCaptcha_FullMethodName     = "/admin.service.v1.AuthenticationService/GenerateCaptcha"
-	AuthenticationService_VerifyCaptcha_FullMethodName       = "/admin.service.v1.AuthenticationService/VerifyCaptcha"
-	AuthenticationService_GetSsoLoginInfo_FullMethodName     = "/admin.service.v1.AuthenticationService/GetSsoLoginInfo"
-	AuthenticationService_GetSsoLoginUrl_FullMethodName      = "/admin.service.v1.AuthenticationService/GetSsoLoginUrl"
-	AuthenticationService_SsoLogin_FullMethodName            = "/admin.service.v1.AuthenticationService/SsoLogin"
-	AuthenticationService_GetTenantBranding_FullMethodName   = "/admin.service.v1.AuthenticationService/GetTenantBranding"
+	AuthenticationService_Login_FullMethodName             = "/admin.service.v1.AuthenticationService/Login"
+	AuthenticationService_Logout_FullMethodName            = "/admin.service.v1.AuthenticationService/Logout"
+	AuthenticationService_RefreshToken_FullMethodName      = "/admin.service.v1.AuthenticationService/RefreshToken"
+	AuthenticationService_GenerateCaptcha_FullMethodName   = "/admin.service.v1.AuthenticationService/GenerateCaptcha"
+	AuthenticationService_VerifyCaptcha_FullMethodName     = "/admin.service.v1.AuthenticationService/VerifyCaptcha"
+	AuthenticationService_GetTenantBranding_FullMethodName = "/admin.service.v1.AuthenticationService/GetTenantBranding"
 )
 
 // AuthenticationServiceClient is the client API for AuthenticationService service.
@@ -44,22 +39,12 @@ type AuthenticationServiceClient interface {
 	Login(ctx context.Context, in *v1.LoginRequest, opts ...grpc.CallOption) (*v1.LoginResponse, error)
 	// 登出
 	Logout(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-	ForgotPassword(ctx context.Context, in *v1.ForgotPasswordRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-	ResetPasswordByCode(ctx context.Context, in *v1.ResetPasswordByCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// 刷新认证令牌
 	RefreshToken(ctx context.Context, in *v1.LoginRequest, opts ...grpc.CallOption) (*v1.LoginResponse, error)
 	// 生成验证码
 	GenerateCaptcha(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.GenerateCaptchaResponse, error)
 	// 验证验证码
 	VerifyCaptcha(ctx context.Context, in *v1.VerifyCaptchaRequest, opts ...grpc.CallOption) (*v1.VerifyCaptchaResponse, error)
-	// SSO 登录能力开关（免鉴权；登录页按钮显隐）
-	GetSsoLoginInfo(ctx context.Context, in *v1.GetSsoLoginInfoRequest, opts ...grpc.CallOption) (*v1.GetSsoLoginInfoResponse, error)
-	// 生成 OIDC 授权跳转 URL（免鉴权）
-	GetSsoLoginUrl(ctx context.Context, in *v1.GetSsoLoginUrlRequest, opts ...grpc.CallOption) (*v1.GetSsoLoginUrlResponse, error)
-	// OIDC 回调换本系统令牌（免鉴权）
-	SsoLogin(ctx context.Context, in *v1.SsoLoginRequest, opts ...grpc.CallOption) (*v1.LoginResponse, error)
 	// 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
 	GetTenantBranding(ctx context.Context, in *v1.GetTenantBrandingRequest, opts ...grpc.CallOption) (*v1.GetTenantBrandingResponse, error)
 }
@@ -86,26 +71,6 @@ func (c *authenticationServiceClient) Logout(ctx context.Context, in *emptypb.Em
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, AuthenticationService_Logout_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authenticationServiceClient) ForgotPassword(ctx context.Context, in *v1.ForgotPasswordRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, AuthenticationService_ForgotPassword_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authenticationServiceClient) ResetPasswordByCode(ctx context.Context, in *v1.ResetPasswordByCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, AuthenticationService_ResetPasswordByCode_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -142,36 +107,6 @@ func (c *authenticationServiceClient) VerifyCaptcha(ctx context.Context, in *v1.
 	return out, nil
 }
 
-func (c *authenticationServiceClient) GetSsoLoginInfo(ctx context.Context, in *v1.GetSsoLoginInfoRequest, opts ...grpc.CallOption) (*v1.GetSsoLoginInfoResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1.GetSsoLoginInfoResponse)
-	err := c.cc.Invoke(ctx, AuthenticationService_GetSsoLoginInfo_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authenticationServiceClient) GetSsoLoginUrl(ctx context.Context, in *v1.GetSsoLoginUrlRequest, opts ...grpc.CallOption) (*v1.GetSsoLoginUrlResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1.GetSsoLoginUrlResponse)
-	err := c.cc.Invoke(ctx, AuthenticationService_GetSsoLoginUrl_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authenticationServiceClient) SsoLogin(ctx context.Context, in *v1.SsoLoginRequest, opts ...grpc.CallOption) (*v1.LoginResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1.LoginResponse)
-	err := c.cc.Invoke(ctx, AuthenticationService_SsoLogin_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *authenticationServiceClient) GetTenantBranding(ctx context.Context, in *v1.GetTenantBrandingRequest, opts ...grpc.CallOption) (*v1.GetTenantBrandingResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(v1.GetTenantBrandingResponse)
@@ -192,22 +127,12 @@ type AuthenticationServiceServer interface {
 	Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
 	// 登出
 	Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	// 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-	ForgotPassword(context.Context, *v1.ForgotPasswordRequest) (*emptypb.Empty, error)
-	// 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-	ResetPasswordByCode(context.Context, *v1.ResetPasswordByCodeRequest) (*emptypb.Empty, error)
 	// 刷新认证令牌
 	RefreshToken(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
 	// 生成验证码
 	GenerateCaptcha(context.Context, *emptypb.Empty) (*v1.GenerateCaptchaResponse, error)
 	// 验证验证码
 	VerifyCaptcha(context.Context, *v1.VerifyCaptchaRequest) (*v1.VerifyCaptchaResponse, error)
-	// SSO 登录能力开关（免鉴权；登录页按钮显隐）
-	GetSsoLoginInfo(context.Context, *v1.GetSsoLoginInfoRequest) (*v1.GetSsoLoginInfoResponse, error)
-	// 生成 OIDC 授权跳转 URL（免鉴权）
-	GetSsoLoginUrl(context.Context, *v1.GetSsoLoginUrlRequest) (*v1.GetSsoLoginUrlResponse, error)
-	// OIDC 回调换本系统令牌（免鉴权）
-	SsoLogin(context.Context, *v1.SsoLoginRequest) (*v1.LoginResponse, error)
 	// 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
 	GetTenantBranding(context.Context, *v1.GetTenantBrandingRequest) (*v1.GetTenantBrandingResponse, error)
 	mustEmbedUnimplementedAuthenticationServiceServer()
@@ -226,12 +151,6 @@ func (UnimplementedAuthenticationServiceServer) Login(context.Context, *v1.Login
 func (UnimplementedAuthenticationServiceServer) Logout(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
 }
-func (UnimplementedAuthenticationServiceServer) ForgotPassword(context.Context, *v1.ForgotPasswordRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method ForgotPassword not implemented")
-}
-func (UnimplementedAuthenticationServiceServer) ResetPasswordByCode(context.Context, *v1.ResetPasswordByCodeRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method ResetPasswordByCode not implemented")
-}
 func (UnimplementedAuthenticationServiceServer) RefreshToken(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RefreshToken not implemented")
 }
@@ -240,15 +159,6 @@ func (UnimplementedAuthenticationServiceServer) GenerateCaptcha(context.Context,
 }
 func (UnimplementedAuthenticationServiceServer) VerifyCaptcha(context.Context, *v1.VerifyCaptchaRequest) (*v1.VerifyCaptchaResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VerifyCaptcha not implemented")
-}
-func (UnimplementedAuthenticationServiceServer) GetSsoLoginInfo(context.Context, *v1.GetSsoLoginInfoRequest) (*v1.GetSsoLoginInfoResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetSsoLoginInfo not implemented")
-}
-func (UnimplementedAuthenticationServiceServer) GetSsoLoginUrl(context.Context, *v1.GetSsoLoginUrlRequest) (*v1.GetSsoLoginUrlResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetSsoLoginUrl not implemented")
-}
-func (UnimplementedAuthenticationServiceServer) SsoLogin(context.Context, *v1.SsoLoginRequest) (*v1.LoginResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SsoLogin not implemented")
 }
 func (UnimplementedAuthenticationServiceServer) GetTenantBranding(context.Context, *v1.GetTenantBrandingRequest) (*v1.GetTenantBrandingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTenantBranding not implemented")
@@ -310,42 +220,6 @@ func _AuthenticationService_Logout_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthenticationService_ForgotPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.ForgotPasswordRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).ForgotPassword(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_ForgotPassword_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).ForgotPassword(ctx, req.(*v1.ForgotPasswordRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuthenticationService_ResetPasswordByCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.ResetPasswordByCodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).ResetPasswordByCode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_ResetPasswordByCode_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).ResetPasswordByCode(ctx, req.(*v1.ResetPasswordByCodeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _AuthenticationService_RefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.LoginRequest)
 	if err := dec(in); err != nil {
@@ -400,60 +274,6 @@ func _AuthenticationService_VerifyCaptcha_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthenticationService_GetSsoLoginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.GetSsoLoginInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).GetSsoLoginInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_GetSsoLoginInfo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).GetSsoLoginInfo(ctx, req.(*v1.GetSsoLoginInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuthenticationService_GetSsoLoginUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.GetSsoLoginUrlRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).GetSsoLoginUrl(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_GetSsoLoginUrl_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).GetSsoLoginUrl(ctx, req.(*v1.GetSsoLoginUrlRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuthenticationService_SsoLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.SsoLoginRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).SsoLogin(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_SsoLogin_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).SsoLogin(ctx, req.(*v1.SsoLoginRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _AuthenticationService_GetTenantBranding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.GetTenantBrandingRequest)
 	if err := dec(in); err != nil {
@@ -488,14 +308,6 @@ var AuthenticationService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AuthenticationService_Logout_Handler,
 		},
 		{
-			MethodName: "ForgotPassword",
-			Handler:    _AuthenticationService_ForgotPassword_Handler,
-		},
-		{
-			MethodName: "ResetPasswordByCode",
-			Handler:    _AuthenticationService_ResetPasswordByCode_Handler,
-		},
-		{
 			MethodName: "RefreshToken",
 			Handler:    _AuthenticationService_RefreshToken_Handler,
 		},
@@ -506,18 +318,6 @@ var AuthenticationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VerifyCaptcha",
 			Handler:    _AuthenticationService_VerifyCaptcha_Handler,
-		},
-		{
-			MethodName: "GetSsoLoginInfo",
-			Handler:    _AuthenticationService_GetSsoLoginInfo_Handler,
-		},
-		{
-			MethodName: "GetSsoLoginUrl",
-			Handler:    _AuthenticationService_GetSsoLoginUrl_Handler,
-		},
-		{
-			MethodName: "SsoLogin",
-			Handler:    _AuthenticationService_SsoLogin_Handler,
 		},
 		{
 			MethodName: "GetTenantBranding",

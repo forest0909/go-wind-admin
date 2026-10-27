@@ -30,7 +30,7 @@ func TestComponentToModule(t *testing.T) {
 		{"dict page", "app/dict/entry/index.vue", identityV1.Module_DICT},
 		{"tenant page", "app/tenant/tenant/index.vue", identityV1.Module_TENANT},
 		{"permission page", "app/permission/menu/index.vue", identityV1.Module_PERMISSION},
-		{"log page", "app/log/api_audit_log/index.vue", identityV1.Module_LOG},
+		{"log page", "app/log/login_audit_log/index.vue", identityV1.Module_LOG},
 		{"log bare prefix", "app/log/", identityV1.Module_LOG},
 		{"internal message page", "app/internal_message/inbox/index.vue", identityV1.Module_INTERNAL_MESSAGE},
 		{"internal message bare prefix", "app/internal_message/", identityV1.Module_INTERNAL_MESSAGE},
@@ -61,14 +61,9 @@ func TestComponentToModule(t *testing.T) {
 // planWhitelistExemptMenuComponents 刻意不归类的菜单组件前缀。
 //
 // 归不进模块的菜单，module 列落库为 NULL，而 admin_portal_service
-// .filterMenusByPlanWhitelist 的 m.Module == nil 分支对 NULL **一律放行**——
-// 所以这类页面不是"对租户消失"，而是"绕过套餐，只由权限码把关"。
-// 通知域三页管的是平台全局配置与台账，套餐里没有对应模块（也没有 NOTIFICATION
-// 枚举值），故走这条路：菜单挂在 sys:platform_admin 下，RPC 侧另有
-// service/notification_platform_guard.go 显式拒绝租户。
-var planWhitelistExemptMenuComponents = []string{
-	"app/notification/",
-}
+// .filterMenusByPlanWhitelist 的 m.Module == nil 分支对 NULL 一律放行。
+// 当前种子里没有这类页面；清单留着，避免以后加页面时漏掉这道检查。
+var planWhitelistExemptMenuComponents = []string{}
 
 func isPlanWhitelistExemptComponent(component string) bool {
 	for _, prefix := range planWhitelistExemptMenuComponents {

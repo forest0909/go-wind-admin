@@ -47,8 +47,8 @@ brew install --cask visual-studio-code goland
 - [protoc-gen-go-errors](https://github.com/go-kratos/kratos/cmd/protoc-gen-go-errors)
 - [protoc-gen-openapi](https://github.com/google/gnostic/cmd/protoc-gen-openapi)
 - [protoc-gen-validate](https://github.com/envoyproxy/protoc-gen-validate)
-- [protoc-gen-go-redact](https://github.com/tx7do/go-wind-toolkit)（生成脱敏字段）
-- [protoc-gen-typescript-http](https://github.com/tx7do/go-wind-toolkit)（**三端 TS 客户端就靠它**，`make ts` 用）
+- protoc-gen-go-redact（`backend/third_party/tools/protoc-gen-go-redact`，生成脱敏字段）
+- protoc-gen-typescript-http（`backend/third_party/tools/protoc-gen-typescript-http`，`make ts` 用它生成 React 客户端）
 
 一条命令全装（**注意目录：仓库根目录没有 Makefile，须在 `backend/` 下执行**）：
 
@@ -66,11 +66,11 @@ go install github.com/go-kratos/kratos/cmd/protoc-gen-go-http/v2@latest
 go install github.com/go-kratos/kratos/cmd/protoc-gen-go-errors/v2@latest
 go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 go install github.com/envoyproxy/protoc-gen-validate@latest
-go install github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact@latest
-go install github.com/tx7do/go-wind-toolkit/protoc-gen-typescript-http@latest
+cd backend && go install ./third_party/tools/protoc-gen-go-redact
+cd backend && go install ./third_party/tools/protoc-gen-typescript-http
 ```
 
-CLI 工具（buf、ent、gow、golangci-lint 等）在另一个目标里，`make init` = `plugin` + `cli`，
+CLI 工具（buf、ent、golangci-lint 等）在 `cli` 目标里，`make init` = `plugin` + `cli`，
 首次搭建直接跑 `make init` 即可（同样在 `backend/` 下）。
 
 ## 装完之后：跑起来
@@ -83,7 +83,7 @@ CLI 工具（buf、ent、gow、golangci-lint 等）在另一个目标里，`make
 ```shell
 cd backend
 docker compose -f docker-compose.libs.yaml up -d   # 起 PostgreSQL / Redis / MinIO
-gow run admin                                      # 起后端，HTTP :7788
+make -C app/admin/service run                                      # 起后端，HTTP :7788
 ```
 
 前端侧的三端命令见 [如何搭建前端开发环境](./frontend_development_environment_preparation.md)。

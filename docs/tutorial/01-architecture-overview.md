@@ -8,8 +8,8 @@
 backend/                    Go 后端（kratos 微服务框架 + ent ORM）
 ├── api/                    proto 定义与生成物（protos/ 手写，gen/ 生成）
 ├── app/admin/service/      admin 服务本体（cmd/server 入口、configs 配置、internal/ 实现）
-├── pkg/                    跨服务公共包（bootstrap、middleware、audit、scripting…）
-├── scripts/                部署与环境脚本（docker/ deploy/ env/ backup/）
+├── pkg/                    跨服务公共包（bootstrap、middleware、audit…）
+├── scripts/                部署与环境脚本（docker/ deploy/ env/）
 frontend/admin/
 ├── react/                  React 19 + antd 6 + ProComponents + TanStack Query + zustand
 ├── vue-element/            Vue 3 + Element Plus + vxe-table + TanStack vue-query + Pinia
@@ -45,7 +45,7 @@ vue-element `.env.development` 的 `VITE_APP_PORT`、vue-vben `.env.development`
   ▼
 Kratos HTTP transport（:7788）
   │  1. 路由匹配：由 BFF proto 的 google.api.http 注解生成的路由表
-  │  2. 中间件链：JWT 验签与认证上下文注入、操作/API 审计日志、请求日志
+  │  2. 中间件链：JWT 验签与认证上下文注入、登录/操作审计日志、请求日志
   │  3. 生成的 handler：Register*HTTPServer 系列函数，解参、调 service 方法
   ▼
 Service 层（internal/service/）
@@ -84,12 +84,10 @@ PostgreSQL / MySQL
 | 租户隔离 | 行级 `tenant_id` 谓词，读写在数据层强制；HTTP 层另有 Api 表 `(path,method)` 闸门 | ent 隐私层 + `pkg/middleware` | 第 6 章 |
 | 数据范围 | 角色级行过滤（五档），令牌承载聚合结果 | ent 隐私层（逐表 opt-in） | [data_scope_design.md](../data_scope_design.md) |
 | 字段级权限 | 角色黑名单字段，服务端响应裁剪 + 前端隐藏 | service 层切面（当前仅 `user`）+ 三端 access store | [frontend_authority.md](../frontend_authority.md) |
-| 审计日志 | 六类日志全覆盖，含 SQL 级 data access 采集与词法脱敏 | `pkg/middleware/logging`、driver 包装器 | [audit-log-producer-design.md](../audit-log-producer-design.md) |
-| 异步任务 | asynq 调度（cron/周期），Redis 队列 | `internal/service` 任务桥 | [task_system.md](../task_system.md) |
-| 脚本系统 | Lua/JS 脚本级插件：实体钩子/定时任务/事件/HTTP 出站 | `pkg/scripting` + 管理页 | [script_system.md](../script_system.md) |
+| 审计日志 | 登录日志与操作日志 | `pkg/middleware/logging` | [audit-log-producer-design.md](../audit-log-producer-design.md) |
+| 异步任务 | asynq 调度（cron/周期），Redis 队列 | `internal/service` 任务服务 | [task_system.md](../task_system.md) |
 | SSE 推送 | 服务端推送（站内信通知）；流 ID=userId、连接独立鉴权、事件 best-effort | `internal/service`（生产）+ 三端 `transport/sse` 模块 | [sse_architecture.md](../sse_architecture.md) |
 | 对象存储 | MinIO（S3 兼容），预签名上传下载，元数据落库 | `internal/data` 文件模块 | [backend_file_upload.md](../backend_file_upload.md) |
-| AI 模块 | 模型提供商（表驱动）/ 流式对话 / 知识库 RAG（pgvector）/ 用量配额 / 脚本与任务集成 | `pkg/ai` + `internal/service` ai 服务族 + 三端 `app/ai` | [ai_module.md](../ai_module.md)、第 10 章 |
 
 ## 4. 生成代码与手写代码的边界
 
@@ -97,9 +95,9 @@ PostgreSQL / MySQL
 
 | 目录 | 产生方式 | 能否手改 |
 |---|---|---|
-| `backend/api/gen/go/**` | `gow api` 从 proto 生成 | ❌ 改 proto 重新生成 |
-| `backend/app/admin/service/internal/data/ent/**`（除 `schema/`） | `gow ent` 从 schema 生成 | ❌ 改 schema 重新生成 |
-| 三端 `api/generated/**` | `make ts`（后端）从 BFF proto 生成 | ❌ |
+| `backend/api/gen/go/**` | `make api` 从 proto 生成 | ❌ 改 proto 重新生成 |
+| `backend/app/admin/service/internal/data/ent/**`（除 `schema/`） | `make ent` 从 schema 生成 | ❌ 改 schema 重新生成 |
+| React `api/generated/**` | `make ts`（后端）从 BFF proto 生成 | ❌ |
 | `backend/app/admin/service/internal/data/ent/schema/**` | 手写 | ✅ |
 | `backend/api/protos/**` | 手写 proto | ✅ |
 | `internal/service/`、`internal/data/*_repo.go` | 手写（模式化样板） | ✅ |

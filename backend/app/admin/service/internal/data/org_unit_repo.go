@@ -8,16 +8,16 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
-	"github.com/tx7do/go-crud/pagination"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
+	"go-wind-admin/third_party/go-crud/pagination"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/timeutil"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/orgunit"
@@ -234,18 +234,10 @@ func (r *OrgUnitRepo) Create(ctx context.Context, req *identityV1.CreateOrgUnitR
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	builder := tx.OrgUnit.Create().
 		SetNillableTenantID(req.Data.TenantId).
@@ -298,6 +290,10 @@ func (r *OrgUnitRepo) Create(ctx context.Context, req *identityV1.CreateOrgUnitR
 		return err
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -495,18 +491,10 @@ func (r *OrgUnitRepo) Delete(ctx context.Context, req *identityV1.DeleteOrgUnitR
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return identityV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = identityV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	// 用户↔单元是纯绑定关系：随子树删除清理绑定行，用户本身不受影响
 	if err = r.userOrgUnitRepo.CleanRelationsByOrgUnitIDs(ctx, tx, childrenIds); err != nil {
@@ -523,6 +511,10 @@ func (r *OrgUnitRepo) Delete(ctx context.Context, req *identityV1.DeleteOrgUnitR
 		return identityV1.ErrorInternalServerError("delete orgUnit failed")
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 

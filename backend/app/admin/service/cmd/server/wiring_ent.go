@@ -1,26 +1,19 @@
-//go:build !gorm_backend
-// +build !gorm_backend
-
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/go-kratos/kratos/v2"
-	"github.com/tx7do/go-utils/geoip/geolite"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 
-	"github.com/tx7do/go-utils/authorizer"
 	"go-wind-admin/app/admin/service/internal/data"
-	"go-wind-admin/app/admin/service/internal/data/channel"
 	"go-wind-admin/app/admin/service/internal/server"
 	"go-wind-admin/app/admin/service/internal/service"
+	"go-wind-admin/third_party/go-utils/authorizer"
 )
 
-// initApp 手写装配整个应用,是 Ent 后端构建(!gorm_backend)的依赖注入点。
-// GORM 后端见平行文件 wiring_gorm.go(gorm_backend),两者仅仓储层互斥,其余小节同构。
-// initApp assembles the whole application by hand — the wiring point of the Ent build.
+// initApp 手写装配整个应用,是依赖注入点。
+// initApp assembles the whole application by hand.
 //
 // 装配严格单向分层,自上而下的阅读顺序即依赖方向:
 // The wiring is strictly layered; reading top-down follows the dependency direction:
@@ -72,9 +65,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	authenticator := data.NewAuthenticator(ctx, userTokenCache)
 	accessTokenChecker := data.NewTokenChecker(ctx, authenticator, clientType)
 	loginRateLimiter := data.NewLoginRateLimiter(ctx, redisClient)
-	mfaChallengeCache := data.NewMfaChallengeCache(ctx, redisClient)
-	ssoStateCache := data.NewSsoStateCache(ctx, redisClient)
-	geoClient, _ := geolite.NewClient()
 	vcodeCache := data.NewVCodeCache(ctx, redisClient)
 
 	// ═══════════════════════ 二、仓储层(internal/data) ═══════════════════════
@@ -90,8 +80,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	userRepo := data.NewUserRepo(ctx, entClient, userRoleRepo, userOrgUnitRepo, userPositionRepo, membershipRepo)
 	configRepo := data.NewConfigRepo(ctx, entClient, redisClient)
 	userCredentialRepo := data.NewUserCredentialRepo(ctx, entClient, passwordCrypto, configRepo)
-	userMfaFactorRepo := data.NewUserMfaFactorRepo(ctx, entClient)
-	loginPolicyRepo := data.NewLoginPolicyRepo(ctx, entClient)
 
 	// 组织架构与租户
 	orgUnitRepo := data.NewOrgUnitRepo(ctx, entClient, userOrgUnitRepo)
@@ -113,12 +101,8 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	menuRepo := data.NewMenuRepo(ctx, entClient)
 
 	// 审计日志
-	apiAuditLogRepo := data.NewApiAuditLogRepo(ctx, entClient)
 	loginAuditLogRepo := data.NewLoginAuditLogRepo(ctx, entClient)
 	operationAuditLogRepo := data.NewOperationAuditLogRepo(ctx, entClient)
-	permissionAuditLogRepo := data.NewPermissionAuditLogRepo(ctx, entClient)
-	dataAccessAuditLogRepo := data.NewDataAccessAuditLogRepo(ctx, entClient)
-	policyEvaluationLogRepo := data.NewPolicyEvaluationLogRepo(ctx, entClient)
 	auditLogArchiveRepo := data.NewAuditLogArchiveRepo(ctx, entClient)
 
 	// 字典与多语言
@@ -134,86 +118,55 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 任务 / 文件 / 运维观测
 	taskRepo := data.NewTaskRepo(ctx, entClient)
-	backupRepo := data.NewBackupRepo(ctx, entClient)
 	fileRepo := data.NewFileRepo(ctx, entClient)
-	redisCacheMonitorRepo := data.NewRedisCacheMonitorRepo(ctx, redisClient)
-	serverMonitorRepo := data.NewServerMonitorRepo(ctx, entClient)
-	notificationChannelRepo := data.NewNotificationChannelRepo(ctx, entClient)
-	notificationDeliveryRepo := data.NewNotificationDeliveryRepo(ctx, entClient)
 	dashboardRepo := data.NewDashboardRepo(ctx, entClient)
 
 	// 站内信
 	internalMessageRepo := data.NewInternalMessageRepo(ctx, entClient)
 	internalMessageCategoryRepo := data.NewInternalMessageCategoryRepo(ctx, entClient)
 	internalMessageRecipientRepo := data.NewInternalMessageRecipientRepo(ctx, entClient)
-	notificationPreferenceRepo := data.NewNotificationPreferenceRepo(ctx, entClient)
-
-	// 平台脚本
-	scriptRepo := data.NewScriptRepo(ctx, entClient)
 
 	// ── register:repo ── 新模块仓储在此行后注册(make register 工具锚点,勿删)
-	notificationRuleRepo := data.NewNotificationRuleRepo(ctx, entClient)
-	notificationTemplateRepo := data.NewNotificationTemplateRepo(ctx, entClient)
-	transactionalMailer := &service.TransactionMailer{TemplateRepo: notificationTemplateRepo}
+	outboundCfg, err := service.LoadOutboundConfig(service.ResolveConfigDir())
+	if err != nil {
+		rollback()
+		return nil, nil, err
+	}
+	outboundSender := service.NewOutboundSender(outboundCfg)
+	transactionalMailer := &service.TransactionMailer{}
 	myTenantUsageService := service.NewMyTenantUsageService(ctx, tenantUsageRepo)
-	monitorAlertRuleRepo := data.NewMonitorAlertRuleRepo(ctx, entClient)
-	accessKeyRepo := data.NewAccessKeyRepo(ctx, entClient)
-
-	// AI（提供商 / 会话 / 消息 / 用量流水）
-	aiProviderRepo := data.NewAiProviderRepo(ctx, entClient)
-	aiConversationRepo := data.NewAiConversationRepo(ctx, entClient)
-	aiMessageRepo := data.NewAiMessageRepo(ctx, entClient)
-	aiUsageLogRepo := data.NewAiUsageLogRepo(ctx, entClient)
-	aiKnowledgeRepo := data.NewAiKnowledgeRepo(ctx, entClient)
-	aiAgentAppRepo := data.NewAiAgentAppRepo(ctx, entClient)
-	aiAgentRunRepo := data.NewAiAgentRunRepo(ctx, entClient)
 
 	// ═══════════════════════ 三、认证与鉴权 ═══════════════════════
 
 	tenantAccessChecker := data.NewTenantAccessCheckerImpl(ctx, entClient)
 	authorizerProvider := data.NewAuthorizerProvider(ctx, roleRepo, apiRepo)
-	var authzEngineCfg *authorizer.EngineConfig
-	if bootstrapConf := ctx.GetConfig(); bootstrapConf != nil && bootstrapConf.Authz != nil {
-		authzEngineCfg = &authorizer.EngineConfig{Type: bootstrapConf.Authz.GetType()}
+	authzEngineCfg, err := data.NewAuthorizerEngineConfig(ctx.GetConfig())
+	if err != nil {
+		rollback()
+		return nil, nil, err
 	}
 	authz := authorizer.NewAuthorizer(ctx.Context(), ctx.GetLogger(), authzEngineCfg, authorizerProvider)
+	if authz.Engine() == nil {
+		rollback()
+		return nil, nil, fmt.Errorf("authorization engine %q failed to initialize", authzEngineCfg.Type)
+	}
 
 	// ═══════════════════════ 四、服务层(internal/service) ═══════════════════════
 
-	// 通知投递：渠道注册表（EMAIL / WEBHOOK / SMS / INTERNAL）→ NotificationService → 各业务 service 只拿 Notifier。
-	// 注册顺序即装配位置：新增一种渠道 = 在这里多 Register 一个 Sender，业务调用方不动。
-	// 路由（事件 → 渠道 + 同步/异步）读 sys_notification_rules，不在这里登记，见 resolveRoute。
-	channelRegistry := channel.NewRegistry()
-	channelRegistry.Register(channel.NewEmailSender(notificationChannelRepo))
-	channelRegistry.Register(channel.NewWebhookSender(notificationChannelRepo))
-	channelRegistry.Register(channel.NewSmsSender(notificationChannelRepo))
-	channelRegistry.Register(channel.NewSettingsSender(notificationChannelRepo))
-	notificationService := service.NewNotificationService(ctx, notificationDeliveryRepo, notificationRuleRepo, notificationTemplateRepo, channelRegistry)
-	notificationTemplateService := service.NewNotificationTemplateService(ctx, notificationTemplateRepo)
-	// 监控告警：评估器依赖通知出口，装配顺序在 NotificationService 之后
-	monitorAlertService := service.NewMonitorAlertService(ctx, monitorAlertRuleRepo, serverMonitorRepo, redisCacheMonitorRepo, entClient)
-	monitorAlertService.RegisterNotifier(notificationService)
-
 	// 审计日志服务端导出（XLSX/CSV）：手动注册二进制响应路由，见 rest_server 的 registerFileTransfer 同段
-	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, apiAuditLogRepo, operationAuditLogRepo, dataAccessAuditLogRepo, permissionAuditLogRepo, policyEvaluationLogRepo, accessTokenChecker)
-	// 非审计数据服务端导出（AI 用量流水租户视角 / 通知台账平台闸），同段手动路由
-	dataExportService := service.NewDataExportService(ctx, aiUsageLogRepo, notificationDeliveryRepo, accessTokenChecker)
-	// 系统级常驻任务监控（只读 asynq Inspector）
-	taskMonitorService := service.NewTaskMonitorService(ctx)
+	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, operationAuditLogRepo, accessTokenChecker)
 
-	// 认证与登录策略
-	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter, loginPolicyRepo, userMfaFactorRepo, mfaChallengeCache, ssoStateCache, geoClient, transactionalMailer, vcodeCache, notificationService)
-	mfaService := service.NewMfaService(ctx, userMfaFactorRepo, mfaChallengeCache, authenticator, loginRateLimiter, userRepo)
-	loginPolicyService := service.NewLoginPolicyService(ctx, loginPolicyRepo)
+	// 认证
+	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter)
 
 	// 身份与组织
 	userService := service.NewUserService(ctx, userRepo, roleRepo, userCredentialRepo, positionRepo, orgUnitRepo, tenantRepo, tenantUsageRepo, membershipRepo, authenticator)
-	userProfileService := service.NewUserProfileService(ctx, userRepo, roleRepo, userCredentialRepo, authenticator, notificationService, vcodeCache, minioClient, transactionalMailer)
+	userProfileService := service.NewUserProfileService(ctx, userRepo, roleRepo, userCredentialRepo, authenticator, outboundSender, vcodeCache, minioClient, transactionalMailer)
 	positionService := service.NewPositionService(ctx, positionRepo, orgUnitRepo)
 	orgUnitService := service.NewOrgUnitService(ctx, orgUnitRepo, userRepo)
 
 	// RBAC
-	roleService := service.NewRoleService(ctx, authz, roleRepo, tenantRepo)
+	roleService := service.NewRoleService(ctx, authz, roleRepo, tenantRepo, userRoleRepo, authenticator)
 	menuService := service.NewMenuService(ctx, menuRepo)
 	apiService := service.NewApiService(ctx, apiRepo, authz)
 	permissionService := service.NewPermissionService(ctx, permissionRepo, permissionGroupRepo, menuRepo, apiRepo, roleRepo, authz)
@@ -233,145 +186,63 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// 文件与任务
 	fileService := service.NewFileService(ctx, fileRepo, minioClient)
 	fileTransferService := service.NewFileTransferService(ctx, minioClient, fileRepo, tenantUsageRepo)
-	taskService := service.NewTaskService(ctx, taskRepo, userRepo, backupRepo, tenantUsageRepo, auditLogArchiveRepo, minioClient)
+	taskService := service.NewTaskService(ctx, taskRepo, userRepo, tenantUsageRepo, auditLogArchiveRepo)
 
 	// 审计日志
 	loginAuditLogService := service.NewLoginAuditLogService(ctx, loginAuditLogRepo)
-	apiAuditLogService := service.NewApiAuditLogService(ctx, apiAuditLogRepo, apiRepo)
 	operationAuditLogService := service.NewOperationAuditLogService(ctx, operationAuditLogRepo)
-	dataAccessAuditLogService := service.NewDataAccessAuditLogService(ctx, dataAccessAuditLogRepo)
-	permissionAuditLogService := service.NewPermissionAuditLogService(ctx, permissionAuditLogRepo)
-	policyEvaluationLogService := service.NewPolicyEvaluationLogService(ctx, policyEvaluationLogRepo)
 
 	// 运维观测与门户
-	redisCacheMonitorService := service.NewRedisCacheMonitorService(ctx, redisCacheMonitorRepo)
-	serverMonitorService := service.NewServerMonitorService(ctx, serverMonitorRepo)
-	notificationChannelService := service.NewNotificationChannelService(ctx, notificationChannelRepo, notificationService, transactionalMailer)
 	onlineSessionService := service.NewOnlineSessionService(ctx, authenticator)
 	adminPortalService := service.NewAdminPortalService(ctx, menuRepo, roleRepo, userRepo, permissionRepo, planModuleRepo, tenantRepo)
 
 	// 站内信
-	internalMessageService := service.NewInternalMessageService(ctx, internalMessageRepo, internalMessageCategoryRepo, internalMessageRecipientRepo, userRepo, notificationPreferenceRepo, authenticator, clientType)
+	internalMessageService := service.NewInternalMessageService(ctx, internalMessageRepo, internalMessageCategoryRepo, internalMessageRecipientRepo, userRepo, authenticator, clientType)
 	internalMessageCategoryService := service.NewInternalMessageCategoryService(ctx, internalMessageCategoryRepo)
 	internalMessageRecipientService := service.NewInternalMessageRecipientService(ctx, internalMessageRepo, internalMessageRecipientRepo)
-	notificationPreferenceService := service.NewNotificationPreferenceService(ctx, notificationPreferenceRepo, internalMessageCategoryRepo)
 
-	// 站内信 ⇄ 通知域接线（两条边互为依赖，只能装配期后贴）：
-	//   NotificationService --Registry--> InternalMessageSender --> InternalMessageService（投递内核）
-	//   InternalMessageService --Notifier--> NotificationService（缝的入口）
-	// 注册放在 internalMessageService 之后是硬要求：Sender 持有服务对象本身，才能在
-	// RegisterInternalMessagePublisher（SSE 启动时）之后读到活的 publisher 而不是构造期快照。
-	channelRegistry.Register(service.NewInternalMessageSender(internalMessageService))
-	internalMessageService.RegisterNotifier(notificationService)
+	dashboardService := service.NewDashboardService(ctx, dashboardRepo)
 
-	// 平台脚本：运行时（多语言引擎）+ 管理服务
-	scriptLogRepo := data.NewScriptLogRepo(ctx, entClient)
-	scriptRuntime := service.NewScriptRuntime(ctx, scriptRepo, redisClient, minioClient, scriptLogRepo, aiProviderRepo, aiUsageLogRepo)
-	cleanups = append(cleanups, scriptRuntime.Close)
-	scriptService := service.NewScriptService(ctx, scriptRepo, scriptRuntime)
-	scriptLogService := service.NewScriptLogService(ctx, scriptLogRepo)
-	// 启动加载已启用脚本（尽力而为：失败记日志，不阻断服务启动）
-	if err := scriptRuntime.Resync(ctx.Context()); err != nil {
-		ctx.GetLogger().Error(ctx.Context(), fmt.Sprintf("script runtime startup resync failed: %v", err))
-	}
-	// 跨实例 Resync 通知监听：其他实例变更脚本后，本实例自动重同步
-	scriptRuntime.StartResyncListener(ctx.Context())
-	cleanups = append(cleanups, scriptRuntime.StopResyncListener)
-
-	// 实体生命周期钩子：变更成功后异步触发 <entity>.after_<op> 钩子点（见 service.EntityHooksMapping）
-	service.AttachEntityHooks(entClient.Client(),
-		// after：异步旁路，失败只记日志
-		func(hookCtx context.Context, hookPoint string, payload map[string]any) {
-			if err := scriptRuntime.InvokeEntityHook(hookPoint, payload); err != nil {
-				ctx.GetLogger().Error(context.Background(), fmt.Sprintf("script entity hook %s failed: %v", hookPoint, err))
-			}
-		},
-		// before：同步可否决（ctx.stop / return false 生效），失败不阻断业务写入
-		func(hookCtx context.Context, hookPoint string, payload map[string]any) error {
-			return scriptRuntime.InvokeEntityHookVeto(hookPoint, payload)
-		},
-	)
-
-	dashboardService := service.NewDashboardService(ctx, dashboardRepo, scriptRuntime)
-
-	// 审计日报 AI 摘要：聚合审计 + AI 摘要（复用脚本 ai 模块的 ChatForScript）+ 站内信投递内核。
-	// 依赖 scriptRuntime 与 internalMessageService，故置二者之后。
-	auditDigestService := service.NewAiDigestService(ctx, operationAuditLogRepo, internalMessageService, internalMessageRepo, scriptRuntime, entClient)
-
-	// 套餐配额水位通知：用量扫描（tenantUsageRepo/aiUsageLogRepo）+ 站内信投递内核。
+	// 套餐配额水位通知：用量扫描（tenantUsageRepo）+ 站内信投递内核。
 	// 依赖 internalMessageService，故置其后。
-	planQuotaWatermarkService := service.NewPlanQuotaWatermarkService(ctx, tenantUsageRepo, aiUsageLogRepo, internalMessageService, internalMessageRepo, entClient)
-
-	// 智能问数：NL→只读 SQL→结构化结果（四重护栏）+ 定时问数任务
-	aiQueryService := service.NewAiQueryService(ctx, aiProviderRepo, aiUsageLogRepo, entClient, internalMessageService, internalMessageRepo)
-	aiContentService := service.NewAiContentService(ctx, aiProviderRepo, aiUsageLogRepo, menuRepo, roleRepo, userRepo, entClient)
+	planQuotaWatermarkService := service.NewPlanQuotaWatermarkService(ctx, tenantUsageRepo, internalMessageService, internalMessageRepo, entClient)
 
 	// ── register:service ── 新模块服务在此行后注册(make register 工具锚点,勿删)
-	notificationRuleService := service.NewNotificationRuleService(ctx, notificationRuleRepo, notificationChannelRepo, notificationService)
-	accessKeyService := service.NewAccessKeyService(ctx, accessKeyRepo, authenticator, loginRateLimiter)
 	configService := service.NewConfigService(ctx, configRepo)
-
-	// AI：CRUD 四件套 + 对话主链路（chat 持 publisher 占位，SSE 启动后注入真身）
-	aiProviderService := service.NewAiProviderService(ctx, aiProviderRepo)
-	aiConversationService := service.NewAiConversationService(ctx, aiConversationRepo)
-	aiMessageService := service.NewAiMessageService(ctx, aiMessageRepo)
-	aiUsageLogService := service.NewAiUsageLogService(ctx, aiUsageLogRepo)
-	aiKnowledgeService := service.NewAiKnowledgeService(ctx, aiKnowledgeRepo, aiProviderRepo, aiUsageLogRepo)
-	aiChatService := service.NewAiChatService(ctx, aiConversationRepo, aiMessageRepo, aiProviderRepo, aiUsageLogRepo, aiKnowledgeRepo)
-	aaAiAgentService := service.NewAiAgentService(ctx, aiAgentAppRepo, aiAgentRunRepo, aiProviderRepo, aiKnowledgeRepo, aiUsageLogRepo)
 
 	// ═══════════════════════ 五、传输层(internal/server) ═══════════════════════
 
 	restMiddlewares := server.NewRestMiddleware(ctx, accessTokenChecker, tenantAccessChecker, authz,
-		apiAuditLogRepo, loginAuditLogRepo, operationAuditLogRepo, permissionAuditLogRepo, dataAccessAuditLogRepo, policyEvaluationLogRepo)
+		loginAuditLogRepo, operationAuditLogRepo)
 
 	restServer, err := server.NewRestServer(ctx, restMiddlewares, authz,
-		authenticationService, mfaService, loginPolicyService,
+		authenticationService,
 		adminPortalService, taskService,
 		fileService, fileTransferService,
 		dictTypeService, dictEntryService, languageService,
 		tenantService, planService, planQuotaService, planModuleService,
 		userService, userProfileService, roleService, positionService, orgUnitService,
 		menuService, apiService, permissionService, permissionGroupService,
-		permissionAuditLogService, policyEvaluationLogService,
-		loginAuditLogService, apiAuditLogService, operationAuditLogService, dataAccessAuditLogService,
-		redisCacheMonitorService, serverMonitorService, notificationChannelService,
-		notificationService, onlineSessionService, dashboardService,
+		loginAuditLogService, operationAuditLogService,
+		onlineSessionService, dashboardService,
 		internalMessageService, internalMessageCategoryService, internalMessageRecipientService,
-		scriptService, scriptLogService,
 		// register:rest-arg ── 新模块服务实参在此行后追加(make register 工具锚点,勿删)
-		notificationRuleService,
-		notificationPreferenceService,
-		notificationTemplateService,
-		monitorAlertService,
 		myTenantUsageService,
 		auditExportService,
-		dataExportService,
-		taskMonitorService,
-		accessKeyService,
 		configService,
-		aiProviderService,
-		aiConversationService,
-		aiMessageService,
-		aiUsageLogService,
-		aiKnowledgeService,
-		aiChatService,
-		aiQueryService,
-		aiContentService,
-		aaAiAgentService,
 	)
 	if err != nil {
 		rollback()
 		return nil, nil, err
 	}
 
-	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, notificationService, monitorAlertService, scriptRuntime, aiKnowledgeService, auditDigestService, planQuotaWatermarkService)
+	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, planQuotaWatermarkService)
 	if err != nil {
 		rollback()
 		return nil, nil, err
 	}
 
-	sseServer := server.NewSseServer(ctx, internalMessageService, aiChatService, aaAiAgentService)
+	sseServer := server.NewSseServer(ctx, internalMessageService)
 
 	return newApp(ctx, restServer, asynqServer, sseServer), rollback, nil
 }

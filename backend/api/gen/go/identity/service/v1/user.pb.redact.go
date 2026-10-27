@@ -6,8 +6,8 @@ package identitypb
 import (
 	context "context"
 	validate "github.com/envoyproxy/protoc-gen-validate/validate"
-	pagination "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	redact "github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
+	pagination "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	redact "go-wind-admin/third_party/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	annotations "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -297,7 +297,9 @@ func (x *CreateUserRequest) Redact() {
 
 	// Safe field: Data
 
-	// Safe field: Password
+	// Redacting field: Password
+	PasswordTmp := ``
+	x.Password = &PasswordTmp
 }
 
 // Ensure UpdateUserRequest implements the Redactor interface at compile time.
@@ -313,7 +315,9 @@ func (x *UpdateUserRequest) Redact() {
 
 	// Safe field: Data
 
-	// Safe field: Password
+	// Redacting field: Password
+	PasswordTmp := ``
+	x.Password = &PasswordTmp
 
 	// Safe field: UpdateMask
 
@@ -399,7 +403,8 @@ func (x *EditUserPasswordRequest) Redact() {
 
 	// Safe field: UserId
 
-	// Safe field: NewPassword
+	// Redacting field: NewPassword
+	x.NewPassword = ``
 }
 
 // Ensure ChangePasswordRequest implements the Redactor interface at compile time.
@@ -411,9 +416,11 @@ func (x *ChangePasswordRequest) Redact() {
 		return
 	}
 
-	// Safe field: OldPassword
+	// Redacting field: OldPassword
+	x.OldPassword = ``
 
-	// Safe field: NewPassword
+	// Redacting field: NewPassword
+	x.NewPassword = ``
 }
 
 // Ensure UploadAvatarRequest implements the Redactor interface at compile time.

@@ -21,14 +21,12 @@
 | [04 第一个业务模块](./tutorial/04-first-crud-module.md) | 端到端新增一个 CRUD 模块（后端+前端） | 03 | 亲手跑通一遍完整开发闭环 |
 | [05 权限模型](./tutorial/05-permission-model.md) | 认证与令牌、路由/按钮/字段可见性、authz 引擎 | 04 | 理解"谁能看到什么、调到什么" |
 | [06 多租户与行级隔离](./tutorial/06-multi-tenant-isolation.md) | Api 表闸门、数据层租户谓词、数据范围五档 | 05 | 理解"行级谁的数据"与部署闸门 |
-| [07 审计与等保](./tutorial/07-audit-compliance.md) | 六类审计日志的采集与留存、口令策略/MFA/限流 | 01 | 知道审计能力怎么用、边界在哪 |
-| [08 脚本系统入门](./tutorial/08-script-system.md) | 五类扩展点、安全模型、最小示例 | 02 | 会用脚本扩展平台行为而不发版 |
-| [09 部署上线](./tutorial/09-deployment.md) | 部署形态决策、SSE 网关、生产密钥、备份 | 02 |
-| [10 AI 模块](./tutorial/10-ai-module.md) | 模型提供商配置、流式对话、知识库 RAG、用量配额、脚本/任务集成 | 02（建议先读 05/06） | 把系统安全地放到生产 |
+| [07 审计与等保](./tutorial/07-audit-compliance.md) | 登录日志和操作日志的采集与留存、口令策略/限流/验证码 | 01 | 知道审计能力怎么用、边界在哪 |
+| [09 部署上线](./tutorial/09-deployment.md) | 部署形态决策、SSE 网关、生产密钥、备份 | 02 | 把系统安全地放到生产 |
 
 ### 按角色的推荐路线
 
-- **全栈采用者**（拿脚手架做自己产品）：01 → 02 → 03 → 04 → 05 → 06 → 09；07/08 按需。
+- **全栈采用者**（拿脚手架做自己产品）：01 → 02 → 03 → 04 → 05 → 06 → 09；07 按需。
 - **只维护一套前端的采用者**：01 → 02 → [只保留一个前端](./adopt-one-frontend.md)（**在动手写业务之前**先裁掉另外两端）→ 03 → 04（只做你那一端）→ 05 → 09。
 - **后端开发者**：01 → 02 → 03 → 04 → 06 → 07，再按子系统读参考层。
 - **前端开发者**：01 → 02 → 03（重点 TS 生成链）→ 04（前端半）→ 05，再读对应端 `frontend/admin/*/AGENTS.md`。
@@ -48,16 +46,14 @@
 | [crud_module_guide/](./crud_module_guide/) | 新增完整 CRUD 业务模块的端到端手册：README 跨端编排与通用陷阱、backend.md 后端全流程与样例镜像索引、三端各自的页面实现参考（正文为英文原稿） | 接到「新增模块/新增资源/新建管理页」需求、动工新增整个模块之前；只给已有资源加字段先看 field_change_guide.md |
 | [frontend_authority.md](./frontend_authority.md) | 前端权限：路由访问模式、按钮权限码/角色、字段级权限 V1 | 改路由/按钮可见性/受控字段时 |
 | [adopt-one-frontend.md](./adopt-one-frontend.md) | 只保留一个前端的裁剪：三端独立性实测、`make ts` 回流、CORS、菜单表无"端"维度的后果 | 决定只用 react / vue-element / vue-vben 之一、要删掉另外两端之前 |
-| [authentication.md](./authentication.md) | 认证与令牌链路：登录全流程、令牌结构与配置、刷新轮换与 Cookie、机器令牌、MFA、限流/策略/验证码、会话吊销 | 改登录/令牌/刷新/MFA/限流/策略前 |
+| [authentication.md](./authentication.md) | 认证与令牌链路：登录全流程、令牌结构与配置、刷新轮换与 Cookie、限流与验证码、会话吊销 | 改登录/令牌/刷新/限流前 |
 | [tenant_isolation.md](./tenant_isolation.md) | 多租户隔离：上下文链路、HTTP 闸门、数据层读写隔离、套餐联动、覆盖边界、接入与排障 | 改隔离层/Api 表/套餐门禁、新表接租户前 |
 | [plan_billing.md](./plan_billing.md) | 套餐与计费管控：三档到期策略全链路、模块白名单、配额与用量计量、租户数据清理 | 改套餐/配额/到期处置、租户 403 排障前 |
-| [task_system.md](./task_system.md) | 任务调度系统：配置与启动链、任务数据模型、调度生命周期、系统级常驻任务、脚本任务桥、管理页、多租户语义与排障 | 加任务类型、排"任务没跑"、接新调度需求前 |
+| [task_system.md](./task_system.md) | 任务调度系统：配置与启动链、任务数据模型、调度生命周期、系统级常驻任务、管理页、多租户语义与排障 | 加任务类型、排"任务没跑"、接新调度需求前 |
 | [sys_config.md](./sys_config.md) | 参数管理（sys_config）：平台全局动态参数的键值模型、缓存读取器（GetConfigBool/Int/String 与负缓存）、写路径与多实例 Redis 失效广播、内置参数按键补种、新参数接入步骤 | 接入新的运行时参数、改口令策略阈值链路、排"改了参数没生效"前 |
 | [sse_architecture.md](./sse_architecture.md) | SSE 推送架构：服务端配置与生命周期、流鉴权与 streamID 语义、事件生产、三端消费模块、部署拓扑与排障 | 改推送链路、加新事件类型、排"收不到通知"前 |
-| [notification_domain_design.md](./notification_domain_design.md) | 通知域：现状盘点、与 go-wind-im 的可抄性对照、运行期实测发现、移植记录与代码生成坑。各阶段（P0–P2 / C / C7 / M / N / P3 / SMS 及遗留欠账）的落地状态以文内状态标记与验收清单（§4、§7）为准，本索引不转载状态史 | 动通知相关代码前先读；推进新阶段（如给告警接短信）、改台账或路由规则语义前回来更新文内状态标记 |
 | [data_scope_design.md](./data_scope_design.md) | 角色级数据范围：五档语义、聚合、执行层、新表接入步骤 | 新表接入数据范围或改聚合规则前 |
-| [audit-log-producer-design.md](./audit-log-producer-design.md) | 六类审计日志的生产者设计与采集层实施状态 | 改审计采集、加新日志字段时 |
-| [script_system.md](./script_system.md) | 脚本级插件系统：五类扩展点、安全模型、运维 | 写脚本/改钩子点/接任务桥前 |
+| [audit-log-producer-design.md](./audit-log-producer-design.md) | 登录日志和操作日志的采集层；已删除的四类审计只留历史设计 | 改审计采集、加新日志字段时 |
 | [backend_file_upload.md](./backend_file_upload.md) | 文件上传链路：MinIO 部署、`oss.yaml`、安全校验 | 涉及上传/下载/对象存储部署时 |
 | [backend_deploy.md](./backend_deploy.md) | 部署：Docker 两模式、PM2、SSE 网关、生产密钥、hosts | 部署或改部署脚本时 |
 | [backend_development_environment_preparation.md](./backend_development_environment_preparation.md) | 后端开发工具安装、Go 模块代理配置 | 新机器搭后端环境时 |
@@ -65,9 +61,6 @@
 | [windows-startup-guide.md](./windows-startup-guide.md) | Windows 本地从零启动全流程与常见问题 | Windows 开发机首次搭建时（含 FAQ） |
 | [design-language.md](./design-language.md) | 三端视觉唯一权威值表（颜色/圆角/布局尺寸） | 改任何视觉相关代码前 |
 | [form_drawer_close_guard.md](./form_drawer_close_guard.md) | 表单抽屉关闭守卫：遮罩/ESC/X/取消四路径脏数据确认，三端实现约定 | 改表单抽屉关闭行为、新做表单抽屉前 |
-| [notify_channels_expansion.md](./notify_channels_expansion.md) | 通知渠道全量扩展：settings JSONB + schema 驱动动态表单 + 通用 Sender；39 渠道清单与 Target 语义 | 接新扩展渠道、改渠道配置表单/发送链路前 |
-| [ai_agent_orchestration.md](./ai_agent_orchestration.md) | AI Agent 编排：图 DSL（五种节点）、执行语义、数据模型、M1/M2 分期；复用 AI 模块的提供商/知识库/配额链路 | 做 Agent 编排相关改动（画布/引擎/运行台账）前 |
-| [ai_module.md](./ai_module.md) | AI 模块：流式对话语义、提供商密钥、AI_TOKENS 配额与白名单、知识库 RAG（含文件上传/重索引任务）、脚本 ai 模块、审计日报、安全洞察（告警零文案 i18n 架构）、智能问数（双白名单+租户谓词）与 pgvector 部署要求 | 改 AI 相关代码（对话/提供商/知识库/配额/脚本 ai）前 |
 | [brand/](./brand/) | 品牌资产（logo / favicon / 锁版 / wordmark） | 换品牌或引用素材时 |
 
 另：仓库级开发约定（铁律、门禁、工具链）在根 [`AGENTS.md`](../AGENTS.md) 与各端 `AGENTS.md`，属于维护层文档，不在本目录。

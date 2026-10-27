@@ -90,7 +90,6 @@ const (
 	QuotaTypeUserLimit QuotaType = "USER_LIMIT"
 	QuotaTypeStorage   QuotaType = "STORAGE"
 	QuotaTypeApiCall   QuotaType = "API_CALL"
-	QuotaTypeAiTokens  QuotaType = "AI_TOKENS"
 )
 
 func (qt QuotaType) String() string {
@@ -100,7 +99,7 @@ func (qt QuotaType) String() string {
 // QuotaTypeValidator is a validator for the "quota_type" field enum values. It is called by the builders before save.
 func QuotaTypeValidator(qt QuotaType) error {
 	switch qt {
-	case QuotaTypeUserLimit, QuotaTypeStorage, QuotaTypeApiCall, QuotaTypeAiTokens:
+	case QuotaTypeUserLimit, QuotaTypeStorage, QuotaTypeApiCall:
 		return nil
 	default:
 		return fmt.Errorf("planquota: invalid enum value for quota_type field: %q", qt)

@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"github.com/tx7do/go-utils/auditutil"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/auditutil"
+	"go-wind-admin/third_party/go-utils/trans"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 type OperationAuditLogMiddleware struct {
@@ -72,8 +72,7 @@ func parseResourceAndAction(operation string) (string, auditV1.OperationAuditLog
 
 func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transport, middleErr error, latencyMs int64) {
 	// 仅对写操作落库。按 HTTP 方法判读请求（比方法名前缀猜测可靠）：
-	// GET/HEAD/OPTIONS 属读请求，不构成变更——此前 default 分支返回 OTHER
-	// 使每次页面浏览都产生一条 GET 噪音行。读请求的审计归 API日志（全量请求）。
+	// GET/HEAD/OPTIONS 属读请求，不构成变更，不记操作日志。
 	if req := htr.Request(); req != nil {
 		switch req.Method {
 		case "POST", "PUT", "PATCH", "DELETE":
@@ -81,7 +80,7 @@ func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Tran
 			return
 		}
 	}
-	// 会话维护端点（登录/刷新/登出/MFA 验证）不是变更，交给登录审计。
+	// 会话维护端点（登录/刷新/登出）不是变更，交给登录审计。
 	if sessionOnlyOperations[htr.Operation()] {
 		return
 	}
@@ -136,4 +135,27 @@ func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Tran
 		ctx = viewer.WithSystemContext(ctx)
 		_ = o.op.writeOperationAuditLogFunc(ctx, operationAuditLog)
 	}
+}
+
+// lastNumericPathSegment 返回路径中最后一个纯数字段（如 /admin/v1/roles/5 → "5"），
+// 无数字段返回空串。嵌套资源（/users/1/roles）取最深一层的属主 ID。
+func lastNumericPathSegment(path string) string {
+	segments := strings.Split(strings.Trim(path, "/"), "/")
+	for i := len(segments) - 1; i >= 0; i-- {
+		s := segments[i]
+		if s == "" {
+			continue
+		}
+		allDigits := true
+		for j := 0; j < len(s); j++ {
+			if s[j] < '0' || s[j] > '9' {
+				allDigits = false
+				break
+			}
+		}
+		if allDigits {
+			return s
+		}
+	}
+	return ""
 }

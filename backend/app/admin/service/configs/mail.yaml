@@ -1,0 +1,25 @@
+# 验证码出站配置。个人中心改邮箱、改手机读这里。
+# 文件缺失，或下面的 host / provider 留空，表示这一路未配置：发送时返回「未配置」，不去读数据库。
+# 填了口令的副本不要提交。
+
+smtp:
+  host: ""
+  port: 587
+  username: ""
+  password: ""
+  from: ""
+  from_name: ""
+  # NONE / START_TLS / SSL。空串按明文建连，服务端支持则升级。
+  tls: "START_TLS"
+
+sms:
+  # ALIYUN 或 TENCENT。留空表示不发短信。
+  provider: ""
+  access_key_id: ""
+  access_secret: ""
+  sign_name: ""
+  template_code: ""
+  # 腾讯云 SmsSdkAppId。阿里云留空。
+  app_id: ""
+  # 腾讯云地域，例如 ap-guangzhou。阿里云留空。
+  region: ""

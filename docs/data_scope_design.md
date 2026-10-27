@@ -42,7 +42,7 @@
 
 登录/刷新令牌时（`AuthenticationService.aggregateDataScopes`）把用户全部角色的档位聚合：
 
-1. **平台上下文**（tid=0）：整体 `[ALL]`，不参与任何档位约束。
+1. **平台管理员**：令牌 `is_platform_admin` 为真时整体 `[ALL]`。该标志由 `fillAdminFlags` 在聚合之前按角色码 `platform:admin` 置位。`tenant_id == 0` 不再短路。单租户下普通用户的租户也是 0，按自己角色的 `data_scope` 聚合。
 2. 任一角色 `ALL` → 整体 `[ALL]`（主导）。
 3. 其余取**活动类型并集**：`SELF` 与 `UNIT_*` 可共存；`UNIT_ONLY`/`UNIT_AND_CHILD`/`SELECTED_UNITS`
    的单元目标集为各角色贡献的**并集**（本部门取用户所属单元；及以下再做 path 前缀展开；
@@ -61,13 +61,17 @@
 | `dsu` | `data_scope_unit_ids` | UNIT 类目标集并集（逗号连接十进制串） |
 
 解析端兼容旧令牌：只有 `ds` 时按单元素回退；`dss` 中的 UNSPECIFIED 剔除。
-**配置变更最迟随下次刷新令牌生效**（refresh 重跑聚合），时延上限 = access token TTL。
+**改角色的数据范围、选定组织或字段权限后，持有该角色的人会被立刻吊销令牌**（含操作者自己），
+下次登录按新定义重算。只改角色名称、描述、排序不吊销，旧令牌里的范围继续用到过期。
+管理端保存会连同未改动的权限、数据范围、字段权限一起提交；这些值和库里一样时也不吊销。
+给某个用户换角色集合同样立刻吊销该用户。详见第 7 节和 `docs/authentication.md` 第 8 节。
 
 ## 4. 执行层
 
-- 核心规则：go-crud `rule.PermissionRule` —— 平台/系统上下文放行；缺 Viewer 拒绝；
+- 核心规则：go-crud `rule.PermissionRule` —— 系统上下文放行；缺 Viewer 拒绝；
   无 scope / 显式 None 拒绝；ALL 放行；SELF 注入 `created_by = uid`；UNIT 注入
-  `org_unit_id IN (targets)`；多 scope 以 OR 并集。
+  `org_unit_id IN (targets)`；多 scope 以 OR 并集。`tenant_id == 0` 不再跳过这条规则。
+  平台管理员的令牌在登录时已经是 `[ALL]`，命中 ALL 放行。
 - 挂载方式：`schema/data_scope_guard.go` 提供 `DataScopeQueryPolicy`（仅查询侧，V1）
   与组合策略 `TenantAndDataScopePolicy`（租户变更防护 + 数据范围查询过滤）。
 - **V1 试点表：`sys_positions`（岗位）** —— 唯一同时具备 `created_by` 与 `org_unit_id`
@@ -79,7 +83,7 @@
    引发运行时错误；
 2. 实体 `Policy()` 改返 `TenantAndDataScopePolicy{}`
    （参照 `schema/position.go`）；
-3. `gow ent` 重新生成，补守卫单测（参照 `data_scope_guard_test.go` 的 (单元×创建人) 矩阵范式）；
+3. `make ent` 重新生成，补守卫单测（参照 `data_scope_guard_test.go` 的 (单元×创建人) 矩阵范式）；
 4. 变更侧（Update/Delete）行级过滤为 R2 范围，V1 全部不挂。
 
 ## 5. 组织单元物化路径（path 列）约定
@@ -138,8 +142,11 @@ from sys_org_units p where c.parent_id = p.id and c.path <> p.path || c.id || '/
 1. **新端点与 Api 表**：本特性未新增管理端点（org_units 走 Role 消息内联关联），
    已部署实例**无需**接口同步；但 R2 新接入表如有新端点，仍须在管理页「接口同步」
    触发全量重建，否则租户闸门 fail-closed 403。
-2. **生效时延**：档位变更对已登录用户最迟随下次刷新令牌生效（access token TTL 内）；
-   需要立即生效可强制下线（在线用户管理）。
+2. **生效时延**：给某个用户换角色集合时，`UserService.Update` 会吊销该用户全部令牌，
+   下次登录按新角色重算数据范围。改角色定义本身（权限、数据范围档位、选定组织、
+   字段权限、启用/停用）或删除角色时，`RoleService` 会吊销所有持有人（含操作者自己），
+   旧 access token 立即不能再认证。只改名称、描述、排序不吊销；授权字段的值没变也不吊销。
+   见 `docs/authentication.md` 第 8 节。
 3. **单元集上限 256**：超过即整体退化拒绝并记 error 日志，调整大组织配置时留意。
 4. **存量兼容**：迁移把全部存量角色回填 ALL，升级后行为零变化；旧令牌（仅 ds 声明）
    解析按单元素回退，过渡期后可下线 ds 单值轨道。

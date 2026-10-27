@@ -236,7 +236,7 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
     setEditingKey('');
   };
 
-  const save = (_key: string) => {
+  const save = () => {
     // 保存：保留改动，清除快照
     setI18nBackup(null);
     setEditingKey('');
@@ -269,7 +269,7 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
             <Input
               value={record.entryLabel}
               onChange={(e) => updateI18nRow(record.key, 'entryLabel', e.target.value)}
-              onPressEnter={() => save(record.key)}
+              onPressEnter={() => save()}
               size="small"
             />
           );
@@ -286,7 +286,7 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
             <Input
               value={record.description}
               onChange={(e) => updateI18nRow(record.key, 'description', e.target.value)}
-              onPressEnter={() => save(record.key)}
+              onPressEnter={() => save()}
               size="small"
             />
           );
@@ -302,7 +302,7 @@ const DictEntryDrawer: React.FC<DictEntryDrawerProps> = ({
         if (isEditing(record)) {
           return (
             <Space size={4}>
-              <Button type="link" size="small" onClick={() => save(record.key)}>
+              <Button type="link" size="small" onClick={() => save()}>
                 {t('common:button.ok')}
               </Button>
               <Button type="link" size="small" onClick={cancel}>

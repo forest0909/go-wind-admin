@@ -8,7 +8,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 
-	"github.com/tx7do/go-crud/entgo/mixin"
+	"go-wind-admin/third_party/go-crud/entgo/mixin"
 )
 
 // PlanQuota holds the schema definition for the PlanQuota entity.
@@ -37,7 +37,6 @@ func (PlanQuota) Fields() []ent.Field {
 				"UserLimit", "USER_LIMIT",
 				"Storage", "STORAGE",
 				"ApiCall", "API_CALL",
-				"AiTokens", "AI_TOKENS",
 			).
 			Optional().
 			Nillable(),

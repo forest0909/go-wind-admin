@@ -21,49 +21,19 @@ import { existsSync, readFileSync } from 'node:fs';
 // rewritten to a common token before comparison.
 const PROVENANCE_MARKERS = [
   [/（react 端副本）/g, '（端副本）'],
-  [/（vue-element 端副本）/g, '（端副本）'],
-  [/（vue-vben 端副本）/g, '（端副本）'],
 ];
 
-// Groups of mirrored files: every listed root carries an exact copy of every
-// file. Adding a group here requires that the copies really are mirrors —
-// reconcile any real divergence first, then register the group.
-//
-// A group may list a subset of the three frontends. The vue-vben copies of
-// the transport/rest files are excluded from that group, each for a reason
-// recorded here (October 2026 hand audit): the vue-vben pagination.ts keeps
-// a structurally different shape (module-level helper instead of class
-// methods, different member ordering) that cannot pass text normalization —
-// its 67-entry operator guard table and transformation logic were audited
-// set-identical across frontends by hand; the vue-vben preset-interceptors.ts
-// carries deliberate vben-local semantics on top of a different shape
-// (business-code 401 detection, login-request exclusion from the refresh
-// flow, dual-spelling refresh URL matching) — its empty-token and
-// queue-timeout guards were audited present with outcomes equivalent to the
-// registered copies. Those vben-local branches are inert for this backend
-// (October 2026 finding: the server normalizes every credential failure to
-// HTTP 400 via normalizeLoginVerifyError, so no login response carries 401
-// and the login-exclusion branch is dead code; kratos errors never arrive
-// as a 2xx body with code 401; the refresh endpoint exposes a single
-// kebab-case path) — do not port them to the registered copies for
-// parity's sake. The two structurally identical copies registered below
-// are the ones this check pins.
+// This checkout keeps React only. A group with one root has nothing to
+// compare; the missing-copy rule still fails if the React file disappears.
 const GROUPS = [
   {
     name: 'transport/sse',
-    roots: [
-      'frontend/admin/react/src/core/transport/sse',
-      'frontend/admin/vue-element/src/core/transport/sse',
-      'frontend/admin/vue-vben/apps/admin/src/transport/sse',
-    ],
+    roots: ['frontend/admin/react/src/core/transport/sse'],
     files: ['event.ts', 'index.ts', 'sse_client.ts', 'types.ts'],
   },
   {
     name: 'transport/rest',
-    roots: [
-      'frontend/admin/react/src/core/transport/rest',
-      'frontend/admin/vue-element/src/core/transport/rest',
-    ],
+    roots: ['frontend/admin/react/src/core/transport/rest'],
     files: ['pagination.ts', 'preset-interceptors.ts'],
   },
 ];

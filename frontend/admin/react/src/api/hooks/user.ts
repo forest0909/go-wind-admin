@@ -90,7 +90,11 @@ export function useCreateUser(
   options?: UseMutationOptions<{}, Error, { data: identityservicev1_User; password?: string }>,
 ) {
   return useMutation({
-    mutationFn: ({ data, password }) => apiClient.userService.Create({ data, password }),
+    mutationFn: ({ data, password }) =>
+      apiClient.userService.Create({
+        data,
+        password: password ? encryptPassword(String(password)) : undefined,
+      }),
     ...options,
   });
 }

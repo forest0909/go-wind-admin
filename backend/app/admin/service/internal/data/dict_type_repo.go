@@ -5,14 +5,14 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/dicttype"
@@ -154,18 +154,10 @@ func (r *DictTypeRepo) Create(ctx context.Context, req *dictV1.CreateDictTypeReq
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return dictV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = dictV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	builder := tx.DictType.Create().
 		SetNillableTenantID(req.Data.TenantId).
@@ -185,6 +177,10 @@ func (r *DictTypeRepo) Create(ctx context.Context, req *dictV1.CreateDictTypeReq
 		return dictV1.ErrorInternalServerError("insert dict type failed")
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return dictV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -217,18 +213,10 @@ func (r *DictTypeRepo) Update(ctx context.Context, req *dictV1.UpdateDictTypeReq
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return dictV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = dictV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	builder := tx.DictType.UpdateOneID(req.GetId())
 	_, err = r.repository.UpdateOne(ctx, builder, req.Data, req.GetUpdateMask(),
@@ -249,7 +237,14 @@ func (r *DictTypeRepo) Update(ctx context.Context, req *dictV1.UpdateDictTypeReq
 		return dictV1.ErrorInternalServerError("update dict type failed")
 	}
 
-	return err
+	if err != nil {
+		return err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return dictV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
 }
 
 func (r *DictTypeRepo) Delete(ctx context.Context, id uint32) error {

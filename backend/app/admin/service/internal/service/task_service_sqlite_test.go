@@ -3,7 +3,7 @@
 // 覆盖目标：
 //   - 调度器未配置守卫：ListTaskTypeName 返回空、NewTask 报错、
 //     StopAllTask 不 panic、startTask/stopTask 报"未配置"、
-//     AsyncTenantExpiryScan / AsyncAuditLogArchive / AsyncBackup 的依赖未配置报错。
+//     AsyncTenantExpiryScan / AsyncAuditLogArchive 的依赖未配置报错。
 //   - Create：nil Data / 未注册 typeName / 调度器未配置拒绝；注册 typeName 下
 //     禁用任务只落库不进调度器；启用任务按类型进 PERIODIC / DELAY /
 //     WAIT_RESULT 调度入口；操作人盖章。
@@ -15,32 +15,28 @@
 //     停止语义拒绝。
 //   - StartAllTask/RestartAllTask：跨租户同名 PERIODIC 去重、DELAY 一次性投递、
 //     系统级常驻任务（到期扫描 + 审计归档）注册；StopAllTask 全量注销。
-//   - 纯函数：convertTaskOption（载荷 JSON 解析/空载荷兜底/选项转换）、
-//     tableNamesOf、gzipBytes 往返。
+//   - 纯函数：convertTaskOption（载荷 JSON 解析/空载荷兜底/选项转换）。
 //
 // 跳过项：真实 asynq 调度器与 Redis 队列（调度器全部走本地桩）、
-// AsyncBackup 全链路（依赖 MinIO 客户端）、AsyncAuditLogArchive 全链路
+// AsyncAuditLogArchive 全链路
 // （auditLogArchiveRepo 无 testkit 构造器，仅测未配置守卫）。
 package service
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"io"
 	"testing"
 	"time"
 
 	"github.com/hibiken/asynq"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	crudViewer "github.com/tx7do/go-crud/viewer"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	crudViewer "go-wind-admin/third_party/go-crud/viewer"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
@@ -105,10 +101,8 @@ func newTaskServiceForTest(t *testing.T, scheduler TaskScheduler, withTenantUsag
 		log:                 bLogger.NewHelper(bLogger.NopLogger()),
 		taskRepo:            data.NewTaskRepoForTest(entClient),
 		userRepo:            nil,
-		backupRepo:          nil,
 		tenantUsageRepo:     nil,
 		auditLogArchiveRepo: nil,
-		mc:                  nil,
 	}
 	if withTenantUsage {
 		svc.tenantUsageRepo = data.NewTenantUsageRepoForTest(entClient, nil)
@@ -160,8 +154,6 @@ func TestTaskService_NoSchedulerGuards(t *testing.T) {
 
 	require.EqualError(t, svc.AsyncAuditLogArchive(task.AuditLogArchiveTaskType, &task.AuditLogArchiveTaskData{}),
 		"audit log archive repo is not configured")
-	require.EqualError(t, svc.AsyncBackup(task.BackupTaskType, &task.BackupTaskData{}),
-		"backup dependencies not configured (backupRepo or minio is nil)")
 	require.EqualError(t, svc.AsyncTenantExpiryScan(task.TenantExpiryScanTaskType, &task.TenantExpiryScanTaskData{}),
 		"tenantUsageRepo is not configured")
 }
@@ -490,13 +482,11 @@ func TestTaskService_RestartAllTask(t *testing.T) {
 	require.Equal(t, 1, stub.removeAllCount, "RestartAllTask 应先全量注销")
 	require.Equal(t, []string{"tasksvc_delay_all_type"}, stub.newTask,
 		"DELAY 任务应经一次性投递入口")
-	require.Len(t, stub.newPeriodicTask, 7,
-		"周期注册应为 7 次：同名 PERIODIC 去重后 1 次 + 系统级常驻 6 次（到期扫描/审计归档/台账清扫/监控告警扫描/AI 日报/配额水位扫描）")
+	require.Len(t, stub.newPeriodicTask, 4,
+		"周期注册应为 4 次：同名 PERIODIC 去重后 1 次 + 系统级常驻 3 次（到期扫描/审计归档/配额水位扫描）")
 	require.Contains(t, stub.newPeriodicTask, "tasksvc_dup_type", "同名 PERIODIC 应恰好注册一次")
 	require.Contains(t, stub.newPeriodicTask, task.TenantExpiryScanTaskType, "系统级到期扫描应被注册")
 	require.Contains(t, stub.newPeriodicTask, task.AuditLogArchiveTaskType, "系统级审计归档应被注册")
-	require.Contains(t, stub.newPeriodicTask, task.NotificationDeliverySweepTaskType, "通知台账清扫应被注册")
-	require.Contains(t, stub.newPeriodicTask, task.MonitorAlertScanTaskType, "监控告警扫描应被注册")
 	require.Contains(t, stub.newPeriodicTask, task.PlanQuotaWatermarkTaskType, "系统级配额水位扫描应被注册")
 }
 
@@ -548,28 +538,4 @@ func TestTaskService_ConvertTaskOption(t *testing.T) {
 		},
 	})
 	require.Len(t, opts, 9, "全部 9 个任务选项都应转换为 asynq 选项")
-}
-
-// TestTaskService_TableNamesOf 验证 tableNamesOf 返回 map 键集合。
-func TestTaskService_TableNamesOf(t *testing.T) {
-	require.ElementsMatch(t, []string{"a", "b"}, tableNamesOf(map[string]any{"a": 1, "b": 2}))
-	require.Empty(t, tableNamesOf(map[string]any{}))
-}
-
-// TestTaskService_GzipBytesRoundTrip 验证 gzip 压缩往返与空输入。
-func TestTaskService_GzipBytesRoundTrip(t *testing.T) {
-	src := []byte("task service gzip round trip payload 0123456789")
-	compressed, err := gzipBytes(src)
-	require.NoError(t, err)
-	require.NotEqual(t, src, compressed, "压缩产物应不同于原文")
-
-	r, err := gzip.NewReader(bytes.NewReader(compressed))
-	require.NoError(t, err)
-	decompressed, err := io.ReadAll(r)
-	require.NoError(t, err)
-	require.Equal(t, src, decompressed, "解压后应还原原文")
-
-	empty, err := gzipBytes([]byte{})
-	require.NoError(t, err)
-	require.NotEmpty(t, empty, "空输入的 gzip 空流也是合法产物")
 }

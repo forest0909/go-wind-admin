@@ -2,27 +2,31 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	"github.com/tx7do/go-utils/aggregator"
-	"github.com/tx7do/go-utils/sliceutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/aggregator"
+	"go-wind-admin/third_party/go-utils/crypto"
+	"go-wind-admin/third_party/go-utils/sliceutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"go-wind-admin/app/admin/service/internal/data"
+	"go-wind-admin/app/admin/service/internal/data/ent"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"github.com/tx7do/go-crud/viewer"
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 type UserService struct {
@@ -347,7 +351,7 @@ func (s *UserService) Get(ctx context.Context, req *identityV1.GetUserRequest) (
 	return resp, nil
 }
 
-func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequest) (*emptypb.Empty, error) {
+func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequest) (resp *emptypb.Empty, err error) {
 	if req.Data == nil {
 		return nil, adminV1.ErrorBadRequest("invalid parameter")
 	}
@@ -436,20 +440,41 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 		}
 	}
 
-	// 创建用户
-	var user *identityV1.User
-	if user, err = s.userRepo.Create(ctx, req); err != nil {
+	// 创建请求里的密码与改密、重置同一条传输契约：前端 AES 密文。
+	// 空密码不解密，下面仍填 DefaultUserPassword 明文常量。
+	if len(req.GetPassword()) > 0 {
+		plainPassword, derr := decryptTransportPassword(req.GetPassword())
+		if derr != nil {
+			s.log.Errorf(ctx, "decrypt create user password failed: %s", derr.Error())
+			return nil, derr
+		}
+		req.Password = trans.Ptr(plainPassword)
+	}
+
+	// 用户行、角色/组织/岗位关联、凭据在同一个事务里。
+	// 凭据复杂度校验失败或写入过程 panic 时整笔回滚，避免留下没有密码的用户。
+	var tx *ent.Tx
+	tx, err = s.userRepo.BeginTx(ctx)
+	if err != nil {
 		return nil, err
 	}
+	err = data.RunInTx(tx, func() error {
+		var user *identityV1.User
+		if user, err = s.userRepo.CreateWithTx(ctx, tx, req.GetData()); err != nil {
+			return err
+		}
 
-	if len(req.GetPassword()) == 0 {
-		// 如果没有设置密码，则设置为默认密码。
-		req.Password = trans.Ptr(constants.DefaultUserPassword)
-	}
+		if len(req.GetPassword()) == 0 {
+			// 如果没有设置密码，则设置为默认密码。明文常量，不要再解密。
+			req.Password = trans.Ptr(constants.DefaultUserPassword)
+		}
 
-	if len(req.GetPassword()) > 0 {
-		if err = s.userCredentialRepo.Create(ctx, &authenticationV1.CreateUserCredentialRequest{
-			Data: &authenticationV1.UserCredential{
+		if len(req.GetPassword()) > 0 {
+			// 测试注入：模拟凭据写入过程中 panic。生产路径保持 nil。
+			if userCreateCredentialHook != nil {
+				userCreateCredentialHook()
+			}
+			if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
 				UserId:   user.Id,
 				TenantId: user.TenantId,
 
@@ -461,13 +486,41 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 
 				IsPrimary: trans.Ptr(true),
 				Status:    authenticationV1.UserCredential_ENABLED.Enum(),
-			},
-		}); err != nil {
-			return nil, err
+			}); err != nil {
+				return err
+			}
 		}
+		return nil
+	}, func(rollbackErr error) {
+		s.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
+	if err != nil {
+		if errors.Is(err, data.ErrTxCommit) {
+			s.log.Errorf(ctx, "transaction commit failed: %s", err.Error())
+			return nil, identityV1.ErrorInternalServerError("transaction commit failed")
+		}
+		return nil, err
 	}
-
 	return &emptypb.Empty{}, nil
+}
+
+// userCreateCredentialHook 只给测试注入。生产保持 nil。
+// 在凭据写入前调用，用来模拟写入过程中的 panic。
+var userCreateCredentialHook func()
+
+// decryptTransportPassword 解开前端 encryptPassword 的 base64(AES) 密文。
+// 与 ResetCredential / ChangeCredential 的 NeedDecrypt 使用同一密钥和同一失败文案。
+// 日志只记错误，不记密文。
+func decryptTransportPassword(cipherText string) (string, error) {
+	bytesPass, err := base64.StdEncoding.DecodeString(cipherText)
+	if err != nil {
+		return "", authenticationV1.ErrorBadRequest("invalid new credential format")
+	}
+	plainPassword, err := crypto.AesDecrypt(bytesPass, crypto.DefaultAESKey, nil)
+	if err != nil {
+		return "", authenticationV1.ErrorBadRequest("decrypt new credential failed")
+	}
+	return string(plainPassword), nil
 }
 
 func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequest) (*emptypb.Empty, error) {
@@ -549,10 +602,31 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 	req.Data.RoleId = nil
 	req.Data.RoleIds = roleIds
 
+	// 必须在 userRepo.Update 之前比较：repo 会把 role_ids 从 mask 里剔除，
+	// 更新成功后库里的集合已经是新值，再比就会恒等。
+	// 列举失败按角色已变化处理，避免特权是否还在不确定时留下旧令牌。
+	revokeForRoleChange := false
+	if userUpdateRewritesRoles(req) {
+		currentRoleIDs, listErr := s.userRepo.ListRoleIDsByUserID(ctx, req.GetId())
+		if listErr != nil {
+			s.log.Errorf(ctx, "list roles before update failed for user [%d]: %v", req.GetId(), listErr)
+			revokeForRoleChange = true
+		} else if !sameUint32Set(sliceutil.Unique(currentRoleIDs), roleIds) {
+			revokeForRoleChange = true
+		}
+	}
+
 	// 更新用户
 	if err = s.userRepo.Update(ctx, req); err != nil {
 		s.log.Error(ctx, err.Error())
 		return nil, err
+	}
+
+	// 角色集合已经落库。吊销失败只记日志：更新已提交，不能再把本次请求判失败。
+	if revokeForRoleChange {
+		if rerr := s.authenticator.RevokeUserTokenAllClientTypes(ctx, req.GetId()); rerr != nil {
+			s.log.Errorf(ctx, "revoke tokens after role change failed for user [%d]: %v", req.GetId(), rerr)
+		}
 	}
 
 	if len(req.GetPassword()) > 0 {
@@ -604,6 +678,43 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// userUpdateRewritesRoles 与 user_repo.Update 的关联重建条件对齐。
+// 无 mask 或空 paths 视为全量更新，会重建角色；有 mask 时只有 role_ids / role_id 会重建。
+// 调用点须在追加 updated_by 之后、userRepo.Update 之前：repo 会从 mask 里剔除这些路径。
+// 管理端 HTTP 的 protojson 会把 roleIds 规范成 role_ids，这里按 repo 实际识别的 proto 名判断。
+func userUpdateRewritesRoles(req *identityV1.UpdateUserRequest) bool {
+	fm := req.GetUpdateMask()
+	if fm == nil || len(fm.GetPaths()) == 0 {
+		return true
+	}
+	for _, p := range fm.GetPaths() {
+		switch p {
+		case "role_ids", "role_id":
+			return true
+		}
+	}
+	return false
+}
+
+// sameUint32Set 忽略顺序，按多重集合比较。角色 ID 在写入前已经去重。
+func sameUint32Set(a, b []uint32) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	seen := make(map[uint32]int, len(a))
+	for _, id := range a {
+		seen[id]++
+	}
+	for _, id := range b {
+		n := seen[id]
+		if n == 0 {
+			return false
+		}
+		seen[id] = n - 1
+	}
+	return true
 }
 
 func (s *UserService) Delete(ctx context.Context, req *identityV1.DeleteUserRequest) (*emptypb.Empty, error) {

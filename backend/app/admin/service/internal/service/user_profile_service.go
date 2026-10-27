@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"sort"
+	"strings"
 
-	"github.com/tx7do/go-utils/ossutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/go-utils/ossutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -21,6 +23,33 @@ import (
 	"go-wind-admin/pkg/oss"
 )
 
+// profileEditableFields 个人资料页可以自行修改的字段（与 BaseSetting 表单一致）。
+// 键为去掉下划线后的小写形式，兼容 snake_case 与 camelCase 两种 mask 写法。
+var profileEditableFields = map[string]struct{}{
+	"id": {}, "nickname": {}, "realname": {}, "email": {}, "mobile": {}, "telephone": {},
+	"gender": {}, "region": {}, "address": {}, "description": {}, "locale": {}, "avatar": {},
+}
+
+// profileUpdatablePaths 只保留 profileEditableFields 内的路径；mask 为空时不做全量更新，
+// 而是限定为全部可编辑字段，避免"无 mask = 全量"把其他字段一并写入。
+func profileUpdatablePaths(paths []string) []string {
+	if len(paths) == 0 {
+		paths = make([]string, 0, len(profileEditableFields))
+		for k := range profileEditableFields {
+			paths = append(paths, k)
+		}
+		sort.Strings(paths)
+		return paths
+	}
+	kept := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if _, ok := profileEditableFields[strings.ToLower(strings.ReplaceAll(p, "_", ""))]; ok {
+			kept = append(kept, p)
+		}
+	}
+	return kept
+}
+
 type UserProfileService struct {
 	adminV1.UserProfileServiceHTTPServer
 
@@ -28,10 +57,9 @@ type UserProfileService struct {
 	roleRepo           *data.RoleRepo
 	userCredentialRepo *data.UserCredentialRepo
 	authenticator      *data.Authenticator
-	// notifier 是唯一的对外通知出口（邮箱绑定验证码邮件），渠道选择与 SMTP 细节不外泄。
-	notifier   Notifier
-	vcodeCache *data.VCodeCache
-	mc         *oss.MinIOClient
+	outbound           *OutboundSender
+	vcodeCache         *data.VCodeCache
+	mc                 *oss.MinIOClient
 
 	log    *bLogger.Helper
 	mailer *TransactionMailer
@@ -43,7 +71,7 @@ func NewUserProfileService(
 	roleRepo *data.RoleRepo,
 	userCredentialRepo *data.UserCredentialRepo,
 	authenticator *data.Authenticator,
-	notifier Notifier,
+	outbound *OutboundSender,
 	vcodeCache *data.VCodeCache,
 	mc *oss.MinIOClient,
 	mailer *TransactionMailer,
@@ -54,7 +82,7 @@ func NewUserProfileService(
 		roleRepo:           roleRepo,
 		userCredentialRepo: userCredentialRepo,
 		authenticator:      authenticator,
-		notifier:           notifier,
+		outbound:           outbound,
 		vcodeCache:         vcodeCache,
 		mc:                 mc,
 		mailer:             mailer,
@@ -96,8 +124,15 @@ func (s *UserProfileService) UpdateUser(ctx context.Context, req *identityV1.Upd
 		return nil, err
 	}
 
+	if req.Data == nil {
+		return nil, adminV1.ErrorBadRequest("invalid parameter")
+	}
+
 	req.Data.Id = trans.Ptr(operator.UserId)
 	req.Id = operator.UserId
+	// 个人资料只允许改资料字段。userRepo.Update 会按 mask 写角色、组织、岗位、状态等，
+	// 不收窄的话任何登录用户都能把自己的 roleIds 改成管理员角色。
+	req.UpdateMask = &field_mask.FieldMask{Paths: profileUpdatablePaths(req.GetUpdateMask().GetPaths())}
 
 	if err = s.userRepo.Update(ctx, req); err != nil {
 		return nil, err

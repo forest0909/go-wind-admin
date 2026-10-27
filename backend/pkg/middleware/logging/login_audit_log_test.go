@@ -24,8 +24,8 @@ import (
 	khttp "github.com/go-kratos/kratos/v2/transport/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/auditutil"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/auditutil"
+	"go-wind-admin/third_party/go-utils/trans"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
@@ -119,51 +119,7 @@ func TestLoginAuditLogHandleLoginOpWithToken(t *testing.T) {
 	requireTimestampNearNow(t, rec.GetCreatedAt())
 
 	require.Len(t, env.capture.loginMeta, 1)
-	assert.True(t, env.capture.loginMeta[0].Sinking)
 	assert.True(t, env.capture.loginMeta[0].SystemContext)
-}
-
-// TestLoginAuditLogHandleMFAVerifyStatus 验证 MFA 验证 operation 的
-// mfa_status 语义：业务成功 → VERIFIED，业务失败 → FAILED，
-// 且失败路径的 Status/FailureReason 取自中间件错误、评分含失败权重。
-func TestLoginAuditLogHandleMFAVerifyStatus(t *testing.T) {
-	t.Run("验证成功", func(t *testing.T) {
-		env := newAuditServer(t)
-		env.fire(nethttp.MethodPost, "/case/5", map[string]string{
-			"X-Test-Operation": adminV1.OperationMfaServiceVerifyMFAChallenge,
-		}, "", "127.0.0.1:1234")
-		require.Len(t, env.capture.login, 1)
-		rec := env.capture.login[0]
-		assert.Equal(t, auditV1.LoginAuditLog_LOGIN, rec.GetActionType(), "MFA 验证属登录流程二阶段")
-		assert.Equal(t, "VERIFIED", rec.GetMfaStatus())
-		assert.Equal(t, auditV1.LoginAuditLog_SUCCESS, rec.GetStatus())
-		// 评分：成功(0) + 匿名(20) + 未知设备(10) + 内网(-10) = 20 → LOW。
-		assert.Equal(t, uint32(20), rec.GetRiskScore())
-		assert.Equal(t, auditV1.LoginAuditLog_LOW, rec.GetRiskLevel())
-		assert.Equal(t, []string{
-			"ANONYMOUS_LOGIN", "INTERNAL_IP", "LOW_RISK_SCORE", "NO_SESSION", "UNKNOWN_DEVICE",
-		}, rec.GetRiskFactors())
-	})
-
-	t.Run("验证失败", func(t *testing.T) {
-		env := newAuditServer(t)
-		env.fire(nethttp.MethodPost, "/case/5", map[string]string{
-			"X-Test-Operation": adminV1.OperationMfaServiceVerifyMFAChallenge,
-			"X-Test-Error":     "kratos",
-		}, "", "127.0.0.1:1234")
-		require.Len(t, env.capture.login, 1)
-		rec := env.capture.login[0]
-		assert.Equal(t, "FAILED", rec.GetMfaStatus())
-		assert.Equal(t, auditV1.LoginAuditLog_FAILED, rec.GetStatus())
-		assert.Equal(t, "TEST_FORBIDDEN", rec.GetFailureReason(), "FailureReason ← kratos 错误 reason")
-		// 评分：失败(50) + 匿名(20) + 未知设备(10) + 内网(-10) = 70 → MEDIUM。
-		assert.Equal(t, uint32(70), rec.GetRiskScore())
-		assert.Equal(t, auditV1.LoginAuditLog_MEDIUM, rec.GetRiskLevel())
-		assert.Equal(t, []string{
-			"ANONYMOUS_LOGIN", "FAILED_LOGIN", "INTERNAL_IP",
-			"MEDIUM_RISK_SCORE", "MFA_FAILED", "NO_SESSION", "UNKNOWN_DEVICE",
-		}, rec.GetRiskFactors())
-	})
 }
 
 // TestLoginAuditLogHandleLogoutAction 验证登出 operation → LOGOUT 动作类型，
@@ -287,7 +243,6 @@ func TestLoginAuditLogHandleDirectEmptySources(t *testing.T) {
 		requireDERSig(t, rec.GetSignature())
 		requireTimestampNearNow(t, rec.GetCreatedAt())
 		assert.True(t, meta.SystemContext, "直调落库同样必须切系统 viewer")
-		assert.False(t, meta.Sinking, "直调路径无 Server 包装时无 sink 标记（由 Server 落库阶段统一植入）")
 	})
 
 	t.Run("失败错误填充", func(t *testing.T) {

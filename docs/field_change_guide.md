@@ -44,18 +44,18 @@ A 档纯前端，直接跳 §3。B/C 档先看 §1 的三条前提，能省掉�
 
 ## 2. 后端（B / C 档）
 
-### 2.1 命令序列（在 `backend/` 下，gow 优先）
+### 2.1 命令序列（在 `backend/` 下）
 
 ```bash
-gow api        # proto -> *.pb.go / *.pb.validate.go
+make api       # proto -> *.pb.go / *.pb.validate.go，并生成配置 pb
 make openapi   # -> openapi.yaml（这份是打进二进制的，「接口同步」读它）
-gow ent admin  # schema -> ent CRUD 代码（含 migrate/schema.go）
-make ts        # -> 各端 src/api/generated/（vben 在 src/ 下）
+make ent       # schema -> ent CRUD 代码（含 migrate/schema.go）
+make ts        # -> React src/api/generated/
 ```
 
 两条注意：
 
-- **`make ts` 会同时写三端**，即使你只改一端。另外两端的 `index.ts` 也随之变化——**一起提交，不要 revert**（提交口径见 [CONTRIBUTING.md](../CONTRIBUTING.md)：生成产物三端齐、业务页面只需一端）。
+- **`make ts` 只写 React** 的 `frontend/admin/react/src/api/generated/`。
 - 只改前端能看见的东西（A 档）不用跑任何一条。
 
 ### 2.2 手写的就三个文件、四处
@@ -134,7 +134,7 @@ Create/Update 两处**仍然是 `SetNillable<字段>(…)`，只是实参要过�
    后缀写成不认识的名字（`name__badop`）时，转换器确实返回 error（`query_string_converter.go:282-283`），
    但泛型仓储只 `log.Error` 不上抛（`go-crud/entgo v0.0.55` 的 `repository.go:333-340`），且那份 error 让
    **整个** `FilterExpr` 变 nil ⇒ 该请求的**全部**过滤条件一起失效，**搜了等于没搜：返回全量、页面上一眼看不出不对**
-   （2026-09-25 sqlite 探针实测：`{"name__badop":"x"}` 在通知渠道表上回全量 2 行、无 error；"HTTP 200"是由"没有 error"推出来的，没打请求实测）。
+   （2026-09-25 sqlite 探针实测：`{"name__badop":"x"}` 在当时的通知渠道表上回全量 2 行、无 error；该表已删除。"HTTP 200"是由"没有 error"推出来的，没打请求实测）。
    只有 `user`/`permission` 两处手写过 filter 的 repo 会上抛：`internal/data/user_repo.go:308-312`、
    `internal/data/permission_repo.go:132-135`。
 

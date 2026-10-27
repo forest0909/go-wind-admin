@@ -9,16 +9,16 @@ import { type ClientTransport, createApiClient } from "@/api/generated/admin/ser
 import { consumeCaptchaHeaders, requestApi } from "@/core/transport/rest";
 
 const transport: ClientTransport = {
-  unary(path, method, body, _meta) {
+  unary(path, method, body) {
     // 消费登录前由 auth store 设置的验证码 Header（一次性，取后即清）
     const headers = consumeCaptchaHeaders() ?? undefined;
     return requestApi({ body, headers, method, path });
   },
-  serverStream(path, _meta) {
+  serverStream(path) {
     // SSE 流由 transport/sse 模块独立管理，此处不应被调用
     throw new Error(`serverStream not supported via ApiClient: ${path}`);
   },
-  duplexStream(path, _meta) {
+  duplexStream(path) {
     throw new Error(`duplexStream not supported via ApiClient: ${path}`);
   },
 };

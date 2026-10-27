@@ -70,7 +70,7 @@ make ts
 cd backend && docker compose -f docker-compose.libs.yaml up -d
 
 # 2. 起后端（HTTP :7788）
-gow run admin
+make -C app/admin/service run
 
 # 3. 起前端——三选一，以 react 端为例
 cd ../frontend/admin/react && pnpm install && pnpm dev

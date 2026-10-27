@@ -8,7 +8,7 @@
 ## 1. 组件地图
 
 ```
-生产方    InternalMessageService（当前唯一，但 P2 起它是"被通知域调用"的一方，见第 4 节）
+生产方    InternalMessageService（当前唯一；通知域已删除，不再有被它调用的一方）
           └─ publishNotification：收件记录落库后 TryPublish（非阻塞、best-effort）
                      │ 事件 { id: GUIDv4, event: "notification", data: <收件记录 JSON> }
                      ▼
@@ -59,12 +59,7 @@ SSE 连接不走 REST 的 auth 中间件链——transport 自带鉴权钩子，
 
 `InternalMessageService.publishNotification`（投递链上每个收件人调用）：
 
-- **P2 之后它是 INTERNAL 渠道的投递内核，不再由业务代码直接调用**：定向发送走
-  `NotificationService.SendDirect` → `InternalMessageSender.Send` → `sendNotification` →
-  本方法（一次投递在台账里留一行）；全员广播保留批量扇出、不经缝（理由见
-  [notification_domain_design.md](./notification_domain_design.md) §4 P2）。
-  **新增"发一条站内信"的需求一律调 `Notifier`，不要自己调 `publishNotification`**——
-  绕过缝 = 台账上没有这一行，排障时"发过没发过、走的哪个渠道"就答不出来；
+- 定向发送和全员广播都在收件行落库后调用本方法推 SSE。没有渠道台账，也没有静默时段或分类免打扰：收件行写成功就推。
 - **落库优先**：收件记录先经 `internalMessageRecipientRepo.Create` 落库，
   推送是 best-effort 增强——`TryPublish` 非阻塞（流不存在=用户离线、或缓冲已满，立即跳过，
   只记 debug 日志），失败不影响投递；离线用户重连后从**收件箱接口**补取（不依赖推送）；

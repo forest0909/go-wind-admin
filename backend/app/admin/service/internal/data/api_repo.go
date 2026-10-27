@@ -6,18 +6,19 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
+	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
@@ -344,6 +345,41 @@ func (r *ApiRepo) Delete(ctx context.Context, req *permissionV1.DeleteApiRequest
 	}
 
 	return nil
+}
+
+// DeleteExcept 删除 ID 不在 keepIDs 中的接口，连同权限上对它们的绑定。
+// sys_permission_apis.api_id 没有外键，接口行删掉后绑定不会自动级联，
+// 留着的话这些 ID 将来被新接口复用时会把权限错绑到无关接口上。
+func (r *ApiRepo) DeleteExcept(ctx context.Context, keepIDs []uint32) (int, error) {
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
+		return 0, permissionV1.ErrorInternalServerError("start transaction failed")
+	}
+
+	if _, err = tx.PermissionApi.Delete().Where(permissionapi.APIIDNotIn(keepIDs...)).Exec(ctx); err != nil {
+		r.log.Errorf(ctx, "delete stale permission apis failed: %s", err.Error())
+		if rbErr := tx.Rollback(); rbErr != nil {
+			r.log.Errorf(ctx, "rollback failed: %s", rbErr.Error())
+		}
+		return 0, permissionV1.ErrorInternalServerError("delete stale permission apis failed")
+	}
+
+	n, err := tx.Api.Delete().Where(api.IDNotIn(keepIDs...)).Exec(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "delete stale apis failed: %s", err.Error())
+		if rbErr := tx.Rollback(); rbErr != nil {
+			r.log.Errorf(ctx, "rollback failed: %s", rbErr.Error())
+		}
+		return 0, permissionV1.ErrorInternalServerError("delete stale apis failed")
+	}
+
+	if err = tx.Commit(); err != nil {
+		r.log.Errorf(ctx, "commit failed: %s", err.Error())
+		return 0, permissionV1.ErrorInternalServerError("commit failed")
+	}
+
+	return n, nil
 }
 
 // Truncate 清空表数据

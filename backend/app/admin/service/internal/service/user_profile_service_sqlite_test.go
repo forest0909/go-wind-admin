@@ -32,15 +32,15 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
-	gocrypto "github.com/tx7do/go-utils/crypto"
-	"github.com/tx7do/go-utils/ossutil"
-	"github.com/tx7do/go-utils/trans"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	gocrypto "go-wind-admin/third_party/go-utils/crypto"
+	"go-wind-admin/third_party/go-utils/ossutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	conf "github.com/tx7do/kratos-bootstrap/api/gen/go/conf/v1"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
@@ -121,7 +121,7 @@ func newUserProfileServiceForTest(t *testing.T) userProfileServiceTestEnv {
 		roleRepo:           data.NewRoleRepoForTest(entClient),
 		userCredentialRepo: userCredentialRepo,
 		authenticator:      authenticator,
-		notifier:           nil,
+		outbound:           nil,
 		vcodeCache:         nil,
 		mc:                 nil,
 	}

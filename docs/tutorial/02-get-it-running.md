@@ -50,31 +50,30 @@ docker compose -f docker-compose.libs.yaml up -d
 docker compose -f docker-compose.libs.yaml ps   # 应看到 postgres / redis / minio 三个 Running
 ```
 
-## 4. 改后端配置：容器服务名 → localhost
+## 4. 用 local 目录把容器服务名覆盖成 localhost
 
 `docker-compose.libs.yaml` 里的服务名（`postgres`/`redis`/`minio`）只在容器网络内有效。
-后端在本地跑，所以 `backend/app/admin/service/configs/` 下三个文件的地址**必须改成 `localhost`**：
+后端在本地跑时，把地址写进 `backend/app/admin/service/configs/local/`，**不要改**同目录下被 Git 跟踪的 yaml：
 
-| 文件 | 改什么 |
+| 文件 | 只写这些键 |
 |---|---|
-| `data.yaml` | `database.source`、`redis.addr` 的主机名 |
-| `server.yaml` | `asynq.uri` 的主机名 |
-| `oss.yaml` | `minio.endpoint` / `upload_host` / `download_host` 的主机名 |
+| `local/data.yaml` | `database.source`、`redis.addr` 的主机名 |
+| `local/server.yaml` | `asynq.uri` 的主机名 |
+| `local/oss.yaml` | `minio.endpoint` / `upload_host` / `download_host` 的主机名 |
 
-> 这些改动只用于本地，别提交。建议 `git stash` 或本地 ignore。
+目录不存在就跳过。存在时最后加载，同名键覆盖主配置，没写的键保留主配置。`local/` 已在 `.gitignore` 里。完整示例见 [windows-startup-guide.md](../windows-startup-guide.md) 第三步。
 
 ## 5. 生成代码 & 启动后端
 
 ```bash
 cd backend
 go mod download
-gow ent admin && gow api  # ent ORM + proto Go 代码（首次必跑；gow 的安装见 windows-startup-guide）
+make ent && make api  # ent ORM + proto Go 代码（首次必跑）
 ```
 
 ```bash
-# 任选其一：
-cd backend && gow run admin            # gow CLI（推荐）
-cd backend/app/admin/service && go run ./cmd/server -c ./configs
+cd backend && make -C app/admin/service run
+# 等价：cd backend/app/admin/service && go run ./cmd/server -c ./configs
 ```
 
 启动成功的标志（日志）：
@@ -125,7 +124,7 @@ cd backend/app/admin/service && go run ./cmd/server -c ./configs
 |---|---|
 | Docker 拉镜像 `TLS handshake timeout` | 配置 Docker 镜像加速并重启 Docker Desktop |
 | 后端连不上 DB | 配置里主机名没改 `localhost`（第 4 节） |
-| `gow`/`buf` 命令找不到 | `%USERPROFILE%\go\bin` 不在 PATH；手动 `go install`（见参考文档命令） |
+| `buf`/`ent` 命令找不到 | `%USERPROFILE%\go\bin` 不在 PATH；在 `backend/` 下执行 `make init` |
 | vben `pnpm dev` 报 `turbo-run` 找不到 | Windows 已知问题，按参考文档补两个 bin shim |
 | 页面白屏 / 路由塌空（vue-element） | 已修复的历史问题：真因是 `<transition mode="out-in">` 与 vue-router 5 懒加载路由的竞态（**不是** vite 依赖优化，dev/prod 都能复现）。别把 `mode="out-in"` 改回去；判回归先重启 dev server，细节见该端 AGENTS.md「白屏（router-view 塌空）真因与处置」 |
 | 前端请求全部 401/无法登录 | 确认后端 7788 在跑；验证码答案可在 Redis 按 `gowind:captcha:<captchaId>` 读（自动化调试用） |
@@ -136,11 +135,11 @@ cd backend/app/admin/service && go run ./cmd/server -c ./configs
 
 ```
 终端 1：cd backend && docker compose -f docker-compose.libs.yaml up -d
-终端 2：cd backend && gow run admin
+终端 2：cd backend && make -C app/admin/service run
 终端 3：cd frontend/admin/<选择端> && pnpm dev[:antd]
 ```
 
-改了 proto → `gow api`（前端 TS：后端根目录 `make ts`）；改了 ent schema → `gow ent admin`。
+改了 proto → `make api`（前端 TS：后端根目录 `make ts`）；改了 ent schema → `make ent`。
 完整命令速查见 windows-startup-guide「日常开发工作流」。
 
 ## 深读

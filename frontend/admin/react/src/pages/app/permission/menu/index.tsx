@@ -349,7 +349,7 @@ const MenuManagement = () => {
           <ListTable<Menu>
             actionRef={actionRef}
             columns={columns}
-            request={async (params, _sorter, _filter) => {
+            request={async (params) => {
               // 标题走前端过滤（见 filterMenusByTitle），服务端只收 status；
               // pageSize 拉满确保全量行都在前端过滤范围内
               const query = new PaginationQuery({

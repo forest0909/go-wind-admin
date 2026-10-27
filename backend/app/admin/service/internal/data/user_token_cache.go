@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 )
@@ -34,8 +34,9 @@ const (
 	UserSessionKeyFormat = "us:%d:%d:%s"
 
 	// RefreshTokenGraceKeyFormat 刷新令牌宽限集合键格式 rtg:{ct}:{uid}。
-	// 集合成员为刚被轮换掉的 RT 原值，TTL 为宽限窗口；并发刷新对撞时
-	// 持有上一枚 RT 的一方凭成员资格兑换新会话，而不是被判死强制登出。
+	// 有序集合成员是刚被轮换掉的 RT 原值，score 是该成员自己的过期时间戳（秒）。
+	// 并发刷新对撞时，持有上一枚且尚未过期的 RT 凭成员资格兑换新会话。
+	// 全量吊销会删掉整个键。
 	RefreshTokenGraceKeyFormat = "rtg:%d:%d"
 
 	// TokenLineageKeyFormat 令牌代际链键格式 lin:{ct}:{uid}:{jti}，值=上一代 jti。
@@ -43,8 +44,8 @@ const (
 	// 踢下线沿此链回溯删除整条会话世系的 AT，保住「踢即全灭」的语义。
 	TokenLineageKeyFormat = "lin:%d:%d:%s"
 
-	// RefreshTokenGraceWindow RT 宽限窗口。仅需覆盖并发刷新对撞的毫秒级
-	// 时间窗与后台标签页定时器节流的抖动，取 60s 足够且限制被盗 RT 的可用期。
+	// RefreshTokenGraceWindow 单个旧 RT 的宽限窗口。只覆盖并发刷新对撞和
+	// 后台标签页定时器的抖动，60 秒按成员单独计算，后一次轮换不会把更早的成员续期。
 	RefreshTokenGraceWindow = 60 * time.Second
 
 	// tokenLineageMaxDepth 踢下线回溯代际链的深度上限（防御异常环）
@@ -58,6 +59,8 @@ const (
 // 在单次 Redis 调用中完成「验证 RT → 删除 RT → 删除会话元数据 → 旧 RT 入宽限集合」，
 // 避免 TOCTOU 竞态。KEYS: [rtKey, usKey, graceKey]，ARGV: [refreshToken, graceTTLSeconds]。
 // usKey 传空串表示不删除。
+// 宽限集合是 ZSET，score 为该成员的过期 Unix 秒。写入时用 Redis TIME 清掉已过期成员，
+// 不把整组 TTL 往后推。旧版 SET 在第一次写入时删掉，避免 WRONGTYPE。
 // 旧 AT（atKey）不再删除：多标签页/多前端共享同一浏览器 cookie jar，顺序轮换
 // 会把上一枚刚发给其他标签页在用的 AT 作废，引发持续互杀的 401 风暴；旧 AT
 // 改为自然存活至自身 TTL，踢下线经代际链（lin: 键）追杀。返回值: 1=验证成功,
@@ -78,8 +81,44 @@ var verifyAndRevokeRefreshTokenScript = redis.NewScript(`
 	if usKey and usKey ~= '' then
 		redis.call('DEL', usKey)
 	end
-	redis.call('SADD', graceKey, refreshToken)
+
+	local typ = redis.call('TYPE', graceKey)
+	if typ and typ.ok == 'set' then
+		redis.call('DEL', graceKey)
+	end
+
+	local now = tonumber(redis.call('TIME')[1])
+	redis.call('ZREMRANGEBYSCORE', graceKey, '-inf', now)
+	redis.call('ZADD', graceKey, now + graceTTL, refreshToken)
 	redis.call('EXPIRE', graceKey, graceTTL)
+	return 1
+`)
+
+// isGraceRefreshTokenScript 只承认还没过期的宽限成员。
+// KEYS: [graceKey]，ARGV: [refreshToken]。返回 1=未过期成员，0=不是。
+// 查询时顺手清掉已过期成员。旧版 SET 直接删除并拒绝，避免 WRONGTYPE 被当成命中。
+var isGraceRefreshTokenScript = redis.NewScript(`
+	local graceKey = KEYS[1]
+	local refreshToken = ARGV[1]
+
+	local typ = redis.call('TYPE', graceKey)
+	if not typ or typ.ok == 'none' then
+		return 0
+	end
+	if typ.ok == 'set' then
+		redis.call('DEL', graceKey)
+		return 0
+	end
+
+	local now = tonumber(redis.call('TIME')[1])
+	redis.call('ZREMRANGEBYSCORE', graceKey, '-inf', now)
+	local score = redis.call('ZSCORE', graceKey, refreshToken)
+	if not score then
+		return 0
+	end
+	if tonumber(score) <= now then
+		return 0
+	end
 	return 1
 `)
 
@@ -180,6 +219,12 @@ func (r *UserTokenCache) RevokeToken(ctx context.Context, clientType authenticat
 	// 会话元数据随令牌一并清理，保持「无令牌即无会话记录」的一致性
 	if err = r.DeleteUserSessionMetas(ctx, clientType, userId); err != nil {
 		r.log.Errorf(ctx, "remove user session metas failed: [%v]", err)
+	}
+
+	// 宽限集合不在 rt:{ct}:{uid}:* 的扫描范围内。留下的话，全量吊销后
+	// 宽限期内的旧 RT 仍能换出新令牌。
+	if err = r.del(ctx, r.makeRefreshTokenGraceKey(clientType, userId)); err != nil {
+		r.log.Errorf(ctx, "remove user refresh token grace failed: [%v]", err)
 	}
 
 	return err
@@ -356,12 +401,12 @@ func (r *UserTokenCache) IsGraceRefreshToken(
 	refreshToken string,
 ) bool {
 	graceKey := r.makeRefreshTokenGraceKey(clientType, userId)
-	isMember, err := r.rdb.SIsMember(ctx, graceKey, refreshToken).Result()
+	n, err := isGraceRefreshTokenScript.Run(ctx, r.rdb, []string{graceKey}, refreshToken).Int64()
 	if err != nil {
 		r.log.Errorf(ctx, "check refresh token grace failed for user [%d]: %v", userId, err)
 		return false
 	}
-	return isMember
+	return n == 1
 }
 
 // AddTokenLineage 记录令牌代际：newJti 由 prevJti 轮换而来。TTL 与 AT 生命周期

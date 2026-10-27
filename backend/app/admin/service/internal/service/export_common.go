@@ -8,22 +8,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/go-utils/trans"
-	"github.com/tx7do/kratos-bootstrap/logger"
 	"github.com/xuri/excelize/v2"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/trans"
+	"go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
-	"github.com/tx7do/go-crud/viewer"
+	"go-wind-admin/third_party/go-crud/viewer"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	"go-wind-admin/pkg/middleware/auth"
 )
 
 // exportColumn 一列的定义：表头 + 从行 DTO 取值的取值器（返回已格式化的字符串）。
-// 各导出资源（审计五类 / AI 用量流水 / 通知投递台账）共用此形态。
+// 各导出资源（登录日志 / 操作日志）共用此形态。
 type exportColumn[T any] struct {
 	header string
 	value  func(row T) string
@@ -157,7 +157,7 @@ func authorizeExportRequest(
 	return ctx, operator, true
 }
 
-// requireExportPlatformAdmin 平台管理员闸（语义对齐 requirePlatformAdmin，
+// requireExportPlatformAdmin 平台管理员闸（
 // 手动路由拿不到 service 层 ctx，须在 operator 已解析处就地判定）。
 func requireExportPlatformAdmin(w http.ResponseWriter, operator *authenticationV1.UserTokenPayload) bool {
 	if !operator.GetIsPlatformAdmin() {

@@ -63,10 +63,5 @@
     "MALE": "Male",
     "FEMALE": "Female",
     "SECRET": "Secret"
-  },
-  "resetMfa": "Reset MFA",
-  "resetMfaConfirmTitle": "Reset MFA for this user?",
-  "resetMfaConfirmDesc": "This will remove their TOTP binding. Next login will skip MFA until re-enrolled.",
-  "resetMfaSuccess": "MFA reset successfully",
-  "resetMfaFailed": "Failed to reset MFA"
+  }
 }

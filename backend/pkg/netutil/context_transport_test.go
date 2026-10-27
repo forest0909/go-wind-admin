@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gonetutil "github.com/tx7do/go-utils/netutil"
+	gonetutil "go-wind-admin/third_party/go-utils/netutil"
 
 	"github.com/go-kratos/kratos/v2/transport"
 	khttp "github.com/go-kratos/kratos/v2/transport/http"

@@ -9,8 +9,8 @@ package identitypb
 import (
 	_ "github.com/envoyproxy/protoc-gen-validate/validate"
 	_ "github.com/google/gnostic/openapiv3"
-	v1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	_ "github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
+	v1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	_ "go-wind-admin/third_party/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -166,7 +166,7 @@ type User struct {
 	Gender        *User_Gender           `protobuf:"varint,27,opt,name=gender,proto3,enum=identity.service.v1.User_Gender,oneof" json:"gender,omitempty"` // 性别
 	Address       *string                `protobuf:"bytes,28,opt,name=address,proto3,oneof" json:"address,omitempty"`                                     // 住址
 	Region        *string                `protobuf:"bytes,29,opt,name=region,proto3,oneof" json:"region,omitempty"`                                       // 国家地区
-	// 偏好语言：事务性邮件（找回密码/换绑验证码）按此渲染；空 = 按请求 Accept-Language。
+	// 偏好语言：换绑验证码按此渲染；空 = 按请求 Accept-Language。
 	Locale        *string                `protobuf:"bytes,32,opt,name=locale,proto3,oneof" json:"locale,omitempty"`                                       // 偏好语言
 	Description   *string                `protobuf:"bytes,30,opt,name=description,proto3,oneof" json:"description,omitempty"`                             // 个人描述
 	Remark        *string                `protobuf:"bytes,31,opt,name=remark,proto3,oneof" json:"remark,omitempty"`                                       // 备注
@@ -1873,15 +1873,15 @@ const file_identity_service_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"\bquery_byB\f\n" +
 	"\n" +
-	"_view_mask\"\x8c\x01\n" +
+	"_view_mask\"\x92\x01\n" +
 	"\x11CreateUserRequest\x12-\n" +
-	"\x04data\x18\x01 \x01(\v2\x19.identity.service.v1.UserR\x04data\x12;\n" +
-	"\bpassword\x18\x02 \x01(\tB\x1a\xbaG\x17\x18\x01\x92\x02\x12用户登录密码H\x00R\bpassword\x88\x01\x01B\v\n" +
-	"\t_password\"\xf4\x03\n" +
+	"\x04data\x18\x01 \x01(\v2\x19.identity.service.v1.UserR\x04data\x12A\n" +
+	"\bpassword\x18\x02 \x01(\tB \xbaG\x17\x18\x01\x92\x02\x12用户登录密码ڶ\x1a\x02z\x00H\x00R\bpassword\x88\x01\x01B\v\n" +
+	"\t_password\"\xfa\x03\n" +
 	"\x11UpdateUserRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\rR\x02id\x12G\n" +
-	"\x04data\x18\x02 \x01(\v2\x19.identity.service.v1.UserB\x18\xe0A\x02\xbaG\x12\x92\x02\x0f用户的数据R\x04data\x12;\n" +
-	"\bpassword\x18\x03 \x01(\tB\x1a\xbaG\x17\x18\x01\x92\x02\x12用户登录密码H\x00R\bpassword\x88\x01\x01\x12s\n" +
+	"\x04data\x18\x02 \x01(\v2\x19.identity.service.v1.UserB\x18\xe0A\x02\xbaG\x12\x92\x02\x0f用户的数据R\x04data\x12A\n" +
+	"\bpassword\x18\x03 \x01(\tB \xbaG\x17\x18\x01\x92\x02\x12用户登录密码ڶ\x1a\x02z\x00H\x00R\bpassword\x88\x01\x01\x12s\n" +
 	"\vupdate_mask\x18\x04 \x01(\v2\x1a.google.protobuf.FieldMaskB6\xbaG3:\x16\x12\x14id,realname,username\x92\x02\x18要更新的字段列表R\n" +
 	"updateMask\x12\xb4\x01\n" +
 	"\rallow_missing\x18\x05 \x01(\bB\x89\x01\xbaG\x85\x01\x92\x02\x81\x01如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。H\x01R\fallowMissing\x88\x01\x01B\v\n" +
@@ -1905,13 +1905,13 @@ const file_identity_service_v1_user_proto_rawDesc = "" +
 	"\vcreated_ids\x18\x01 \x03(\x05B#\xbaG \x92\x02\x1d创建成功的用户ID列表R\n" +
 	"createdIds\"(\n" +
 	"\x14GetUsersByIdsRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\rR\x03ids\"\x80\x01\n" +
+	"\x03ids\x18\x01 \x03(\rR\x03ids\"\x86\x01\n" +
 	"\x17EditUserPasswordRequest\x12'\n" +
-	"\auser_id\x18\x01 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDR\x06userId\x12<\n" +
-	"\fnew_password\x18\x02 \x01(\tB\x19\xfaB\ar\x05\x10\b\x18\x80\x01\xbaG\f\x92\x02\t新密码R\vnewPassword\"\x91\x01\n" +
-	"\x15ChangePasswordRequest\x12:\n" +
-	"\fold_password\x18\x01 \x01(\tB\x17\xfaB\x05r\x03\x18\x80\x01\xbaG\f\x92\x02\t旧密码R\voldPassword\x12<\n" +
-	"\fnew_password\x18\x02 \x01(\tB\x19\xfaB\ar\x05\x10\b\x18\x80\x01\xbaG\f\x92\x02\t新密码R\vnewPassword\"\x9a\x01\n" +
+	"\auser_id\x18\x01 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDR\x06userId\x12B\n" +
+	"\fnew_password\x18\x02 \x01(\tB\x1f\xfaB\ar\x05\x10\b\x18\x80\x01\xbaG\f\x92\x02\t新密码ڶ\x1a\x02z\x00R\vnewPassword\"\x9d\x01\n" +
+	"\x15ChangePasswordRequest\x12@\n" +
+	"\fold_password\x18\x01 \x01(\tB\x1d\xfaB\x05r\x03\x18\x80\x01\xbaG\f\x92\x02\t旧密码ڶ\x1a\x02z\x00R\voldPassword\x12B\n" +
+	"\fnew_password\x18\x02 \x01(\tB\x1f\xfaB\ar\x05\x10\b\x18\x80\x01\xbaG\f\x92\x02\t新密码ڶ\x1a\x02z\x00R\vnewPassword\"\x9a\x01\n" +
 	"\x13UploadAvatarRequest\x12@\n" +
 	"\fimage_base64\x18\x01 \x01(\tB\x1b\xbaG\x18\x92\x02\x15图片的Base64编码H\x00R\vimageBase64\x127\n" +
 	"\timage_url\x18\x02 \x01(\tB\x18\xbaG\x15\x92\x02\x12图片的URL地址H\x00R\bimageUrlB\b\n" +

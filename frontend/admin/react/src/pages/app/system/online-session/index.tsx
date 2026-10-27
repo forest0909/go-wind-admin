@@ -21,7 +21,7 @@ import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 /**
  * 在线用户（在线会话）页面
- * 数据来自 Redis 会话元数据：登录 / 刷新轮换 / MFA 验证通过时写入，
+ * 数据来自 Redis 会话元数据：登录和刷新轮换时写入，
  * 随 refresh token 过期或吊销消失。支持按用户名/IP 搜索与强制下线。
  */
 const OnlineSessionPage = () => {

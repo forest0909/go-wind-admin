@@ -6,44 +6,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
-// AccessKey is the predicate function for accesskey builders.
-type AccessKey func(*sql.Selector)
-
-// AiAgentApp is the predicate function for aiagentapp builders.
-type AiAgentApp func(*sql.Selector)
-
-// AiAgentRun is the predicate function for aiagentrun builders.
-type AiAgentRun func(*sql.Selector)
-
-// AiChunk is the predicate function for aichunk builders.
-type AiChunk func(*sql.Selector)
-
-// AiConversation is the predicate function for aiconversation builders.
-type AiConversation func(*sql.Selector)
-
-// AiDoc is the predicate function for aidoc builders.
-type AiDoc func(*sql.Selector)
-
-// AiKnowledgeBase is the predicate function for aiknowledgebase builders.
-type AiKnowledgeBase func(*sql.Selector)
-
-// AiMessage is the predicate function for aimessage builders.
-type AiMessage func(*sql.Selector)
-
-// AiProvider is the predicate function for aiprovider builders.
-type AiProvider func(*sql.Selector)
-
-// AiUsageLog is the predicate function for aiusagelog builders.
-type AiUsageLog func(*sql.Selector)
-
 // Api is the predicate function for api builders.
 type Api func(*sql.Selector)
-
-// ApiAuditLog is the predicate function for apiauditlog builders.
-type ApiAuditLog func(*sql.Selector)
-
-// DataAccessAuditLog is the predicate function for dataaccessauditlog builders.
-type DataAccessAuditLog func(*sql.Selector)
 
 // DictEntry is the predicate function for dictentry builders.
 type DictEntry func(*sql.Selector)
@@ -72,9 +36,6 @@ type Language func(*sql.Selector)
 // LoginAuditLog is the predicate function for loginauditlog builders.
 type LoginAuditLog func(*sql.Selector)
 
-// LoginPolicy is the predicate function for loginpolicy builders.
-type LoginPolicy func(*sql.Selector)
-
 // Membership is the predicate function for membership builders.
 type Membership func(*sql.Selector)
 
@@ -90,24 +51,6 @@ type MembershipRole func(*sql.Selector)
 // Menu is the predicate function for menu builders.
 type Menu func(*sql.Selector)
 
-// MonitorAlertRule is the predicate function for monitoralertrule builders.
-type MonitorAlertRule func(*sql.Selector)
-
-// NotificationChannel is the predicate function for notificationchannel builders.
-type NotificationChannel func(*sql.Selector)
-
-// NotificationDelivery is the predicate function for notificationdelivery builders.
-type NotificationDelivery func(*sql.Selector)
-
-// NotificationPreference is the predicate function for notificationpreference builders.
-type NotificationPreference func(*sql.Selector)
-
-// NotificationRule is the predicate function for notificationrule builders.
-type NotificationRule func(*sql.Selector)
-
-// NotificationTemplate is the predicate function for notificationtemplate builders.
-type NotificationTemplate func(*sql.Selector)
-
 // OperationAuditLog is the predicate function for operationauditlog builders.
 type OperationAuditLog func(*sql.Selector)
 
@@ -119,9 +62,6 @@ type Permission func(*sql.Selector)
 
 // PermissionApi is the predicate function for permissionapi builders.
 type PermissionApi func(*sql.Selector)
-
-// PermissionAuditLog is the predicate function for permissionauditlog builders.
-type PermissionAuditLog func(*sql.Selector)
 
 // PermissionGroup is the predicate function for permissiongroup builders.
 type PermissionGroup func(*sql.Selector)
@@ -141,9 +81,6 @@ type PlanModule func(*sql.Selector)
 // PlanQuota is the predicate function for planquota builders.
 type PlanQuota func(*sql.Selector)
 
-// PolicyEvaluationLog is the predicate function for policyevaluationlog builders.
-type PolicyEvaluationLog func(*sql.Selector)
-
 // Position is the predicate function for position builders.
 type Position func(*sql.Selector)
 
@@ -162,12 +99,6 @@ type RoleOrgUnit func(*sql.Selector)
 // RolePermission is the predicate function for rolepermission builders.
 type RolePermission func(*sql.Selector)
 
-// Script is the predicate function for script builders.
-type Script func(*sql.Selector)
-
-// ScriptLog is the predicate function for scriptlog builders.
-type ScriptLog func(*sql.Selector)
-
 // SysConfig is the predicate function for sysconfig builders.
 type SysConfig func(*sql.Selector)
 
@@ -182,9 +113,6 @@ type User func(*sql.Selector)
 
 // UserCredential is the predicate function for usercredential builders.
 type UserCredential func(*sql.Selector)
-
-// UserMfaFactor is the predicate function for usermfafactor builders.
-type UserMfaFactor func(*sql.Selector)
 
 // UserOrgUnit is the predicate function for userorgunit builders.
 type UserOrgUnit func(*sql.Selector)

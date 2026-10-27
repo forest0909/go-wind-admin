@@ -12,32 +12,8 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
-	// AccessKey is the client for interacting with the AccessKey builders.
-	AccessKey *AccessKeyClient
-	// AiAgentApp is the client for interacting with the AiAgentApp builders.
-	AiAgentApp *AiAgentAppClient
-	// AiAgentRun is the client for interacting with the AiAgentRun builders.
-	AiAgentRun *AiAgentRunClient
-	// AiChunk is the client for interacting with the AiChunk builders.
-	AiChunk *AiChunkClient
-	// AiConversation is the client for interacting with the AiConversation builders.
-	AiConversation *AiConversationClient
-	// AiDoc is the client for interacting with the AiDoc builders.
-	AiDoc *AiDocClient
-	// AiKnowledgeBase is the client for interacting with the AiKnowledgeBase builders.
-	AiKnowledgeBase *AiKnowledgeBaseClient
-	// AiMessage is the client for interacting with the AiMessage builders.
-	AiMessage *AiMessageClient
-	// AiProvider is the client for interacting with the AiProvider builders.
-	AiProvider *AiProviderClient
-	// AiUsageLog is the client for interacting with the AiUsageLog builders.
-	AiUsageLog *AiUsageLogClient
 	// Api is the client for interacting with the Api builders.
 	Api *APIClient
-	// ApiAuditLog is the client for interacting with the ApiAuditLog builders.
-	ApiAuditLog *ApiAuditLogClient
-	// DataAccessAuditLog is the client for interacting with the DataAccessAuditLog builders.
-	DataAccessAuditLog *DataAccessAuditLogClient
 	// DictEntry is the client for interacting with the DictEntry builders.
 	DictEntry *DictEntryClient
 	// DictEntryI18n is the client for interacting with the DictEntryI18n builders.
@@ -56,8 +32,6 @@ type Tx struct {
 	Language *LanguageClient
 	// LoginAuditLog is the client for interacting with the LoginAuditLog builders.
 	LoginAuditLog *LoginAuditLogClient
-	// LoginPolicy is the client for interacting with the LoginPolicy builders.
-	LoginPolicy *LoginPolicyClient
 	// Membership is the client for interacting with the Membership builders.
 	Membership *MembershipClient
 	// MembershipOrgUnit is the client for interacting with the MembershipOrgUnit builders.
@@ -68,18 +42,6 @@ type Tx struct {
 	MembershipRole *MembershipRoleClient
 	// Menu is the client for interacting with the Menu builders.
 	Menu *MenuClient
-	// MonitorAlertRule is the client for interacting with the MonitorAlertRule builders.
-	MonitorAlertRule *MonitorAlertRuleClient
-	// NotificationChannel is the client for interacting with the NotificationChannel builders.
-	NotificationChannel *NotificationChannelClient
-	// NotificationDelivery is the client for interacting with the NotificationDelivery builders.
-	NotificationDelivery *NotificationDeliveryClient
-	// NotificationPreference is the client for interacting with the NotificationPreference builders.
-	NotificationPreference *NotificationPreferenceClient
-	// NotificationRule is the client for interacting with the NotificationRule builders.
-	NotificationRule *NotificationRuleClient
-	// NotificationTemplate is the client for interacting with the NotificationTemplate builders.
-	NotificationTemplate *NotificationTemplateClient
 	// OperationAuditLog is the client for interacting with the OperationAuditLog builders.
 	OperationAuditLog *OperationAuditLogClient
 	// OrgUnit is the client for interacting with the OrgUnit builders.
@@ -88,8 +50,6 @@ type Tx struct {
 	Permission *PermissionClient
 	// PermissionApi is the client for interacting with the PermissionApi builders.
 	PermissionApi *PermissionApiClient
-	// PermissionAuditLog is the client for interacting with the PermissionAuditLog builders.
-	PermissionAuditLog *PermissionAuditLogClient
 	// PermissionGroup is the client for interacting with the PermissionGroup builders.
 	PermissionGroup *PermissionGroupClient
 	// PermissionMenu is the client for interacting with the PermissionMenu builders.
@@ -102,8 +62,6 @@ type Tx struct {
 	PlanModule *PlanModuleClient
 	// PlanQuota is the client for interacting with the PlanQuota builders.
 	PlanQuota *PlanQuotaClient
-	// PolicyEvaluationLog is the client for interacting with the PolicyEvaluationLog builders.
-	PolicyEvaluationLog *PolicyEvaluationLogClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
 	// Role is the client for interacting with the Role builders.
@@ -116,10 +74,6 @@ type Tx struct {
 	RoleOrgUnit *RoleOrgUnitClient
 	// RolePermission is the client for interacting with the RolePermission builders.
 	RolePermission *RolePermissionClient
-	// Script is the client for interacting with the Script builders.
-	Script *ScriptClient
-	// ScriptLog is the client for interacting with the ScriptLog builders.
-	ScriptLog *ScriptLogClient
 	// SysConfig is the client for interacting with the SysConfig builders.
 	SysConfig *SysConfigClient
 	// Task is the client for interacting with the Task builders.
@@ -130,8 +84,6 @@ type Tx struct {
 	User *UserClient
 	// UserCredential is the client for interacting with the UserCredential builders.
 	UserCredential *UserCredentialClient
-	// UserMfaFactor is the client for interacting with the UserMfaFactor builders.
-	UserMfaFactor *UserMfaFactorClient
 	// UserOrgUnit is the client for interacting with the UserOrgUnit builders.
 	UserOrgUnit *UserOrgUnitClient
 	// UserPosition is the client for interacting with the UserPosition builders.
@@ -269,19 +221,7 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
-	tx.AccessKey = NewAccessKeyClient(tx.config)
-	tx.AiAgentApp = NewAiAgentAppClient(tx.config)
-	tx.AiAgentRun = NewAiAgentRunClient(tx.config)
-	tx.AiChunk = NewAiChunkClient(tx.config)
-	tx.AiConversation = NewAiConversationClient(tx.config)
-	tx.AiDoc = NewAiDocClient(tx.config)
-	tx.AiKnowledgeBase = NewAiKnowledgeBaseClient(tx.config)
-	tx.AiMessage = NewAiMessageClient(tx.config)
-	tx.AiProvider = NewAiProviderClient(tx.config)
-	tx.AiUsageLog = NewAiUsageLogClient(tx.config)
 	tx.Api = NewAPIClient(tx.config)
-	tx.ApiAuditLog = NewApiAuditLogClient(tx.config)
-	tx.DataAccessAuditLog = NewDataAccessAuditLogClient(tx.config)
 	tx.DictEntry = NewDictEntryClient(tx.config)
 	tx.DictEntryI18n = NewDictEntryI18nClient(tx.config)
 	tx.DictType = NewDictTypeClient(tx.config)
@@ -291,44 +231,32 @@ func (tx *Tx) init() {
 	tx.InternalMessageRecipient = NewInternalMessageRecipientClient(tx.config)
 	tx.Language = NewLanguageClient(tx.config)
 	tx.LoginAuditLog = NewLoginAuditLogClient(tx.config)
-	tx.LoginPolicy = NewLoginPolicyClient(tx.config)
 	tx.Membership = NewMembershipClient(tx.config)
 	tx.MembershipOrgUnit = NewMembershipOrgUnitClient(tx.config)
 	tx.MembershipPosition = NewMembershipPositionClient(tx.config)
 	tx.MembershipRole = NewMembershipRoleClient(tx.config)
 	tx.Menu = NewMenuClient(tx.config)
-	tx.MonitorAlertRule = NewMonitorAlertRuleClient(tx.config)
-	tx.NotificationChannel = NewNotificationChannelClient(tx.config)
-	tx.NotificationDelivery = NewNotificationDeliveryClient(tx.config)
-	tx.NotificationPreference = NewNotificationPreferenceClient(tx.config)
-	tx.NotificationRule = NewNotificationRuleClient(tx.config)
-	tx.NotificationTemplate = NewNotificationTemplateClient(tx.config)
 	tx.OperationAuditLog = NewOperationAuditLogClient(tx.config)
 	tx.OrgUnit = NewOrgUnitClient(tx.config)
 	tx.Permission = NewPermissionClient(tx.config)
 	tx.PermissionApi = NewPermissionApiClient(tx.config)
-	tx.PermissionAuditLog = NewPermissionAuditLogClient(tx.config)
 	tx.PermissionGroup = NewPermissionGroupClient(tx.config)
 	tx.PermissionMenu = NewPermissionMenuClient(tx.config)
 	tx.PermissionPolicy = NewPermissionPolicyClient(tx.config)
 	tx.Plan = NewPlanClient(tx.config)
 	tx.PlanModule = NewPlanModuleClient(tx.config)
 	tx.PlanQuota = NewPlanQuotaClient(tx.config)
-	tx.PolicyEvaluationLog = NewPolicyEvaluationLogClient(tx.config)
 	tx.Position = NewPositionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.RoleFieldPermission = NewRoleFieldPermissionClient(tx.config)
 	tx.RoleMetadata = NewRoleMetadataClient(tx.config)
 	tx.RoleOrgUnit = NewRoleOrgUnitClient(tx.config)
 	tx.RolePermission = NewRolePermissionClient(tx.config)
-	tx.Script = NewScriptClient(tx.config)
-	tx.ScriptLog = NewScriptLogClient(tx.config)
 	tx.SysConfig = NewSysConfigClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
 	tx.Tenant = NewTenantClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserCredential = NewUserCredentialClient(tx.config)
-	tx.UserMfaFactor = NewUserMfaFactorClient(tx.config)
 	tx.UserOrgUnit = NewUserOrgUnitClient(tx.config)
 	tx.UserPosition = NewUserPositionClient(tx.config)
 	tx.UserRole = NewUserRoleClient(tx.config)
@@ -341,7 +269,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: AccessKey.QueryXXX(), the query will be executed
+// applies a query, for example: Api.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

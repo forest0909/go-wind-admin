@@ -33,10 +33,10 @@ import (
 	_ "modernc.org/sqlite" // 纯 Go SQLite（注册名 "sqlite"），无需 CGO
 
 	entsql "entgo.io/ent/dialect/sql"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/go-crud/viewer"
 	"go-wind-admin/app/admin/service/internal/data/ent"
+	"go-wind-admin/third_party/go-crud/viewer"
 )
 
 // NewEntClientForTest 构造一个基于 SQLite 内存库的 entCrud.EntClient，

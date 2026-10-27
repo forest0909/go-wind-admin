@@ -4,22 +4,14 @@ on:
   push:
     paths:
       - 'frontend/admin/react/src/core/transport/sse/**'
-      - 'frontend/admin/vue-element/src/core/transport/sse/**'
-      - 'frontend/admin/vue-vben/apps/admin/src/transport/sse/**'
       - 'frontend/admin/react/src/core/transport/rest/pagination.ts'
-      - 'frontend/admin/vue-element/src/core/transport/rest/pagination.ts'
       - 'frontend/admin/react/src/core/transport/rest/preset-interceptors.ts'
-      - 'frontend/admin/vue-element/src/core/transport/rest/preset-interceptors.ts'
       - 'scripts/check-frontend-mirror.mjs'
   pull_request:
     paths:
       - 'frontend/admin/react/src/core/transport/sse/**'
-      - 'frontend/admin/vue-element/src/core/transport/sse/**'
-      - 'frontend/admin/vue-vben/apps/admin/src/transport/sse/**'
       - 'frontend/admin/react/src/core/transport/rest/pagination.ts'
-      - 'frontend/admin/vue-element/src/core/transport/rest/pagination.ts'
       - 'frontend/admin/react/src/core/transport/rest/preset-interceptors.ts'
-      - 'frontend/admin/vue-element/src/core/transport/rest/preset-interceptors.ts'
       - 'scripts/check-frontend-mirror.mjs'
 
 jobs:

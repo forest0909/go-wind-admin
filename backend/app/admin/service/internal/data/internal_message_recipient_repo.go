@@ -6,17 +6,17 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
-	"github.com/tx7do/go-crud/viewer"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
+	"go-wind-admin/third_party/go-crud/viewer"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/trans"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessage"
@@ -24,6 +24,9 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
+
+	"go-wind-admin/pkg/constants"
+	"go-wind-admin/pkg/middleware/auth"
 )
 
 type InternalMessageRecipientRepo struct {
@@ -72,6 +75,7 @@ func (r *InternalMessageRecipientRepo) init() {
 	r.mapper.AppendConverters(r.statusConverter.NewConverterPair())
 }
 
+// Count 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Count(ctx context.Context, whereCond []func(s *sql.Selector)) (int, error) {
 	builder := r.entClient.Client().InternalMessageRecipient.Query()
 	if len(whereCond) != 0 {
@@ -87,6 +91,7 @@ func (r *InternalMessageRecipientRepo) Count(ctx context.Context, whereCond []fu
 	return count, nil
 }
 
+// IsExist 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) IsExist(ctx context.Context, id uint32) (bool, error) {
 	exist, err := r.entClient.Client().InternalMessageRecipient.Query().
 		Where(internalmessagerecipient.IDEQ(id)).
@@ -105,13 +110,11 @@ func (r *InternalMessageRecipientRepo) List(ctx context.Context, req *pagination
 
 	builder := r.entClient.Client().InternalMessageRecipient.Query()
 
-	// 收件箱按"我自己的"来读，归属谓词必须由服务端给出：查询条件整个来自调用方的 query 字符串，
-	// 不钉住 recipient_user_id 就等于同租户任何登录用户改一个 ID 就能翻别人的收件记录
-	// （title/content 随父消息回填，一并跟着走）。三端页面本来就各自在前端塞这个条件，
-	// 钉住之后前端传不传都只会拿到自己的行。
-	// 平台/系统视图豁免：用户详情页要看指定用户的收件箱，异步任务路径也需要全量读。
-	if vc, ok := viewer.FromContext(ctx); ok && !vc.IsPlatformContext() && !vc.IsSystemContext() {
-		builder.Where(internalmessagerecipient.RecipientUserIDEQ(uint32(vc.UserID())))
+	// 收件箱按"我自己的"来读。查询条件来自调用方，不钉住 recipient_user_id 就能翻别人的收件记录。
+	// 单租户下所有用户的 tenant_id 都是 0，不能再用 IsPlatformContext 放行。
+	// 归属谓词和调用方条件是 AND。调用方若把 recipient_user_id 写成别人，交集是空表。
+	if uid, restrict := inboxRestrictToViewer(ctx); restrict {
+		builder.Where(internalmessagerecipient.RecipientUserIDEQ(uid))
 	}
 
 	ret, err := r.repository.ListWithPaging(ctx, builder, builder.Clone(), req)
@@ -128,6 +131,7 @@ func (r *InternalMessageRecipientRepo) List(ctx context.Context, req *pagination
 	}, nil
 }
 
+// Get 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Get(ctx context.Context, req *internalMessageV1.GetInternalMessageRecipientRequest) (*internalMessageV1.InternalMessageRecipient, error) {
 	if req == nil {
 		return nil, internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -264,6 +268,7 @@ func (r *InternalMessageRecipientRepo) IdsByMessageAndRecipients(ctx context.Con
 	return ids, nil
 }
 
+// Update 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Update(ctx context.Context, req *internalMessageV1.UpdateInternalMessageRecipientRequest) error {
 	if req == nil || req.Data == nil {
 		return internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -305,6 +310,7 @@ func (r *InternalMessageRecipientRepo) Update(ctx context.Context, req *internal
 	return err
 }
 
+// Delete 不做收件人归属检查，只供系统上下文或内部任务使用；暴露给 HTTP 之前必须加 inboxRestrictToViewer。
 func (r *InternalMessageRecipientRepo) Delete(ctx context.Context, id uint32) error {
 	if id == 0 {
 		return internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -323,17 +329,40 @@ func (r *InternalMessageRecipientRepo) Delete(ctx context.Context, id uint32) er
 	return nil
 }
 
+// inboxRestrictToViewer 决定这次收件箱读写要不要钉在当前用户身上。
+//
+// 系统上下文不钉：广播和异步任务要按指定用户读写。
+// 平台管理员角色不钉：用户详情页要按指定用户看收件箱。
+// 其余登录用户一律钉住。tenant_id == 0 在单租户下是所有人，不是放行条件。
+func inboxRestrictToViewer(ctx context.Context) (uint32, bool) {
+	vc, ok := viewer.FromContext(ctx)
+	if !ok || vc.IsSystemContext() || inboxCallerIsPlatformAdmin(ctx) {
+		return 0, false
+	}
+	return uint32(vc.UserID()), true
+}
+
+func inboxCallerIsPlatformAdmin(ctx context.Context) bool {
+	claims, err := auth.FromContext(ctx)
+	if err != nil || claims == nil {
+		return false
+	}
+	for _, role := range claims.GetRoles() {
+		if role == constants.PlatformAdminRoleCode {
+			return true
+		}
+	}
+	return false
+}
+
 // inboxScopedUserID 把"这次写操作算谁的"从请求体收回服务端，与 List 的归属谓词同形。
 //
-// 三个收件箱写口的 user_id 整个来自请求体：租户隔离只保证"动不到别租户的行"，同租户内换一个
-// user_id 就能把别人的收件行标成已读，而 DeleteNotificationFromInbox 在 recipient_ids 为空时
-// 是"按用户维度整箱清空"——换一个 id 就是清空别人的收件箱。平台/系统上下文豁免同读侧：
-// 用户详情页这类"代客"场景要按指定用户操作。
+// 三个收件箱写口的 user_id 来自请求体。DeleteNotificationFromInbox 在 recipient_ids
+// 为空时按用户维度整箱清空，换一个 id 就是清空别人的收件箱。
 func (r *InternalMessageRecipientRepo) inboxScopedUserID(ctx context.Context, reqUserID uint32) uint32 {
-	if vc, ok := viewer.FromContext(ctx); ok && !vc.IsPlatformContext() && !vc.IsSystemContext() {
-		return uint32(vc.UserID())
+	if uid, restrict := inboxRestrictToViewer(ctx); restrict {
+		return uid
 	}
-
 	return reqUserID
 }
 
@@ -363,12 +392,9 @@ func (r *InternalMessageRecipientRepo) MarkNotificationAsRead(ctx context.Contex
 	return err
 }
 
-// MarkNotificationsStatus 标记特定用户的某些或所有通知的状态
+// MarkNotificationsStatus 标记特定用户的某些或所有通知的状态。
+// recipient_ids 为空表示该用户的全部通知，与标已读、清空收件箱的空 ids 语义一致。
 func (r *InternalMessageRecipientRepo) MarkNotificationsStatus(ctx context.Context, req *internalMessageV1.MarkNotificationsStatusRequest) error {
-	if len(req.GetRecipientIds()) == 0 {
-		return internalMessageV1.ErrorBadRequest("invalid parameter")
-	}
-
 	userID := r.inboxScopedUserID(ctx, req.GetUserId())
 	if userID == 0 {
 		return internalMessageV1.ErrorBadRequest("invalid parameter")
@@ -384,13 +410,21 @@ func (r *InternalMessageRecipientRepo) MarkNotificationsStatus(ctx context.Conte
 		receiveAt = trans.Ptr(now)
 	}
 
-	_, err := r.entClient.Client().InternalMessageRecipient.Update().
+	status := r.statusConverter.ToEntity(trans.Ptr(req.GetNewStatus()))
+	if status == nil {
+		return internalMessageV1.ErrorBadRequest("invalid parameter")
+	}
+
+	builder := r.entClient.Client().InternalMessageRecipient.Update().
 		Where(
-			internalmessagerecipient.IDIn(req.GetRecipientIds()...),
 			internalmessagerecipient.RecipientUserIDEQ(userID),
-			internalmessagerecipient.StatusNEQ(*r.statusConverter.ToEntity(trans.Ptr(req.GetNewStatus()))),
-		).
-		SetNillableStatus(r.statusConverter.ToEntity(trans.Ptr(req.GetNewStatus()))).
+			internalmessagerecipient.StatusNEQ(*status),
+		)
+	if len(req.GetRecipientIds()) > 0 {
+		builder = builder.Where(internalmessagerecipient.IDIn(req.GetRecipientIds()...))
+	}
+	_, err := builder.
+		SetNillableStatus(status).
 		SetNillableReadAt(readAt).
 		SetNillableReceivedAt(receiveAt).
 		SetNillableUpdatedAt(trans.Ptr(now)).
@@ -437,18 +471,10 @@ func (r *InternalMessageRecipientRepo) RevokeMessageWithMessage(ctx context.Cont
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return internalMessageV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = internalMessageV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var deleted int
 	if deleted, err = tx.InternalMessage.Delete().
@@ -469,6 +495,10 @@ func (r *InternalMessageRecipientRepo) RevokeMessageWithMessage(ctx context.Cont
 		return internalMessageV1.ErrorInternalServerError("revoke recipients failed")
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return internalMessageV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -486,18 +516,10 @@ func (r *InternalMessageRecipientRepo) DeleteMessageWithRecipients(ctx context.C
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return internalMessageV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = internalMessageV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	var deleted int
 	if deleted, err = tx.InternalMessage.Delete().
@@ -518,6 +540,10 @@ func (r *InternalMessageRecipientRepo) DeleteMessageWithRecipients(ctx context.C
 		return internalMessageV1.ErrorInternalServerError("delete recipients failed")
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return internalMessageV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 

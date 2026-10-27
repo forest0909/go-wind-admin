@@ -7,7 +7,6 @@ import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
 import "authentication/service/v1/authentication.proto";
-import "authentication/service/v1/sso.proto";
 import "authentication/service/v1/tenant_branding.proto";
 
 // 用户后台登录认证服务
@@ -29,30 +28,6 @@ service AuthenticationService {
     option (google.api.http) = {
       post: "/admin/v1/logout"
       body: "*"
-    };
-  }
-
-  // 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-  rpc ForgotPassword (authentication.service.v1.ForgotPasswordRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/admin/v1/forgot-password"
-      body: "*"
-    };
-
-    option(gnostic.openapi.v3.operation) = {
-      security: {}
-    };
-  }
-
-  // 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-  rpc ResetPasswordByCode (authentication.service.v1.ResetPasswordByCodeRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/admin/v1/reset-password-by-code"
-      body: "*"
-    };
-
-    option(gnostic.openapi.v3.operation) = {
-      security: {}
     };
   }
 
@@ -86,41 +61,6 @@ service AuthenticationService {
       security: {}
     };
   }
-  // SSO 登录能力开关（免鉴权；登录页按钮显隐）
-  rpc GetSsoLoginInfo (authentication.service.v1.GetSsoLoginInfoRequest) returns (authentication.service.v1.GetSsoLoginInfoResponse) {
-    option (google.api.http) = {
-      get: "/admin/v1/sso/login-info"
-    };
-
-    option(gnostic.openapi.v3.operation) = {
-      security: {}
-    };
-  }
-
-  // 生成 OIDC 授权跳转 URL（免鉴权）
-  rpc GetSsoLoginUrl (authentication.service.v1.GetSsoLoginUrlRequest) returns (authentication.service.v1.GetSsoLoginUrlResponse) {
-    option (google.api.http) = {
-      post: "/admin/v1/sso/login-url"
-      body: "*"
-    };
-
-    option(gnostic.openapi.v3.operation) = {
-      security: {}
-    };
-  }
-
-  // OIDC 回调换本系统令牌（免鉴权）
-  rpc SsoLogin (authentication.service.v1.SsoLoginRequest) returns (authentication.service.v1.LoginResponse) {
-    option (google.api.http) = {
-      post: "/admin/v1/sso/login"
-      body: "*"
-    };
-
-    option(gnostic.openapi.v3.operation) = {
-      security: {}
-    };
-  }
-
   // 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
   rpc GetTenantBranding (authentication.service.v1.GetTenantBrandingRequest) returns (authentication.service.v1.GetTenantBrandingResponse) {
     option (google.api.http) = {

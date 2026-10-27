@@ -116,7 +116,7 @@
    三段键的两种带参数形态：`{field}__{datepart}__{op}` 为日期部件查询（下表，**第三段比较操作符必填**）；
    `{field}.{jsonfield}__{op}` 为 JSON 路径查询（点号分隔路径）。
 
-**坏列名与坏后缀是两种失败**（2026-09-25 探针实测：直调 `NotificationChannelRepo.List`、sqlite 内存库，其余参数正常，每次只写坏一处）：
+**坏列名与坏后缀是两种失败**（2026-09-25 探针实测：直调当时的 `NotificationChannelRepo.List`，该仓储已删除；sqlite 内存库，其余参数正常，每次只写坏一处）：
 
 `query` / `fieldMask` / `orderBy` 三个输入都会把字段名送去查一张列白名单，但那张表**只登记了 go-crud 自带示例 schema 的两张表**（`go-crud/entgo v0.0.55` 的 `ent/ent.go:74-82`，键是 `menus` 与 `users`，见 `ent/menu/menu.go:26`）。本仓表名一律 `sys_*`、一张都不在上面，于是三处 `columnAllowed` 全部走"表未登记 ⇒ fail-open"这一支（`filter/structured_filter.go:210-221`、`sorting/structured_sorting.go:14-23`、`field/field_selector.go:41-50`）：白名单不拦，坏列原样拼进 SQL，由数据库拒绝。
 
@@ -129,7 +129,7 @@
 
 两件事要分清楚：
 
-- 上表"结果"只写到仓储层为止。error 会经 service 原样上抛（如 `internal/service/notification_channel_service.go:52` 是 `return s.repo.List(...)`，不吞错），HTTP 状态码由"有没有 error"推出来（坏列 ⇒ 5xx、坏后缀 ⇒ 200 + 全量），**这一格没逐个打 HTTP 请求实测**。
+- 上表"结果"只写到仓储层为止。error 会经 service 原样上抛（service 层的 List 一般就是 `return s.repo.List(...)`，不吞错），HTTP 状态码由"有没有 error"推出来（坏列 ⇒ 5xx、坏后缀 ⇒ 200 + 全量），**这一格没逐个打 HTTP 请求实测**。
 - 只有当表**在** go-crud 那张白名单上、而列不在时，条件才会被静默丢弃：`getField` 拿空串让 `Process` 跳过这一条（`filter/structured_filter.go:122-128`、`:184-206`）。本仓的 `sys_menus` / `sys_users` 都不在那张表上，**别把这条当成通用行为**。另外含 SQL 元字符的字段名会被硬性标识符校验无条件拒掉（`filter/structured_filter.go:191-193`、`field/field_selector.go:20`），那是防注入、与列白名单无关。
 
 **大小写与驼峰：`query` 与 `fieldMask` 一律归一，`orderBy` 看传形**（同一探针实测）：
@@ -203,4 +203,3 @@
 ## 项目代码
 
 * [go-wind-admin Gitee](https://gitee.com/tx7do/go-wind-admin)
-* [go-wind-admin Github](https://github.com/tx7do/go-wind-admin)

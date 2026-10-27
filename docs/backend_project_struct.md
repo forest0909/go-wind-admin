@@ -44,13 +44,11 @@
 │   ├── netutil        # 网络安全工具（SSRF 防护）
 │   ├── oss            # MinIO 对象存储封装
 │   ├── password       # 口令策略三件套（阈值经参数管理）
-│   ├── scripting      # 多语言脚本引擎（Lua / JavaScript）
 │   ├── serviceid      # 服务标识与 Redis 键前缀
 │   ├── sseevent       # SSE 事件类型注册表
 │   ├── task           # asynq 任务类型与调度常量
 │   └── utils          # 通用工具函数
 ├── scripts
-│   ├── backup
 │   ├── deploy
 │   │   ├── pm2_service.sh
 │   │   └── sse
@@ -79,13 +77,11 @@
         - `cmd`：存放 Admin 服务的命令行代码
             - `server`：存放 Admin 服务的入口代码
                 - `assets`：存放 Admin 服务的静态资源文件，现在只存放了OpenAPI的静态资源文件。
-        - `configs`：存放 Admin 服务的配置文件（server.yaml、data.yaml、auth.yaml、logger.yaml、oss.yaml、client.yaml）
+        - `configs`：存放 Admin 服务的配置文件（server.yaml、data.yaml、auth.yaml、logger.yaml、oss.yaml、client.yaml、mail.yaml）。本机差异写在同级 `local/`（gitignore），只放要覆盖的键
         - `internal`：存放 Admin 服务的内部代码，使用internal目录是为了避免被外部代码引用。
             - `data`：存放 Admin 服务的数据访问代码
-                - `channel`：通知渠道发送器（email / webhook / sms）
                 - `ent`：存放 Admin 服务的 Ent 数据库 ORM 代码
                 - `enttest`：Ent 测试用内存库辅助
-                - `gorm`：GORM 平行后端仓储（`gorm_backend` 构建标签下编译，与 ent 仓储互斥二选一，服务层待 ORM 切换 Phase 4 接线）
             - `server`：存放 Admin 服务的服务端代码（HTTP/Asynq/SSE）
             - `service`：存放 Admin 服务的业务逻辑代码
         - 注：中间件不在 `internal` 下，公共中间件位于 `pkg/middleware/`（`auth` / `ent` / `logging`）。
@@ -105,7 +101,6 @@
     - `netutil`：网络安全工具（当前主要服务 SSRF 防护：内网判定、DNS rebinding 防护）
     - `oss`：MinIO 对象存储封装（上传/下载/预签名）与 MIME 嗅探、大小/目录安全校验
     - `password`：等保口令策略三件套（复杂度/有效期/历史口令），阈值经 sys_config 平台参数读取
-    - `scripting`：多语言脚本引擎（Lua / JavaScript，go-scripts 封装；HTTP 出站域名白名单等）
     - `serviceid`：服务标识与 Redis 键前缀（`gowind:captcha` 等键的 `gowind` 前缀来源）
     - `sseevent`：全仓 SSE 事件类型注册表
     - `task`：asynq 任务类型与调度常量（审计归档、租户到期扫描、通知派发等系统级任务）
@@ -114,7 +109,6 @@
     - `env/`：存放环境初始化脚本（支持 Ubuntu/CentOS/Rocky/macOS/Windows）
     - `docker/`：存放 Docker 部署脚本（full_deploy、libs_only）
     - `deploy/`：存放生产物理机部署脚本——`pm2_service.sh`（PM2 进程管理）与 `sse/`（SSE 反向代理网关的 Dockerfile / nginx.conf / 构建脚本）
-    - `backup/`：存放数据库备份脚本（`pg_backup.sh`）
 5. `sql`：存放演示数据的 SQL 文件（MySQL 和 PostgreSQL 各一份）。系统默认数据（用户/角色/菜单/权限/语言等）**不在 SQL 里**——由服务启动时在 Go 侧自动播种（`pkg/constants/default_data.go` + 各 service 的 count==0 守卫；Api 表仅在空表时由启动期自动同步，后续靠管理页「接口同步」全量重建）。
 6. `app.mk`：存放应用服务使用的 Makefile 文件，它由`app/{服务名}/service`下的`Makefile`调用，用于构建、运行、测试应用服务。
 7. `Makefile`：项目根目录下的 Makefile 文件，可以用来安装 CLI 工具、生成 API 代码、构建 Docker 镜像等。

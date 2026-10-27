@@ -10,8 +10,8 @@ import (
 	context "context"
 	http "github.com/go-kratos/kratos/v2/transport/http"
 	binding "github.com/go-kratos/kratos/v2/transport/http/binding"
-	v1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
 	v11 "go-wind-admin/api/gen/go/audit/service/v1"
+	v1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -33,11 +33,11 @@ type LoginAuditLogServiceHTTPServer interface {
 
 func RegisterLoginAuditLogServiceHTTPServer(s *http.Server, srv LoginAuditLogServiceHTTPServer) {
 	r := s.Route("/")
-	r.GET("/admin/v1/login-audit-logs", _LoginAuditLogService_List16_HTTP_Handler(srv))
-	r.GET("/admin/v1/login-audit-logs/{id}", _LoginAuditLogService_Get14_HTTP_Handler(srv))
+	r.GET("/admin/v1/login-audit-logs", _LoginAuditLogService_List7_HTTP_Handler(srv))
+	r.GET("/admin/v1/login-audit-logs/{id}", _LoginAuditLogService_Get7_HTTP_Handler(srv))
 }
 
-func _LoginAuditLogService_List16_HTTP_Handler(srv LoginAuditLogServiceHTTPServer) func(ctx http.Context) error {
+func _LoginAuditLogService_List7_HTTP_Handler(srv LoginAuditLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v1.PagingRequest
 		if err := ctx.BindQuery(&in); err != nil {
@@ -56,7 +56,7 @@ func _LoginAuditLogService_List16_HTTP_Handler(srv LoginAuditLogServiceHTTPServe
 	}
 }
 
-func _LoginAuditLogService_Get14_HTTP_Handler(srv LoginAuditLogServiceHTTPServer) func(ctx http.Context) error {
+func _LoginAuditLogService_Get7_HTTP_Handler(srv LoginAuditLogServiceHTTPServer) func(ctx http.Context) error {
 	return func(ctx http.Context) error {
 		var in v11.GetLoginAuditLogRequest
 		if err := ctx.BindQuery(&in); err != nil {

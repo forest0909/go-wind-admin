@@ -50,3 +50,6 @@ gui-test-screenshots/
 
 # 依赖目录兜底（各端自己的 .gitignore 之外，防在错误目录跑包管理器把依赖带进仓）
 node_modules/
+
+# 本机配置覆盖（数据库、Redis、MinIO 口令）。后加载，同名键覆盖主配置。不要把这个目录提交进来。
+backend/app/admin/service/configs/local/

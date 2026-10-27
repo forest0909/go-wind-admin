@@ -11,8 +11,8 @@ managed:
     - module: 'buf.build/kratos/apis'
     - module: 'buf.build/gnostic/gnostic'
     - module: 'buf.build/gogo/protobuf'
-    - module: 'buf.build/tx7do/pagination'
-    - module: 'buf.build/go-wind/redact'
+    - path: pagination/v1/pagination.proto
+    - path: redact/v1/redact.proto
 
   override:
     # global go_package_prefix option
@@ -28,9 +28,6 @@ managed:
     - file_option: go_package
       path: audit/service/v1
       value: go-wind-admin/api/gen/go/audit/service/v1;auditpb
-    - file_option: go_package
-      path: access_key/service/v1
-      value: go-wind-admin/api/gen/go/access_key/service/v1;accesskeypb
     - file_option: go_package
       path: authentication/service/v1
       value: go-wind-admin/api/gen/go/authentication/service/v1;authenticationpb
@@ -56,17 +53,16 @@ managed:
       path: resource/service/v1
       value: go-wind-admin/api/gen/go/permission/service/v1;resourcepb
     - file_option: go_package
-      path: redis_cache/service/v1
-      value: go-wind-admin/api/gen/go/redis_cache/service/v1;rediscachepb
-    - file_option: go_package
-      path: script/service/v1
-      value: go-wind-admin/api/gen/go/script/service/v1;scriptpb
-    - file_option: go_package
       path: config/service/v1
       value: go-wind-admin/api/gen/go/config/service/v1;configpb
-    - file_option: go_package
-      path: ai/service/v1
-      value: go-wind-admin/api/gen/go/ai/service/v1;aipb
+
+# 分页、脱敏和配置 proto 的 Go 代码已经在 third_party，不往 api/gen 再生成一份。
+inputs:
+  - directory: protos
+    exclude_paths:
+      - protos/pagination
+      - protos/redact
+      - protos/conf
 
 plugins:
   # generate go code

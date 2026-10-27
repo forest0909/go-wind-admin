@@ -379,247 +379,6 @@ func (x *DistributionItem) GetCount() uint32 {
 	return 0
 }
 
-// AI 概览解读 - 请求
-type AiInsightsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// 界面语言（BCP-47，如 zh-CN / en-US），决定 LLM 总评的输出语言；
-	// 告警本身只回传结构化事实，文案由前端 i18n 模板渲染
-	Lang          *string `protobuf:"bytes,1,opt,name=lang,proto3,oneof" json:"lang,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AiInsightsRequest) Reset() {
-	*x = AiInsightsRequest{}
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AiInsightsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AiInsightsRequest) ProtoMessage() {}
-
-func (x *AiInsightsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AiInsightsRequest.ProtoReflect.Descriptor instead.
-func (*AiInsightsRequest) Descriptor() ([]byte, []int) {
-	return file_admin_service_v1_i_dashboard_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *AiInsightsRequest) GetLang() string {
-	if x != nil && x.Lang != nil {
-		return *x.Lang
-	}
-	return ""
-}
-
-// 异常告警条目：规则预筛的确定性结构化事实，**不含人类文案**——
-// 文案由前端按 type 选 i18n 模板并以 facts 插值渲染，保证多语言界面一致
-type AiInsightAlert struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Severity string                 `protobuf:"bytes,1,opt,name=severity,proto3" json:"severity,omitempty"` // HIGH / MEDIUM / LOW
-	Type     string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`         // BRUTE_FORCE / NIGHT_OPS / FAILED_OPS / SENSITIVE_OPS
-	// 插值参数（i18n 模板变量）：username / count / total / ip 等，键随 type 而定
-	Facts map[string]string `protobuf:"bytes,3,rep,name=facts,proto3" json:"facts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// SENSITIVE_OPS 专用的明细行（username + action + 资源与时间由前端格式化）
-	Items         []*AiSensitiveOpItem `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AiInsightAlert) Reset() {
-	*x = AiInsightAlert{}
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AiInsightAlert) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AiInsightAlert) ProtoMessage() {}
-
-func (x *AiInsightAlert) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AiInsightAlert.ProtoReflect.Descriptor instead.
-func (*AiInsightAlert) Descriptor() ([]byte, []int) {
-	return file_admin_service_v1_i_dashboard_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *AiInsightAlert) GetSeverity() string {
-	if x != nil {
-		return x.Severity
-	}
-	return ""
-}
-
-func (x *AiInsightAlert) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *AiInsightAlert) GetFacts() map[string]string {
-	if x != nil {
-		return x.Facts
-	}
-	return nil
-}
-
-func (x *AiInsightAlert) GetItems() []*AiSensitiveOpItem {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
-// 敏感操作明细项
-type AiSensitiveOpItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	Action        string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
-	ResourceType  string                 `protobuf:"bytes,3,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // 本地时区格式化文本
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AiSensitiveOpItem) Reset() {
-	*x = AiSensitiveOpItem{}
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AiSensitiveOpItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AiSensitiveOpItem) ProtoMessage() {}
-
-func (x *AiSensitiveOpItem) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AiSensitiveOpItem.ProtoReflect.Descriptor instead.
-func (*AiSensitiveOpItem) Descriptor() ([]byte, []int) {
-	return file_admin_service_v1_i_dashboard_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *AiSensitiveOpItem) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *AiSensitiveOpItem) GetAction() string {
-	if x != nil {
-		return x.Action
-	}
-	return ""
-}
-
-func (x *AiSensitiveOpItem) GetResourceType() string {
-	if x != nil {
-		return x.ResourceType
-	}
-	return ""
-}
-
-func (x *AiSensitiveOpItem) GetCreatedAt() string {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return ""
-}
-
-// AI 概览解读 - 回应
-type AiInsightsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Alerts        []*AiInsightAlert      `protobuf:"bytes,1,rep,name=alerts,proto3" json:"alerts,omitempty"`   // 异常告警（无异常为空）
-	Summary       string                 `protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"` // 总体评估（LLM 按请求语言生成；无告警时前端本地化固定文案）
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AiInsightsResponse) Reset() {
-	*x = AiInsightsResponse{}
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AiInsightsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AiInsightsResponse) ProtoMessage() {}
-
-func (x *AiInsightsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_admin_service_v1_i_dashboard_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AiInsightsResponse.ProtoReflect.Descriptor instead.
-func (*AiInsightsResponse) Descriptor() ([]byte, []int) {
-	return file_admin_service_v1_i_dashboard_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *AiInsightsResponse) GetAlerts() []*AiInsightAlert {
-	if x != nil {
-		return x.Alerts
-	}
-	return nil
-}
-
-func (x *AiInsightsResponse) GetSummary() string {
-	if x != nil {
-		return x.Summary
-	}
-	return ""
-}
-
 var File_admin_service_v1_i_dashboard_proto protoreflect.FileDescriptor
 
 const file_admin_service_v1_i_dashboard_proto_rawDesc = "" +
@@ -647,33 +406,11 @@ const file_admin_service_v1_i_dashboard_proto_rawDesc = "" +
 	"\x05items\x18\x01 \x03(\v2\".admin.service.v1.DistributionItemR\x05items\">\n" +
 	"\x10DistributionItem\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x14\n" +
-	"\x05count\x18\x02 \x01(\rR\x05count\"5\n" +
-	"\x11AiInsightsRequest\x12\x17\n" +
-	"\x04lang\x18\x01 \x01(\tH\x00R\x04lang\x88\x01\x01B\a\n" +
-	"\x05_lang\"\xf8\x01\n" +
-	"\x0eAiInsightAlert\x12\x1a\n" +
-	"\bseverity\x18\x01 \x01(\tR\bseverity\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\x12A\n" +
-	"\x05facts\x18\x03 \x03(\v2+.admin.service.v1.AiInsightAlert.FactsEntryR\x05facts\x129\n" +
-	"\x05items\x18\x04 \x03(\v2#.admin.service.v1.AiSensitiveOpItemR\x05items\x1a8\n" +
-	"\n" +
-	"FactsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8b\x01\n" +
-	"\x11AiSensitiveOpItem\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
-	"\x06action\x18\x02 \x01(\tR\x06action\x12#\n" +
-	"\rresource_type\x18\x03 \x01(\tR\fresourceType\x12\x1d\n" +
-	"\n" +
-	"created_at\x18\x04 \x01(\tR\tcreatedAt\"h\n" +
-	"\x12AiInsightsResponse\x128\n" +
-	"\x06alerts\x18\x01 \x03(\v2 .admin.service.v1.AiInsightAlertR\x06alerts\x12\x18\n" +
-	"\asummary\x18\x02 \x01(\tR\asummary2\xde\x05\n" +
+	"\x05count\x18\x02 \x01(\rR\x05count2\xd5\x04\n" +
 	"\x10DashboardService\x12x\n" +
 	"\vGetOverview\x12\x16.google.protobuf.Empty\x1a+.admin.service.v1.DashboardOverviewResponse\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/admin/v1/dashboard/overview\x12\x86\x01\n" +
 	"\rGetLoginTrend\x12&.admin.service.v1.GetLoginTrendRequest\x1a$.admin.service.v1.LoginTrendResponse\"'\x82\xd3\xe4\x93\x02!\x12\x1f/admin/v1/dashboard/login-trend\x12\xa1\x01\n" +
-	"\x1eGetOperationActionDistribution\x12\x16.google.protobuf.Empty\x1a,.admin.service.v1.ActionDistributionResponse\"9\x82\xd3\xe4\x93\x023\x121/admin/v1/dashboard/operation-action-distribution\x12\x86\x01\n" +
-	"\rGetAiInsights\x12#.admin.service.v1.AiInsightsRequest\x1a$.admin.service.v1.AiInsightsResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/admin/v1/dashboard/ai-insights\x12\x99\x01\n" +
+	"\x1eGetOperationActionDistribution\x12\x16.google.protobuf.Empty\x1a,.admin.service.v1.ActionDistributionResponse\"9\x82\xd3\xe4\x93\x023\x121/admin/v1/dashboard/operation-action-distribution\x12\x99\x01\n" +
 	"\x1aGetLoginStatusDistribution\x12\x16.google.protobuf.Empty\x1a,.admin.service.v1.StatusDistributionResponse\"5\x82\xd3\xe4\x93\x02/\x12-/admin/v1/dashboard/login-status-distributionB\xbc\x01\n" +
 	"\x14com.admin.service.v1B\x0fIDashboardProtoP\x01Z1go-wind-admin/api/gen/go/admin/service/v1;adminpb\xa2\x02\x03ASX\xaa\x02\x10Admin.Service.V1\xca\x02\x10Admin\\Service\\V1\xe2\x02\x1cAdmin\\Service\\V1\\GPBMetadata\xea\x02\x12Admin::Service::V1b\x06proto3"
 
@@ -689,7 +426,7 @@ func file_admin_service_v1_i_dashboard_proto_rawDescGZIP() []byte {
 	return file_admin_service_v1_i_dashboard_proto_rawDescData
 }
 
-var file_admin_service_v1_i_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_admin_service_v1_i_dashboard_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_admin_service_v1_i_dashboard_proto_goTypes = []any{
 	(*DashboardOverviewResponse)(nil),  // 0: admin.service.v1.DashboardOverviewResponse
 	(*GetLoginTrendRequest)(nil),       // 1: admin.service.v1.GetLoginTrendRequest
@@ -698,35 +435,25 @@ var file_admin_service_v1_i_dashboard_proto_goTypes = []any{
 	(*ActionDistributionResponse)(nil), // 4: admin.service.v1.ActionDistributionResponse
 	(*StatusDistributionResponse)(nil), // 5: admin.service.v1.StatusDistributionResponse
 	(*DistributionItem)(nil),           // 6: admin.service.v1.DistributionItem
-	(*AiInsightsRequest)(nil),          // 7: admin.service.v1.AiInsightsRequest
-	(*AiInsightAlert)(nil),             // 8: admin.service.v1.AiInsightAlert
-	(*AiSensitiveOpItem)(nil),          // 9: admin.service.v1.AiSensitiveOpItem
-	(*AiInsightsResponse)(nil),         // 10: admin.service.v1.AiInsightsResponse
-	nil,                                // 11: admin.service.v1.AiInsightAlert.FactsEntry
-	(*emptypb.Empty)(nil),              // 12: google.protobuf.Empty
+	(*emptypb.Empty)(nil),              // 7: google.protobuf.Empty
 }
 var file_admin_service_v1_i_dashboard_proto_depIdxs = []int32{
-	3,  // 0: admin.service.v1.LoginTrendResponse.points:type_name -> admin.service.v1.TrendPoint
-	6,  // 1: admin.service.v1.ActionDistributionResponse.items:type_name -> admin.service.v1.DistributionItem
-	6,  // 2: admin.service.v1.StatusDistributionResponse.items:type_name -> admin.service.v1.DistributionItem
-	11, // 3: admin.service.v1.AiInsightAlert.facts:type_name -> admin.service.v1.AiInsightAlert.FactsEntry
-	9,  // 4: admin.service.v1.AiInsightAlert.items:type_name -> admin.service.v1.AiSensitiveOpItem
-	8,  // 5: admin.service.v1.AiInsightsResponse.alerts:type_name -> admin.service.v1.AiInsightAlert
-	12, // 6: admin.service.v1.DashboardService.GetOverview:input_type -> google.protobuf.Empty
-	1,  // 7: admin.service.v1.DashboardService.GetLoginTrend:input_type -> admin.service.v1.GetLoginTrendRequest
-	12, // 8: admin.service.v1.DashboardService.GetOperationActionDistribution:input_type -> google.protobuf.Empty
-	7,  // 9: admin.service.v1.DashboardService.GetAiInsights:input_type -> admin.service.v1.AiInsightsRequest
-	12, // 10: admin.service.v1.DashboardService.GetLoginStatusDistribution:input_type -> google.protobuf.Empty
-	0,  // 11: admin.service.v1.DashboardService.GetOverview:output_type -> admin.service.v1.DashboardOverviewResponse
-	2,  // 12: admin.service.v1.DashboardService.GetLoginTrend:output_type -> admin.service.v1.LoginTrendResponse
-	4,  // 13: admin.service.v1.DashboardService.GetOperationActionDistribution:output_type -> admin.service.v1.ActionDistributionResponse
-	10, // 14: admin.service.v1.DashboardService.GetAiInsights:output_type -> admin.service.v1.AiInsightsResponse
-	5,  // 15: admin.service.v1.DashboardService.GetLoginStatusDistribution:output_type -> admin.service.v1.StatusDistributionResponse
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	3, // 0: admin.service.v1.LoginTrendResponse.points:type_name -> admin.service.v1.TrendPoint
+	6, // 1: admin.service.v1.ActionDistributionResponse.items:type_name -> admin.service.v1.DistributionItem
+	6, // 2: admin.service.v1.StatusDistributionResponse.items:type_name -> admin.service.v1.DistributionItem
+	7, // 3: admin.service.v1.DashboardService.GetOverview:input_type -> google.protobuf.Empty
+	1, // 4: admin.service.v1.DashboardService.GetLoginTrend:input_type -> admin.service.v1.GetLoginTrendRequest
+	7, // 5: admin.service.v1.DashboardService.GetOperationActionDistribution:input_type -> google.protobuf.Empty
+	7, // 6: admin.service.v1.DashboardService.GetLoginStatusDistribution:input_type -> google.protobuf.Empty
+	0, // 7: admin.service.v1.DashboardService.GetOverview:output_type -> admin.service.v1.DashboardOverviewResponse
+	2, // 8: admin.service.v1.DashboardService.GetLoginTrend:output_type -> admin.service.v1.LoginTrendResponse
+	4, // 9: admin.service.v1.DashboardService.GetOperationActionDistribution:output_type -> admin.service.v1.ActionDistributionResponse
+	5, // 10: admin.service.v1.DashboardService.GetLoginStatusDistribution:output_type -> admin.service.v1.StatusDistributionResponse
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_admin_service_v1_i_dashboard_proto_init() }
@@ -735,14 +462,13 @@ func file_admin_service_v1_i_dashboard_proto_init() {
 		return
 	}
 	file_admin_service_v1_i_dashboard_proto_msgTypes[1].OneofWrappers = []any{}
-	file_admin_service_v1_i_dashboard_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_admin_service_v1_i_dashboard_proto_rawDesc), len(file_admin_service_v1_i_dashboard_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

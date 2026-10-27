@@ -6,19 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-wind-admin/app/admin/service/internal/data/ent/accesskey"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiagentapp"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiagentrun"
-	"go-wind-admin/app/admin/service/internal/data/ent/aichunk"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiconversation"
-	"go-wind-admin/app/admin/service/internal/data/ent/aidoc"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiknowledgebase"
-	"go-wind-admin/app/admin/service/internal/data/ent/aimessage"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiprovider"
-	"go-wind-admin/app/admin/service/internal/data/ent/aiusagelog"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
-	"go-wind-admin/app/admin/service/internal/data/ent/apiauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/dataaccessauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentry"
 	"go-wind-admin/app/admin/service/internal/data/ent/dictentryi18n"
 	"go-wind-admin/app/admin/service/internal/data/ent/dicttype"
@@ -28,44 +16,32 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessagerecipient"
 	"go-wind-admin/app/admin/service/internal/data/ent/language"
 	"go-wind-admin/app/admin/service/internal/data/ent/loginauditlog"
-	"go-wind-admin/app/admin/service/internal/data/ent/loginpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/membership"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiporgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershipposition"
 	"go-wind-admin/app/admin/service/internal/data/ent/membershiprole"
 	"go-wind-admin/app/admin/service/internal/data/ent/menu"
-	"go-wind-admin/app/admin/service/internal/data/ent/monitoralertrule"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationchannel"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationdelivery"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationpreference"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationrule"
-	"go-wind-admin/app/admin/service/internal/data/ent/notificationtemplate"
 	"go-wind-admin/app/admin/service/internal/data/ent/operationauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/orgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/permission"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
-	"go-wind-admin/app/admin/service/internal/data/ent/permissionauditlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionmenu"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionpolicy"
 	"go-wind-admin/app/admin/service/internal/data/ent/plan"
 	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
 	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
-	"go-wind-admin/app/admin/service/internal/data/ent/policyevaluationlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolefieldpermission"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolemetadata"
 	"go-wind-admin/app/admin/service/internal/data/ent/roleorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolepermission"
-	"go-wind-admin/app/admin/service/internal/data/ent/script"
-	"go-wind-admin/app/admin/service/internal/data/ent/scriptlog"
 	"go-wind-admin/app/admin/service/internal/data/ent/sysconfig"
 	"go-wind-admin/app/admin/service/internal/data/ent/task"
 	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
-	"go-wind-admin/app/admin/service/internal/data/ent/usermfafactor"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/userposition"
 	"go-wind-admin/app/admin/service/internal/data/ent/userrole"
@@ -135,19 +111,7 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			accesskey.Table:                accesskey.ValidColumn,
-			aiagentapp.Table:               aiagentapp.ValidColumn,
-			aiagentrun.Table:               aiagentrun.ValidColumn,
-			aichunk.Table:                  aichunk.ValidColumn,
-			aiconversation.Table:           aiconversation.ValidColumn,
-			aidoc.Table:                    aidoc.ValidColumn,
-			aiknowledgebase.Table:          aiknowledgebase.ValidColumn,
-			aimessage.Table:                aimessage.ValidColumn,
-			aiprovider.Table:               aiprovider.ValidColumn,
-			aiusagelog.Table:               aiusagelog.ValidColumn,
 			api.Table:                      api.ValidColumn,
-			apiauditlog.Table:              apiauditlog.ValidColumn,
-			dataaccessauditlog.Table:       dataaccessauditlog.ValidColumn,
 			dictentry.Table:                dictentry.ValidColumn,
 			dictentryi18n.Table:            dictentryi18n.ValidColumn,
 			dicttype.Table:                 dicttype.ValidColumn,
@@ -157,44 +121,32 @@ func checkColumn(t, c string) error {
 			internalmessagerecipient.Table: internalmessagerecipient.ValidColumn,
 			language.Table:                 language.ValidColumn,
 			loginauditlog.Table:            loginauditlog.ValidColumn,
-			loginpolicy.Table:              loginpolicy.ValidColumn,
 			membership.Table:               membership.ValidColumn,
 			membershiporgunit.Table:        membershiporgunit.ValidColumn,
 			membershipposition.Table:       membershipposition.ValidColumn,
 			membershiprole.Table:           membershiprole.ValidColumn,
 			menu.Table:                     menu.ValidColumn,
-			monitoralertrule.Table:         monitoralertrule.ValidColumn,
-			notificationchannel.Table:      notificationchannel.ValidColumn,
-			notificationdelivery.Table:     notificationdelivery.ValidColumn,
-			notificationpreference.Table:   notificationpreference.ValidColumn,
-			notificationrule.Table:         notificationrule.ValidColumn,
-			notificationtemplate.Table:     notificationtemplate.ValidColumn,
 			operationauditlog.Table:        operationauditlog.ValidColumn,
 			orgunit.Table:                  orgunit.ValidColumn,
 			permission.Table:               permission.ValidColumn,
 			permissionapi.Table:            permissionapi.ValidColumn,
-			permissionauditlog.Table:       permissionauditlog.ValidColumn,
 			permissiongroup.Table:          permissiongroup.ValidColumn,
 			permissionmenu.Table:           permissionmenu.ValidColumn,
 			permissionpolicy.Table:         permissionpolicy.ValidColumn,
 			plan.Table:                     plan.ValidColumn,
 			planmodule.Table:               planmodule.ValidColumn,
 			planquota.Table:                planquota.ValidColumn,
-			policyevaluationlog.Table:      policyevaluationlog.ValidColumn,
 			position.Table:                 position.ValidColumn,
 			role.Table:                     role.ValidColumn,
 			rolefieldpermission.Table:      rolefieldpermission.ValidColumn,
 			rolemetadata.Table:             rolemetadata.ValidColumn,
 			roleorgunit.Table:              roleorgunit.ValidColumn,
 			rolepermission.Table:           rolepermission.ValidColumn,
-			script.Table:                   script.ValidColumn,
-			scriptlog.Table:                scriptlog.ValidColumn,
 			sysconfig.Table:                sysconfig.ValidColumn,
 			task.Table:                     task.ValidColumn,
 			tenant.Table:                   tenant.ValidColumn,
 			user.Table:                     user.ValidColumn,
 			usercredential.Table:           usercredential.ValidColumn,
-			usermfafactor.Table:            usermfafactor.ValidColumn,
 			userorgunit.Table:              userorgunit.ValidColumn,
 			userposition.Table:             userposition.ValidColumn,
 			userrole.Table:                 userrole.ValidColumn,

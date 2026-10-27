@@ -66,14 +66,11 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 - **MinIO**：`configs/oss.yaml` 的 `endpoint`/`upload_host`/`download_host` 指向客户端可达入口，
   并替换 root 凭证（见 [backend_file_upload.md](../backend_file_upload.md)）；
 - **authz 引擎**：`configs/auth.yaml` 的 `authz.type` 从 `noop` 切到 casbin/opa（第 05 章）；
-- **审计留存**：`AUDIT_RETENTION_DAYS` 按合规要求核对（第 07 章）；
-- **脚本出站**：`SCRIPT_HTTP_ALLOWED_DOMAINS` 按需配置（第 08 章）。
+- **审计留存**：`AUDIT_RETENTION_DAYS` 按合规要求核对（第 07 章）。
 
 ## 4. 数据备份
 
-[`scripts/backup/pg_backup.sh`](../../backend/scripts/backup/pg_backup.sh) 定时全量备份
-（pg_dump，默认保留 30 份自动轮换），支持 Docker 容器 / 本地直连双模式，附恢复操作文档。
-用 cron/计划任务挂上，并**演练一次恢复**——没验证过的备份等于没有。
+程序内不提供数据库备份。用数据库自带工具或运维平台做全量备份，并**演练一次恢复**。
 
 ## 5. 上线检查单
 
@@ -81,11 +78,9 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 2. TLS 在外层负载均衡启用，后端只听内网；
 3. authz 引擎切非 noop；审计留存天数核对；
 4. 新端点做了「接口同步」、新菜单进了菜单管理（第 04/06 章）；
-5. 备份任务挂上且恢复演练过；
+5. 库备份挂在程序外，并演练过恢复；
 6. SSE 网关与后端同网络、缓冲配置未被改动；
-7. 演示数据清理（`backend/sql/` 是演示数据，生产库别导）；
-8. 若启用 AI 模块：数据库装 pgvector 扩展、`GOWIND_CRYPTO_KEY` 密钥注入、提供商在管理页配置、目标套餐加 `AI` 模块白名单行（详见 [ai_module.md](../ai_module.md)）。
-9. 新端点做了「接口同步」已列第 4 条——AI 端点同理，租户可见性还依赖套餐白名单。
+7. 演示数据清理（`backend/sql/` 是演示数据，生产库别导）。
 
 ## 深读
 

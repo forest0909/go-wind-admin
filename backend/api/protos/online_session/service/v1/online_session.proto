@@ -9,7 +9,7 @@ import "google/protobuf/timestamp.proto";
 import "authentication/service/v1/authentication.proto";
 
 // 在线会话管理（只读列表 + 强制下线）
-// 会话以 Redis 中的令牌对（access+refresh）为粒度：每次登录 / 刷新轮换 / MFA 验证通过
+// 会话以 Redis 中的令牌对（access+refresh）为粒度：每次登录 / 刷新轮换
 // 都会产生一个新会话记录，随 refresh token 一同过期或被吊销。
 service OnlineSessionService {
   // 查询在线会话列表

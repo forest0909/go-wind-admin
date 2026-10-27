@@ -1,7 +1,7 @@
 // Package netutil 提供绑定 kratos transport 的网络辅助函数。
 //
 // 通用核心（SSRF 防护、可信代理链的客户端真实 IP 解析）已下沉到
-// github.com/tx7do/go-utils/netutil，本包仅保留依赖 kratos transport
+// go-wind-admin/third_party/go-utils/netutil，本包仅保留依赖 kratos transport
 // 上下文的便捷入口，内部委托给通用实现。
 package netutil
 
@@ -9,7 +9,7 @@ import (
 	"context"
 	"net/http"
 
-	gonetutil "github.com/tx7do/go-utils/netutil"
+	gonetutil "go-wind-admin/third_party/go-utils/netutil"
 
 	"github.com/go-kratos/kratos/v2/transport"
 	khttp "github.com/go-kratos/kratos/v2/transport/http"

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 )
 
 // 显式 ID 写入的表：菜单与接口的种子/重建都自带 id（sys_menus 1..74、sys_apis 1..N），
@@ -41,7 +41,7 @@ func isPostgresDriver(driver string) bool {
 	return driver == "postgres" || driver == "pgx"
 }
 
-// driverNameOf 读取配置里的数据库驱动名（与 server_monitor_repo 同一来源）。
+// driverNameOf 读取配置里的数据库驱动名（取自 data.database.driver 配置）。
 func driverNameOf(ctx *bootstrap.Context) string {
 	if ctx == nil {
 		return ""

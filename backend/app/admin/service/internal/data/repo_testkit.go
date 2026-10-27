@@ -15,11 +15,11 @@
 package data
 
 import (
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/mapper"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/internalmessage"
@@ -109,15 +109,6 @@ func NewOrgUnitRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *OrgUnitRe
 	repo.init()
 
 	return repo
-}
-
-// NewNotificationPreferenceRepoForTest 逐字段复刻 notification_preference_repo.go 的
-// NewNotificationPreferenceRepo（log 换 NopLogger）。
-func NewNotificationPreferenceRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *NotificationPreferenceRepo {
-	return &NotificationPreferenceRepo{
-		log:       bLogger.NewHelper(bLogger.NopLogger()),
-		entClient: entClient,
-	}
 }
 
 // NewInternalMessageRepoForTest 逐字段复刻 internal_message_repo.go 的

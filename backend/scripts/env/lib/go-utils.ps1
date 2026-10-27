@@ -239,12 +239,22 @@ function Install-GoPlugins {
         'github.com/go-kratos/kratos/cmd/protoc-gen-go-http/v2@latest',
         'github.com/go-kratos/kratos/cmd/protoc-gen-go-errors/v2@latest',
         'github.com/google/gnostic/cmd/protoc-gen-openapi@latest',
-        'github.com/envoyproxy/protoc-gen-validate@latest',
-        'github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact@latest',
-        'github.com/tx7do/go-wind-toolkit/protoc-gen-typescript-http@latest'
+        'github.com/envoyproxy/protoc-gen-validate@latest'
     )
     
     Install-GoPackages -Packages $plugins
+
+    $backend = Resolve-Path (Join-Path $PSScriptRoot "..\..\..")
+    Log "Installing local protoc plugins from $backend"
+    Push-Location $backend
+    try {
+        & go install ./third_party/tools/protoc-gen-go-redact ./third_party/tools/protoc-gen-typescript-http
+        if ($LASTEXITCODE -ne 0) {
+            Warn "local protoc plugins failed to install"
+        }
+    } finally {
+        Pop-Location
+    }
 }
 
 # ========== CLI tool installation (unchanged) ==========
@@ -256,8 +266,7 @@ function Install-GoCliTools {
         'github.com/google/gnostic@latest',
         'github.com/bufbuild/buf/cmd/buf@latest',
         'entgo.io/ent/cmd/ent@latest',
-        'github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest',
-        'github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest'
+        'github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest'
     )
     
     if ($cliTools.Count -gt 0) {

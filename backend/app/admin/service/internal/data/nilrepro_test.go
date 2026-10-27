@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/trans"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"

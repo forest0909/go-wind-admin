@@ -22,7 +22,8 @@ export const formatDateTime = (timestamp?: any) => {
             hour: '2-digit',
             minute: '2-digit',
         });
-    } catch (error) {
+    } catch {
+        // 时间戳字段异常时不把错误抛进列表渲染，单元格显示占位符。这是本地展示兜底。
         return '-';
     }
 };

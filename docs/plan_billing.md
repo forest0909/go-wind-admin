@@ -10,7 +10,7 @@
 ```
 配置面    sys_plans（套餐目录：version / expiry_policy / data_retention_days / 描述）
           sys_plan_modules（套餐 → 功能模块白名单）
-          sys_plan_quotas（套餐 → 配额：USER_LIMIT / STORAGE / API_CALL / AI_TOKENS）
+          sys_plan_quotas（套餐 → 配额：USER_LIMIT / STORAGE / API_CALL）
                       │ 管理页维护（三端「租户管理 → 套餐管理 / 配额管理」）
                       ▼
 绑定面    sys_tenants.plan 边（plan_id 外键）+ expired_at（到期时间）
@@ -30,9 +30,9 @@
 | READONLY 执行 | 见 tenant_isolation §4.2 第 2 段 | 同上（中间件即时，不依赖扫描） |
 | BLOCK_LOGIN/FREEZE 执行 | 状态映射 + 令牌吊销 | `internal/data/tenant_usage_repo.go` `EnforceExpiryPolicies` + `internal/service/task_service.go` `AsyncTenantExpiryScan` |
 | 用量计量 | 用户数 / 存储字节 / API 调用次数聚合 | `tenant_usage_repo.go` `GetUsage`——**只有 ent 一套是真的**；gorm 镜像是未实现脚手架（见 §4 末） |
-| 配额硬执行 | 见 §7.2：USER_LIMIT / STORAGE 在资源创建入口、API_CALL 在租户闸门第 4 段（`internal/data/quota_gate.go`）；AI_TOKENS 在 AI 对话路径（[ai_module.md](./ai_module.md)） | `quota_enforcer.go`、`internal/data/quota_gate.go`、`ai_chat_service.go` `checkTokenQuota` |
+| 配额硬执行 | 见 §7.2：USER_LIMIT / STORAGE 在资源创建入口。API_CALL 不再计量，闸门不拦截 | `quota_enforcer.go` |
 | 水位扫描与通知 | 见 §7.3：只读扫描（与 §7.1 计量同源）+ 站内信告警租户管理员；调度链见 [task_system.md](./task_system.md) §5.7 | `internal/data/quota_watermark_scan.go`、`plan_quota_watermark_service.go` |
-| 租户数据清理 | **29 张**带租户表事务硬删（全部 33 张里缺 4 张，见 §8） | `tenant_usage_repo.go` `CleanupTenantData` |
+| 租户数据清理 | **24 张**带租户表事务硬删（全部 26 张里缺 2 张，见 §8） | `tenant_usage_repo.go` `CleanupTenantData` |
 
 ## 2. 数据模型
 
@@ -66,13 +66,12 @@
 
 | 字段 | 说明 |
 |---|---|
-| `quota_type` | enum：USER_LIMIT / STORAGE / API_CALL / AI_TOKENS |
+| `quota_type` | enum：USER_LIMIT / STORAGE / API_CALL |
 | `quota_value` | uint64 |
 | `plan_id` | 外键（级联删除） |
 
-**硬执行现状**：四类配额全部接了执行点——USER_LIMIT（用户创建入口）、
-STORAGE（上传入口）、API_CALL（租户闸门）见第 7.2 节；AI_TOKENS（月度口径）
-在 AI 对话路径（[ai_module.md](./ai_module.md)「配额与租户门禁」）。
+**硬执行现状**：USER_LIMIT（用户创建入口）和 STORAGE（上传入口）会拒绝超限。
+API_CALL 枚举值仍可写入，调用次数不再计量，闸门不按它拒绝。见第 7.2 节。
 
 ### 2.4 `sys_tenants` 侧的订阅字段
 
@@ -88,7 +87,7 @@ STORAGE（上传入口）、API_CALL（租户闸门）见第 7.2 节；AI_TOKENS
 - **套餐管理**（三端 `tenant/plan` 页）：套餐 CRUD；名称唯一；版本/到期策略/描述编辑。
   删除套餐级联清空其白名单与配额行，且已绑定租户的 plan 边悬空（`WithPlan` 预载为空 →
   闸门按"无套餐"拒绝全部业务模块）——删套餐前先解绑租户。
-- **配额管理**（同页/子页）：按套餐维护三类配额值。
+- **配额管理**（同页/子页）：按套餐维护 USER_LIMIT / STORAGE / API_CALL。API_CALL 只存不执行。
 - **租户管理**：租户 CRUD、`CreateTenantWithAdminUser`（建租户 + 租户管理员一步完成）、
   套餐绑定与 `expired_at` 维护、到期状态展示。
 - 这一组服务的端点应落在 MODULE_TENANT 模块（`ServiceTagToBusinessModule`，`pkg/constants/module_mapping.go:41-43`：
@@ -151,8 +150,7 @@ asynq worker 不在覆盖面内；而状态改写是 repo 里直接 `Tenant.Upda
 到期扫描是 asynq 固定分发订阅（type=`TenantExpiryScanTaskType`）的系统级周期任务，
 handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（任务管理页不可见、
 不可停），删除/停用只能改代码。任务调度体系的完整机制（启动链、装载、其他系统级任务、
-排障）见 [task_system.md](./task_system.md)；租户自建任务体系（sys_tasks + 任务管理页）
-是另一套，`script_task` 型见 [script_system.md](./script_system.md)。
+排障）见 [task_system.md](./task_system.md)；租户自建任务体系（sys_tasks + 任务管理页）是另一套。
 
 ## 6. 模块白名单联动（新模块上线 checklist）
 
@@ -178,10 +176,9 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
      vue-element / vue-vben 用下划线，同类页面就能正常归类成 `INTERNAL_MESSAGE`。
    - **枚举里没有这个模块**：`identity.service.v1.Module`（`api/protos/identity/service/v1/module.proto:7-21`）
      只有 DASHBOARD/OPM/SYSTEM/DICT/TENANT/PERMISSION/LOG/INTERNAL_MESSAGE/FILE/TASK 十档，
-     **没有 NOTIFICATION**（`menu.go:81-96` 的 `NamedValues` 同）→ 通知域 3 个页面菜单
-     无处可归，也只能落 nil。补这一档要同时动 proto + `menu.go` 枚举 + `ComponentToModule` +
-     `ServiceTagOrBusinessModule`，再 `gow api && gow ent` 重生成——属需要产品确认的契约变更，
-     未擅自落地。
+     **没有 NOTIFICATION**（`menu.go` 的 `NamedValues` 同）。通知域页面已随该域删除，
+     这一条现在只剩历史意义；以后新增模块要同时动 proto + `menu.go` 枚举 + `ComponentToModule` +
+     `ServiceTagOrBusinessModule`，再 `make api && make ent` 重生成。
    排障口径：`SELECT name, component FROM sys_menus WHERE module IS NULL AND component <> 'BasicLayout' AND deleted_at IS NULL;`
    列出的就是"当前不受模块白名单约束"的页面。
 
@@ -195,17 +192,10 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
 - `UserCount`：`sys_users` 按租户 COUNT；
 - `StorageUsedBytes`：`files.size` 按租户 SUM（ent Aggregate，`tenant_usage_repo.go:123-131`）
   ——注意这张表**没有 `sys_` 前缀**（`ent/schema/file.go:21`），是仓里少数的例外，别照 `sys_*` 习惯写；
-- `ApiCallCount`：`sys_api_audit_logs` 按租户 COUNT。
-  该计数自 2026-10-03 起同时是 API_CALL 配额的执行依据（§7.2）——
-  展示与拦截读同一张表、同一个 COUNT，两边永远一致。
+- `ApiCallCount`：固定为 0。API 审计表已删除，调用次数不再计量，也不再作为拦截依据。
 
-**gorm 那套不是"同构实现"，是没接线的脚手架**：`internal/data/gorm/tenant_usage_repo.go` 由
-`//go:build gorm_backend` 圈住，`GetUsage` / `CleanupTenantData` / `EnforceExpiryPolicies` 三个方法
-各返回 `ErrorInternalServerError("gorm scaffold: … not implemented")`，文件头自述"仅由 wiring_gorm.go
-（ORM 切换 Phase 4 占位）装配，服务层尚未接入"。也就是说**一旦真切到 gorm 后端，用量、清理、到期扫描
-三件都会直接报错**——包括 BLOCK_LOGIN/FREEZE 依赖的那条到期扫描，它没有 gorm 路径。
 用途：租户详情页的用量/配额对照展示（计量）。GetUsage 这条通道本身不做超限拦截——
-拦截在各入口（§7.2）；API_CALL 一项的计数表另被租户闸门直读（§7.2）。
+拦截在各入口（§7.2）。
 
 ### 7.2 硬限制（已落地 2026-10-03）
 
@@ -215,37 +205,30 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
 - **STORAGE**：文件上传入口（FileTransferService.directUploadFile）检查
   当前占用 + 本次大小 > 上限即拒绝（配额条目经 GetUsage 预载，当前占用经
   SumStorageInTenant 轻量直查）；
-- **API_CALL**：已落地（2026-10-03）。入口=租户闸门（`pkg/middleware/auth` 的
-  `auth.Server` → data 层 `TenantAccessCheckerImpl.CheckTenantAccess` 第 4 步），
-  每请求实时检查：上限取自第 1 步预载的套餐配额边（与 GetUsage 同一预载形态），
-  当前计数 = `sys_api_audit_logs` 按租户 COUNT——与 §7.1 `ApiCallCount` 完全
-  同源同语义，含被闸门自身拒绝的请求（审计中间件在链最外层，403 同样落行），
-  并随审计归档（`ArchiveExpired` 导出后删行）回落。无套餐配额条目 / 计量查询
-  失败 fail-open 放行，与 USER_LIMIT / STORAGE 同一套语义。
+- **API_CALL**：不再计量。枚举值留在 `sys_plan_quotas`，已有行仍能被扫描。
+  租户闸门在模块白名单通过后直接放行，`GetUsage` 的 `ApiCallCount` 固定为 0。
+  水位扫描读到的已用量也是 0，这一维不会告警。
 - 纯判定函数 `checkUserQuotaWith` / `checkStorageQuotaWith`（service 层
-  quota_enforcer.go）、`checkApiCallQuota`（data 层 quota_gate.go——闸门实现
-  所在包，接口形状与 service 层不同、语义同一套）可单测；service 层新增受控
-  类型 = quotaLimitFromUsages 复用 + 入口接线。
+  quota_enforcer.go）可单测；service 层新增受控类型 = quotaLimitFromUsages 复用 + 入口接线。
 
 ### 7.3 水位通知（`plan_quota_watermark_scan`，2026-10-03）
 
 与 §7.2 的超限拒绝互补的**提前告警**：系统级常驻任务（每日 09:00，调度链见
-[task_system.md](./task_system.md) §5.7）扫描全部 ON 租户四类配额的用量水位，
+[task_system.md](./task_system.md) §5.7）扫描全部 ON 租户的用量水位，
 把达到阈值的租户情况经站内信通知租户管理员，让租户在到达上限、被 §7.2 拒绝之前
-有机会扩容。
+有机会扩容。USER_LIMIT 与 STORAGE 仍计量。API_CALL 计数恒为 0，这一维不会命中。
 
-- 用量源与 §7.1 完全同源：用户数 / 存储字节 / API 调用行数复用
-  `CountUsersInTenant` / `SumStorageInTenant` / `CountApiCallsInTenant`
-  （API 调用一项自此从 GetUsage 内联抽取为独立访问器，两处共用），AI_TOKENS
-  为月度口径（`SumTokensByTenantSince`，本月 1 日起）；
+- 用量源与 §7.1 完全同源：用户数 / 存储字节复用
+  `CountUsersInTenant` / `SumStorageInTenant`。
+  `CountApiCallsInTenant` 固定返回 0，水位扫描和 GetUsage 共用它；
 - 阈值 80% 是运维口径常量（`data.QuotaWatermarkThreshold`，无配置面）；
   limit==0 且已有用量视为 100% 命中（配 0 上限且已用量 = 事实超限）；
 - 只读扫描：不拒绝请求、不写业务行；单维度计量查询失败记日志后跳过该维度，
   扫描不因计量抖动中断，也不因缺数据误报其余维度；
 - 投递：命中按租户归组（一租户一条消息、多维度命中合并为同一张清单），按租户
   管理员（`sys_tenants.admin_user_id`）的偏好语言（zh-CN/en-US，未设置或未识别
-  回落中文）渲染并投递站内信——投递内核与审计日报同一条（消息行 + 收件行、
-  静音时段只抑制实时推送、单人失败不阻断其余、全部失败才报错重试）；
+  回落中文）渲染并投递站内信（消息行 + 收件行、
+  写入后始终 SSE 推送、单人失败不阻断其余、全部失败才报错重试）；
   未设管理员的命中租户只留运维日志、不投递；
 - 告警频率上限 = 扫描频率（每日至多一条/租户），无"已通知"状态；
 - 测试：判定与百分数纯函数单测、SQLite 接线级扫描单测（四租户布局：命中 /
@@ -255,18 +238,14 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
 
 POST `/admin/v1/tenants/{id}/cleanup`：
 
-- 单事务内**硬删**该租户在 29 张带 `tenant_id` 业务表的数据（实现内按表逐张 `Delete`，
-  `tenant_usage_repo.go:189-217`）；
-- **有 4 张不在列表里**：ent 里共 33 个包带 `TenantIDEQ` 谓词，`CleanupTenantData` 只落了 29 个，
-  缺的是 `AccessKey`、`RoleFieldPermission`、`RoleOrgUnit`、`UserMfaFactor`。
-  清理后这四种行会**留在库里**指着一个已经不存在的租户。其中影响最直接的是 AK/SK：
-  令牌交换端点在免鉴权白名单里，且只校验 AK 自身的 `status` 与 `expires_at`
-  （`access_key_service.go:180-185`），不看租户状态——所以清理动作**不会让已发出的访问密钥失效**，
-  换到的机器令牌只是过不了下游租户闸门。要真正停用密钥，须在清理前显式删除或把 AK 置 OFF；
+- 单事务内**硬删**该租户在 24 张带 `tenant_id` 业务表的数据（实现内按表逐张 `Delete`，
+  `tenant_usage_repo.go` `CleanupTenantData`）；
+- **有 2 张不在列表里**：`RoleFieldPermission`、`RoleOrgUnit`。
+  `AccessKey`、`LoginPolicy`、`UserMfaFactor` 已随对应功能删除。清理后这两种行会留在库里，指着一个已经不存在的租户；
 - 保留 `sys_tenants` 行，`status` 置 OFF；
 - 事务提交后吊销该租户全部用户双端令牌（用户 ID 列表在事务内先收集）。
 
-**不可逆**：清理前确认（无软删、无备份联动——备份靠 pg_backup 外部兜底）。
+**不可逆**：清理前确认（无软删；数据库备份不在程序内，清理前用数据库自带工具或运维平台自行留底）。
 SystemContext 通道。清理动作走租户模块端点，受租户闸门/权限面管控。
 
 ## 9. 运维注意
@@ -277,17 +256,17 @@ SystemContext 通道。清理动作走租户模块端点，受租户闸门/权�
 | 续费恢复 | 人工：`expired_at` 延后 + `status` 置回 ON；READONLY 档只须延后 expired_at（状态本就 ON） |
 | 删套餐 | 级联清白名单/配额 + 绑定租户悬空即全业务拒——先解绑 |
 | 扫描任务监控 | `expiry scan:` 日志行（每小时计数）；任务不可从管理页停 |
-| 用量异常 | GetUsage 的三个计量源（用户/文件/审计日志表）即对账入口 |
+| 用量异常 | GetUsage 的计量源是用户表和文件表。API 调用次数固定为 0，不能拿来对账 |
 | 清理操作 | 第 8 节，执行前走备份快照 |
 
 ## 10. 边界与已知问题
 
 | 项 | 现状 |
 |---|---|
-| 配额硬执行 | **四类全部已实现**：USER_LIMIT（用户创建入口）、STORAGE（上传入口）、API_CALL（租户闸门，2026-10-03）见第 7.2 节；AI_TOKENS 在 AI 对话路径（[ai_module.md](./ai_module.md)） |
-| 清理覆盖 | `CleanupTenantData` 少删 4 张带 `tenant_id` 的表（AK/SK、角色字段权限、角色-组织单元、用户 MFA 因子），见第 8 节 |
-| 菜单层的套餐模块白名单 | **当前不产生过滤**：`admin_portal_service.go` 的 `filterMenusByPlanWhitelist` 只遍历顶层节点（`fillRouteItem` 会递归、这个过滤器不递归），而 `sys_menus` 的根节点一条都不带 `module`——2026-09-21 本机 gwa 实测 47 行 / 根 10 条 / 根里带 `module` 0 条，带 `module` 的 31 条全是叶子、从不被检查（另有 6 条非容器叶子也是 NULL：3 条通知页是刻意留 NULL 绕过套餐，3 条站内信页是连字符组件路径 `app/internal-message/…` 归不进模块，见 [notification_domain_design.md](./notification_domain_design.md) §4 M）。真正生效的是 API 闸门（第 6 节链路），这层只影响侧边栏显示 |
-| 租户读 `plan_id` | `TenantRepo.Get`/`List` 不预载 `plan` 边，而 `plan_id` 在 ent 里是**边外键**（非字段、非导出），copier mapper 读不到 ⇒ DTO 的 `PlanId` 恒为 nil。上一行的白名单因此走 `return nil` 分支，**把该租户整个侧边栏清空**（`GET /admin/v1/routes` → `{"items":[]}`，无日志）。证据链与修法见 [notification_domain_design.md](./notification_domain_design.md) §4「欠账 2」（跨域缺陷，成因已定位、未修） |
+| 配额硬执行 | USER_LIMIT（用户创建入口）与 STORAGE（上传入口）已实现。API_CALL 不再计量，见第 7.2 节 |
+| 清理覆盖 | `CleanupTenantData` 少删 2 张带 `tenant_id` 的表（角色字段权限、角色-组织单元），见第 8 节 |
+| 菜单层的套餐模块白名单 | **当前不产生过滤**：`admin_portal_service.go` 的 `filterMenusByPlanWhitelist` 只遍历顶层节点（`fillRouteItem` 会递归、这个过滤器不递归），而 `sys_menus` 的根节点一条都不带 `module`——2026-09-21 本机 gwa 实测 47 行 / 根 10 条 / 根里带 `module` 0 条，带 `module` 的 31 条全是叶子、从不被检查（另有 6 条非容器叶子也是 NULL：3 条通知页是刻意留 NULL 绕过套餐，3 条站内信页是连字符组件路径 `app/internal-message/…` 归不进模块。通知页已随通知域删除，这条是 2026-09-21 的实测记录）。真正生效的是 API 闸门（第 6 节链路），这层只影响侧边栏显示 |
+| 租户读 `plan_id` | `TenantRepo.Get`/`List` 不预载 `plan` 边，而 `plan_id` 在 ent 里是**边外键**（非字段、非导出），copier mapper 读不到 ⇒ DTO 的 `PlanId` 恒为 nil。上一行的白名单因此走 `return nil` 分支，**把该租户整个侧边栏清空**（`GET /admin/v1/routes` → `{"items":[]}`，无日志）。跨域缺陷，成因已定位、未修。原证据链写在已删除的通知域专题 §4「欠账 2」。 |
 | `data_retention_days` | 仅存储，无任何消费点（未接线） |
 | `subscription_plan` 字符串字段 | 遗留展示位，执行语义以 `plan` 边为准（双表示待收敛） |
 | 到期扫描的圈定条件 | 仅扫 status==ON；被人工置 OFF 的过期租户不会再被扫描改状态（行为上无差异——OFF 本就全拒） |

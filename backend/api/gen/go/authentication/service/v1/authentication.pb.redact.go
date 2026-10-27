@@ -6,8 +6,8 @@ package authenticationpb
 import (
 	context "context"
 	validate "github.com/envoyproxy/protoc-gen-validate/validate"
-	redact "github.com/tx7do/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	identitypb "go-wind-admin/api/gen/go/identity/service/v1"
+	redact "go-wind-admin/third_party/go-wind-toolkit/protoc-gen-go-redact/redact/v1"
 	annotations "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -66,28 +66,6 @@ func (s *redactedAuthenticationServiceServer) Login(ctx context.Context, in *Log
 // Unary RPC
 func (s *redactedAuthenticationServiceServer) Logout(ctx context.Context, in *LogoutRequest) (*emptypb.Empty, error) {
 	res, err := s.srv.Logout(ctx, in)
-	if !s.bypass.CheckInternal(ctx) {
-		// Apply redaction to the response
-		redact.Apply(res)
-	}
-	return res, err
-}
-
-// ForgotPassword is the redacted wrapper for the actual AuthenticationServiceServer.ForgotPassword method
-// Unary RPC
-func (s *redactedAuthenticationServiceServer) ForgotPassword(ctx context.Context, in *ForgotPasswordRequest) (*emptypb.Empty, error) {
-	res, err := s.srv.ForgotPassword(ctx, in)
-	if !s.bypass.CheckInternal(ctx) {
-		// Apply redaction to the response
-		redact.Apply(res)
-	}
-	return res, err
-}
-
-// ResetPasswordByCode is the redacted wrapper for the actual AuthenticationServiceServer.ResetPasswordByCode method
-// Unary RPC
-func (s *redactedAuthenticationServiceServer) ResetPasswordByCode(ctx context.Context, in *ResetPasswordByCodeRequest) (*emptypb.Empty, error) {
-	res, err := s.srv.ResetPasswordByCode(ctx, in)
 	if !s.bypass.CheckInternal(ctx) {
 		// Apply redaction to the response
 		redact.Apply(res)
@@ -207,7 +185,9 @@ func (x *LoginRequest) Redact() {
 
 	// Safe field: ClientId
 
-	// Safe field: ClientSecret
+	// Redacting field: ClientSecret
+	ClientSecretTmp := ``
+	x.ClientSecret = &ClientSecretTmp
 
 	// Safe field: Scope
 
@@ -219,7 +199,9 @@ func (x *LoginRequest) Redact() {
 	PasswordTmp := ``
 	x.Password = &PasswordTmp
 
-	// Safe field: RefreshToken
+	// Redacting field: RefreshToken
+	RefreshTokenTmp := ``
+	x.RefreshToken = &RefreshTokenTmp
 
 	// Safe field: Code
 
@@ -250,8 +232,6 @@ func (x *LoginResponse) Redact() {
 	// Safe field: Scope
 
 	// Safe field: IdToken
-
-	// Safe field: MfaOperationId
 }
 
 // Ensure LogoutRequest implements the Redactor interface at compile time.
@@ -304,34 +284,6 @@ func (x *ValidateTokenResponse) Redact() {
 	// Safe field: IsValid
 
 	// Safe field: IsBlocked
-}
-
-// Ensure ForgotPasswordRequest implements the Redactor interface at compile time.
-var _ redact.Redactor = (*ForgotPasswordRequest)(nil)
-
-// Redact method implementation for ForgotPasswordRequest
-func (x *ForgotPasswordRequest) Redact() {
-	if x == nil {
-		return
-	}
-
-	// Safe field: Identifier
-}
-
-// Ensure ResetPasswordByCodeRequest implements the Redactor interface at compile time.
-var _ redact.Redactor = (*ResetPasswordByCodeRequest)(nil)
-
-// Redact method implementation for ResetPasswordByCodeRequest
-func (x *ResetPasswordByCodeRequest) Redact() {
-	if x == nil {
-		return
-	}
-
-	// Safe field: Identifier
-
-	// Safe field: Code
-
-	// Safe field: NewPassword
 }
 
 // Ensure WhoAmIResponse implements the Redactor interface at compile time.

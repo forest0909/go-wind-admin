@@ -1,5 +1,5 @@
 authn:
-  type: "jwt" # jwt, oidc, preshared_key
+  type: "jwt" # jwt, preshared_key
 
   jwt:
     # 签名算法：HS256, HS384, HS512, RS256, RS384, RS512, ES256, ES384, ES512, Ed25519
@@ -54,18 +54,13 @@ authn:
       8wIDAQAB
       -----END PUBLIC KEY-----
 
-  oidc:
-    issuer_url: "https://example.com"
-    audience: "your_audience"
-    method: "HS256"
-
   preshared_key:
     valid_keys:
       - "key1"
       - "key2"
 
 authz:
-  type: "noop" # casbin, opa, zanzibar, noop
+  type: "casbin" # 只支持 casbin；其他值或缺省都会启动报错
 
   casbin:
 

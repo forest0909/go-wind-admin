@@ -24,11 +24,21 @@ import (
 	khttp "github.com/go-kratos/kratos/v2/transport/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tx7do/go-utils/auditutil"
+	"go-wind-admin/third_party/go-utils/auditutil"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 )
+
+func TestLastNumericPathSegment(t *testing.T) {
+	assert.Equal(t, "5", lastNumericPathSegment("/admin/v1/roles/5"))
+	assert.Equal(t, "12", lastNumericPathSegment("/admin/v1/users/12/roles"))
+	assert.Equal(t, "", lastNumericPathSegment("/admin/v1/roles"))
+	assert.Equal(t, "", lastNumericPathSegment("/admin/v1/roles/batch-delete"))
+	assert.Equal(t, "9", lastNumericPathSegment("/admin/v1/dicts/3/entries/9"))
+	assert.Equal(t, "", lastNumericPathSegment(""))
+	assert.Equal(t, "", lastNumericPathSegment("/"))
+}
 
 // TestOperationAuditLogMiddlewareNameAndConstructor 验证构造器落参与固定名称。
 func TestOperationAuditLogMiddlewareNameAndConstructor(t *testing.T) {
@@ -160,7 +170,7 @@ func TestOperationAuditLogHandleResourceIdVariants(t *testing.T) {
 }
 
 // TestOperationAuditLogHandleSkips 验证三类跳过路径：GET 读请求、
-// 会话维护端点（登录/刷新无关但含登出与 MFA 验证）、解析不出资源的 operation。
+// 会话维护端点（登录、登出）、解析不出资源的 operation。
 func TestOperationAuditLogHandleSkips(t *testing.T) {
 	skipCases := []struct {
 		name   string
@@ -170,7 +180,6 @@ func TestOperationAuditLogHandleSkips(t *testing.T) {
 		{"GET读请求", nethttp.MethodGet, "/demo.v1.GadgetService/Update"},
 		{"登录端点", nethttp.MethodPost, adminV1.OperationAuthenticationServiceLogin},
 		{"登出端点", nethttp.MethodPost, adminV1.OperationAuthenticationServiceLogout},
-		{"MFA验证端点", nethttp.MethodPost, adminV1.OperationMfaServiceVerifyMFAChallenge},
 		{"畸形operation", nethttp.MethodPost, "plain-bad-op"},
 		{"仅服务段", nethttp.MethodPost, "/demo.v1.GadgetService/"},
 	}
@@ -237,7 +246,7 @@ func TestOperationAuditLogHandleDirectNilRequest(t *testing.T) {
 }
 
 // TestOperationAuditLogHandleWriteFuncNil 验证 writeOperationAuditLogFunc
-// 为 nil 时：记录构造照常（API/权限审计不受影响），操作审计自身不落库。
+// 为 nil 时操作审计不落库。
 func TestOperationAuditLogHandleWriteFuncNil(t *testing.T) {
 	env := newAuditServer(t, WithWriteOperationAuditLogFunc(nil))
 	env.fire(nethttp.MethodPost, "/case/5", map[string]string{
@@ -245,8 +254,6 @@ func TestOperationAuditLogHandleWriteFuncNil(t *testing.T) {
 		"Content-Type":     "application/json",
 	}, `{"data":{"name":"x"}}`, "127.0.0.1:1234")
 	assert.Empty(t, env.capture.operation, "空写入函数时操作审计不得落库")
-	assert.Len(t, env.capture.api, 1, "其余审计不受影响")
-	assert.Len(t, env.capture.permission, 1)
 }
 
 // TestOperationAuditLogHashAndSignatureEdges 直调覆盖哈希/签名的 nil 边界

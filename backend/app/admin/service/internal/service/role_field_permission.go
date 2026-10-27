@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/tx7do/go-utils/fieldperm"
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-utils/fieldperm"
 )
 
 // fieldPermissionRoleResource 字段权限的资源名（proto 消息简单名）。

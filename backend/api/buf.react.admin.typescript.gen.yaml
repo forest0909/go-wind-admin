@@ -11,8 +11,8 @@ managed:
     - module: 'buf.build/kratos/apis'
     - module: 'buf.build/gnostic/gnostic'
     - module: 'buf.build/gogo/protobuf'
-    - module: 'buf.build/tx7do/pagination'
-    - module: 'buf.build/go-wind/redact'
+    - path: pagination/v1/pagination.proto
+    - path: redact/v1/redact.proto
 
 inputs:
   - directory: protos

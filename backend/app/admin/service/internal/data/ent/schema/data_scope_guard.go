@@ -5,7 +5,7 @@ import (
 
 	"entgo.io/ent"
 
-	"github.com/tx7do/go-crud/entgo/rule"
+	"go-wind-admin/third_party/go-crud/entgo/rule"
 
 	entPrivacy "go-wind-admin/app/admin/service/internal/data/ent/privacy"
 )
@@ -13,7 +13,7 @@ import (
 // dataScopeFilterRule 数据范围查询过滤规则适配器：把 ent 查询的
 // privacy.Filter 交给库 rule.PermissionRule 处理。
 // 全部语义在库规则内实现（rule/system.go PermissionRule）：
-//   - 平台/系统上下文放行；缺 Viewer 拒绝（fail-closed）
+//   - 系统上下文放行；平台管理员靠令牌 ALL，tid==0 不再跳过；缺 Viewer 拒绝（fail-closed）
 //   - 无 scope / 显式 None 拒绝
 //   - ALL 放行；SELF 注入 created_by = uid；UNIT 注入 org_unit_id IN targets
 //   - 多 scope 以 OR 并集注入

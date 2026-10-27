@@ -3,13 +3,14 @@ package auth
 import (
 	"context"
 	"reflect"
+	"strconv"
 
 	"github.com/go-kratos/kratos/v2/transport"
 	"github.com/go-kratos/kratos/v2/transport/http"
 
-	"github.com/tx7do/go-utils/trans"
-	authzEngine "github.com/tx7do/kratos-authz/engine"
-	authz "github.com/tx7do/kratos-authz/middleware"
+	"go-wind-admin/third_party/go-utils/trans"
+	authzEngine "go-wind-admin/third_party/kratos-authz/engine"
+	authz "go-wind-admin/third_party/kratos-authz/middleware"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 )
@@ -33,10 +34,15 @@ func processAuthz(
 	//	path, action, tokenPayload.GetRoles(), tokenPayload.UserId,
 	//)
 
+	// casbin 的域即角色所属租户 ID（见 data.AuthorizerProvider.ProvidePolicies），
+	// 平台用户没有租户 ID 时取 0。不传域时引擎按通配 "*" 匹配，与按租户写入的策略对不上。
+	project := authzEngine.Project(strconv.FormatUint(uint64(tokenPayload.GetTenantId()), 10))
+
 	authzClaims := authzEngine.AuthClaims{
 		Subjects: trans.Ptr(tokenPayload.GetRoles()),
 		Action:   trans.Ptr(action),
 		Resource: trans.Ptr(path),
+		Project:  trans.Ptr(project),
 	}
 
 	ctx = authz.NewContext(ctx, &authzClaims)

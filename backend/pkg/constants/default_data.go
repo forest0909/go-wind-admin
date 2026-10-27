@@ -4,14 +4,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tx7do/go-utils/timeutil"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/timeutil"
+	"go-wind-admin/third_party/go-utils/trans"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	configV1 "go-wind-admin/api/gen/go/config/service/v1"
 	dictV1 "go-wind-admin/api/gen/go/dict/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
-	notificationV1 "go-wind-admin/api/gen/go/notification/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 )
 
@@ -102,8 +101,8 @@ var DefaultPermissions = []*permissionV1.Permission{
 			20, 21, 22, 23, 24,
 			30, 31, 32, 33, 34,
 			40, 41, 42,
-			50, 51, 52, 53, 54, 55, 56, 57,
-			60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71,
+			50, 51, 52, 53, 54, 55, 56,
+			60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
 			72, 73, 74,
 			80, 81, 82, 83, 84,
 			101, 102,
@@ -309,8 +308,6 @@ func ComponentToModule(component string) identityV1.Module {
 		return identityV1.Module_FILE
 	case len(component) >= 9 && component[:9] == "app/task/":
 		return identityV1.Module_TASK
-	case len(component) >= 7 && component[:7] == "app/ai/":
-		return identityV1.Module_AI
 	default:
 		return identityV1.Module_MODULE_UNSPECIFIED
 	}
@@ -432,10 +429,11 @@ var DefaultMenus = []*permissionV1.Menu{
 		Component: trans.Ptr("BasicLayout"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
-			Order:     trans.Ptr(int32(2000)),
-			Title:     trans.Ptr("menu.tenant.moduleName"),
-			Icon:      trans.Ptr("lucide:building-2"),
-			Authority: []string{"sys:platform_admin"},
+			Order:      trans.Ptr(int32(2000)),
+			Title:      trans.Ptr("menu.tenant.moduleName"),
+			Icon:       trans.Ptr("lucide:building-2"),
+			Authority:  []string{"sys:platform_admin"},
+			HideInMenu: trans.Ptr(true),
 		},
 	},
 	{
@@ -447,11 +445,12 @@ var DefaultMenus = []*permissionV1.Menu{
 		Component: trans.Ptr("app/tenant/tenant/index.vue"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
-			Order:     trans.Ptr(int32(1)),
-			Title:     trans.Ptr("menu.tenant.member"),
-			Icon:      trans.Ptr("lucide:users"),
-			Authority: []string{"sys:platform_admin"},
-			AffixTab:  trans.Ptr(true),
+			Order:      trans.Ptr(int32(1)),
+			Title:      trans.Ptr("menu.tenant.member"),
+			Icon:       trans.Ptr("lucide:users"),
+			Authority:  []string{"sys:platform_admin"},
+			AffixTab:   trans.Ptr(true),
+			HideInMenu: trans.Ptr(true),
 		},
 	},
 	{
@@ -463,10 +462,11 @@ var DefaultMenus = []*permissionV1.Menu{
 		Component: trans.Ptr("app/tenant/plan/index.vue"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
-			Order:     trans.Ptr(int32(2)),
-			Title:     trans.Ptr("menu.tenant.plan"),
-			Icon:      trans.Ptr("lucide:package"),
-			Authority: []string{"sys:platform_admin"},
+			Order:      trans.Ptr(int32(2)),
+			Title:      trans.Ptr("menu.tenant.plan"),
+			Icon:       trans.Ptr("lucide:package"),
+			Authority:  []string{"sys:platform_admin"},
+			HideInMenu: trans.Ptr(true),
 		},
 	},
 
@@ -706,21 +706,6 @@ var DefaultMenus = []*permissionV1.Menu{
 		},
 	},
 	{
-		Id:        trans.Ptr(uint32(52)),
-		ParentId:  trans.Ptr(uint32(50)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("ApiAuditLog"),
-		Path:      trans.Ptr("api-audit-logs"),
-		Component: trans.Ptr("app/log/api_audit_log/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.log.apiAuditLog"),
-			Icon:      trans.Ptr("lucide:file-clock"),
-			Order:     trans.Ptr(int32(2)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
 		Id:        trans.Ptr(uint32(53)),
 		ParentId:  trans.Ptr(uint32(50)),
 		Type:      permissionV1.Menu_MENU.Enum(),
@@ -732,66 +717,6 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.log.operationAuditLog"),
 			Icon:      trans.Ptr("lucide:shield-ellipsis"),
 			Order:     trans.Ptr(int32(3)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(54)),
-		ParentId:  trans.Ptr(uint32(50)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("DataAccessAuditLog"),
-		Path:      trans.Ptr("data-access-audit-logs"),
-		Component: trans.Ptr("app/log/data_access_audit_log/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.log.dataAccessAuditLog"),
-			Icon:      trans.Ptr("lucide:shield-check"),
-			Order:     trans.Ptr(int32(4)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(55)),
-		ParentId:  trans.Ptr(uint32(50)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("PermissionAuditLog"),
-		Path:      trans.Ptr("permission-audit-logs"),
-		Component: trans.Ptr("app/log/permission_audit_log/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.log.permissionAuditLog"),
-			Icon:      trans.Ptr("lucide:shield-alert"),
-			Order:     trans.Ptr(int32(5)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(56)),
-		ParentId:  trans.Ptr(uint32(50)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("PolicyEvaluationLog"),
-		Path:      trans.Ptr("policy-evaluation-logs"),
-		Component: trans.Ptr("app/log/policy_evaluation_log/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.log.policyEvaluationLog"),
-			Icon:      trans.Ptr("lucide:gavel"),
-			Order:     trans.Ptr(int32(6)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(57)),
-		ParentId:  trans.Ptr(uint32(50)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("RedisCacheMonitor"),
-		Path:      trans.Ptr("redis-cache-monitor"),
-		Component: trans.Ptr("app/log/redis_cache_monitor/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.log.redisCacheMonitor"),
-			Icon:      trans.Ptr("lucide:database"),
-			Order:     trans.Ptr(int32(7)),
 			Authority: []string{"sys:platform_admin"},
 		},
 	},
@@ -859,21 +784,6 @@ var DefaultMenus = []*permissionV1.Menu{
 		},
 	},
 	{
-		Id:        trans.Ptr(uint32(64)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("LoginPolicyManagement"),
-		Path:      trans.Ptr("login-policies"),
-		Component: trans.Ptr("app/system/login_policy/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.loginPolicy"),
-			Icon:      trans.Ptr("lucide:shield-x"),
-			Order:     trans.Ptr(int32(4)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
 		Id:        trans.Ptr(uint32(65)),
 		ParentId:  trans.Ptr(uint32(60)),
 		Type:      permissionV1.Menu_MENU.Enum(),
@@ -885,21 +795,6 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.system.language"),
 			Icon:      trans.Ptr("lucide:globe"),
 			Order:     trans.Ptr(int32(5)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(70)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AccessKeyManagement"),
-		Path:      trans.Ptr("access-keys"),
-		Component: trans.Ptr("app/system/access_key/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.accessKeys"),
-			Icon:      trans.Ptr("lucide:key-round"),
-			Order:     trans.Ptr(int32(11)),
 			Authority: []string{"sys:platform_admin"},
 		},
 	},
@@ -919,21 +814,6 @@ var DefaultMenus = []*permissionV1.Menu{
 		},
 	},
 	{
-		Id:        trans.Ptr(uint32(67)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("ScriptManagement"),
-		Path:      trans.Ptr("scripts"),
-		Component: trans.Ptr("app/system/script/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.scripts"),
-			Icon:      trans.Ptr("lucide:file-code-2"),
-			Order:     trans.Ptr(int32(9)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
 		Id:        trans.Ptr(uint32(69)),
 		ParentId:  trans.Ptr(uint32(60)),
 		Type:      permissionV1.Menu_MENU.Enum(),
@@ -946,232 +826,6 @@ var DefaultMenus = []*permissionV1.Menu{
 			Icon:      trans.Ptr("lucide:monitor"),
 			Order:     trans.Ptr(int32(6)),
 			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(71)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("ServerMonitor"),
-		Path:      trans.Ptr("server-monitor"),
-		Component: trans.Ptr("app/system/server_monitor/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.serverMonitor"),
-			Icon:      trans.Ptr("lucide:activity"),
-			Order:     trans.Ptr(int32(7)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	// 通知域自成一级菜单。站内信只是本域的一个 INTERNAL 渠道，把渠道/规则/台账挂到
-	// /internal-message 下面等于让域挂在它自己的一个叶子渠道下，故与它平级。
-	// 组件前缀 app/notification/ 落不进 ComponentToModule 的任何 case ⇒ module 为 NULL，
-	// 这是刻意的：套餐白名单对未归类菜单直接放行（filterMenusByPlanWhitelist 的 m.Module == nil
-	// 分支），这三页只由 sys:platform_admin 权限码与「角色→权限→菜单」授权把关。
-	{
-		Id:        trans.Ptr(uint32(74)),
-		ParentId:  nil,
-		Type:      permissionV1.Menu_CATALOG.Enum(),
-		Name:      trans.Ptr("NotificationManagement"),
-		Path:      trans.Ptr("/notification"),
-		Redirect:  trans.Ptr("/notification/channels"),
-		Component: trans.Ptr("BasicLayout"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Order:     trans.Ptr(int32(2006)),
-			Title:     trans.Ptr("menu.notification.moduleName"),
-			Icon:      trans.Ptr("lucide:bell-ring"),
-			KeepAlive: trans.Ptr(true),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(68)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationChannelManagement"),
-		Path:      trans.Ptr("channels"),
-		Component: trans.Ptr("app/notification/channel/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.channels"),
-			Icon:      trans.Ptr("lucide:mail"),
-			Order:     trans.Ptr(int32(1)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 路由规则（事件 → 渠道 + 同步/异步）：投递时的唯一真相，删一行即停一条路由
-		Id:        trans.Ptr(uint32(73)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationRuleManagement"),
-		Path:      trans.Ptr("rules"),
-		Component: trans.Ptr("app/notification/rule/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.rules"),
-			Icon:      trans.Ptr("lucide:git-branch"),
-			Order:     trans.Ptr(int32(2)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 投递台账：每次投递一行，是规则 + 渠道配置跑出来的结果，故排在两者之后
-		Id:        trans.Ptr(uint32(72)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationDeliveryManagement"),
-		Path:      trans.Ptr("deliveries"),
-		Component: trans.Ptr("app/notification/delivery/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.deliveries"),
-			Icon:      trans.Ptr("lucide:send"),
-			Order:     trans.Ptr(int32(3)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 通知模板：可复用的标题/正文占位模板，发送方以 template_code 引用（P3 第二片）
-		Id:        trans.Ptr(uint32(101)),
-		ParentId:  trans.Ptr(uint32(74)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("NotificationTemplateManagement"),
-		Path:      trans.Ptr("templates"),
-		Component: trans.Ptr("app/notification/template/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.notification.templates"),
-			Icon:      trans.Ptr("lucide:layout-template"),
-			Order:     trans.Ptr(int32(4)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 监控告警规则：指标阈值 → 触发通知（联动通知域，平台管理员）
-		Id:        trans.Ptr(uint32(102)),
-		ParentId:  trans.Ptr(uint32(60)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("MonitorAlertRule"),
-		Path:      trans.Ptr("monitor-alerts"),
-		Component: trans.Ptr("app/system/monitor_alert/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.system.monitorAlerts"),
-			Icon:      trans.Ptr("lucide:bell-plus"),
-			Order:     trans.Ptr(int32(8)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// AI 域：对话助手（普通用户）+ 模型提供商管理（平台管理员）。
-		// 对话页不加 Authority（登录即可用）；提供商管理只留给平台管理员。
-		Id:        trans.Ptr(uint32(80)),
-		ParentId:  nil,
-		Type:      permissionV1.Menu_CATALOG.Enum(),
-		Name:      trans.Ptr("AiAssistant"),
-		Path:      trans.Ptr("/ai"),
-		Redirect:  trans.Ptr("/ai/chat"),
-		Component: trans.Ptr("BasicLayout"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Order:     trans.Ptr(int32(2007)),
-			Title:     trans.Ptr("menu.ai.moduleName"),
-			Icon:      trans.Ptr("lucide:sparkles"),
-			KeepAlive: trans.Ptr(true),
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(81)),
-		ParentId:  trans.Ptr(uint32(80)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AiChat"),
-		Path:      trans.Ptr("chat"),
-		Component: trans.Ptr("app/ai/chat/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.ai.chat"),
-			Icon:      trans.Ptr("lucide:message-circle"),
-			Order:     trans.Ptr(int32(1)),
-			KeepAlive: trans.Ptr(true),
-		},
-	},
-	{
-		// 智能问数：NL→只读 SQL，平台管理员专属（SQL 直触全平台原生表）
-		Id:        trans.Ptr(uint32(83)),
-		ParentId:  trans.Ptr(uint32(80)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AiQuery"),
-		Path:      trans.Ptr("query"),
-		Component: trans.Ptr("app/ai/query/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title: trans.Ptr("menu.ai.query"),
-			Icon:  trans.Ptr("lucide:search-code"),
-			Order: trans.Ptr(int32(2)),
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(82)),
-		ParentId:  trans.Ptr(uint32(80)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AiProviderManagement"),
-		Path:      trans.Ptr("providers"),
-		Component: trans.Ptr("app/ai/provider/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.ai.providers"),
-			Icon:      trans.Ptr("lucide:cpu"),
-			Order:     trans.Ptr(int32(6)),
-			Authority: []string{"sys:platform_admin"},
-		},
-	},
-	{
-		// 知识库（RAG）：与 chat 同级，登录即可用
-		Id:        trans.Ptr(uint32(84)),
-		ParentId:  trans.Ptr(uint32(80)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AiKnowledge"),
-		Path:      trans.Ptr("knowledge"),
-		Component: trans.Ptr("app/ai/knowledge/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.ai.knowledge"),
-			Icon:      trans.Ptr("lucide:book-open"),
-			Order:     trans.Ptr(int32(3)),
-			KeepAlive: trans.Ptr(true),
-		},
-	},
-	{
-		// AI Agent 编排（可视化画布）：登录即可用
-		Id:        trans.Ptr(uint32(86)),
-		ParentId:  trans.Ptr(uint32(80)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AiAgentApps"),
-		Path:      trans.Ptr("agents"),
-		Component: trans.Ptr("app/ai/agent/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.ai.agents"),
-			Icon:      trans.Ptr("lucide:workflow"),
-			Order:     trans.Ptr(int32(5)),
-			KeepAlive: trans.Ptr(true),
-		},
-	},
-	{
-		// AI 用量：当前用户 tokens 汇总与流水，登录即可用
-		Id:        trans.Ptr(uint32(85)),
-		ParentId:  trans.Ptr(uint32(80)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("AiUsage"),
-		Path:      trans.Ptr("usage"),
-		Component: trans.Ptr("app/ai/usage/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title: trans.Ptr("menu.ai.usage"),
-			Icon:  trans.Ptr("lucide:bar-chart-3"),
-			Order: trans.Ptr(int32(4)),
 		},
 	},
 }
@@ -1200,48 +854,5 @@ var DefaultConfigs = []*configV1.Config{
 		Value:     trans.Ptr(strconv.Itoa(DefaultPasswordHistoryCount)),
 		ValueType: configV1.Config_INT.Enum(),
 		IsBuiltIn: trans.Ptr(true),
-	},
-}
-
-// DefaultNotificationRules 通知路由规则的初始四行。
-//
-// 它们是 docs/notification_domain_design.md §3.5 那张 Go 静态表（eventChannels +
-// asyncDispatchEvents）的平移结果：前两个验证码事件异步（SMTP 往返不该占住 HTTP），
-// 渠道测试邮件与站内信同步（前者的产物就是报错原文，后者要在同一趟里回收件行主键）。
-//
-// INTERNAL_MESSAGE 一行看起来多余（站内信本来就走 INTERNAL 渠道），但它是这条路由的
-// 唯一声明处：删掉它，站内信的生产点就会退回"自己 new 收件行、自己推 SSE、不留台账"。
-//
-// 播种只在 sys_notification_rules 为空表时执行一次（同 DefaultMenus 的 count==0 守卫）：
-// 管理员删掉一行是"这个事件不再通知"的决定，重启不该把它复活。代价写在
-// service/notification_rule_service.go 的 init 注释里。
-var DefaultNotificationRules = []*notificationV1.NotificationRule{
-	{
-		EventType: notificationV1.EventType_PASSWORD_RESET_CODE.Enum(),
-		Channel:   notificationV1.Channel_EMAIL.Enum(),
-		IsAsync:   trans.Ptr(true),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("找回密码验证码邮件：入队即回“已发送”，不等 SMTP 往返"),
-	},
-	{
-		EventType: notificationV1.EventType_CONTACT_BIND_CODE.Enum(),
-		Channel:   notificationV1.Channel_EMAIL.Enum(),
-		IsAsync:   trans.Ptr(true),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("换绑邮箱验证码邮件：同上"),
-	},
-	{
-		EventType: notificationV1.EventType_CHANNEL_TEST_EMAIL.Enum(),
-		Channel:   notificationV1.Channel_EMAIL.Enum(),
-		IsAsync:   trans.Ptr(false),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("渠道配置测试邮件：这个接口的产物就是投递结论，必须同步"),
-	},
-	{
-		EventType: notificationV1.EventType_INTERNAL_MESSAGE.Enum(),
-		Channel:   notificationV1.Channel_INTERNAL.Enum(),
-		IsAsync:   trans.Ptr(false),
-		IsEnabled: trans.Ptr(true),
-		Remark:    trans.Ptr("站内信：收件行主键要在同一趟里回给调用方（SSE 载荷依赖它）"),
 	},
 }

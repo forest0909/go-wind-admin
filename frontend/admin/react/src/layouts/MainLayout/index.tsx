@@ -89,14 +89,7 @@ export const MainLayout = ({ routes: dynamicRoutes }: MainLayoutProps) => {
   }, [preferences.theme.mode]);
 
   // 布局状态
-  const {
-    collapsed: _collapsed,
-    setCollapsed: _setCollapsed,
-    isMobile,
-    setIsMobile,
-    openKeys,
-    setOpenKeys,
-  } = useLayoutState();
+  const { isMobile, setIsMobile, openKeys, setOpenKeys } = useLayoutState();
 
   // 使用 preferences.sidebar.hidden 控制侧边栏显示/隐藏
   const sidebarHidden = preferences.sidebar?.hidden ?? false;

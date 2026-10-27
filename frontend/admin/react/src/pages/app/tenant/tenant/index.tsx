@@ -211,7 +211,7 @@ const TenantList = () => {
           <ListTable<identityservicev1_Tenant>
             actionRef={actionRef}
             columns={columns}
-            request={async (params, sorter, _filter) => {
+            request={async (params, sorter) => {
               // 构建查询对象
               const query = new PaginationQuery({
                 paging: {

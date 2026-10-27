@@ -151,7 +151,7 @@ const ConfigManagement = () => {
           <ListTable<Config>
             actionRef={actionRef}
             columns={columns}
-            request={async (params, sorter, _filter) => {
+            request={async (params, sorter) => {
               const query = new PaginationQuery({
                 paging: {
                   page: params.current || 1,

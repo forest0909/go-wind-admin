@@ -20,19 +20,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthenticationService_Login_FullMethodName               = "/authentication.service.v1.AuthenticationService/Login"
-	AuthenticationService_Logout_FullMethodName              = "/authentication.service.v1.AuthenticationService/Logout"
-	AuthenticationService_ForgotPassword_FullMethodName      = "/authentication.service.v1.AuthenticationService/ForgotPassword"
-	AuthenticationService_ResetPasswordByCode_FullMethodName = "/authentication.service.v1.AuthenticationService/ResetPasswordByCode"
-	AuthenticationService_RefreshToken_FullMethodName        = "/authentication.service.v1.AuthenticationService/RefreshToken"
-	AuthenticationService_ValidateToken_FullMethodName       = "/authentication.service.v1.AuthenticationService/ValidateToken"
-	AuthenticationService_GetAccessTokens_FullMethodName     = "/authentication.service.v1.AuthenticationService/GetAccessTokens"
-	AuthenticationService_RevokeTokenById_FullMethodName     = "/authentication.service.v1.AuthenticationService/RevokeTokenById"
-	AuthenticationService_BlockToken_FullMethodName          = "/authentication.service.v1.AuthenticationService/BlockToken"
-	AuthenticationService_UnblockToken_FullMethodName        = "/authentication.service.v1.AuthenticationService/UnblockToken"
-	AuthenticationService_WhoAmI_FullMethodName              = "/authentication.service.v1.AuthenticationService/WhoAmI"
-	AuthenticationService_GenerateCaptcha_FullMethodName     = "/authentication.service.v1.AuthenticationService/GenerateCaptcha"
-	AuthenticationService_VerifyCaptcha_FullMethodName       = "/authentication.service.v1.AuthenticationService/VerifyCaptcha"
+	AuthenticationService_Login_FullMethodName           = "/authentication.service.v1.AuthenticationService/Login"
+	AuthenticationService_Logout_FullMethodName          = "/authentication.service.v1.AuthenticationService/Logout"
+	AuthenticationService_RefreshToken_FullMethodName    = "/authentication.service.v1.AuthenticationService/RefreshToken"
+	AuthenticationService_ValidateToken_FullMethodName   = "/authentication.service.v1.AuthenticationService/ValidateToken"
+	AuthenticationService_GetAccessTokens_FullMethodName = "/authentication.service.v1.AuthenticationService/GetAccessTokens"
+	AuthenticationService_RevokeTokenById_FullMethodName = "/authentication.service.v1.AuthenticationService/RevokeTokenById"
+	AuthenticationService_BlockToken_FullMethodName      = "/authentication.service.v1.AuthenticationService/BlockToken"
+	AuthenticationService_UnblockToken_FullMethodName    = "/authentication.service.v1.AuthenticationService/UnblockToken"
+	AuthenticationService_WhoAmI_FullMethodName          = "/authentication.service.v1.AuthenticationService/WhoAmI"
+	AuthenticationService_GenerateCaptcha_FullMethodName = "/authentication.service.v1.AuthenticationService/GenerateCaptcha"
+	AuthenticationService_VerifyCaptcha_FullMethodName   = "/authentication.service.v1.AuthenticationService/VerifyCaptcha"
 )
 
 // AuthenticationServiceClient is the client API for AuthenticationService service.
@@ -45,10 +43,6 @@ type AuthenticationServiceClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	// 用户登出
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-	ForgotPassword(ctx context.Context, in *ForgotPasswordRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-	ResetPasswordByCode(ctx context.Context, in *ResetPasswordByCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// 刷新认证令牌
 	RefreshToken(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	// 验证令牌
@@ -91,26 +85,6 @@ func (c *authenticationServiceClient) Logout(ctx context.Context, in *LogoutRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, AuthenticationService_Logout_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authenticationServiceClient) ForgotPassword(ctx context.Context, in *ForgotPasswordRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, AuthenticationService_ForgotPassword_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authenticationServiceClient) ResetPasswordByCode(ctx context.Context, in *ResetPasswordByCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, AuthenticationService_ResetPasswordByCode_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -217,10 +191,6 @@ type AuthenticationServiceServer interface {
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	// 用户登出
 	Logout(context.Context, *LogoutRequest) (*emptypb.Empty, error)
-	// 忘记密码：向已绑定邮箱的用户发送重置验证码（免鉴权；不泄露用户是否存在）
-	ForgotPassword(context.Context, *ForgotPasswordRequest) (*emptypb.Empty, error)
-	// 凭验证码重置密码（免鉴权；重置后吊销该用户全部会话）
-	ResetPasswordByCode(context.Context, *ResetPasswordByCodeRequest) (*emptypb.Empty, error)
 	// 刷新认证令牌
 	RefreshToken(context.Context, *LoginRequest) (*LoginResponse, error)
 	// 验证令牌
@@ -254,12 +224,6 @@ func (UnimplementedAuthenticationServiceServer) Login(context.Context, *LoginReq
 }
 func (UnimplementedAuthenticationServiceServer) Logout(context.Context, *LogoutRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
-}
-func (UnimplementedAuthenticationServiceServer) ForgotPassword(context.Context, *ForgotPasswordRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method ForgotPassword not implemented")
-}
-func (UnimplementedAuthenticationServiceServer) ResetPasswordByCode(context.Context, *ResetPasswordByCodeRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method ResetPasswordByCode not implemented")
 }
 func (UnimplementedAuthenticationServiceServer) RefreshToken(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RefreshToken not implemented")
@@ -341,42 +305,6 @@ func _AuthenticationService_Logout_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuthenticationServiceServer).Logout(ctx, req.(*LogoutRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuthenticationService_ForgotPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ForgotPasswordRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).ForgotPassword(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_ForgotPassword_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).ForgotPassword(ctx, req.(*ForgotPasswordRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuthenticationService_ResetPasswordByCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResetPasswordByCodeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).ResetPasswordByCode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_ResetPasswordByCode_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).ResetPasswordByCode(ctx, req.(*ResetPasswordByCodeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -557,14 +485,6 @@ var AuthenticationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Logout",
 			Handler:    _AuthenticationService_Logout_Handler,
-		},
-		{
-			MethodName: "ForgotPassword",
-			Handler:    _AuthenticationService_ForgotPassword_Handler,
-		},
-		{
-			MethodName: "ResetPasswordByCode",
-			Handler:    _AuthenticationService_ResetPasswordByCode_Handler,
 		},
 		{
 			MethodName: "RefreshToken",

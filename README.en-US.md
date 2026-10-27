@@ -4,11 +4,11 @@
 
 # GoWind Admin
 
-**Out-of-the-box, enterprise-grade full-stack admin scaffold (Go backend + one of three frontends)**
+**Out-of-the-box, enterprise-grade full-stack admin scaffold (Go backend + React 19 frontend)**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
-[![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vuedotjs)](https://vuejs.org/)
+[![Frontend](https://img.shields.io/badge/Frontend-React_19_only-61DAFB?logo=react)](./frontend/admin/react)
 [![React](https://img.shields.io/badge/React-19.x-61DAFB?logo=react)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
 
@@ -20,54 +20,52 @@
 
 ## Project Highlights
 
-- **Three frontends, pick one — not three in one**: `Vue3 Vben` (Ant Design Vue), `Vue3 Element Plus` and `React19 Antd` are **three parallel implementations of the same backend**, so that teams on different stacks each get the one they are fluent in — **one team takes one, one deployment runs one**. Each has its own package root, its own deploy scripts, and they share no dependencies; once you choose, the other two directories can be deleted (steps in [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md), Chinese only)
-- **Enterprise-grade RBAC**: Multi-tenant, multi-role, multi-department, menu / button / data-level permission control (switchable policy engine: Casbin / OPA)
-- **Security & MLPS Compliance**: Designed against China MLPS 2.0 (Level 2/3) technical requirements — 180-day audit log retention & archiving, password policy trio, TOTP MFA, application-layer password encryption, dynamic RBAC and tenant isolation, scheduled backup rotation. See [Security & Compliance](#security--compliance-mlps-20)
+- **Frontend: React 19 + Ant Design only**. The directory is `frontend/admin/react`. There is no second frontend
+- **Access control**: roles, departments, menus, buttons, and data scope. API authorization uses Casbin. OPA is not included
+- **Security**: login logs and operation logs, password policy, image captcha, login rate limiting, and password encryption. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
-- **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM, one-click CRUD scaffolding; companion desktop GUI generator and CLI ([go-wind-toolkit](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp), see [Companion Tools](#companion-tools))
+- **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM. Under `backend/`: `make api`, `make ent`, `make ts`.
 - **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
-- **AI capabilities out of the box**: OpenAI-compatible multi-model access (cloud / local Ollama), SSE streaming chat, knowledge-base RAG (pgvector retrieval + file upload), token usage quotas, a script `ai` module and scheduled AI tasks — see [docs/ai_module.md](./docs/ai_module.md)
+### What this tree is
 
-### Why three frontends
+**A single-tenant admin: Go backend + React frontend.** There is no second frontend and no AI module.
 
-**Because teams work in different stacks — not because one team needs React and Vue at the same time.**
+Tenant, plan, and quota code is still in the tree. Their sidebar entries are hidden. API authorization is Casbin.
 
-One backend, one API contract, three frontend implementations: React teams take `react`, Vue teams take `vue-vben` or `vue-element`. Nobody has to switch stacks just to adopt this scaffold.
-
-Keeping all three usable is a cost borne **upstream**; as an adopter you maintain only the one you picked and delete the other two directories (what to adjust: [docs/adopt-one-frontend.md](./docs/adopt-one-frontend.md), Chinese only).
+Dependencies live in `backend/third_party/`. Licenses: [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES). Commands: [AGENTS.md](./AGENTS.md).
 
 ---
 
 ## Start Here
 
-- **Want to learn this codebase properly**: start from the [documentation index](./docs/README.md) (in Chinese). The docs split into a **tutorial layer** (a [10-chapter progressive tutorial](./docs/tutorial/README.md) taking you from an empty environment to building business modules and deploying safely) and a **reference layer** (the authoritative description of each subsystem), with recommended reading paths per role (full-stack adopter / backend / frontend / ops & security).
+- **Want to learn this codebase properly**: start from the [documentation index](./docs/README.md) (in Chinese). The docs split into a **tutorial layer** (an [8-chapter progressive tutorial](./docs/tutorial/README.md) taking you from an empty environment to building business modules and deploying safely) and a **reference layer** (the authoritative description of each subsystem), with recommended reading paths per role (full-stack adopter / backend / frontend / ops & security).
 - **Just want to see it run**: the [demo sites](#demo) and the [Quick Start](#quick-start) are right below.
 
 ---
 
 ## Code Repositories
 
-This project is published in sync on the three platforms below — identical content, clone or star whichever you prefer:
+This is a trimmed working copy. It does not track the two upstream URLs below:
 
 | Platform | URL |
 |----------|-----|
-| GitHub | <https://github.com/tx7do/go-wind-admin> |
-| Gitee | <https://gitee.com/tx7do/go-wind-admin> |
-| AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+| Repository | this working copy |
+| Upstream Gitee | <https://gitee.com/tx7do/go-wind-admin> |
+| Upstream AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
 
 ---
 
 ## Demo
 
-Three URLs, three parallel demos of the same backend capabilities — **open each, compare, you will want only one**:
+This tree has no online demo. The local frontend is React only, on dev port 15888.
 
-| Frontend Edition | Demo |
-|------------------|------|
-| Vue3 Vben | <https://vben.admin.gowind.cloud> |
-| Vue3 Element Plus | <https://ele.admin.gowind.cloud> |
-| React | <https://react.admin.gowind.cloud> |
+| Part | Where |
+|---------|--------|
+| Frontend | `frontend/admin/react` |
+| Backend | HTTP `:7788` |
+| Account | `admin` / `Abcd@1234` |
 
-- Backend Swagger: <https://api.demo.admin.gowind.cloud/docs/>
+- Backend Swagger: <http://127.0.0.1:7788/docs/> after the service is up
 - Default account / password: `admin` / `Abcd@1234`
 
 ---
@@ -79,8 +77,8 @@ Three URLs, three parallel demos of the same backend capabilities — **open eac
 | Tool | Version |
 |------|---------|
 | Go | 1.26+ (follow `backend/go.mod`) |
-| Node.js | `^20.19.0 \|\| >=22.12.0` — the intersection of the three `engines` fields is set by vue-element (vue-vben only asks `>=20.10.0`, react declares none). **21.x is not covered**, nor is 20.18 and below |
-| pnpm | `>= 9.12.0` (floor from vue-vben's `engines.pnpm`). vue-vben additionally pins `pnpm@11.18.0` via `packageManager`: enable corepack (`corepack enable`) to switch automatically, otherwise `npm i -g pnpm@11.18.0` — or at least match the major version |
+| Node.js | `^20.19.0 \|\| >=22.12.0` (required by Vite 8). **Do not use 21.x**, or 20.18 and below |
+| pnpm | `>= 9`. The React app does not pin a pnpm version |
 | Docker | 20.0+ |
 
 ### Environment Scripts
@@ -96,7 +94,7 @@ Three URLs, three parallel demos of the same backend capabilities — **open eac
 
 ### Backend Startup
 
-> Backend commands go through the `gow` CLI (install: `go install github.com/tx7do/go-wind-toolkit/gowind/cmd/gow@latest`, see [Companion Tools](#companion-tools)).
+> Backend commands run from `backend/` via the Makefile (`make api`, `make ent`, `make -C app/admin/service run`). See [AGENTS.md](./AGENTS.md).
 
 **Linux / macOS:**
 
@@ -111,7 +109,7 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 # Development (Recommended)
 ./scripts/env/install_unix_dev.sh
 ./scripts/docker/libs_only.sh
-gow run admin
+make -C app/admin/service run
 
 # Production
 ./scripts/env/install_unix_prod.sh
@@ -135,7 +133,7 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Local development
 .\scripts\docker\libs_only.ps1
-gow run admin
+make -C app/admin/service run
 
 # One-click full deployment
 .\scripts\docker\full_deploy.ps1
@@ -143,28 +141,26 @@ gow run admin
 
 ### Frontend Startup
 
-All three live under the `frontend/admin` directory — **pick one**, install it the usual way, and ignore the other two:
+This tree keeps React only, at `frontend/admin/react`. There is no `package.json` at the repo root or under `frontend/admin/`; `pnpm install` there fails with ENOENT.
 
 | Frontend Edition | Directory | Command | Port |
 |------------------|-----------|---------|------|
 | React | `frontend/admin/react` | `pnpm dev` | 15888 |
-| Vue Element | `frontend/admin/vue-element` | `pnpm dev` | 15777 |
-| Vue Vben | `frontend/admin/vue-vben` | `pnpm dev:antd` | 15666 |
 
 ```shell
-# Pick ONE: cd into that frontend first, then install and start.
-# There is no package.json at the repo root or under frontend/admin/,
-# so running `pnpm install` there only fails with ENOENT.
+# Enter the React app, then install and start.
+# Do not run pnpm install at the repo root or under frontend/admin/.
+# API http://localhost:7788 , account admin / Abcd@1234
 cd frontend/admin/react
 pnpm install
 pnpm dev                    # port 15888
-
-# The other two ends:
-cd frontend/admin/vue-element && pnpm install && pnpm dev            # port 15777
-cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # port 15666
 ```
 
-> vue-vben is itself a pnpm workspace (`pnpm-workspace.yaml` + `apps/` + `packages/`), so dependencies must be installed at **its** root; `pnpm dev:antd` then selects the `@vben/web-antd` app from the workspace. Installing inside `apps/admin` bypasses the catalog version pins.
+> Use Node.js `^20.19.0` or `>=22.12.0`. Do not use 21.x. Package manager: pnpm.
+>
+> The dev port is `VITE_SERVER_PORT` in `frontend/admin/react/.env.development` (15888). Vite moves to the next port if it is busy; CORS already allows `15888` and `15889`.
+>
+> `make ts` in `backend/` generates the React client only.
 
 ---
 
@@ -173,14 +169,13 @@ cd frontend/admin/vue-vben   && pnpm install && pnpm dev:antd        # port 1566
 <table>
 <tr><th>Layer</th><th>Technologies</th></tr>
 <tr><td><strong>Backend Framework</strong></td><td><code>Golang</code> · <code>go-kratos v2</code> · <code>Protobuf / Buf</code></td></tr>
-<tr><td><strong>ORM</strong></td><td><code>Ent</code> / <code>GORM</code> (choose one — switched by build tag, Ent by default) · <code>MySQL</code> · <code>PostgreSQL</code></td></tr>
+<tr><td><strong>ORM</strong></td><td><code>Ent</code> · <code>MySQL</code> · <code>PostgreSQL</code></td></tr>
 <tr><td><strong>Middleware</strong></td><td><code>Redis</code> (compose pulls <code>bitnami/redis:latest</code>, no version pin; the codebase uses only long-standing commands such as Set/Expire/Publish — nothing Redis-8-specific) · <code>MinIO</code> (S3-compatible object storage)</td></tr>
-<tr><td><strong>Authentication & Authorization</strong></td><td><code>JWT</code> (authentication) · <code>Casbin</code> / <code>OPA</code> (authorization engine — choose one; defaults to allow-all noop)</td></tr>
+<tr><td><strong>Authentication & Authorization</strong></td><td><code>JWT</code> for authentication · <code>Casbin</code> for API authorization. Startup fails when the engine is not casbin</td></tr>
 <tr><td><strong>Realtime</strong></td><td><code>SSE</code> (server push) · <code>Asynq</code> (async tasks)</td></tr>
-<tr><td><strong>Scripting Engine</strong></td><td><code>go-scripts</code> · <code>Lua</code> (gopher-lua) · <code>JavaScript</code> (goja) · multi-language hook plugin system</td></tr>
-<tr><td><strong>Frontend</strong></td><td><strong>Pick one</strong> — the three rows below are parallel options, not something to adopt together</td></tr>
-<tr><td><strong>Vue Vben Edition</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Ant Design Vue</code> · <code>Vben Admin</code> · <code>Tailwind CSS</code></td></tr>
-<tr><td><strong>Vue Element Edition</strong></td><td><code>Vue 3</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Element Plus</code> (lightweight pure edition) · <code>Tailwind CSS</code></td></tr>
+<tr><td><strong>Frontend</strong></td><td>React only. See the React row below</td></tr>
+<tr><td><strong>Removed</strong></td><td>No second frontend, no AI, no SSO, no MFA, and no in-app database backup</td></tr>
+<tr><td><strong>Not a product surface</strong></td><td>Tenant, plan, and quota pages remain, and they are hidden from the sidebar</td></tr>
 <tr><td><strong>React Edition</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> (no UMI) · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>Deployment & Ops</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -193,13 +188,13 @@ Security capabilities are designed with reference to the technical requirements 
 
 | Requirement | Implementation |
 |------------|----------------|
-| **Security Audit** | Full coverage of six audit log types: login / operation / API / data access / permission change / policy evaluation, recording the client IP (login / operation / API additionally resolve geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
-| **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); TOTP multi-factor authentication (MFA); image captcha; Redis login failure rate limiting (IP + username dual dimensions); configurable login restriction policies |
-| **Access Control** | Dynamic RBAC engine (switchable policy engine: Casbin / OPA); role–permission–API mappings stored in the database with instant hot-reload on changes; menu / button level permission control, plus role-scoped row-level data scope (V1 pilot: position table) and field-level permissions (V1 pilot: user table, blacklisted fields pruned from responses); every authorization decision is logged to policy evaluation logs for traceability |
-| **Multi-Tenant Isolation** | Compile-time ent Privacy data isolation: read queries get automatic tenant filtering; Create guards against forged tenants, Update / Delete inject tenant predicates (cross-tenant mutations match 0 rows); tenant requests are fail-closed validated against the Api table by `(path, method)`; plan module whitelists and expiry read-only policy |
-| **Data Confidentiality** | Login passwords encrypted at the application layer (AES) in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
-| **Data Backup & Recovery** | [`scripts/backup/pg_backup.sh`](./backend/scripts/backup/pg_backup.sh) scheduled full backups (pg_dump, 30 copies auto-rotation by default), Docker container / local direct-connect dual modes, with recovery documentation |
-| **Frontend Security** | Each of the three frontends ships its own `scripts/deploy/nginx.conf`, setting X-Frame-Options / HSTS / Content-Security-Policy response headers in production; react and vue-element additionally inject a CSP `<meta>` into `index.html` at build time (inline scripts allowlisted by sha256), so one layer survives a different web server |
+| **Security Audit** | Login logs and operation logs, recording the client IP (with geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
+| **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); image captcha; Redis login failure rate limiting (IP + username dual dimensions) |
+| **Access Control** | API authorization is Casbin. Role, permission, and API mappings live in the database and hot-reload. Menus, buttons, role data scope, and field permissions are also in place |
+| **Tenant code** | Isolation and plan code remains, and the sidebar entries are hidden. This tree is used as a single-tenant admin, not delivered as multi-tenant SaaS |
+| **Data Confidentiality** | Passwords for login, user creation, reset, and profile change are AES-encrypted in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
+| **Data Backup & Recovery** | The program does not ship a database backup. Use the database's own tools (for example `pg_dump`) or an operations platform, and rehearse a restore |
+| **Frontend Security** | `frontend/admin/react/scripts/deploy/nginx.conf` sets X-Frame-Options / HSTS / Content-Security-Policy. The React build also injects a CSP `<meta>` into `index.html` |
 
 > **Note**: MLPS evaluation covers more than technical requirements — management policies, physical environment, personnel organization, etc. This project covers the technical measures portion, providing direct support for evaluation preparation in private deployments, but it does not replace the full MLPS certification process.
 
@@ -214,13 +209,13 @@ Security capabilities are designed with reference to the technical requirements 
 | Feature | Description |
 |---------|-------------|
 | User Management | Manage and query users with advanced search and department-linked users; enable/disable users, set/unset manager, reset password, configure multiple roles / departments / managers, one-click login as a specified user. |
-| Tenant Management | Manage tenants. Adding a tenant auto-initializes its departments, default roles, and admin. Supports plan configuration, enable/disable, and one-click login as the tenant admin. |
-| Plan & Quota Management | Manage tenant subscription plans and resource quotas (module whitelists, usage limits, etc.); CRUD for plans and quota items. |
+| Tenant Management | The code and page remain at `/tenant/members`. The sidebar entry is hidden. This tree is not used as multi-tenant SaaS. |
+| Plan & Quota Management | The code and page remain at `/tenant/plans`. The sidebar entry is hidden. |
 | Role Management | Manage roles and role groups; user selection by role; menu grants, data-scope configuration (five levels / custom organization-unit sets), and field-level permissions (blacklisted field sets); batch add/remove employees. |
 | Permission Management | Manage permission groups, menus, and permission points with tree-view listing. |
 | Organization Management | Manage organizations with tree-view listing. |
-| Position Management | Manage user positions; positions can serve as user labels. Excel import is supported: client-side template download, row-by-row processing through the existing create API with row-level error reporting. **The "organization" column is resolved only by the vue-element importer** (exact organization-name match; a miss is reported as that row's error) — the react and vue-vben field lists deliberately exclude `orgUnitId`, their comments mark foreign-key name resolution as future work. |
-| Menu Management | Configure system menus, operation permissions, and button permission identifiers — directories, menus, and buttons. Menu synchronization (available on all three frontends) supports two modes: transactional truncate-rebuild, or incremental merge, which matches existing entries by full path and updates them in place while preserving existing menu IDs and role grants. |
+| Position Management | Manage positions, which can label a user. Excel import does not resolve the organization column (`orgUnitId` is not an import field). |
+| Menu Management | Configure directories, menus, and buttons. Menu sync exists only on React: truncate-and-rebuild, or merge by full path while keeping menu IDs and role grants. |
 
 ### System Features
 
@@ -230,18 +225,10 @@ Security capabilities are designed with reference to the technical requirements 
 | Dictionary Management | Manage dictionary categories and entries; category-linked entries, server-side multi-column sorting, import/export. |
 | Task Scheduler | Manage tasks and task run logs; create, update, delete, start, pause, and run immediately. |
 | File Management | Manage uploads: search, upload to OSS or local storage, download, copy file address, delete, and image preview (large view). |
-| Login Policy | Manage login restriction policies; configure restriction type, method, value, and reason for target users. |
-| Account Login | Sign in with username / email / phone number, combinable with image captcha, login policies, and TOTP MFA. |
-| Multi-Factor Authentication (MFA) | TOTP-based MFA: login challenge, personal binding management, and admin rescue reset of a user's MFA. |
-| Password Recovery | Reset password via a code sent to the bound email: 10-minute single-use code, all sessions revoked on success, silent handling prevents user enumeration. |
-| Notification Channels | Manage notification channels, one of two types: `EMAIL` (over SMTP; password stored encrypted, masked in lists) or `WEBHOOK` (HTTP callback, five sign styles: NONE / DINGTALK / FEISHU / WECOM / CUSTOM); enable/disable and test sending supported. |
-| Notification Rules | Manage notification routing rules (which event is delivered to which channel); enable/disable and per-rule test dispatch supported; built-in default rules are seeded at startup (empty-table re-seed only), deleting a row takes effect immediately. |
-| Delivery Ledger | Inspect per-notification, per-channel delivery results (status / channel / attempts / failure reason / request ID), filterable by recipient and status. |
-| Server Monitoring | Read-only view of runtime metrics (CPU cores, memory, goroutines, uptime, etc.) with auto refresh. |
+| Account Login | Sign in with username / email / phone number, with image captcha and login rate limiting. |
+| Verification delivery | Profile email and phone changes read SMTP and SMS credentials from `app/admin/service/configs/mail.yaml`. An empty SMTP host or SMS provider means that path is not configured. Sends are synchronous and do not enter the task queue. |
 | Online Sessions | View currently online sessions (user, tenant, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
-| Script System | Script-based plugin system (Lua / JavaScript, database as the source of truth, admin-UI changes take effect immediately): entity lifecycle hooks (before can veto / after is async), scheduled tasks (asynq), HTTP egress (domain allowlist, fail-closed), test runs and execution logs. See [docs/script_system.md](./docs/script_system.md). |
 | Parameter Management | Manage platform-wide system parameters as key/value pairs (distinct from business dictionaries); built-in parameters are seeded at startup and cannot be deleted; reads go through a server-side caching accessor, and in multi-instance deployments changes are broadcast over Redis pub/sub to invalidate every instance's cache. |
-| Machine Credentials (AK/SK) | Tenant-scoped AccessKey / SecretKey management: the Secret is shown exactly once at creation; enable/disable, delete, and secret rotation are supported (rotation immediately invalidates the previous Secret). An AK / Secret pair can be exchanged at the token-exchange endpoint for a tenant-scoped machine JWT (machine role, access token only); the exchange endpoint applies per-IP + per-AK failure rate limiting. |
 | Language Management | Manage supported languages: name, code, native name, enabled and default status. |
 
 ### Messaging & Logs
@@ -250,14 +237,9 @@ Security capabilities are designed with reference to the technical requirements 
 |---------|-------------|
 | Message Categories | Manage the message categories offered in message management. They are **flat, one level deep** (`sys_internal_message_categories` has no parent_id column, and deletion removes only the row — no tree cascade). |
 | Message Management | Send by scope (all users / specified users) with revocation; broadcast fan-out runs on an async task queue (resumable, idempotent); view read status and read time. |
-| Internal Mail | Manage internal messages: view details, delete, mark as read, mark all as read. |
+| Internal Mail | Each user sees only their own inbox: view, delete, mark as read, mark all as read. A platform admin can still open a chosen user's inbox from the user detail page. |
 | Login Logs | Query login logs for successful and failed logins; supports IP geolocation. |
 | Operation Logs | Query operation logs for normal and abnormal operations; supports IP geolocation, resource identification, and detail view. |
-| API Logs | Query API audit logs recording operator, path, method, and success status; supports IP geolocation. |
-| Data Logs | Query data access audit logs; SQL is lexically masked, with involved table names and data categories extracted automatically. |
-| Permission Logs | Query permission change audit logs recording operator, target object, and reason, with request snapshots retained. |
-| Policy Evaluation Logs | Query policy evaluation logs recording each authorization decision with its evaluation context; supports trace_id correlation for troubleshooting. |
-| Redis Cache Monitor | Read-only Redis monitoring displaying INFO, DBSIZE, and slowlog data; performs no write operations. |
 
 ### Personal Center
 
@@ -278,19 +260,16 @@ go-wind-admin/
 │   │   └── gen/go/                 # Go code generated by buf
 │   ├── app/admin/service/          # Admin service application
 │   │   ├── cmd/server/             # Entry point (main.go, wiring_ent.go DI assembly)
-│   │   ├── configs/                # Configuration files (YAML)
+│   │   ├── configs/                # Configuration files (YAML). Machine overrides go in configs/local/ (gitignored)
 │   │   └── internal/               # Business core (data/service/server)
 │   ├── pkg/                        # Shared packages
-│   │   ├── scripting/              # Multi-language scripting engine (Lua + JavaScript)
 │   │   ├── oss/                    # Object storage (MinIO)
 │   │   ├── eventbus/               # Event bus
 │   │   └── ...                     # Other utility packages
-│   ├── scripts/                    # Deployment & backup scripts (env/docker/deploy/backup)
+│   ├── scripts/                    # Deployment scripts (env/docker/deploy)
 │   └── sql/                        # Demo data SQL (default data is seeded automatically at service startup)
-├── frontend/admin/                 # Frontend projects (pick one — you only maintain that one)
-│   ├── react/                      # React 19 + Ant Design V6
-│   ├── vue-element/                # Vue 3 + Element Plus
-│   └── vue-vben/                   # Vue 3 + Ant Design Vue + Vben Admin
+├── frontend/admin/                 # Frontend (React only)
+│   └── react/                      # React 19 + Ant Design V6
 └── docs/                           # Project documentation
 ```
 
@@ -344,10 +323,6 @@ go-wind-admin/
         <td><img src="./docs/images/admin_internal_message_publish.png" alt="Backend publish internal message page"/></td>
     </tr>
     <tr>
-        <td><img src="./docs/images/admin_login_policy_list.png" alt="Login policy list page"/></td>
-        <td><img src="./docs/images/admin_login_policy_create.png" alt="Login policy create page"/></td>
-    </tr>
-    <tr>
         <td><img src="./docs/images/admin_login_audit_log_list.png" alt="Backend login audit log page"/></td>
         <td><img src="./docs/images/admin_api_audit_log_list.png" alt="Backend operation audit log page"/></td>
     </tr>
@@ -359,8 +334,7 @@ go-wind-admin/
 
 ## Companion Tools
 
-- **[go-wind-toolkit / gowind-uiapp](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind-uiapp)** — Cross-platform desktop code generator (Go + Wails). Import SQL or connect to your database (MySQL / PostgreSQL / SQLite / SQL Server / Oracle) to generate server-side and frontend code from gRPC / RESTful templates, including simple forms. Also ships a non-interactive, JSON-output CLI (`gowind-cli`) for scripts and AI agents.
-- **[gow — GoWind CLI](https://github.com/tx7do/go-wind-toolkit/tree/main/gowind)** — The recommended command-line entry for this project: `gow run admin` to run the service, `gow ent` / `gow api` for code generation, `gow generate` to scaffold CRUD microservices from a database DSN, and `gow extract` for progressive microservice extraction. Run it under `backend/`; it discovers `app/*/service` automatically. Prefer it over the Makefile for daily development.
+Code generation runs under `backend/`: `make api`, `make openapi`, `make ent`, `make ts`. Run the service with `make -C app/admin/service run`. See [AGENTS.md](./AGENTS.md).
 
 ## Community & Contribution
 

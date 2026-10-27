@@ -1,6 +1,6 @@
 # 后端项目部署
 
-> **执行目录约定**：本文所有相对路径命令（`./scripts/...`、`make ...`、`docker compose ...`、`gow ...`）
+> **执行目录约定**：本文所有相对路径命令（`./scripts/...`、`make ...`、`docker compose ...`）
 > 一律在 **`backend/` 目录**下执行——仓库根目录没有 Makefile，脚本也不在根目录。
 
 - 所有的Docker配置文件都在`backend`目录下。
@@ -84,7 +84,7 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 然后本地运行后端服务：
 
 ```bash
-gow run admin
+make -C app/admin/service run
 ```
 
 ### 3. PM2 进程管理（生产环境物理机部署）
@@ -140,15 +140,19 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 
 ## 备份与恢复
 
-平台有两套互补的备份机制，**互不替代**：
+程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练一次恢复。
 
-| 机制 | 形态 | 说明 |
-|---|---|---|
-| [`scripts/backup/pg_backup.sh`](../backend/scripts/backup/pg_backup.sh) | pg_dump 物理备份（Docker 容器 / 本地直连双模式），定时全量、默认保留 30 份自动轮换，附恢复操作文档 | 部署侧脚本，cron/计划任务挂载 |
-| asynq `backup` 任务 | 应用级逻辑备份：核心表导出 JSON → gzip → 上传 MinIO `backups` 桶（日期分层对象） | 调度与机制见 [task_system.md](./task_system.md) 第 5.3 节；当前无自动恢复/演练工具链，桶内对象无生命周期清理（该文档第 10 节） |
+## 本地覆盖配置
 
-**恢复演练**：没有验证过的备份等于没有。任一机制接入后，用一次真实恢复演练闭环
-（pg_dump 走其附带恢复文档；JSON 备份目前需手工下载反序列化）。
+本机要连自己的数据库、Redis 或 MinIO 时，不要改 `backend/app/admin/service/configs/` 根下被 Git 跟踪的 yaml。在同级的 `configs/local/` 里放同名文件，只写要改的键，例如 `local/data.yaml` 里只保留 `data.database.source` 和 `data.redis`。
+
+加载顺序：
+
+1. 主配置目录。按目录读取时会跳过子目录，因此 `local/` 不会被主配置读两遍。
+2. 若存在 `config.yaml`，远程配置源仍按原逻辑加载，并覆盖主配置里的同名键。
+3. `configs/local/` 仅在目录存在时最后加载。合并是深度合并。这里显式写出的标量都会覆盖同名键，包括空字符串、false 和 0；没写的键保留前面的值。
+
+`configs/local/` 在仓库根 `.gitignore` 里。部署时可以把同名目录挂进容器或配置目录，用来覆盖镜像里的主配置，同样只放差异键。本地把主机名改成 `localhost` 的例子见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步。
 
 ## 本地开发配置 hosts
 
@@ -171,11 +175,18 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 > 若二次开发自行引入 Consul，再按当时的形态补 hosts 与 `registry` 配置（历史坑：`consul` 作主机名会 502，
 > 地址要写 `localhost:8500`）。
 >
-> **推荐做法**：本地开发使用依赖模式（libs_only），配置文件中直接使用`localhost`即可，无需修改 hosts
-> （见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步：改的就是 `localhost`）。
+> **推荐做法**：本地开发使用依赖模式（libs_only），在 `configs/local/` 里把主机名覆盖成 `localhost`，无需修改 hosts，也不要改被跟踪的主配置
+> （见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步）。
 >
 > **与一键脚本的差异**：`scripts/env/install_windows_dev.ps1` 以管理员运行时写的是**带 `.local` 后缀**的
 > 域名（其 50-51 行 `$services = @('postgres','mysql','redis','minio')` + `-DomainSuffix ".local"`，
 > 由 `scripts/env/lib/host-utils.ps1:111,119-120` 拼成 `postgres.local` 等），与上面的裸主机名清单不一致；
 > 其中 `mysql` 一项当前 compose 也未启用。两种写法各自自洽即可，**不要混用**：走脚本就在配置里写
 > `postgres.local`，走本文清单就写 `postgres`，用 `localhost` 则两条都不需要。
+
+## 上线前的访问日志
+
+这次修复上线之前，访问日志会记下请求参数里的口令。登录请求是 AES 密文，密钥打在前端包的
+`VITE_AES_KEY` 里，可以解回明文。创建用户当时是明文。这段时间产生的访问日志要清理，
+或者限制访问。此期间新建过的用户，建议改一次密码。根因和修法见
+`docs/plans/trim-and-own-deps.md` 的「字段隐藏、访问日志与创建用户口令」。

@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
-	entCrud "github.com/tx7do/go-crud/entgo"
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	"github.com/tx7do/go-utils/copierutil"
-	"github.com/tx7do/go-utils/mapper"
-	"github.com/tx7do/go-utils/trans"
+	"go-wind-admin/third_party/go-utils/copierutil"
+	"go-wind-admin/third_party/go-utils/mapper"
+	"go-wind-admin/third_party/go-utils/trans"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
@@ -23,8 +23,8 @@ import (
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"github.com/tx7do/go-utils/sliceutil"
 	"go-wind-admin/pkg/constants"
+	"go-wind-admin/third_party/go-utils/sliceutil"
 )
 
 type RoleRepo struct {
@@ -195,6 +195,22 @@ func (r *RoleRepo) fillOrgUnitIDs(ctx context.Context, dto *permissionV1.Role) e
 	return nil
 }
 
+// EnsureGrantSnapshot 读出授权比较要用的权限、组织单元和字段权限。
+// Get 会填这三项，但填充失败只记日志；调用方在更新前再查一次，失败就放弃更新，
+// 避免把没读到的关联当成空集。
+func (r *RoleRepo) EnsureGrantSnapshot(ctx context.Context, dto *permissionV1.Role) error {
+	if dto == nil || dto.GetId() == 0 {
+		return permissionV1.ErrorBadRequest("invalid parameter")
+	}
+	if err := r.fillPermissionIDs(ctx, dto); err != nil {
+		return err
+	}
+	if err := r.fillOrgUnitIDs(ctx, dto); err != nil {
+		return err
+	}
+	return r.fillFieldPermissions(ctx, dto)
+}
+
 // fillFieldPermissions 填充角色字段权限配置
 func (r *RoleRepo) fillFieldPermissions(ctx context.Context, dto *permissionV1.Role) error {
 	fieldPerms, err := r.roleFieldPermissionRepo.ListFieldPermissions(ctx, dto.GetId())
@@ -264,6 +280,29 @@ func (r *RoleRepo) ListRolesByRoleIds(ctx context.Context, ids []uint32) ([]*per
 	}
 
 	return dtos, nil
+}
+
+// EnabledRoleIDs 只保留状态为 ON 的角色。停用、查无此行、status 为空都不算启用。
+// 登录、刷新、菜单、权限码和策略装载用这份结果；角色下拉和列表展示仍用未过滤的查询。
+func (r *RoleRepo) EnabledRoleIDs(ctx context.Context, ids []uint32) ([]uint32, error) {
+	if len(ids) == 0 {
+		return []uint32{}, nil
+	}
+
+	entities, err := r.entClient.Client().Role.Query().
+		Where(role.IDIn(ids...), role.StatusEQ(role.StatusOn)).
+		Select(role.FieldID).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "query enabled roles failed: %s", err.Error())
+		return nil, permissionV1.ErrorInternalServerError("query enabled roles failed")
+	}
+
+	out := make([]uint32, 0, len(entities))
+	for _, entity := range entities {
+		out = append(out, entity.ID)
+	}
+	return out, nil
 }
 
 // ListRoleCodesByRoleIds 通过角色ID列表获取角色编码列表
@@ -432,21 +471,20 @@ func (r *RoleRepo) Create(ctx context.Context, req *permissionV1.CreateRoleReque
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	_, err = r.CreateWithTx(ctx, tx, req.GetData())
-	return err
+	if err != nil {
+		return err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
 }
 
 // CreateWithTx 创建角色
@@ -576,18 +614,10 @@ func (r *RoleRepo) Update(ctx context.Context, req *permissionV1.UpdateRoleReque
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	// permissions / org_units 是关联字段（分别存于 sys_role_permissions、
 	// sys_role_org_units），并非 sys_roles 表的列。若留在 updateMask 中，当其为空时
@@ -696,6 +726,10 @@ func (r *RoleRepo) Update(ctx context.Context, req *permissionV1.UpdateRoleReque
 		}
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -711,18 +745,10 @@ func (r *RoleRepo) Delete(ctx context.Context, req *permissionV1.DeleteRoleReque
 		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
 		return permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	ret, err := tx.Role.Query().Where(role.IDEQ(req.GetId())).Only(ctx)
 	if err != nil {
@@ -760,6 +786,10 @@ func (r *RoleRepo) Delete(ctx context.Context, req *permissionV1.DeleteRoleReque
 		return err
 	}
 
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
+		return permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 
@@ -771,6 +801,10 @@ func (r *RoleRepo) ListPermissionIDsByRoleIDs(ctx context.Context, roleIDs []uin
 // ListPermissionIDsByRoleCodes 通过角色编码列表获取权限ID列表
 func (r *RoleRepo) ListPermissionIDsByRoleCodes(ctx context.Context, roleCodes []string) ([]uint32, error) {
 	roleIDs, err := r.ListRoleIDsByRoleCodes(ctx, roleCodes)
+	if err != nil {
+		return nil, err
+	}
+	roleIDs, err = r.EnabledRoleIDs(ctx, roleIDs)
 	if err != nil {
 		return nil, err
 	}

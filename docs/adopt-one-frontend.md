@@ -103,8 +103,8 @@ vite 端口被占用时会自动 +1（教程 02 第 6 节），**实际监听的
 grep -roc -E 'vue-vben|vue-element|三端|15888|15777|15666' docs README*.md | grep -v ':0' | sort -t: -k2 -rn | head
 ```
 
-量级参考（2026-09-25 跑上面那条命令的实际前三页结果）：
-`docs/notification_domain_design.md` 68 处、`docs/design-language.md` 34 处、本文自己 29 处
+量级参考（2026-09-25 跑上面那条命令的实际前几名）：
+当时第一名是已删除的 `docs/notification_domain_design.md`（68 处）。剩下的是 `docs/design-language.md` 34 处、本文自己 29 处
 （本文就是讲三端的，命中多属正常），其后 `windows-startup-guide.md` 18、`frontend_authority.md` 15、
 README 三个语言版本 15/13/13、教程 02/01/04 各 11/10/8。
 

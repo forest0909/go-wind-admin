@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	entCrud "github.com/tx7do/go-crud/entgo"
-	"github.com/tx7do/kratos-bootstrap/bootstrap"
-	bLogger "github.com/tx7do/kratos-bootstrap/logger"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
+	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
@@ -74,18 +74,10 @@ func (r *PermissionApiRepo) AssignApis(
 		r.log.Errorf(context.Background(), "start transaction failed: %s", err.Error())
 		return permissionV1.ErrorInternalServerError("start transaction failed")
 	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				r.log.Errorf(context.Background(), "transaction rollback failed: %s", rollbackErr.Error())
-			}
-			return
-		}
-		if commitErr := tx.Commit(); commitErr != nil {
-			r.log.Errorf(context.Background(), "transaction commit failed: %s", commitErr.Error())
-			err = permissionV1.ErrorInternalServerError("transaction commit failed")
-		}
-	}()
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(context.Background(), "transaction rollback failed: %s", rollbackErr.Error())
+	})
 
 	// 清理失效关联失败不阻断分配（仅告警）：CleanNotExist 出错时仍执行 Assign，
 	// 由 (tenant, permission, api) 唯一约束兜底重复数据
@@ -93,7 +85,14 @@ func (r *PermissionApiRepo) AssignApis(
 		r.log.Warnf(context.Background(), "clean not exist apis for permission [%d] failed: %s", permissionID, err.Error())
 	}
 
-	return r.AssignApisWithTx(ctx, tx, permissionID, apiIDs)
+	if err = r.AssignApisWithTx(ctx, tx, permissionID, apiIDs); err != nil {
+		return err
+	}
+	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
+		r.log.Errorf(context.Background(), "transaction commit failed: %s", commitErr.Error())
+		return permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
 }
 
 // AssignApisWithTx 给权限分配API资源

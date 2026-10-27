@@ -160,7 +160,7 @@ const RoleManagement = () => {
           <ListTable<Role>
             actionRef={actionRef}
             columns={columns}
-            request={async (params, _sorter, _filter) => {
+            request={async (params) => {
               const query = new PaginationQuery({
                 paging: {
                   page: params.current || 1,

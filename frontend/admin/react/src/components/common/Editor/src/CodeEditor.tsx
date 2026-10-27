@@ -103,14 +103,15 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             JSON.parse(content);
             return 'json';
           } catch {
-            /* ignore */
+            // 内容以括号开头但不是合法 JSON，继续走下面的自动检测，不能让解析失败打断编辑器。
           }
         }
         const detectedLanguage = hljs.highlightAuto(content);
         const detected = detectedLanguage.language;
         const detectedKey = typeof detected === 'string' ? detected.toLowerCase() : '';
         return languageMap[detectedKey] || 'plaintext';
-      } catch (error) {
+      } catch {
+        // 语言检测失败就退回调用方指定的语言，没有指定时用纯文本。这是本地兜底，编辑器仍要能打开。
         return language || 'plaintext';
       }
     },

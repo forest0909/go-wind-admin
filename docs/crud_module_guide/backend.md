@@ -87,12 +87,12 @@ service <Entity>Service {
 
 Route prefix is always `/admin/v1/<entities>`. For batch delete the path drops `{id}` (see `i_dict_type.proto`). The BFF can expose fewer RPCs than the domain (e.g. omit Count).
 
-**If you introduced a NEW domain** (one not already present in `buf.gen.yaml`'s overrides), add a `go_package` override entry there pointing `<domain>/service/v1` → `go-wind-admin/api/gen/go/<domain>/service/v1;<domain>pb`. Otherwise `gow api` won't know where to emit the domain package.
+**If you introduced a NEW domain** (one not already present in `buf.gen.yaml`'s overrides), add a `go_package` override entry there pointing `<domain>/service/v1` → `go-wind-admin/api/gen/go/<domain>/service/v1;<domain>pb`. Otherwise `make api` won't know where to emit the domain package.
 
 ## Step 3 — Generate proto code
 
 ```bash
-cd backend && gow api && make openapi
+cd backend && make api && make openapi
 ```
 Produces `api/gen/go/<domain>/service/v1/*.pb.go` and `api/gen/go/admin/service/v1/i_<entity>*.pb.go` (the latter contains `Register<Entity>ServiceHTTPServer`). If a frontend is in scope, also regenerate the frontend generated types now (see README.md, Step 2).
 
@@ -109,7 +109,7 @@ import (
     "entgo.io/ent/schema"
     "entgo.io/ent/schema/field"
     "entgo.io/ent/schema/index"
-    "github.com/tx7do/go-crud/entgo/mixin"
+    "go-wind-admin/third_party/go-crud/entgo/mixin"
 )
 
 type <Entity> struct{ ent.Schema }
@@ -159,9 +159,9 @@ For tree shape: add `mixin.Tree[<Entity>]{}` — it supplies both the `parent_id
 ## Step 5 — Generate Ent code
 
 ```bash
-cd backend && gow ent admin
+cd backend && make ent
 ```
-`gow` resolves the service path itself, so no `cd` into the service dir is needed (the fallback `make ent` does require it — its `ent generate ./internal/data/ent/schema` path is relative, and the target is guarded by that directory existing). Produces `internal/data/ent/<entity>/`, `internal/data/ent/<entity>_create.go`, etc., and the `predicate.<Entity>` type — all referenced by the repo's 10 generic params.
+在 `backend/` 下执行 `make ent`。它会进入 `app/admin/service` 再跑 `ent generate`。产物是 `internal/data/ent/<entity>/`、`internal/data/ent/<entity>_create.go` 等，以及 repo 泛型参数要用的 `predicate.<Entity>`。
 
 ## Step 6 — Repository
 
@@ -177,11 +177,11 @@ import (
     "time"
 
     "entgo.io/ent/dialect/sql"
-    entCrud "github.com/tx7do/go-crud/entgo"
-    "github.com/tx7do/go-utils/mapper"
-    "github.com/tx7do/go-utils/copierutil"
-    bLogger "github.com/tx7do/kratos-bootstrap/logger"
-    "github.com/tx7do/kratos-bootstrap/bootstrap"
+    entCrud "go-wind-admin/third_party/go-crud/entgo"
+    "go-wind-admin/third_party/go-utils/mapper"
+    "go-wind-admin/third_party/go-utils/copierutil"
+    bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
+    "go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 
     "go-wind-admin/api/gen/go/<domain>/service/v1"   // domain types, alias as <domain>V1
     "go-wind-admin/app/admin/service/internal/data/ent"
@@ -267,14 +267,14 @@ package service
 import (
     "context"
 
-    bLogger "github.com/tx7do/kratos-bootstrap/logger"
-    "github.com/tx7do/kratos-bootstrap/bootstrap"
-    "github.com/tx7do/go-utils/trans"
+    bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
+    "go-wind-admin/third_party/kratos-bootstrap/bootstrap"
+    "go-wind-admin/third_party/go-utils/trans"
     "google.golang.org/protobuf/types/known/emptypb"
 
     adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
     <domain>V1 "go-wind-admin/api/gen/go/<domain>/service/v1"
-    paginationV1 "github.com/tx7do/go-crud/api/gen/go/pagination/v1"
+    paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
     "go-wind-admin/app/admin/service/internal/data"
     "go-wind-admin/pkg/middleware/auth"
 )
@@ -399,7 +399,7 @@ Consequences for a new module:
 
 ## Backend-specific pitfalls
 
-1. **`gow` first, `make` for the rest.** Backend run/generate tasks go through the `gow` CLI per the root `AGENTS.md`（「gow 优先，make 兜底」）: `gow run admin`, `gow ent`, `gow api`. Fall back to Makefile targets only for what gow doesn't cover: `make ts` (three-frontends TypeScript), `make openapi`, `make gen` (full generate).
+1. **Makefile.** 在 `backend/` 下执行：`make -C app/admin/service run`、`make ent`、`make api`、`make openapi`、`make ts`（只生成 React 客户端）、`make gen`。
 
 2. **The repo's generic signature has 10 type params, not 9.** Order: Query, Select, Create, CreateBulk, Update, UpdateOne, Delete, Predicate, DTO, Entity. Swapping any two breaks compilation in confusing ways. Copy the exact order from `api_repo.go`.
 

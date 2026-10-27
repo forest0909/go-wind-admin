@@ -41,7 +41,11 @@
 - Copyright 2020 Einride AB
   - `backend/third_party/tools/protoc-gen-typescript-http/LICENSE`
 
-GeoLite2-City.mmdb 在 `backend/third_party/go-utils/geoip/geolite/assets/`，因为 `//go:embed` 必须放在包里。该目录没有单独的数据许可证文件。
+GeoLite2-City.mmdb 在 `backend/third_party/go-utils/geoip/geolite/assets/`，因为 `//go:embed` 必须放在包里。它随上游 go-utils 一起收进来，用于给登录日志和操作日志填 IP 归属地。
+
+这个文件是 MaxMind 的数据，不在上面的 MIT 许可证范围内，适用 MaxMind 的 GeoLite 最终用户许可协议：https://www.maxmind.com/en/geolite2/eula 。按协议要求署名：
+
+This product includes GeoLite2 data created by MaxMind, available from https://www.maxmind.com.
 
 ## 许可证原文
 

@@ -195,6 +195,22 @@ func (r *RoleRepo) fillOrgUnitIDs(ctx context.Context, dto *permissionV1.Role) e
 	return nil
 }
 
+// EnsureGrantSnapshot 读出授权比较要用的权限、组织单元和字段权限。
+// Get 会填这三项，但填充失败只记日志；调用方在更新前再查一次，失败就放弃更新，
+// 避免把没读到的关联当成空集。
+func (r *RoleRepo) EnsureGrantSnapshot(ctx context.Context, dto *permissionV1.Role) error {
+	if dto == nil || dto.GetId() == 0 {
+		return permissionV1.ErrorBadRequest("invalid parameter")
+	}
+	if err := r.fillPermissionIDs(ctx, dto); err != nil {
+		return err
+	}
+	if err := r.fillOrgUnitIDs(ctx, dto); err != nil {
+		return err
+	}
+	return r.fillFieldPermissions(ctx, dto)
+}
+
 // fillFieldPermissions 填充角色字段权限配置
 func (r *RoleRepo) fillFieldPermissions(ctx context.Context, dto *permissionV1.Role) error {
 	fieldPerms, err := r.roleFieldPermissionRepo.ListFieldPermissions(ctx, dto.GetId())

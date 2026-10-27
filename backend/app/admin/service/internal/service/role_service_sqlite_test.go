@@ -372,3 +372,315 @@ func TestRoleServiceSqlite_DeleteRevokesHolderTokens(t *testing.T) {
 	requireRoleAccessTokenValid(t, e.svc.authenticator, holder, false)
 	requireRoleAccessTokenValid(t, e.svc.authenticator, bystander, true)
 }
+
+// rolePageMaskPaths 对齐 RoleDrawer 保存时 makeUpdateMask 的键。
+// protojson 会把 dataScope / fieldPermissions / sortOrder 规范成 proto 名。
+var rolePageMaskPaths = []string{
+	"id", "name", "code", "sort_order", "status", "data_scope",
+	"description", "permissions", "field_permissions",
+}
+
+// TestRoleServiceSqlite_PagePayloadComparesGrantValues 复刻管理端保存角色：
+// 抽屉每次都提交 permissions、fieldPermissions、code、status、dataScope，
+// 即使值没变。只改名称不得吊销；授权字段的值真的变了才吊销持有人。
+func TestRoleServiceSqlite_PagePayloadComparesGrantValues(t *testing.T) {
+	e := newRoleGrantEnv(t)
+	op := opCtx(e.sys, roleGrantHolderID, 0, true)
+	bystander := issueRoleAccessToken(t, e.svc.authenticator, roleGrantBystanderID, "bystander")
+
+	unitA := e.createOrgUnit(t, 0, "页面保存单元A")
+	unitB := e.createOrgUnit(t, 0, "页面保存单元B")
+
+	basePerms := []uint32{11, 22}
+	baseFields := []*permissionV1.RoleFieldPermission{{
+		Resource:     "User",
+		HiddenFields: []string{"email", "mobile"},
+	}}
+
+	allID := e.createFullRole(t, &permissionV1.Role{
+		Name:             trans.Ptr("页面角色"),
+		Code:             trans.Ptr("ROLE_PAGE_ALL"),
+		Status:           permissionV1.Role_ON.Enum(),
+		Type:             permissionV1.Role_TENANT.Enum(),
+		DataScope:        identityV1.DataScope_ALL.Enum(),
+		SortOrder:        trans.Ptr(uint32(1)),
+		Description:      trans.Ptr("页面描述"),
+		Permissions:      append([]uint32(nil), basePerms...),
+		FieldPermissions: baseFields,
+		OrgUnits:         []uint32{unitA, unitB},
+		TenantId:         trans.Ptr(uint32(0)),
+	})
+	e.bindHolder(t, allID)
+
+	selectedID := e.createFullRole(t, &permissionV1.Role{
+		Name:             trans.Ptr("选定组织角色"),
+		Code:             trans.Ptr("ROLE_PAGE_UNITS"),
+		Status:           permissionV1.Role_ON.Enum(),
+		Type:             permissionV1.Role_TENANT.Enum(),
+		DataScope:        identityV1.DataScope_SELECTED_UNITS.Enum(),
+		SortOrder:        trans.Ptr(uint32(2)),
+		Description:      trans.Ptr("选定组织"),
+		Permissions:      append([]uint32(nil), basePerms...),
+		FieldPermissions: baseFields,
+		OrgUnits:         []uint32{unitA, unitB},
+		TenantId:         trans.Ptr(uint32(0)),
+	})
+	e.bindHolder(t, selectedID)
+
+	protectedID := e.createFullRole(t, &permissionV1.Role{
+		Name:             trans.Ptr("受保护角色"),
+		Code:             trans.Ptr("ROLE_PAGE_PROTECTED"),
+		Status:           permissionV1.Role_ON.Enum(),
+		Type:             permissionV1.Role_TENANT.Enum(),
+		DataScope:        identityV1.DataScope_ALL.Enum(),
+		SortOrder:        trans.Ptr(uint32(3)),
+		Description:      trans.Ptr("受保护"),
+		IsProtected:      trans.Ptr(true),
+		Permissions:      append([]uint32(nil), basePerms...),
+		FieldPermissions: baseFields,
+		TenantId:         trans.Ptr(uint32(0)),
+	})
+	e.bindHolder(t, protectedID)
+
+	t.Run("name only keeps tokens", func(t *testing.T) {
+		before := e.mustGetRole(t, allID)
+		require.Equal(t, permissionV1.Role_ON, before.GetStatus())
+		require.Equal(t, identityV1.DataScope_ALL, before.GetDataScope())
+		require.ElementsMatch(t, basePerms, before.GetPermissions())
+		require.ElementsMatch(t, []uint32{unitA, unitB}, before.GetOrgUnits())
+		require.NotEmpty(t, before.GetFieldPermissions())
+
+		e.updateRoleGrant(t, op, e.pageUpdate(allID, before, false, func(data *permissionV1.Role) {
+			data.Name = trans.Ptr("只改名称")
+		}), true, bystander)
+
+		after := e.mustGetRole(t, allID)
+		require.Equal(t, "只改名称", after.GetName())
+		require.ElementsMatch(t, []uint32{unitA, unitB}, after.GetOrgUnits(),
+			"ALL 档页面不提交 orgUnits，仓库应保留原集合")
+		require.ElementsMatch(t, basePerms, after.GetPermissions())
+	})
+
+	t.Run("selected units same set keeps tokens", func(t *testing.T) {
+		before := e.mustGetRole(t, selectedID)
+		require.Equal(t, identityV1.DataScope_SELECTED_UNITS, before.GetDataScope())
+		e.updateRoleGrant(t, op, e.pageUpdate(selectedID, before, true, func(data *permissionV1.Role) {
+			data.Name = trans.Ptr("选定组织只改名称")
+		}), true, bystander)
+	})
+
+	t.Run("camelCase mask same values keeps tokens", func(t *testing.T) {
+		before := e.mustGetRole(t, allID)
+		data := pageRoleData(before, false, func(data *permissionV1.Role) {
+			data.Name = trans.Ptr("驼峰掩码只改名称")
+		})
+		e.updateRoleGrant(t, op, &permissionV1.UpdateRoleRequest{
+			Id:   allID,
+			Data: data,
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{
+				"id", "name", "code", "sortOrder", "status", "dataScope",
+				"description", "permissions", "fieldPermissions",
+			}},
+		}, true, bystander)
+	})
+
+	t.Run("nil mask name only keeps tokens", func(t *testing.T) {
+		e.updateRoleGrant(t, op, &permissionV1.UpdateRoleRequest{
+			Id:   allID,
+			Data: &permissionV1.Role{Name: trans.Ptr("无掩码只改名称")},
+		}, true, bystander)
+		require.Equal(t, "无掩码只改名称", e.mustGetRole(t, allID).GetName())
+	})
+
+	t.Run("nil mask does not apply permissions", func(t *testing.T) {
+		e.updateRoleGrant(t, op, &permissionV1.UpdateRoleRequest{
+			Id: allID,
+			Data: &permissionV1.Role{
+				Name:        trans.Ptr("无掩码权限写不进去"),
+				Permissions: []uint32{99999},
+			},
+		}, true, bystander)
+		require.ElementsMatch(t, basePerms, e.mustGetRole(t, allID).GetPermissions(),
+			"无 mask 时仓库不替换权限，集合不应被请求体改掉")
+	})
+
+	t.Run("empty mask updates audit only", func(t *testing.T) {
+		beforeName := e.mustGetRole(t, allID).GetName()
+		e.updateRoleGrant(t, op, &permissionV1.UpdateRoleRequest{
+			Id: allID,
+			Data: &permissionV1.Role{
+				Name:   trans.Ptr("空掩码不该改名"),
+				Status: permissionV1.Role_OFF.Enum(),
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{},
+		}, true, bystander)
+		after := e.mustGetRole(t, allID)
+		require.Equal(t, beforeName, after.GetName(), "空 mask 追加 updated_by 后只写审计字段")
+		require.Equal(t, permissionV1.Role_ON, after.GetStatus())
+	})
+
+	t.Run("permission change revokes holder", func(t *testing.T) {
+		before := e.mustGetRole(t, allID)
+		e.updateRoleGrant(t, op, e.pageUpdate(allID, before, false, func(data *permissionV1.Role) {
+			data.Permissions = []uint32{11, 33}
+		}), false, bystander)
+		require.ElementsMatch(t, []uint32{11, 33}, e.mustGetRole(t, allID).GetPermissions())
+	})
+
+	t.Run("data scope change revokes holder", func(t *testing.T) {
+		before := e.mustGetRole(t, allID)
+		e.updateRoleGrant(t, op, e.pageUpdate(allID, before, false, func(data *permissionV1.Role) {
+			data.DataScope = identityV1.DataScope_SELF.Enum()
+		}), false, bystander)
+		require.Equal(t, identityV1.DataScope_SELF, e.mustGetRole(t, allID).GetDataScope())
+	})
+
+	t.Run("field permission change revokes holder", func(t *testing.T) {
+		before := e.mustGetRole(t, allID)
+		e.updateRoleGrant(t, op, e.pageUpdate(allID, before, false, func(data *permissionV1.Role) {
+			data.FieldPermissions = []*permissionV1.RoleFieldPermission{{
+				Resource:     "User",
+				HiddenFields: []string{"email"},
+			}}
+		}), false, bystander)
+	})
+
+	t.Run("status change revokes holder", func(t *testing.T) {
+		before := e.mustGetRole(t, allID)
+		e.updateRoleGrant(t, op, e.pageUpdate(allID, before, false, func(data *permissionV1.Role) {
+			data.Status = permissionV1.Role_OFF.Enum()
+		}), false, bystander)
+		require.Equal(t, permissionV1.Role_OFF, e.mustGetRole(t, allID).GetStatus())
+	})
+
+	t.Run("selected org change revokes holder", func(t *testing.T) {
+		before := e.mustGetRole(t, selectedID)
+		e.updateRoleGrant(t, op, e.pageUpdate(selectedID, before, true, func(data *permissionV1.Role) {
+			data.OrgUnits = []uint32{unitA}
+		}), false, bystander)
+		require.ElementsMatch(t, []uint32{unitA}, e.mustGetRole(t, selectedID).GetOrgUnits())
+	})
+
+	t.Run("protected stripped status and code do not revoke", func(t *testing.T) {
+		before := e.mustGetRole(t, protectedID)
+		require.True(t, before.GetIsProtected())
+		e.updateRoleGrant(t, op, e.pageUpdate(protectedID, before, false, func(data *permissionV1.Role) {
+			data.Name = trans.Ptr("受保护只改名称")
+			data.Status = permissionV1.Role_OFF.Enum()
+			data.Code = trans.Ptr("ROLE_PAGE_PROTECTED_HACKED")
+		}), true, bystander)
+		after := e.mustGetRole(t, protectedID)
+		require.Equal(t, "受保护只改名称", after.GetName())
+		require.Equal(t, "ROLE_PAGE_PROTECTED", after.GetCode(), "受保护角色的 code 被剥离，不应写库")
+		require.Equal(t, permissionV1.Role_ON, after.GetStatus(), "受保护角色的 status 被剥离，不应写库")
+	})
+}
+
+func (e *roleGrantEnv) createOrgUnit(t *testing.T, tenantID uint32, name string) uint32 {
+	t.Helper()
+	row, err := e.client.OrgUnit.Create().SetName(name).SetTenantID(tenantID).Save(e.sys)
+	require.NoError(t, err)
+	return row.ID
+}
+
+func (e *roleGrantEnv) createFullRole(t *testing.T, role *permissionV1.Role) uint32 {
+	t.Helper()
+	op := opCtx(e.sys, roleGrantHolderID, 0, true)
+	_, err := e.svc.Create(op, &permissionV1.CreateRoleRequest{Data: role})
+	require.NoError(t, err)
+	resp, err := e.svc.List(e.sys, &paginationV1.PagingRequest{})
+	require.NoError(t, err)
+	for _, item := range resp.GetItems() {
+		if item.GetCode() == role.GetCode() {
+			return item.GetId()
+		}
+	}
+	t.Fatalf("创建后找不到角色 %s", role.GetCode())
+	return 0
+}
+
+func (e *roleGrantEnv) mustGetRole(t *testing.T, id uint32) *permissionV1.Role {
+	t.Helper()
+	got, err := e.svc.Get(e.sys, &permissionV1.GetRoleRequest{
+		QueryBy: &permissionV1.GetRoleRequest_Id{Id: id},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	return got
+}
+
+func (e *roleGrantEnv) updateRoleGrant(t *testing.T, op context.Context, req *permissionV1.UpdateRoleRequest, holderStays bool, bystander string) {
+	t.Helper()
+	holder := issueRoleAccessToken(t, e.svc.authenticator, roleGrantHolderID, "holder")
+	_, err := e.svc.Update(op, req)
+	require.NoError(t, err)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, holder, holderStays)
+	requireRoleAccessTokenValid(t, e.svc.authenticator, bystander, true)
+}
+
+func (e *roleGrantEnv) pageUpdate(id uint32, src *permissionV1.Role, includeOrgUnits bool, mutate func(*permissionV1.Role)) *permissionV1.UpdateRoleRequest {
+	tPaths := append([]string(nil), rolePageMaskPaths...)
+	if includeOrgUnits {
+		tPaths = append(tPaths, "org_units")
+	}
+	return &permissionV1.UpdateRoleRequest{
+		Id:         id,
+		Data:       pageRoleData(src, includeOrgUnits, mutate),
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: tPaths},
+	}
+}
+
+// pageRoleData 复制抽屉会提交的字段。权限和隐藏字段打乱顺序并加重复项，
+// 空 hiddenFields 的资源应当和「没有这条」一样。
+func pageRoleData(src *permissionV1.Role, includeOrgUnits bool, mutate func(*permissionV1.Role)) *permissionV1.Role {
+	perms := append([]uint32(nil), src.GetPermissions()...)
+	if len(perms) > 0 {
+		perms = append(perms, perms[0])
+		for i, j := 0, len(perms)-1; i < j; i, j = i+1, j-1 {
+			perms[i], perms[j] = perms[j], perms[i]
+		}
+	}
+	fields := make([]*permissionV1.RoleFieldPermission, 0, len(src.GetFieldPermissions())+1)
+	for i := len(src.GetFieldPermissions()) - 1; i >= 0; i-- {
+		fp := src.GetFieldPermissions()[i]
+		hidden := append([]string(nil), fp.GetHiddenFields()...)
+		if len(hidden) > 1 {
+			hidden[0], hidden[len(hidden)-1] = hidden[len(hidden)-1], hidden[0]
+		}
+		if len(hidden) > 0 {
+			hidden = append(hidden, hidden[0])
+		}
+		fields = append(fields, &permissionV1.RoleFieldPermission{
+			Resource:     fp.GetResource(),
+			HiddenFields: hidden,
+		})
+	}
+	fields = append(fields, &permissionV1.RoleFieldPermission{Resource: "Unused", HiddenFields: nil})
+
+	data := &permissionV1.Role{
+		Name:             trans.Ptr(src.GetName()),
+		Code:             trans.Ptr(src.GetCode()),
+		SortOrder:        trans.Ptr(src.GetSortOrder()),
+		Status:           src.GetStatus().Enum(),
+		DataScope:        src.GetDataScope().Enum(),
+		Permissions:      perms,
+		FieldPermissions: fields,
+	}
+	if src.Description != nil {
+		data.Description = trans.Ptr(src.GetDescription())
+	}
+	if includeOrgUnits {
+		units := append([]uint32(nil), src.GetOrgUnits()...)
+		if len(units) > 0 {
+			units = append(units, units[0])
+			for i, j := 0, len(units)-1; i < j; i, j = i+1, j-1 {
+				units[i], units[j] = units[j], units[i]
+			}
+		}
+		data.OrgUnits = units
+	}
+	if mutate != nil {
+		mutate(data)
+	}
+	return data
+}

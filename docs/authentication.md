@@ -218,9 +218,16 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 - 角色授予的内容发生变化 → 持有该角色的用户全部吊销（含正在操作的人自己，会被踢下线）。
   写口只有 `RoleService.Update` / `Delete`：菜单、接口、权限点、数据范围（含选定组织）、
   字段权限、启用/停用都在 Role 消息上，没有单独的分配 RPC。`Update` 在 `roleRepo.Update`
-  改写 mask 之前判断：无 field mask 视为全量更新并吊销；mask 里只要有 `status`、`data_scope`、
-  `permissions`、`org_units`、`field_permissions`、`code`、`type`、`tenant_id` 等非展示字段就吊销。
-  只改名称、描述、排序或审计字段不吊销。`Delete` 一律吊销。持有人用
+  改写 mask 之前，用更新前读到的角色和请求比较。只有 mask 里出现、仓库这次真的会写入、
+  并且写入后的值和旧值不同的授权字段才吊销。授权字段是 `status`、`data_scope`、`org_units`、
+  `permissions`、`field_permissions`、`code`、`type`。`tenant_id` 在角色上不可变，更新写不进非空值；
+  只有 mask 把它置空才会 SET NULL，这才算变更。mask 为 nil 时标量按全量比较；这三项关联只有
+  mask 显式带上才替换。空 mask 会先追加 `updated_by`，仓库只更新审计字段，不吊销。
+  集合忽略顺序和重复。字段权限按 resource 归并，隐藏字段按集合比较，空列表和没有该资源视为相同。
+  `org_units` 不在 mask 里时保留原集合（管理端只在 SELECTED_UNITS 档提交这个字段），这不算变更。
+  受保护角色被剥掉的 `status`、`code`、`type` 不参与比较。管理端保存会把未改的权限、字段权限、
+  code、status、dataScope 一并放进 mask；值和原来一样时只改名称不吊销。
+  `Delete` 一律吊销。持有人用
   `userRoleRepo.ListUserIDsByRoleIDs`（不过滤过期关联）查出后逐个
   `RevokeUserTokenAllClientTypes`。列举或吊销失败只记日志，不把已经提交的写操作判失败
   （列举失败时不知道该踢谁，已提交的更新或删除仍然成功）。刷新轮换仍不删除尚未过期的旧 access token；

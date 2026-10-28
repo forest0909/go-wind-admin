@@ -167,14 +167,12 @@ func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = rdb.Close() })
 
-	// captcha：对齐生产 data.NewCaptcha 的选项形态（DriverString + 10 分钟过期），
+	// captcha：对齐生产 data.NewCaptcha 的选项形态（DriverMath + 10 分钟过期），
 	// 键前缀换测试专属值便于 miniredis 直读答案。
 	captchaClient := captcha.NewCaptcha(rdb,
-		captcha.WithDriverType(captcha.DriverString),
+		captcha.WithDriverType(captcha.DriverMath),
 		captcha.WithExpire(10*time.Minute),
 		captcha.WithKeyPrefix(authSvcTestKeyPrefix),
-		captcha.WithStringCount(6),
-		captcha.WithStringSource("ABCDEFGHJKLMNPQRSTUVWXYZ23456789"),
 	)
 
 	// 凭证仓储：bCrypt（与生产 data.NewPasswordCrypto 等价）+ miniredis 注入的 ConfigRepo。

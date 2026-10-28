@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"strings"
 	"time"
 
 	"github.com/mojocn/base64Captcha"
@@ -156,6 +157,11 @@ func (c *Captcha) Generate() (id string, b64s string, answer string, err error) 
 	// 如果是旋转验证码，使用特殊处理
 	if c.config.DriverType == DriverRotate {
 		return c.generateRotate()
+	}
+
+	// 算术验证码：自绘清晰图片，加减乘除（见 math.go）
+	if c.config.DriverType == DriverMath {
+		return c.generateMath()
 	}
 
 	var driver base64Captcha.Driver
@@ -506,6 +512,9 @@ func (c *Captcha) Verify(ctx context.Context, captchaID, userInput string) (bool
 	} else if c.config.DriverType == DriverRotate {
 		// 旋转验证码需要特殊处理，比较角度
 		match = c.verifyRotate(ans, userInput)
+	} else if c.config.DriverType == DriverMath {
+		// 算术验证码答案是整数，容忍前后空格
+		match = ans == strings.TrimSpace(userInput)
 	} else {
 		match = ans == userInput
 	}
@@ -645,6 +654,8 @@ func (c *Captcha) VerifyWithoutDelete(ctx context.Context, captchaID, userInput 
 		return c.verifyClick(ans, userInput), nil
 	} else if c.config.DriverType == DriverRotate {
 		return c.verifyRotate(ans, userInput), nil
+	} else if c.config.DriverType == DriverMath {
+		return ans == strings.TrimSpace(userInput), nil
 	}
 	return ans == userInput, nil
 }

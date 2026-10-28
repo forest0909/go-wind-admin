@@ -54,11 +54,9 @@ func NewPasswordCrypto() password.Crypto {
 
 func NewCaptcha(rdb *redis.Client) *captcha.Captcha {
 	captchaInstance := captcha.NewCaptcha(rdb,
-		captcha.WithDriverType(captcha.DriverString),
+		captcha.WithDriverType(captcha.DriverMath),
 		captcha.WithExpire(10*time.Minute),
 		captcha.WithKeyPrefix(serviceid.ProjectName+":captcha"),
-		captcha.WithStringCount(6),
-		captcha.WithStringSource("ABCDEFGHJKLMNPQRSTUVWXYZ23456789"),
 	)
 	return captchaInstance
 }

@@ -25,6 +25,7 @@ const CaptchaField: React.FC<{
       aria-label={label}
       placeholder={placeholder}
       autoComplete="off"
+      inputMode="numeric"
       value={value}
       onChange={onChange}
     />

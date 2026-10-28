@@ -74,7 +74,7 @@ require (
 	github.com/go-playground/form/v4 v4.3.1 // indirect
 	github.com/go-test/deep v1.0.8 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
-	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
+	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-cmp v0.7.0
 	github.com/google/subcommands v1.2.0
@@ -159,7 +159,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.56.0
 	golang.org/x/exp v0.0.0-20260824195058-e88cd73687aa
-	golang.org/x/image v0.40.0 // indirect
+	golang.org/x/image v0.40.0
 	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/net v0.58.0
 	golang.org/x/sync v0.22.0

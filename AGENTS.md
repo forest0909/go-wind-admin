@@ -37,9 +37,9 @@ docs/                       文档（总入口 docs/README.md）
 
 新功能只做 React。CRUD 手册在 `docs/crud_module_guide/`（`backend.md` 和 `react.md`）。
 
-**代码生成**：在 `backend/` 下用 Makefile。产物仍须按本仓铁律验收（`{ data: {...} }` 包裹、contains 搜索、已部署实例的新端点走管理页「接口同步」登记进 Api 表、`make openapi` 后再重启，`make ts` 生成 React 客户端）。
+**代码生成**：在 `backend/` 下用 Makefile。产物仍须按本仓铁律验收（`{ data: {...} }` 包裹、contains 搜索、新端点要先 `make openapi` 再重启——启动时会自动同步 Api 表和权限点，`make ts` 生成 React 客户端）。
 
-> 系统默认数据（admin 用户、角色、菜单、权限、语言等）由服务启动时在 Go 侧自动播种（`pkg/constants/default_data.go` + 各 service 的 count==0 守卫；Api 表仅在空表时于启动期自动同步，**已部署实例新增端点须在管理页「接口同步」手动触发全量重建**，否则租户闸门 fail-closed 403；「接口同步」重建读的是**打进二进制的** `backend/app/admin/service/cmd/server/assets/openapi.yaml`，所以新 proto 必须先 `make openapi` 再重启进程，否则同步"成功"而新端点依旧不在表里。新菜单同理：`count==0` 守卫意味着老库要靠「菜单同步」(MERGE) 才会多出这一行），**不要**找 SQL 种子脚本，`backend/sql/` 下只剩演示数据。
+> 系统默认数据（admin 用户、角色、菜单、权限、语言等）由服务启动时在 Go 侧自动播种（`pkg/constants/default_data.go` + 各 service 的 count==0 守卫；Api 表每次启动都和**打进二进制的** `backend/app/admin/service/cmd/server/assets/openapi.yaml` 比对，不一致就自动按 (method, path) 合并同步，之后再自动同步一次权限点；所以新 proto 必须先 `make openapi` 再重启进程，否则新端点不在表里、租户闸门 fail-closed 403。管理页「接口同步」仍可手动触发。新菜单同理：`count==0` 守卫意味着老库要靠「菜单同步」(MERGE) 才会多出这一行），**不要**找 SQL 种子脚本，`backend/sql/` 下只剩演示数据。
 
 ## 后端任务：用 Makefile
 

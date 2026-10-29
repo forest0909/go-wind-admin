@@ -36,6 +36,7 @@ import (
 	"go-wind-admin/app/admin/service/cmd/server/assets"
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/app/admin/service/internal/data/ent"
+	entPermission "go-wind-admin/app/admin/service/internal/data/ent/permission"
 	entPermissionApi "go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 	"go-wind-admin/pkg/constants"
@@ -116,6 +117,48 @@ func TestPermissionService_InitSkipsSyncWhenNoApisOrMenus(t *testing.T) {
 	groupCnt, err := client.PermissionGroup.Query().Count(ctx)
 	require.NoError(t, err)
 	require.Equal(t, 5, groupCnt, "占位组应保持 5 条（SyncPermissions 未触发，未追加未分类组）")
+}
+
+// TestPermissionService_InitSyncsPermissions 启动期 init() 在菜单和接口都有数据时同步权限点：
+// 没有登录用户也要能跑（以前 SyncPermissions 取不到操作人直接失败，错误被吞掉）。
+func TestPermissionService_InitSyncsPermissions(t *testing.T) {
+	svc, client := newPermissionServiceForTest(t)
+	ctx := enttest.NewSystemContext(context.Background())
+
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:   trans.Ptr("BootCatalog"),
+			Path:   trans.Ptr("/bootgrp"),
+			Type:   permissionV1.Menu_CATALOG.Enum(),
+			Status: permissionV1.Menu_ON.Enum(),
+		},
+	}))
+	catalog, err := client.Menu.Query().Only(ctx)
+	require.NoError(t, err)
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:     trans.Ptr("BootWidgets"),
+			Path:     trans.Ptr("widgets"),
+			ParentId: &catalog.ID,
+			Type:     permissionV1.Menu_MENU.Enum(),
+			Status:   permissionV1.Menu_ON.Enum(),
+		},
+	}))
+	require.NoError(t, svc.apiRepo.Create(ctx, &permissionV1.CreateApiRequest{
+		Data: &permissionV1.Api{
+			Path:   trans.Ptr("/admin/v1/widgets/{id}"),
+			Method: trans.Ptr("PUT"),
+			Scope:  permissionV1.Api_ADMIN.Enum(),
+		},
+	}))
+
+	svc.init()
+
+	for _, code := range []string{"widget:view", "widget:edit"} {
+		exists, err := client.Permission.Query().Where(entPermission.CodeEQ(code)).Exist(ctx)
+		require.NoError(t, err)
+		require.True(t, exists, "启动期同步应生成 %s", code)
+	}
 }
 
 // TestPermissionService_syncWithOpenAPI_EmptyPaths（原空壳测试的实装）：

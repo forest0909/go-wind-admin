@@ -106,7 +106,7 @@ cron `30 3 * * *`。把超过保留期的登录日志和操作日志导出 JSONL
 
 任务列表（启停位、类型、cron、载荷只读展示）+ 新建/编辑抽屉（类型下拉 = ListTaskTypeName
 实时注册面、cron、payload JSON、选项）+ 行内启停/重启。全部经 `/admin/v1/tasks*` 端点
-（MODULE_TASK），受权限面与租户闸门管控（新部署记得「接口同步」，见
+（MODULE_TASK），受权限面与租户闸门管控（Api 表在启动期自动同步，见
 [tenant_isolation.md](./tenant_isolation.md) §4.3）。
 
 ## 8. 多租户语义与调度器限制

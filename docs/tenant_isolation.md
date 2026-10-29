@@ -138,14 +138,14 @@ EXPIRED / FREEZE 并吊销该租户全部用户令牌，随后由本闸门第 1 
 
 ### 4.3 Api 表的生成与同步（`internal/service/api_service.go`）
 
-- `SyncApis`：`Truncate` 全表 → `syncWithOpenAPI`（解析内嵌 OpenAPI 文档 `assets.OpenApiData`，
+- `SyncApis`：`syncWithOpenAPI` 按 (method, path) 合并（保留已有 ID，删除文档里已不存在的接口）（解析内嵌 OpenAPI 文档 `assets.OpenApiData`，
   逐 (path, method) 生成行，`module`/`module_description` 取 OpenAPI **tag**，
   `business_module` 经 `pkg/constants/module_mapping.go` 的 `ServiceTagToBusinessModule` 映射）
   → `authorizer.ResetPolicies`（authz 策略同步重建）；
 - **新服务的登记义务**：`ServiceTagToBusinessModule` 不登记新服务 tag ⇒ 其全部端点
   `business_module = UNSPECIFIED` ⇒ **所有租户（含挂了对应模块套餐的）一概 403**；
-- 播种时机：Api 表仅在**空表**时启动期自动同步（count==0 守卫）；已部署实例新增端点必须在
-  管理页「接口管理 → 接口同步」手动触发全量重建，否则新端点对租户 fail-closed；
+- 同步时机：每次启动比对 Api 表与内嵌 OpenAPI 文档（含 `business_module`），不一致即自动同步；
+  管理页「接口管理 → 接口同步」仍可手动触发。内嵌文档没更新（漏 `make openapi`）时新端点对租户 fail-closed；
 - 同步后建议核对菜单（菜单播种同理见 `default_data.go`）。
 
 ## 5. 数据层隔离
@@ -227,7 +227,7 @@ repo 的查询/变更构造上，而不是指望调用方传对——前端只�
    **同时** `Policy()` 返回 `&TenantMutationGuardPolicy{}`（与其余 31 张一致的第二道；
    机器凭证表曾缺这道守卫，见第 6 节）→ `make ent`；
 2. **表同时接数据范围**：另见 data_scope_design 第 4 节（两列齐备 + 组合策略 + 守卫单测）；
-3. **新端点**：部署后管理页「接口同步」；
+3. **新端点**：先 `make openapi` 再构建重启，启动期自动同步 Api 表；
 4. **新服务（新 OpenAPI tag）**：`pkg/constants/module_mapping.go` 登记——漏登记=租户全 403。
 
 ### 7.2 租户 403 排障决策树
@@ -235,7 +235,7 @@ repo 的查询/变更构造上，而不是指望调用方传对——前端只�
 按序核对（全部可在管理页/库里直接查证）：
 
 1. 令牌 tid 是否>0（平台管理员不走闸门）；
-2. Api 表是否有该 (路由模板, method) 行——没有=该实例没跑「接口同步」；
+2. Api 表是否有该 (路由模板, method) 行——没有=二进制内嵌的 openapi.yaml 里没有它（漏 `make openapi`），或启动期同步失败（查启动日志）；
 3. 该行 `business_module` 是否 UNSPECIFIED——是=服务未在 `module_mapping.go` 登记；
 4. 租户是否挂套餐、套餐白名单是否含该模块；
 5. 租户 `status` 是否 ON；`expired_at` 是否已过且套餐 READONLY（只读降级会让写操作 403）。

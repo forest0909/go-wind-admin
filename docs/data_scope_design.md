@@ -140,8 +140,8 @@ from sys_org_units p where c.parent_id = p.id and c.path <> p.path || c.id || '/
 ## 7. 运维注意
 
 1. **新端点与 Api 表**：本特性未新增管理端点（org_units 走 Role 消息内联关联），
-   已部署实例**无需**接口同步；但 R2 新接入表如有新端点，仍须在管理页「接口同步」
-   触发全量重建，否则租户闸门 fail-closed 403。
+   已部署实例**无需**接口同步；R2 新接入表如有新端点，`make openapi` 后重启即自动同步，
+   漏了 `make openapi` 则租户闸门 fail-closed 403。
 2. **生效时延**：给某个用户换角色集合时，`UserService.Update` 会吊销该用户全部令牌，
    下次登录按新角色重算数据范围。改角色定义本身（权限、数据范围档位、选定组织、
    字段权限、启用/停用）或删除角色时，`RoleService` 会吊销所有持有人（含操作者自己），

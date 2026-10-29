@@ -20,6 +20,7 @@ import (
 	"go-wind-admin/app/admin/service/internal/data"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
+	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
 	"go-wind-admin/pkg/constants"
@@ -79,14 +80,17 @@ func (s *PermissionService) init() {
 	ctx := viewer.WithSystemContext(context.Background())
 	if count, _ := s.permissionRepo.Count(ctx, nil); count.Count == 0 {
 		_ = s.createDefaultPermissions(ctx)
+	}
 
-		apiCount, _ := s.apiRepo.Count(ctx, nil)
-
-		var menusCount int
-		menusCount, _ = s.menuRepo.Count(ctx, []func(s *sql.Selector){})
-
-		if apiCount.Count > 0 && menusCount > 0 {
-			_, _ = s.SyncPermissions(ctx, &emptypb.Empty{})
+	// 每次启动都按当前菜单和接口同步一次权限点，部署后不必再手点同步。
+	// 同步按编码合并、不删手工数据，权限点没变化时只有查询。
+	// SyncPermissions 要从令牌取操作人，启动期没有登录用户，用 0 代表系统。
+	apiCount, _ := s.apiRepo.Count(ctx, nil)
+	menusCount, _ := s.menuRepo.Count(ctx, []func(s *sql.Selector){})
+	if apiCount.Count > 0 && menusCount > 0 {
+		sysCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{UserId: 0})
+		if _, err := s.SyncPermissions(sysCtx, &emptypb.Empty{}); err != nil {
+			s.log.Errorf(ctx, "启动期权限点同步失败: %v", err)
 		}
 	}
 }

@@ -388,13 +388,14 @@ Run and check Swagger at `http://localhost:7788/docs` for the new resource. Hit 
 
 ## Step 11 — Default data & the Api registry (how seeds actually work)
 
-All built-in data — admin user, roles, menus, permission groups, languages, **and the Api table** — is seeded **in Go at service construction**, behind a `count == 0` guard. Definitions live in `pkg/constants/default_data.go`; the triggers are each service's `init()` (e.g. `NewApiService` → `init()` → `SyncApis` → `syncWithOpenAPI`, which rebuilds the Api table from the embedded OpenAPI document). `backend/sql/` holds demo data only — **there is no SQL seed script**.
+All built-in data — admin user, roles, menus, permission groups, languages, **and the Api table** — is seeded **in Go at service construction**, behind a `count == 0` guard. Definitions live in `pkg/constants/default_data.go`; the triggers are each service's `init()` (e.g. `NewApiService` → `init()` → `SyncApis` → `syncWithOpenAPI`, which merges the Api table with the embedded OpenAPI document by `(method, path)`). `backend/sql/` holds demo data only — **there is no SQL seed script**.
 
 Consequences for a new module:
 
 - **Fresh deployment**: everything (including Api registry rows) appears automatically on first boot.
 - **Existing deployment never re-seeds.** Adding entries to `DefaultMenus` / `DefaultRoles` / etc. changes nothing on a running instance — new menus go in via the 菜单管理 admin page.
-- **New endpoints don't auto-register** into the Api table once it's non-empty. After deploying, run 接口管理 →「接口同步」(`SyncApis` RPC: truncate + full rebuild from OpenAPI). Until then the tenant access checker's `(path, method)` lookup fails closed with 403 for tenant users.
+- **New endpoints register on restart.** On every boot `ApiService.init()` compares the Api table with the embedded `openapi.yaml` and runs `SyncApis` when they differ; `PermissionService.init()` then re-syncs permission points. So run `make openapi` before building/restarting — an endpoint missing from the embedded document stays out of the Api table and the tenant access checker fails closed with 403. 接口管理 →「接口同步」 still works for a manual run.
+- **Button codes are checked by `go test`.** `TestPermissionCodeConsistency` (`internal/service/permission_consistency_test.go`) derives codes from the embedded OpenAPI, `DefaultMenus` and the React `code:` / `<AccessButton>` usages; a button code no API produces, or one without a matching `<resource>:view` page, fails the test.
 - If the module needs its own built-in rows (like default dict types), follow the same pattern: data in `pkg/constants/default_data.go`, seeded from the service's `init()` behind `count == 0`.
 
 ## Backend-specific pitfalls

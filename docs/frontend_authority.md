@@ -362,9 +362,14 @@ import AccessButton from '@/components/common/AccessButton';
 </AccessButton>
 ```
 
-权限点管理仅隐藏菜单入口，仍可通过 `/permission/codes` 排查。已部署实例升级后先做
-「接口同步」，再做一次「菜单同步」（MERGE 会更新已有行的 Meta 和 Redirect），两者均会
-自动同步权限点。无需数据库迁移，也无需重新分配已有角色绑定。
+权限点管理仅隐藏菜单入口，仍可通过 `/permission/codes` 排查。已部署实例升级后重启即可：
+启动期自动同步 Api 表（与内嵌 openapi.yaml 不一致时）和权限点。前端新增或改了路由时，
+再做一次「菜单同步」（MERGE 会更新已有行的 Meta 和 Redirect，菜单来源是前端路由，后端无法自动同步）。
+无需数据库迁移，也无需重新分配已有角色绑定。
+
+按钮编码由 `go test` 里的 `TestPermissionCodeConsistency` 把关：从内嵌 OpenAPI、`DefaultMenus` 和前端的
+`code:` / `<AccessButton>` 推出三方编码，按钮编码没有接口能生成、或者没有对应的 `<资源>:view` 页面都会失败。
+确实是某页面里的子资源（如套餐页里的配额列表）时，在该测试的 `actionsWithoutPage` 里登记并写明原因。
 
 ## React 默认后端菜单模式
 

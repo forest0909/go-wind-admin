@@ -91,13 +91,13 @@ API_CALL 枚举值仍可写入，调用次数不再计量，闸门不按它拒�
 - **租户管理**：租户 CRUD、`CreateTenantWithAdminUser`（建租户 + 租户管理员一步完成）、
   套餐绑定与 `expired_at` 维护、到期状态展示。
 - 这一组服务的端点应落在 MODULE_TENANT 模块（`ServiceTagToBusinessModule`，`pkg/constants/module_mapping.go:41-43`：
-  TenantService / PlanService / PlanQuotaService → TENANT）；新部署实例记得「接口同步」（tenant_isolation §4.3）。
+  TenantService / PlanService / PlanQuotaService → TENANT）；重启时 Api 表自动同步（tenant_isolation §4.3）。
 
   ⚠ **`PlanModuleService` 目前不在这张映射表里**，而它确实注册了 HTTP 服务
   （`internal/server/rest_server.go` 的 `RegisterPlanModuleServiceHTTPServer`，路由 `/admin/v1/plan-modules*`）。
   按本文 §6 与 tenant_isolation §4.2 第 3 段自己的规则，未登记 ⇒ `business_module` 为 UNSPECIFIED ⇒
   **租户请求被 fail-closed 403**（平台管理员 tid==0 不受影响，所以开发时看不出来）。
-  接了白名单页给租户用之前，先补这一行映射并重新「接口同步」。
+  接了白名单页给租户用之前，先补这一行映射并重启（启动期会按新映射自动同步 Api 表）。
 
 ## 4. 到期执行链路（三档全语义）
 
@@ -158,7 +158,7 @@ handler 为 `TaskService.AsyncTenantExpiryScan`。它**不在** sys_tasks 表（
 
 1. 新服务的 OpenAPI tag 在 `pkg/constants/module_mapping.go` 登记（否则 Api 表
    `business_module=UNSPECIFIED`，所有租户被拒）；
-2. 部署后在管理页跑「接口同步」（Api 表全量重建）；
+2. `make openapi` 后构建重启，Api 表在启动期自动同步；
 3. **给需要放行的套餐补 `sys_plan_modules` 白名单行**（套餐管理页）——第 1/2 步只让
    模块"可归类"，第 3 步才让"某套餐的租户"真正可达；
 4. 平台管理员验收 ≠ 租户验收（平台上下文不走闸门，见 tenant_isolation §4.1）；

@@ -71,8 +71,8 @@ func newApiServiceForTest(t *testing.T, entClient *entCrud.EntClient[*ent.Client
 }
 
 // TestApiServiceSqlite_InitSeedsApiTableFromOpenAPI 空表上调用 init() 应从内嵌
-// OpenAPI 文档同步出全部接口资源（count==0 守卫的正分支）；表非空时再次 init()
-// 不应重复同步；List 应返回同步后的全量行。
+// OpenAPI 文档同步出全部接口资源；与文档一致时再次 init() 不改动；
+// 表落后于文档（缺接口、描述过期）时 init() 自动补齐。List 应返回同步后的全量行。
 func TestApiServiceSqlite_InitSeedsApiTableFromOpenAPI(t *testing.T) {
 	entClient := enttest.NewEntClientForTest(t)
 	svc := newApiServiceForTest(t, entClient)
@@ -89,11 +89,31 @@ func TestApiServiceSqlite_InitSeedsApiTableFromOpenAPI(t *testing.T) {
 	require.Equal(t, uint64(cnt), listResp.Total, "List 应统计全部已同步行")
 	require.Len(t, listResp.Items, cnt, "List 应返回全部已同步行")
 
-	// 表非空：再次 init() 不应重复同步（守卫负分支）
+	// 表与文档一致：再次 init() 不应追加或重置行
+	outdated, err := svc.apisOutdated(ctx)
+	require.NoError(t, err)
+	require.False(t, outdated, "刚同步完应与文档一致")
 	svc.init()
 	cnt2, err := entClient.Client().Api.Query().Count(ctx)
 	require.NoError(t, err)
-	require.Equal(t, cnt, cnt2, "非空表上重复 init() 不应追加或重置行")
+	require.Equal(t, cnt, cnt2, "一致时重复 init() 不应追加或重置行")
+
+	// 模拟旧版本留下的表：少一个接口、另一个描述过期 → init() 自动补齐
+	rows, err := entClient.Client().Api.Query().Order(ent.Asc(entApi.FieldID)).Limit(2).All(ctx)
+	require.NoError(t, err)
+	require.NoError(t, entClient.Client().Api.DeleteOneID(rows[0].ID).Exec(ctx))
+	require.NoError(t, entClient.Client().Api.UpdateOneID(rows[1].ID).SetDescription("stale").Exec(ctx))
+	outdated, err = svc.apisOutdated(ctx)
+	require.NoError(t, err)
+	require.True(t, outdated, "缺接口或描述过期应判为不一致")
+
+	svc.init()
+	cnt3, err := entClient.Client().Api.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, cnt, cnt3, "init() 应补回缺失的接口")
+	outdated, err = svc.apisOutdated(ctx)
+	require.NoError(t, err)
+	require.False(t, outdated, "init() 同步后应与文档一致")
 }
 
 // TestApiServiceSqlite_GetWalkRouteData 验证 GetWalkRouteData 把 RouteWalker

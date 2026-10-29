@@ -59,8 +59,15 @@ func NewApiService(
 
 func (s *ApiService) init() {
 	ctx := viewer.WithSystemContext(context.Background())
-	if count, _ := s.repo.Count(ctx, nil); count.Count == 0 {
-		_, _ = s.SyncApis(ctx, &emptypb.Empty{})
+	// 内嵌 openapi.yaml 和接口表不一致就自动同步，部署新版本后不必再手点「接口同步」。
+	// 同步按 (method, path) 合并，一致时只多一次列表查询。
+	outdated, err := s.apisOutdated(ctx)
+	if err != nil {
+		s.log.Errorf(ctx, "启动期比对接口表失败: %v", err)
+	} else if outdated {
+		if _, err = s.SyncApis(ctx, &emptypb.Empty{}); err != nil {
+			s.log.Errorf(ctx, "启动期接口同步失败: %v", err)
+		}
 	}
 	// SyncApis 内部的对齐只在空表首启（或手工触发同步）时跑到；已部署实例的
 	// sys_apis 序列被上一次同步的显式 ID 留在原地，只能靠这条启动期自愈补上。
@@ -178,29 +185,24 @@ func apiEndpointKey(method, path string) string {
 	return method + " " + path
 }
 
-// syncWithOpenAPI 使用 OpenAPI 文档对齐 API 资源。
-//
-// 按 (method, path) 对齐而不是清空重建：已有接口保留原 ID，新接口按路径排序后
-// 接在最大 ID 之后，文档里已不存在的接口连同权限绑定一起删除。
-// sys_permission_apis 按 api_id 记录绑定，清空重建会让 ID 重新分配（文档路径表是 map，
-// 遍历顺序随机），所有角色的接口授权都会错位到无关接口上。
-func (s *ApiService) syncWithOpenAPI(ctx context.Context) error {
+// loadOpenAPIApis 从内嵌 OpenAPI 文档读出全部接口，按 (path, method) 排序
+func (s *ApiService) loadOpenAPIApis(ctx context.Context) ([]*permissionV1.Api, error) {
 	loader := openapi3.NewLoader()
 	doc, err := loader.LoadFromData(assets.OpenApiData)
 	if err != nil {
 		// 此前用 log.Fatal（os.Exit 直接终止进程），其后的 return 是死代码。
 		// 启动期同步失败应返回错误由上层决定，而非杀掉整个进程。
 		s.log.Errorf(ctx, "加载 OpenAPI 文档失败: %v", err)
-		return adminV1.ErrorInternalServerError("load OpenAPI document failed")
+		return nil, adminV1.ErrorInternalServerError("load OpenAPI document failed")
 	}
 
 	if doc == nil {
 		s.log.Error(ctx, "OpenAPI 文档为空")
-		return adminV1.ErrorInternalServerError("OpenAPI document is nil")
+		return nil, adminV1.ErrorInternalServerError("OpenAPI document is nil")
 	}
 	if doc.Paths == nil {
 		s.log.Error(ctx, "OpenAPI 文档的路径为空")
-		return adminV1.ErrorInternalServerError("OpenAPI document paths is nil")
+		return nil, adminV1.ErrorInternalServerError("OpenAPI document paths is nil")
 	}
 
 	var apiList []*permissionV1.Api
@@ -245,6 +247,52 @@ func (s *ApiService) syncWithOpenAPI(ctx context.Context) error {
 		}
 		return apiList[i].GetMethod() < apiList[j].GetMethod()
 	})
+
+	return apiList, nil
+}
+
+// apisOutdated 接口表与内嵌 OpenAPI 文档是否不一致（增删接口、模块或描述变化）
+func (s *ApiService) apisOutdated(ctx context.Context) (bool, error) {
+	want, err := s.loadOpenAPIApis(ctx)
+	if err != nil {
+		return false, err
+	}
+	have, err := s.repo.List(ctx, &paginationV1.PagingRequest{NoPaging: trans.Ptr(true)})
+	if err != nil {
+		return false, err
+	}
+	if len(have.Items) != len(want) {
+		return true, nil
+	}
+	byKey := make(map[string]*permissionV1.Api, len(have.Items))
+	for _, a := range have.Items {
+		byKey[apiEndpointKey(a.GetMethod(), a.GetPath())] = a
+	}
+	for _, w := range want {
+		h, ok := byKey[apiEndpointKey(w.GetMethod(), w.GetPath())]
+		if !ok ||
+			h.GetModule() != w.GetModule() ||
+			h.GetModuleDescription() != w.GetModuleDescription() ||
+			h.GetBusinessModule() != w.GetBusinessModule() ||
+			h.GetDescription() != w.GetDescription() ||
+			h.GetOperation() != w.GetOperation() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// syncWithOpenAPI 使用 OpenAPI 文档对齐 API 资源。
+//
+// 按 (method, path) 对齐而不是清空重建：已有接口保留原 ID，新接口按路径排序后
+// 接在最大 ID 之后，文档里已不存在的接口连同权限绑定一起删除。
+// sys_permission_apis 按 api_id 记录绑定，清空重建会让 ID 重新分配（文档路径表是 map，
+// 遍历顺序随机），所有角色的接口授权都会错位到无关接口上。
+func (s *ApiService) syncWithOpenAPI(ctx context.Context) error {
+	apiList, err := s.loadOpenAPIApis(ctx)
+	if err != nil {
+		return err
+	}
 
 	existing, err := s.repo.List(ctx, &paginationV1.PagingRequest{NoPaging: trans.Ptr(true)})
 	if err != nil {

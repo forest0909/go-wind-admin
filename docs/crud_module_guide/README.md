@@ -54,7 +54,7 @@ Read **`backend.md`** in full before touching backend files. It covers the 11-st
 4. ent schema    → 5. make ent
 6. repo          → 7. service  → 8. register server
 9. make register ENTITY=<entity> → 10. make build verify
-11. seeds & the Api registry (count == 0 guards; existing deployments need manual 接口同步)
+11. seeds & the Api registry (count == 0 guards; the Api table and permission points re-sync on every restart)
 ```
 
 Real samples to mirror: `backend/api/protos/dict/service/v1/dict_type.proto`, `backend/api/protos/admin/service/v1/i_api.proto`, `backend/app/admin/service/internal/data/api_repo.go`, `backend/app/admin/service/internal/service/dict_type_service.go`. **Read the matching sample file before writing your version** — copy its structure, change names/fields.
@@ -95,7 +95,7 @@ Before declaring done, verify cross-cutting concerns:
 - [ ] i18n: no hardcoded Chinese/English in pages — everything goes through `$t`/`t` with keys in the locale JSONs
 - [ ] Update operations carry `updateMask` (frontend `useUpdateXxx` does this automatically via `makeUpdateMask`; do not hand-build the mask)
 - [ ] If the entity carries association ID lists (M2M/O2M edges): repo Update follows the snapshot + blacklist + Replace pattern from `backend.md` Step 6, and association edits round-trip in the UI (add / clear-all / re-add)
-- [ ] Api registry: on a **fresh** DB the Api table auto-syncs at first boot; on an **existing** deployment trigger 管理页「接口管理 → 接口同步」 after deploying — otherwise the tenant gate `(path, method)` check 403s the new routes (fail-closed)
+- [ ] Api registry: `make openapi` before restarting — the Api table and permission points auto-sync at boot from the embedded `openapi.yaml`; `go test ./...` must pass `TestPermissionCodeConsistency` (button codes ↔ APIs ↔ pages)
 - [ ] Menu entries for the new module: on an existing deployment add them via the 菜单管理 admin page — editing `pkg/constants/default_data.go` (`DefaultMenus`) only affects empty-DB fresh installs (all seeds are `count == 0` guarded, see `backend.md` Step 11)
 
 ## Step 5 — Cross-framework pitfalls (memorize these)

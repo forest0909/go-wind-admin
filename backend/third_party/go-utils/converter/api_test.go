@@ -4,6 +4,31 @@ import (
 	"testing"
 )
 
+// TestApiPermissionConverter_ResourceAliases 前缀别名：整段最长前缀匹配，含冒号的值是完整编码
+func TestApiPermissionConverter_ResourceAliases(t *testing.T) {
+	c := NewApiPermissionConverter().WithResourceAliases(map[string]string{
+		"ns/items":        "item",
+		"ns/items/export": "item:export",
+		"ns/send":         "item:create",
+	})
+
+	cases := []struct {
+		method, path, want string
+	}{
+		{"GET", "/admin/v1/ns/items", "item:view"},
+		{"PUT", "/admin/v1/ns/items/{id}", "item:edit"},
+		{"POST", "/admin/v1/ns/items/export", "item:export"},
+		{"POST", "/admin/v1/ns/send", "item:create"},
+		{"GET", "/admin/v1/ns/itemsx", "n:view"},
+		{"GET", "/admin/v1/users", "user:view"},
+	}
+	for _, tc := range cases {
+		if got := c.ConvertCodeByPath(tc.method, tc.path); got != tc.want {
+			t.Errorf("ConvertCodeByPath(%q, %q) = %q, want %q", tc.method, tc.path, got, tc.want)
+		}
+	}
+}
+
 func TestApiPermissionConverter_ConvertByPath(t *testing.T) {
 	c := NewApiPermissionConverter()
 

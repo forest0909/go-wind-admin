@@ -42,6 +42,7 @@ interface TreeSelectNode {
 export function buildTreeSelectData(
   items: Array<{ id?: number | string; name?: string; parentId?: number | string | null }>,
   excludeId?: number | string,
+  translate: (label: string) => string = (label) => label,
 ): TreeSelectNode[] {
   if (!items || items.length === 0) return [];
 
@@ -50,7 +51,7 @@ export function buildTreeSelectData(
   items.forEach((item) => {
     if (item.id === undefined || item.id === null) return;
     if (excludeId !== undefined && item.id === excludeId) return;
-    map.set(item.id, { value: Number(item.id), title: item.name || '', children: [], parentId: item.parentId });
+    map.set(item.id, { value: Number(item.id), title: translate(item.name || ''), children: [], parentId: item.parentId });
   });
 
   const tree: TreeSelectNode[] = [];
@@ -123,6 +124,7 @@ interface TreeNode {
 
 /**
  * 构建菜单树形数据（用于 Tree 组件勾选）
+ * meta.title 存的是 i18n key（如 menu.system.config），由 translate 译成展示文本
  */
 export function buildMenuTree(
   items?: Array<{
@@ -131,6 +133,7 @@ export function buildMenuTree(
     parentId?: number | string | null;
     meta?: { title?: string };
   }> | null,
+  translate: (label: string) => string = (label) => label,
 ): TreeNode[] {
   if (!items || items.length === 0) return [];
 
@@ -140,7 +143,7 @@ export function buildMenuTree(
     if (item.id === undefined || item.id === null) return;
     map.set(item.id, {
       key: Number(item.id),
-      title: item.meta?.title || item.name || '',
+      title: item.meta?.title ? translate(item.meta.title) : item.name || '',
       children: [],
       parentId: item.parentId,
     });

@@ -30,5 +30,6 @@
   "syncFailed": "同步失败",
   "maxChars": "最多 {{max}} 个字符",
   "requiredPath": "请输入API路径",
-  "requiredMethod": "请选择请求方法"
+  "requiredMethod": "请选择请求方法",
+  "syncPermissionsFailed": "资源同步成功，但权限点同步失败，请重试同步"
 }

@@ -1,3 +1,4 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
@@ -13,6 +14,7 @@ import { TABLE } from '@/config/constants';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { fetchListPermissions, useDeletePermission, useSyncPermissions } from '@/api/hooks/permission';
 import { getStatusMap, getStatusOptions } from './constants';
+import { useMenuLabel } from '@/utils/menu-label';
 import PermissionDrawer from './PermissionDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
 import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
@@ -26,6 +28,7 @@ interface PermissionListProps {
  */
 const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
   const { t } = useTranslation('permission');
+  const menuLabel = useMenuLabel();
   const actionRef = useRef<ActionType>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const tableScrollY = useProTableScrollY(containerRef);
@@ -70,6 +73,7 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
       dataIndex: 'name',
       width: 150,
       fixed: 'left',
+      render: (_, record) => menuLabel(record.name),
     },
     {
       title: t('code'),
@@ -82,6 +86,7 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
       dataIndex: 'groupName',
       width: 120,
       hideInSearch: true,
+      render: (_, record) => menuLabel(record.groupName),
     },
     {
       title: t('status'),
@@ -107,6 +112,7 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
           actions={[
             {
               key: 'edit',
+              code: 'permission:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -117,6 +123,7 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
             },
             {
               key: 'delete',
+              code: 'permission:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -189,7 +196,9 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
                   {t('syncPermissions')}
                 </Button>
               </Popconfirm>,
-              <Button
+              <AccessButton
+                resource="permission"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -201,7 +210,7 @@ const PermissionList: React.FC<PermissionListProps> = ({ groupId }) => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

@@ -1,4 +1,5 @@
 {
+  "hideInMenuSyncHint": "保存后重新登录或刷新页面生效；下次菜单同步会以代码路由的隐藏设置覆盖此值。",
   "pageTitle": "菜单管理",
   "moduleName": "菜单",
   "serial": "序号",
@@ -66,5 +67,6 @@
   "statusMap": {
     "ON": "启用",
     "OFF": "禁用"
-  }
+  },
+  "syncPermissionsFailed": "资源同步成功，但权限点同步失败，请重试同步"
 }

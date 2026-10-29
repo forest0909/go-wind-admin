@@ -1,5 +1,6 @@
 import { Fragment, type MouseEventHandler, type ReactNode } from 'react';
 import { App, Button, Dropdown, Popconfirm, Tooltip } from 'antd';
+import { useAccess } from '@/core/access';
 import { MoreOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 
@@ -45,6 +46,8 @@ export interface TableAction {
   /** 行内按钮的 Tooltip 提示（仅行内；溢出进「更多」菜单后不渲染 Tooltip） */
   tooltip?: ReactNode;
   hidden?: boolean;
+  /** 同步权限生成的资源:动作编码，无权限时在计算溢出前隐藏 */
+  code?: string;
 }
 
 interface TableActionsProps {
@@ -57,8 +60,11 @@ interface TableActionsProps {
 export default function TableActions({ record, actions, maxInline = 3 }: TableActionsProps) {
   const { t } = useTranslation('common');
   const { modal } = App.useApp();
+  const { hasAccessByCodes } = useAccess();
 
-  const visible = (actions || []).filter((item) => !item.hidden);
+  const visible = (actions || []).filter(
+    (item) => !item.hidden && (!item.code || hasAccessByCodes([item.code])),
+  );
   const inline = visible.slice(0, maxInline);
   const overflow = visible.slice(maxInline);
 

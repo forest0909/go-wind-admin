@@ -90,5 +90,11 @@
       "analytics": "Analytics",
       "workspace": "Workbench"
     }
+  },
+  "permissionAction": {
+    "view": "View",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete"
   }
 }

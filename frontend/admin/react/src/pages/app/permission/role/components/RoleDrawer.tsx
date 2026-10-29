@@ -18,8 +18,9 @@ import { fetchListPermissionGroups } from '@/api/hooks/permission-group';
 import { fetchListPermissions } from '@/api/hooks/permission';
 import { fetchListOrgUnits } from '@/api/hooks/org-unit';
 import { PaginationQuery } from '@/core';
-import { getStatusOptions, getDataScopeOptions, buildPermissionTree, extractLeafIds, buildOrgUnitTree, ROLE_FIELD_RESOURCES } from '../constants';
+import { getStatusOptions, getDataScopeOptions, buildPermissionTree, extractLeafIds, withPageViews, buildOrgUnitTree, ROLE_FIELD_RESOURCES } from '../constants';
 import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
+import { useMenuLabel, usePermissionAction } from '@/utils/menu-label';
 
 interface RoleDrawerProps {
   open: boolean;
@@ -34,6 +35,8 @@ interface RoleDrawerProps {
  */
 const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSuccess }) => {
   const { t } = useTranslation('role');
+  const menuLabel = useMenuLabel();
+  const actionLabel = usePermissionAction();
   const formRef = useRef<ProFormInstance>(null);
 
   // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
@@ -68,17 +71,17 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
             // 无权限组时，直接罗列权限（平铺，不嵌套）
             setTreeData(permissions.map((p) => ({
               key: Number(p.id),
-              title: p.name || p.code || String(p.id),
+              title: menuLabel(p.name || p.code || String(p.id)),
             })));
           } else {
-            setTreeData(buildPermissionTree(groups, permissions));
+            setTreeData(buildPermissionTree(groups, permissions, { translate: menuLabel, actionLabel }));
           }
           setTreeVersion((v) => v + 1);
         })
         .catch(() => setTreeData([]))
         .finally(() => setTreeLoading(false));
     }
-  }, [open]);
+  }, [open, menuLabel, actionLabel]);
 
   // 加载组织单元树（SELECTED_UNITS 自定义授权集配置用）
   useEffect(() => {
@@ -161,7 +164,8 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         ...values,
         // 用叶子交集剥离权限组父节点 ID（父子联动会自动勾选父节点，
         // 组 ID 混入提交会被后端当作权限 ID，可能越权绑定）。
-        permissions: extractLeafIds(checkedKeys, treeData),
+        // 勾了某页面的操作时自动带上该页面的「查看」
+        permissions: withPageViews(extractLeafIds(checkedKeys, treeData), treeData),
       };
 
       // 仅 SELECTED_UNITS 档提交授权单元集（含清空场景）；

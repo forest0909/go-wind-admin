@@ -36,6 +36,7 @@ import (
 	"go-wind-admin/app/admin/service/cmd/server/assets"
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/app/admin/service/internal/data/ent"
+	entPermissionApi "go-wind-admin/app/admin/service/internal/data/ent/permissionapi"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
@@ -62,7 +63,7 @@ func newPermissionServiceForTest(t *testing.T) (*PermissionService, *ent.Client)
 		roleRepo:                data.NewRoleRepoForTest(entClient),
 		authorizer:              authorizer.NewAuthorizer(context.Background(), bLogger.NopLogger(), &authorizer.EngineConfig{Type: "noop"}, stubAuthzProvider{}),
 		menuPermissionConverter: converter.NewMenuPermissionConverter(),
-		apiPermissionConverter:  goconv.NewApiPermissionConverter(),
+		apiPermissionConverter:  goconv.NewApiPermissionConverter().WithResourceAliases(apiResourceAliases),
 	}
 	return svc, entClient.Client()
 }
@@ -304,6 +305,251 @@ func TestPermissionService_SyncPermissions_DuplicateCodeDeduped(t *testing.T) {
 	menuLinks, err := client.PermissionMenu.Query().Count(ctx)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, menuLinks, 1, "保留的权限应关联到其来源菜单")
+}
+
+// TestPermissionService_SyncPermissions_MergeKeepsIDs 验证重复同步按编码增量合并：
+// 已有权限点 ID 不变（角色绑定继续指向有效权限）、同步生成的旧英文名换成菜单标题、
+// 手工改过的名称与手工新建的权限点保持不动。
+func TestPermissionService_SyncPermissions_MergeKeepsIDs(t *testing.T) {
+	svc, client := newPermissionServiceForTest(t)
+	ctx := enttest.NewSystemContext(context.Background())
+	opCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{UserId: 7})
+
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:   trans.Ptr("MergeCatalog"),
+			Path:   trans.Ptr("/mergegrp"),
+			Type:   permissionV1.Menu_CATALOG.Enum(),
+			Status: permissionV1.Menu_ON.Enum(),
+			Meta:   &permissionV1.MenuMeta{Title: trans.Ptr("menu.mergegrp.moduleName")},
+		},
+	}))
+	catalog, err := client.Menu.Query().Only(ctx)
+	require.NoError(t, err)
+	for _, m := range []struct{ name, path, title string }{
+		{"MergeUsers", "users", "menu.mergegrp.users"},
+		{"MergeRoles", "roles", "menu.mergegrp.roles"},
+	} {
+		require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+			Data: &permissionV1.Menu{
+				Name:     trans.Ptr(m.name),
+				Path:     trans.Ptr(m.path),
+				ParentId: &catalog.ID,
+				Type:     permissionV1.Menu_MENU.Enum(),
+				Status:   permissionV1.Menu_ON.Enum(),
+				Meta:     &permissionV1.MenuMeta{Title: trans.Ptr(m.title)},
+			},
+		}))
+	}
+
+	_, err = svc.SyncPermissions(opCtx, &emptypb.Empty{})
+	require.NoError(t, err)
+
+	byCode := func() map[string]*ent.Permission {
+		rows, qerr := client.Permission.Query().All(ctx)
+		require.NoError(t, qerr)
+		m := map[string]*ent.Permission{}
+		for _, r := range rows {
+			m[*r.Code] = r
+		}
+		return m
+	}
+	first := byCode()
+	require.Equal(t, "menu.mergegrp.users", *first["user:view"].Name, "名称应取菜单标题")
+
+	// 模拟旧版同步留下的英文名、管理员手改的名称、手工权限点和角色绑定
+	_, err = client.Permission.UpdateOneID(first["user:view"].ID).SetName("MergeUsers").Save(ctx)
+	require.NoError(t, err)
+	_, err = client.Permission.UpdateOneID(first["role:view"].ID).SetName("角色页").Save(ctx)
+	require.NoError(t, err)
+	_, err = client.Permission.Create().SetName("手工权限").SetCode("manual:keep").Save(ctx)
+	require.NoError(t, err)
+	_, err = client.RolePermission.Create().SetRoleID(1).SetPermissionID(first["user:view"].ID).Save(ctx)
+	require.NoError(t, err)
+	// 多余的菜单关联：重复同步应删掉它
+	_, err = client.PermissionMenu.Create().SetPermissionID(first["user:view"].ID).SetMenuID(9999).Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.SyncPermissions(opCtx, &emptypb.Empty{})
+	require.NoError(t, err, "重复同步应成功")
+
+	second := byCode()
+	require.Len(t, second, len(first)+1, "不应新增或删除同步权限，手工权限保留")
+	for code, p := range first {
+		require.Equal(t, p.ID, second[code].ID, "权限 %s 的 ID 应保持不变", code)
+	}
+	require.Equal(t, "menu.mergegrp.users", *second["user:view"].Name, "旧英文名应改为菜单标题")
+	require.Equal(t, "角色页", *second["role:view"].Name, "手工改过的名称应保留")
+	require.Contains(t, second, "manual:keep", "手工权限点不应被删")
+
+	bound, err := client.RolePermission.Query().Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, first["user:view"].ID, *bound.PermissionID, "角色绑定应仍指向原权限点")
+
+	groups, err := client.PermissionGroup.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, groups, 2, "分组按模块合并，不应重复创建")
+	menuLinks, err := client.PermissionMenu.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 3, menuLinks, "菜单关联应与菜单一一对应：多余的被删、不重复插入")
+}
+
+// TestPermissionService_SyncPermissions_ActionsAttachToPage 验证接口派生的操作权限点
+// 挂到同资源页面下：名称为「页面标题#动作」、与页面同组；找不到页面的用「模块描述#动作」。
+func TestPermissionService_SyncPermissions_ActionsAttachToPage(t *testing.T) {
+	svc, client := newPermissionServiceForTest(t)
+	ctx := enttest.NewSystemContext(context.Background())
+	opCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{UserId: 7})
+
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:   trans.Ptr("ActCatalog"),
+			Path:   trans.Ptr("/actgrp"),
+			Type:   permissionV1.Menu_CATALOG.Enum(),
+			Status: permissionV1.Menu_ON.Enum(),
+			Meta:   &permissionV1.MenuMeta{Title: trans.Ptr("menu.actgrp.moduleName")},
+		},
+	}))
+	catalog, err := client.Menu.Query().Only(ctx)
+	require.NoError(t, err)
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:     trans.Ptr("ActWidgets"),
+			Path:     trans.Ptr("widgets"),
+			ParentId: &catalog.ID,
+			Type:     permissionV1.Menu_MENU.Enum(),
+			Status:   permissionV1.Menu_ON.Enum(),
+			Meta:     &permissionV1.MenuMeta{Title: trans.Ptr("menu.actgrp.widgets")},
+		},
+	}))
+	for _, api := range []struct{ method, path, desc string }{
+		{"PUT", "/admin/v1/widgets/{id}", "小部件管理服务"},
+		{"DELETE", "/admin/v1/gadgets/{id}", "小工具管理服务"},
+	} {
+		require.NoError(t, svc.apiRepo.Create(ctx, &permissionV1.CreateApiRequest{
+			Data: &permissionV1.Api{
+				Path:              trans.Ptr(api.path),
+				Method:            trans.Ptr(api.method),
+				ModuleDescription: trans.Ptr(api.desc),
+				Scope:             permissionV1.Api_ADMIN.Enum(),
+			},
+		}))
+	}
+
+	_, err = svc.SyncPermissions(opCtx, &emptypb.Empty{})
+	require.NoError(t, err)
+
+	rows, err := client.Permission.Query().All(ctx)
+	require.NoError(t, err)
+	byCode := map[string]*ent.Permission{}
+	for _, r := range rows {
+		byCode[*r.Code] = r
+	}
+	page, edit, orphan := byCode["widget:view"], byCode["widget:edit"], byCode["gadget:delete"]
+	require.NotNil(t, page, "页面权限点应存在")
+	require.NotNil(t, edit, "操作权限点应存在")
+	require.NotNil(t, orphan, "无页面的操作权限点应存在")
+	require.Equal(t, "menu.actgrp.widgets#edit", *edit.Name, "操作名称应为页面标题#动作")
+	require.Equal(t, *page.GroupID, *edit.GroupID, "操作应与页面同组")
+	require.Equal(t, "小工具管理#delete", *orphan.Name, "无页面时用去掉「服务」的模块描述#动作")
+}
+
+// TestPermissionService_SyncPermissions_InternalMessageSplit 站内消息的接口按别名拆成
+// message/category/inbox，挂到各自页面下；旧 internal-message:* 上的角色授权转给新编码后旧点删除。
+func TestPermissionService_SyncPermissions_InternalMessageSplit(t *testing.T) {
+	svc, client := newPermissionServiceForTest(t)
+	ctx := enttest.NewSystemContext(context.Background())
+	opCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{UserId: 7})
+
+	require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+		Data: &permissionV1.Menu{
+			Name:   trans.Ptr("InternalMessageManagement"),
+			Path:   trans.Ptr("/internal-message"),
+			Type:   permissionV1.Menu_CATALOG.Enum(),
+			Status: permissionV1.Menu_ON.Enum(),
+		},
+	}))
+	catalog, err := client.Menu.Query().Only(ctx)
+	require.NoError(t, err)
+	for _, path := range []string{"messages", "categories", "inbox"} {
+		require.NoError(t, svc.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{
+			Data: &permissionV1.Menu{
+				Name:     trans.Ptr(path),
+				Path:     trans.Ptr(path),
+				ParentId: &catalog.ID,
+				Type:     permissionV1.Menu_MENU.Enum(),
+				Status:   permissionV1.Menu_ON.Enum(),
+			},
+		}))
+	}
+	for _, api := range []struct{ method, path string }{
+		{"GET", "/admin/v1/internal-message/messages"},
+		{"PUT", "/admin/v1/internal-message/messages/{id}"},
+		{"DELETE", "/admin/v1/internal-message/messages/{id}"},
+		{"POST", "/admin/v1/internal-message/send"},
+		{"POST", "/admin/v1/internal-message/revoke"},
+		{"GET", "/admin/v1/internal-message/categories"},
+		{"POST", "/admin/v1/internal-message/categories"},
+		{"PUT", "/admin/v1/internal-message/categories/{id}"},
+		{"DELETE", "/admin/v1/internal-message/categories/{id}"},
+		{"GET", "/admin/v1/internal-message/inbox"},
+		{"POST", "/admin/v1/internal-message/inbox/delete"},
+		{"POST", "/admin/v1/internal-message/read"},
+		{"POST", "/admin/v1/internal-message/status"},
+	} {
+		require.NoError(t, svc.apiRepo.Create(ctx, &permissionV1.CreateApiRequest{
+			Data: &permissionV1.Api{
+				Path:   trans.Ptr(api.path),
+				Method: trans.Ptr(api.method),
+				Scope:  permissionV1.Api_ADMIN.Enum(),
+			},
+		}))
+	}
+
+	// 旧版同步留下的合并编码，一个角色勾了其中的 edit
+	oldEdit, err := client.Permission.Create().SetName("InternalMessageEdit").SetCode("internal-message:edit").Save(ctx)
+	require.NoError(t, err)
+	_, err = client.Permission.Create().SetName("InternalMessageView").SetCode("internal-message:view").Save(ctx)
+	require.NoError(t, err)
+	role, err := client.Role.Create().SetName("im").SetCode("im").Save(ctx)
+	require.NoError(t, err)
+	_, err = client.RolePermission.Create().SetRoleID(role.ID).SetPermissionID(oldEdit.ID).Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.SyncPermissions(opCtx, &emptypb.Empty{})
+	require.NoError(t, err)
+
+	rows, err := client.Permission.Query().All(ctx)
+	require.NoError(t, err)
+	byCode := map[string]*ent.Permission{}
+	for _, r := range rows {
+		byCode[*r.Code] = r
+	}
+	for _, code := range []string{
+		"message:view", "message:create", "message:edit", "message:delete",
+		"category:view", "category:create", "category:edit", "category:delete",
+		"inbox:view", "inbox:edit", "inbox:delete",
+	} {
+		require.NotNil(t, byCode[code], "应生成 %s", code)
+	}
+	for code := range byCode {
+		require.NotContains(t, []string{"internal-message:view", "internal-message:create", "internal-message:edit", "internal-message:delete"}, code, "旧合并编码应被删除")
+	}
+	viewApis, err := client.PermissionApi.Query().Where(entPermissionApi.PermissionIDEQ(byCode["message:view"].ID)).Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, viewApis, "消息列表接口应挂到菜单派生的 message:view")
+
+	grantedIDs, err := svc.roleRepo.ListPermissionIDsByRoleIDs(ctx, []uint32{role.ID})
+	require.NoError(t, err)
+	var granted []string
+	for _, r := range rows {
+		for _, id := range grantedIDs {
+			if r.ID == id {
+				granted = append(granted, *r.Code)
+			}
+		}
+	}
+	require.ElementsMatch(t, []string{"message:edit", "category:edit"}, granted, "旧授权应转给承接编码")
 }
 
 // TestPermissionService_ListAndGetTenantScoping 验证 List/Get 的租户范围限定

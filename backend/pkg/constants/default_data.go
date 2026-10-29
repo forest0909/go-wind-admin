@@ -336,7 +336,7 @@ var DefaultMenus = []*permissionV1.Menu{
 		ParentId:  trans.Ptr(uint32(1)),
 		Type:      permissionV1.Menu_MENU.Enum(),
 		Name:      trans.Ptr("Analytics"),
-		Path:      trans.Ptr("/analytics"),
+		Path:      trans.Ptr("analytics"),
 		Component: trans.Ptr("dashboard/analytics/index.vue"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
@@ -352,7 +352,7 @@ var DefaultMenus = []*permissionV1.Menu{
 		ParentId:  trans.Ptr(uint32(1)),
 		Type:      permissionV1.Menu_MENU.Enum(),
 		Name:      trans.Ptr("Workspace"),
-		Path:      trans.Ptr("/workspace"),
+		Path:      trans.Ptr("workspace"),
 		Component: trans.Ptr("dashboard/workspace/index.vue"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
@@ -364,24 +364,11 @@ var DefaultMenus = []*permissionV1.Menu{
 	},
 
 	{
-		Id:        trans.Ptr(uint32(3)),
-		ParentId:  nil,
-		Type:      permissionV1.Menu_CATALOG.Enum(),
-		Name:      trans.Ptr("Profile"),
-		Path:      trans.Ptr("/profile"),
-		Component: trans.Ptr("BasicLayout"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:      trans.Ptr("menu.profile.settings"),
-			HideInMenu: trans.Ptr(true),
-		},
-	},
-	{
 		Id:        trans.Ptr(uint32(4)),
-		ParentId:  trans.Ptr(uint32(3)),
+		ParentId:  trans.Ptr(uint32(20)),
 		Type:      permissionV1.Menu_MENU.Enum(),
 		Name:      trans.Ptr("ProfilePage"),
-		Path:      trans.Ptr("/profile"),
+		Path:      trans.Ptr("profile"),
 		Component: trans.Ptr("app/opm/user/profile/index.vue"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
@@ -392,24 +379,11 @@ var DefaultMenus = []*permissionV1.Menu{
 	},
 
 	{
-		Id:        trans.Ptr(uint32(5)),
-		ParentId:  nil,
-		Type:      permissionV1.Menu_CATALOG.Enum(),
-		Name:      trans.Ptr("Inbox"),
-		Path:      trans.Ptr("/inbox"),
-		Component: trans.Ptr("BasicLayout"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Title:      trans.Ptr("menu.profile.internalMessage"),
-			HideInMenu: trans.Ptr(true),
-		},
-	},
-	{
 		Id:        trans.Ptr(uint32(6)),
-		ParentId:  trans.Ptr(uint32(5)),
+		ParentId:  trans.Ptr(uint32(40)),
 		Type:      permissionV1.Menu_MENU.Enum(),
 		Name:      trans.Ptr("InboxPage"),
-		Path:      trans.Ptr("/inbox"),
+		Path:      trans.Ptr("inbox"),
 		Component: trans.Ptr("app/internal_message/inbox/index.vue"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
@@ -553,7 +527,7 @@ var DefaultMenus = []*permissionV1.Menu{
 		Type:      permissionV1.Menu_CATALOG.Enum(),
 		Name:      trans.Ptr("PermissionManagement"),
 		Path:      trans.Ptr("/permission"),
-		Redirect:  trans.Ptr("/permission/codes"),
+		Redirect:  trans.Ptr("/permission/roles"),
 		Component: trans.Ptr("BasicLayout"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
@@ -573,10 +547,11 @@ var DefaultMenus = []*permissionV1.Menu{
 		Component: trans.Ptr("app/permission/permission/index.vue"),
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
-			Title:     trans.Ptr("menu.permission.permission"),
-			Icon:      trans.Ptr("lucide:shield-ellipsis"),
-			Order:     trans.Ptr(int32(1)),
-			Authority: []string{"sys:platform_admin"},
+			HideInMenu: trans.Ptr(true),
+			Title:      trans.Ptr("menu.permission.permission"),
+			Icon:       trans.Ptr("lucide:shield-ellipsis"),
+			Order:      trans.Ptr(int32(1)),
+			Authority:  []string{"sys:platform_admin"},
 		},
 	},
 	{

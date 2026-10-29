@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 
-import { type AppRouteObject } from '@/core/router';
+import { createLazyRoute, type AppRouteObject } from '@/core/router';
 import { AuthGuard } from '@/router/guards';
 import MainLayout from '@/layouts/MainLayout';
 
@@ -32,3 +32,21 @@ export const staticRoutes: AppRouteObject[] = [
     ],
   },
 ];
+
+// 后端模式固定注册的系统页：独立于菜单授权，仍由 AuthGuard 保护。
+export const backendSystemRoutes: AppRouteObject[] = [{
+  element: <AuthGuard><MainLayout /></AuthGuard>,
+  meta: { hideInMenu: true, hideInTab: true },
+  children: [
+    {
+      path: '/opm/profile',
+      element: createLazyRoute(() => import('@/pages/app/opm/user/profile')),
+      meta: { title: 'routes:user-profile', hideInMenu: true },
+    },
+    {
+      path: '/internal-message/inbox',
+      element: createLazyRoute(() => import('@/pages/app/internal-message/inbox')),
+      meta: { title: 'routes:inbox', hideInMenu: true },
+    },
+  ],
+}];

@@ -38,7 +38,7 @@ export const usePreferencesStore = create<PreferencesState>()(
             // hsl(212 100% 45%) 并统一默认圆角 8。历史上 v0→v1 曾把默认主色迁到
             // #3B82F6；本版把默认主题的两种旧蓝一并收敛到规范值。仅当主题仍为
             // 内置 default 时迁移，用户自选的主题色/圆角不受影响。
-            version: 2,
+            version: 3,
             migrate: (persistedState, version) => {
                 const state = (persistedState ?? {}) as { preferences?: Preferences };
                 if (version < 2) {
@@ -57,6 +57,10 @@ export const usePreferencesStore = create<PreferencesState>()(
                             '[Preferences] 迁移 v<2：默认主题对齐设计语言规范（hsl(212 100% 45%) + radius 8）'
                         );
                     }
+                }
+                // v2 → v3：只迁移菜单模式，保留其他用户偏好。
+                if (version < 3 && state.preferences?.app) {
+                    state.preferences.app.accessMode = 'backend';
                 }
                 return state as { preferences: Preferences };
             },

@@ -197,6 +197,16 @@ func (r *PermissionRepo) List(ctx context.Context, req *paginationV1.PagingReque
 	}, nil
 }
 
+// GetEnabledPermissionCodes 返回所有启用权限编码 / Return all enabled permission codes.
+func (r *PermissionRepo) GetEnabledPermissionCodes(ctx context.Context) ([]string, error) {
+	codes, err := r.entClient.Client().Permission.Query().Where(permission.StatusEQ(permission.StatusOn)).Select(permission.FieldCode).Strings(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "query enabled permission codes failed: %s", err.Error())
+		return nil, permissionV1.ErrorInternalServerError("query enabled permission codes failed")
+	}
+	return codes, nil
+}
+
 // GetPermissionCodesByIDs 通过权限ID列表获取权限代码列表
 func (r *PermissionRepo) GetPermissionCodesByIDs(ctx context.Context, ids []uint32) ([]string, error) {
 	q := r.entClient.Client().Permission.Query().

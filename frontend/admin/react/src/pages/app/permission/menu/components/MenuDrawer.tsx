@@ -370,7 +370,7 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
         {({ type }) => {
           if (isButton(type)) return null;
           return (
-            <ProFormCheckbox name="meta.hideInMenu">
+            <ProFormCheckbox name="meta.hideInMenu" extra={t('hideInMenuSyncHint')}>
               {t('hideInMenu')}
             </ProFormCheckbox>
           );

@@ -1,9 +1,10 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Tag, App } from 'antd';
+import { Tag, App } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -120,6 +121,7 @@ const PlanList: React.FC<PlanListProps> = ({ currentPlanId, onPlanSelect }) => {
           actions={[
             {
               key: 'edit',
+              code: 'plan:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -130,6 +132,7 @@ const PlanList: React.FC<PlanListProps> = ({ currentPlanId, onPlanSelect }) => {
             },
             {
               key: 'delete',
+              code: 'plan:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -193,7 +196,9 @@ const PlanList: React.FC<PlanListProps> = ({ currentPlanId, onPlanSelect }) => {
           }}
           toolBarRender={() => [
             <TableExportButton key="export" fetcher={fetchListPlans} columns={columns} filename="plans" />,
-            <Button
+            <AccessButton
+              resource="plan"
+              action="create"
               key="create"
               color="primary"
               variant="outlined"
@@ -205,7 +210,7 @@ const PlanList: React.FC<PlanListProps> = ({ currentPlanId, onPlanSelect }) => {
               }}
             >
               {t('common:button.add')}
-            </Button>,
+            </AccessButton>,
           ]}
           options={{
             density: false,

@@ -1,9 +1,10 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState, useEffect } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Tag, App, Empty } from 'antd';
+import { Tag, App, Empty } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -96,6 +97,7 @@ const PlanQuotaList: React.FC<PlanQuotaListProps> = ({ planId }) => {
           actions={[
             {
               key: 'edit',
+              code: 'plan-quota:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -106,6 +108,7 @@ const PlanQuotaList: React.FC<PlanQuotaListProps> = ({ planId }) => {
             },
             {
               key: 'delete',
+              code: 'plan-quota:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -173,7 +176,9 @@ const PlanQuotaList: React.FC<PlanQuotaListProps> = ({ planId }) => {
             }}
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListPlanQuotas} columns={columns} filename="plan-quotas" />,
-              <Button
+              <AccessButton
+                resource="plan-quota"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -185,7 +190,7 @@ const PlanQuotaList: React.FC<PlanQuotaListProps> = ({ planId }) => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

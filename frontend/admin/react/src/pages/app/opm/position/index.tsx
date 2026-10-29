@@ -1,3 +1,4 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
@@ -160,6 +161,7 @@ const PositionManagement = () => {
           actions={[
             {
               key: 'edit',
+              code: 'position:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -170,6 +172,7 @@ const PositionManagement = () => {
             },
             {
               key: 'delete',
+              code: 'position:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -232,7 +235,9 @@ const PositionManagement = () => {
               >
                 {t('common:import.title')}
               </Button>,
-              <Button
+              <AccessButton
+                resource="position"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -244,7 +249,7 @@ const PositionManagement = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

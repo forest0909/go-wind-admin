@@ -31,43 +31,135 @@ interface TreeNode {
   key: number | string;
   title: string;
   children?: TreeNode[];
+  /** 页面节点：其「查看」权限点的 ID（勾了任一操作时提交时一并带上） */
+  viewKey?: number;
+}
+
+type PermissionItem = {
+  id?: number | string;
+  title?: string;
+  name?: string;
+  code?: string;
+  groupId?: number | string;
+};
+
+// 操作在页面下的排列顺序，未列出的排在后面
+const ACTION_ORDER = ['view', 'create', 'edit', 'delete'];
+
+/** 把 menu:edit 拆成资源 menu 和动作 edit（按最后一个冒号） */
+function splitCode(code?: string): [string, string] | null {
+  if (!code) return null;
+  const i = code.lastIndexOf(':');
+  if (i <= 0 || i === code.length - 1) return null;
+  return [code.slice(0, i), code.slice(i + 1)];
+}
+
+/**
+ * 把同一组内的权限点排成「页面 → 操作」：
+ * 资源有 <资源>:view 页面权限点、又有其他动作时，生成页面节点，
+ * 下挂「查看」和各操作；其余权限点平铺。
+ */
+function nestByPage(
+  perms: PermissionItem[],
+  translate: (label: string) => string,
+  actionLabel: (action: string) => string,
+): TreeNode[] {
+  const byResource = new Map<string, PermissionItem[]>();
+  for (const p of perms) {
+    const parts = splitCode(p.code);
+    // 目录权限点（xxx:dir）不是页面上的操作，资源名撞上也不并进页面
+    if (!parts || parts[1] === 'dir') continue;
+    const list = byResource.get(parts[0]) ?? [];
+    list.push(p);
+    byResource.set(parts[0], list);
+  }
+
+  const label = (p: PermissionItem) => translate(p.title || p.name || p.code || String(p.id));
+  const nodes: TreeNode[] = [];
+  const done = new Set<PermissionItem>();
+  for (const p of perms) {
+    if (done.has(p)) continue;
+    const parts = splitCode(p.code);
+    const siblings = parts && parts[1] !== 'dir' ? (byResource.get(parts[0]) ?? []) : [];
+    const page = siblings.find((s) => splitCode(s.code)?.[1] === 'view');
+    if (!page || siblings.length < 2) {
+      done.add(p);
+      nodes.push({ key: Number(p.id), title: label(p) });
+      continue;
+    }
+
+    siblings.forEach((s) => done.add(s));
+    const rank = (s: PermissionItem) => {
+      const i = ACTION_ORDER.indexOf(splitCode(s.code)?.[1] ?? '');
+      return i < 0 ? ACTION_ORDER.length : i;
+    };
+    const children = [...siblings]
+      .sort((x, y) => rank(x) - rank(y))
+      .map((s) => {
+        const action = splitCode(s.code)?.[1] ?? '';
+        // 同步生成的名称（页面或「名称#动作」）只显示动作；手工起的名称原样显示
+        const auto = s === page || (s.name ?? '').includes('#');
+        return { key: Number(s.id), title: auto ? actionLabel(action) : label(s) };
+      });
+    nodes.push({ key: `p_${page.id}`, title: label(page), children, viewKey: Number(page.id) });
+  }
+  return nodes;
 }
 
 /**
  * 根据权限组和权限列表构建权限树。
  * 权限组 API 返回嵌套结构（children 含子组），需递归处理。
- * 每个组节点下附加匹配的权限（通过 groupId 关联）。
+ * 每个组节点下附加匹配的权限（通过 groupId 关联），并按「页面 → 操作」分层。
  */
 export function buildPermissionTree(
   groups: Array<{ id?: number | string; title?: string; name?: string; code?: string; children?: any[] }>,
-  permissions: Array<{
-    id?: number | string;
-    title?: string;
-    name?: string;
-    code?: string;
-    groupId?: number | string;
-  }>,
+  permissions: PermissionItem[],
+  {
+    translate = (label) => label,
+    actionLabel = (action) => action,
+  }: {
+    /** 名称翻译（i18n key / 「名称#动作」） */
+    translate?: (label: string) => string;
+    /** 动作翻译（edit → 编辑） */
+    actionLabel?: (action: string) => string;
+  } = {},
 ): TreeNode[] {
   if (!groups || groups.length === 0) return [];
 
   return groups.map((group) => {
     // 子权限组（递归）
-    const subGroups = buildPermissionTree(group.children || [], permissions);
+    const subGroups = buildPermissionTree(group.children || [], permissions, { translate, actionLabel });
     // 匹配的权限
-    const matchedPerms = (permissions || [])
-      .filter((p) => String(p.groupId) === String(group.id))
-      .map((p) => ({
-        key: Number(p.id),
-        title: p.title || p.name || p.code || String(p.id),
-      }));
+    const matchedPerms = nestByPage(
+      (permissions || []).filter((p) => String(p.groupId) === String(group.id)),
+      translate,
+      actionLabel,
+    );
 
     const children = [...subGroups, ...matchedPerms];
     return {
       key: `g_${group.id}`,
-      title: group.title || group.name || group.code || String(group.id),
+      title: translate(group.title || group.name || group.code || String(group.id)),
       children: children.length > 0 ? children : undefined,
     };
   });
+}
+
+/**
+ * 勾了页面下任一操作时补上该页面的「查看」权限点：没有查看就进不了页面，单独的操作没有意义。
+ */
+export function withPageViews(ids: number[], treeData: TreeNode[]): number[] {
+  const result = new Set(ids);
+  const walk = (nodes: TreeNode[]) => {
+    for (const node of nodes) {
+      if (node.viewKey !== undefined && node.children?.some((c) => result.has(c.key as number))) {
+        result.add(node.viewKey);
+      }
+      if (node.children) walk(node.children);
+    }
+  };
+  walk(treeData);
+  return [...result];
 }
 
 /**

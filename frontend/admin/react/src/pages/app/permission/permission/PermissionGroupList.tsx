@@ -1,3 +1,4 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
@@ -18,6 +19,7 @@ import { PaginationQuery } from '@/core';
 import { useProTableScrollY } from '@/hooks/useProTableScrollY';
 import { fetchListPermissionGroups, useDeletePermissionGroup } from '@/api/hooks/permission-group';
 import { getStatusMap, getStatusOptions } from './constants';
+import { useMenuLabel } from '@/utils/menu-label';
 import PermissionGroupDrawer from './PermissionGroupDrawer';
 import { searchOptionRender } from '@/components/common/searchSubmitter';
 
@@ -34,6 +36,7 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
   onGroupSelect,
 }) => {
   const { t } = useTranslation('permission-group');
+  const menuLabel = useMenuLabel();
   const actionRef = useRef<ActionType>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const tableScrollY = useProTableScrollY(containerRef);
@@ -98,6 +101,7 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
     {
       title: t('name'),
       dataIndex: 'name',
+      render: (_, record) => menuLabel(record.name),
     },
     {
       title: t('module'),
@@ -126,6 +130,7 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
           actions={[
             {
               key: 'edit',
+              code: 'permission-group:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -136,6 +141,7 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
             },
             {
               key: 'delete',
+              code: 'permission-group:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -215,7 +221,9 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
             >
               {t('collapseAll')}
             </Button>,
-            <Button
+            <AccessButton
+              resource="permission-group"
+              action="create"
               key="create"
               color="primary"
               variant="outlined"
@@ -227,7 +235,7 @@ const PermissionGroupList: React.FC<PermissionGroupListProps> = ({
               }}
             >
               {t('common:button.add')}
-            </Button>,
+            </AccessButton>,
           ]}
           options={{
             density: false,

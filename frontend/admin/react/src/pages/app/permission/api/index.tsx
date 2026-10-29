@@ -1,3 +1,5 @@
+import { apiClient } from '@/api/client';
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
@@ -49,20 +51,28 @@ const ApiManagement = () => {
   });
 
   // 同步操作
-  const syncMutation = useSyncApisApi({
-    onSuccess: () => {
+  const syncMutation = useSyncApisApi();
+
+  // 处理同步
+  const [syncing, setSyncing] = useState(false);
+  const handleSync = async () => {
+    setSyncing(true);
+    let resourcesSynced = false;
+    try {
+      await syncMutation.mutateAsync();
+      resourcesSynced = true;
+      await apiClient.permissionService.SyncPermissions({});
       message.success(t('syncSuccess'));
       actionRef.current?.reload();
       queryClient.invalidateQueries({ queryKey: ['listApis'] });
-    },
-    onError: (error: Error) => {
-      message.error(error.message || t('syncFailed'));
-    },
-  });
-
-  // 处理同步
-  const handleSync = async () => {
-    await syncMutation.mutateAsync();
+      queryClient.invalidateQueries({ queryKey: ['listPermissions'] });
+      queryClient.invalidateQueries({ queryKey: ['listPermissionGroups'] });
+    } catch (error) {
+      console.error('API/permission sync failed', error);
+      message.error(t(resourcesSynced ? 'syncPermissionsFailed' : 'syncFailed'));
+    } finally {
+      setSyncing(false);
+    }
   };
 
   // 列配置
@@ -129,6 +139,7 @@ const ApiManagement = () => {
           actions={[
             {
               key: 'edit',
+              code: 'api:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -139,6 +150,7 @@ const ApiManagement = () => {
             },
             {
               key: 'delete',
+              code: 'api:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -209,11 +221,13 @@ const ApiManagement = () => {
                 okText={t('common:button.ok')}
                 cancelText={t('common:button.cancel')}
               >
-                <Button color="orange" variant="outlined" icon={<SyncOutlined />}>
+                <Button color="orange" variant="outlined" icon={<SyncOutlined />} loading={syncing}>
                   {t('sync')}
                 </Button>
               </Popconfirm>,
-              <Button
+              <AccessButton
+                resource="api"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -225,7 +239,7 @@ const ApiManagement = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

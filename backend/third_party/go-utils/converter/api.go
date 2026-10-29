@@ -16,10 +16,20 @@ var (
 )
 
 type ApiPermissionConverter struct {
+	// resourceAliases 路径前缀（去版本前缀和路径参数后，按整段匹配）→ 资源或完整编码
+	resourceAliases map[string]string
 }
 
 func NewApiPermissionConverter() *ApiPermissionConverter {
 	return &ApiPermissionConverter{}
+}
+
+// WithResourceAliases 为带模块前缀的路径指定资源名，最长前缀优先。
+// 值不含冒号时只替换资源（动作仍按方法推导），如 "internal-message/categories" → "category"；
+// 含冒号时作为完整编码直接返回，用于自定义 RPC，如 "internal-message/send" → "message:create"。
+func (c *ApiPermissionConverter) WithResourceAliases(aliases map[string]string) *ApiPermissionConverter {
+	c.resourceAliases = aliases
+	return c
 }
 
 // ConvertCodeByOperationID 通过 operationID 生成 resource:action 风格的 code（如 users:delete, users:list）
@@ -52,9 +62,30 @@ func (c *ApiPermissionConverter) ConvertCodeByOperationID(operationID string) st
 
 // ConvertCodeByPath 通过 HTTP 方法和路径生成 resource:action 风格的 code（如 users:delete, users:list）
 func (c *ApiPermissionConverter) ConvertCodeByPath(method, path string) string {
+	if alias, ok := c.matchAlias(path); ok {
+		if strings.Contains(alias, ":") {
+			return alias
+		}
+		return alias + ":" + c.methodToAction(method, path)
+	}
 	resource := c.pathToResource(path)
 	action := c.methodToAction(method, path)
 	return (resource) + ":" + action
+}
+
+// matchAlias 按整段做最长前缀匹配 resourceAliases
+func (c *ApiPermissionConverter) matchAlias(path string) (string, bool) {
+	if len(c.resourceAliases) == 0 {
+		return "", false
+	}
+	path = c.removePathParams(c.stripVersionPrefix(path))
+	parts := strings.Split(path, "/")
+	for n := len(parts); n > 0; n-- {
+		if alias, ok := c.resourceAliases[strings.Join(parts[:n], "/")]; ok {
+			return alias, true
+		}
+	}
+	return "", false
 }
 
 // methodToAction 将 HTTP 方法转换为动作字符串

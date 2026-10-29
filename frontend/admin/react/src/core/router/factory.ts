@@ -1,7 +1,6 @@
 import { createElement } from 'react';
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 
-import { ROUTES } from '@/config/constants';
 import { injectRedirects } from './utils/inject-redirect';
 import { sortRoutes } from './utils/sort-routes';
 import { transformRoutesWithHandle } from './utils/transform-meta-to-handle';
@@ -32,7 +31,7 @@ function separateRoutes(routes: AppRouteObject[]) {
 /**
  * 取排序后首个可见菜单的落地路径：优先目录组 redirect（后端生成器已为缺省
  * 目录注入首个子路由全路径），无 redirect 则取首个子路由全路径；目录组子级
- * 全隐藏时递归下钻。全部落空返回 null（调用方回退 DEFAULT_HOME）。
+ * 全隐藏时递归下钻。全部落空返回 null（调用方进入隐藏的个人中心）。
  */
 function pickFirstMenuPath(routes: AppRouteObject[]): string | null {
   for (const route of routes) {
@@ -66,28 +65,13 @@ export const createAccessibleRouter = async (
     case 'backend': {
       isBackendMode = true;
       // 后端模式：从 API 获取路由树，动态转换组件
-      if (!options.fetchMenuListAsync) {
-        console.warn('[Router] Backend mode requires fetchMenuListAsync, falling back to frontend mode');
-        routes = await generateRoutesByFrontend(
-          routes,
-          options.permissions ?? [],
-          options.forbiddenElement,
-        );
-      } else {
-        // 分离布局路由与静态路由（auth/error 等不受 AuthGuard 保护）
-        const { otherRoutes } = separateRoutes(routes);
-
-        // 后端返回的路由树（根节点 component="BasicLayout"，已包含 Layout）。
-        // 注意：后端生成器只消费 fetchMenuListAsync/layoutMap/pageMap
-        const backendRoutes = await generateRoutesByBackend({
-          fetchMenuListAsync: options.fetchMenuListAsync,
-          layoutMap: options.layoutMap,
-          pageMap: options.pageMap,
-        });
-
-        // 合并：后端路由 + 静态路由（auth/error）
-        routes = [...backendRoutes, ...otherRoutes];
-      }
+      const { otherRoutes } = separateRoutes(routes);
+      const backendRoutes = await generateRoutesByBackend({
+        fetchMenuListAsync: options.fetchMenuListAsync,
+        layoutMap: options.layoutMap,
+        pageMap: options.pageMap,
+      });
+      routes = [...(options.backendStaticRoutes ?? []), ...backendRoutes, ...otherRoutes];
       break;
     }
     case 'frontend':
@@ -108,9 +92,9 @@ export const createAccessibleRouter = async (
     routes = sortRoutes(routes as unknown as AppRoute[]) as unknown as AppRouteObject[];
 
   // 后端模式没有 '/' 主布局容器（目录组各自挂实路径），补根落地路由重定向到
-  // 首个可用菜单，对齐前端模式 '/' index Navigate（DEFAULT_HOME）的登录落地语义
+  // 首个可用菜单；无菜单时进入独立注册的个人中心，侧栏保持为空。
   if (isBackendMode) {
-    const homeTarget = pickFirstMenuPath(routes) ?? ROUTES.DEFAULT_HOME;
+    const homeTarget = pickFirstMenuPath(routes) ?? '/opm/profile';
     routes = [
       {
         path: '/',

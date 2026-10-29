@@ -90,5 +90,11 @@
       "analytics": "分析页",
       "workspace": "工作台"
     }
+  },
+  "permissionAction": {
+    "view": "查看",
+    "create": "新增",
+    "edit": "编辑",
+    "delete": "删除"
   }
 }

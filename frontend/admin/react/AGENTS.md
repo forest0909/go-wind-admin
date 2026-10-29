@@ -156,8 +156,8 @@ export default myModuleRoutes;
 
 ### 权限模式
 
-- `frontend`（默认）：前端路由 + `meta.authority` 过滤
-- `backend`：后端返回菜单 + `pageMap` 动态匹配组件
+- `frontend`：前端路由 + `meta.authority` 过滤
+- `backend`（默认）：后端返回菜单 + `pageMap` 动态匹配组件
 
 ## 权限系统
 

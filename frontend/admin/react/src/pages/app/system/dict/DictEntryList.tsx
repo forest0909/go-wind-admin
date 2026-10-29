@@ -1,9 +1,10 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState, useEffect } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Tag, App, Empty } from 'antd';
+import { Tag, App, Empty } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -109,6 +110,7 @@ const DictEntryList: React.FC<DictEntryListProps> = ({ typeId }) => {
           actions={[
             {
               key: 'edit',
+              code: 'dict:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -119,6 +121,7 @@ const DictEntryList: React.FC<DictEntryListProps> = ({ typeId }) => {
             },
             {
               key: 'delete',
+              code: 'dict:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -179,7 +182,9 @@ const DictEntryList: React.FC<DictEntryListProps> = ({ typeId }) => {
             }}
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListDictEntries} columns={columns} filename="dict-entries" />,
-              <Button
+              <AccessButton
+                resource="dict"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -191,7 +196,7 @@ const DictEntryList: React.FC<DictEntryListProps> = ({ typeId }) => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

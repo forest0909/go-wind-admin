@@ -138,31 +138,28 @@ function convertRoutes(
  * - 其余剥掉开头斜杠（/analytics → analytics），URL 随父路径延伸为
  *   /dashboard/analytics，与前端模式静态路由的 URL 空间保持一致。
  */
-function rebaseBackendTree(nodes: BackendRoute[], parentPath = ''): void {
+function rebaseBackendTree(nodes: BackendRoute[], parentPath = ''): string[] {
+    const availablePaths: string[] = [];
+    nodes.sort((a, b) => (a.meta?.order ?? Number.MAX_SAFE_INTEGER) - (b.meta?.order ?? Number.MAX_SAFE_INTEGER));
     for (const node of nodes) {
-        const fullPath = node.path ? resolveRoutePath(parentPath, node.path) : parentPath;
-
         if (parentPath && node.path?.startsWith('/')) {
             node.path = node.path === parentPath || node.path.startsWith(`${parentPath}/`)
                 ? node.path.slice(parentPath.length).replace(/^\/+/, '')
                 : node.path.replace(/^\/+/, '');
         }
-
-        // 目录组缺省重定向：convertRoutes 会将其转成 index <Navigate>，否则
-        // 直访目录组路径（/dashboard）只渲染出空布局。首个子路径为空（归位成
-        // index 的 /profile 组）或重定向目标等于自身（自指死循环）时不注入。
-        const firstChild = node.children?.[0];
-        if (parentPath && node.children?.length && !node.redirect && firstChild?.path) {
-            const target = resolveRoutePath(fullPath, firstChild.path);
-            if (target !== fullPath) {
-                node.redirect = target;
-            }
-        }
-
+        const fullPath = node.path ? resolveRoutePath(parentPath, node.path) : parentPath;
         if (node.children?.length) {
-            rebaseBackendTree(node.children, fullPath);
+            const childPaths = rebaseBackendTree(node.children, fullPath);
+            // 角色可能只有部分子页，旧目录 redirect 不得指向未授权的兄弟页面。
+            if (!node.redirect || !childPaths.includes(node.redirect)) {
+                node.redirect = childPaths.find((path) => path !== fullPath);
+            }
+            availablePaths.push(...childPaths);
+        } else if (node.component) {
+            availablePaths.push(fullPath);
         }
     }
+    return availablePaths;
 }
 
 function resolveRoutePath(parentPath: string, childPath: string): string {

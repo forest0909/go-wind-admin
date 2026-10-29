@@ -8,11 +8,24 @@
 import { type ClientTransport, createApiClient } from "@/api/generated/admin/service/v1";
 import { consumeCaptchaHeaders, requestApi } from "@/core/transport/rest";
 
+// 整表同步类接口要成批读写数据库，远程库上会超过默认的 10 秒超时
+const LONG_RUNNING_TIMEOUT = 5 * 60_000;
+const LONG_RUNNING_METHODS = new Set([
+  'ApiService.SyncApis',
+  'MenuService.SyncMenus',
+  'PermissionService.SyncPermissions',
+]);
+
 const transport: ClientTransport = {
-  unary(path, method, body) {
+  unary(...args: Parameters<ClientTransport['unary']>) {
+    // 参数个数由生成的接口规定，解构以满足 max-params
+    const [path, method, body, meta] = args;
     // 消费登录前由 auth store 设置的验证码 Header（一次性，取后即清）
     const headers = consumeCaptchaHeaders() ?? undefined;
-    return requestApi({ body, headers, method, path });
+    const timeout = LONG_RUNNING_METHODS.has(`${meta.service}.${meta.method}`)
+      ? LONG_RUNNING_TIMEOUT
+      : undefined;
+    return requestApi({ body, headers, method, path, timeout });
   },
   serverStream(path) {
     // SSE 流由 transport/sse 模块独立管理，此处不应被调用

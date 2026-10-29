@@ -30,5 +30,6 @@
   "syncFailed": "Sync failed",
   "maxChars": "Maximum {{max}} characters",
   "requiredPath": "Please enter API path",
-  "requiredMethod": "Please select request method"
+  "requiredMethod": "Please select request method",
+  "syncPermissionsFailed": "Resources synced, but permission sync failed. Please retry sync."
 }

@@ -160,6 +160,7 @@ const FileManagement = () => {
             },
             {
               key: 'delete',
+                code: 'file:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,

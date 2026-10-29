@@ -1,4 +1,5 @@
 {
+  "hideInMenuSyncHint": "Sign in again or refresh after saving. The next menu sync overwrites this value with the route definition.",
   "pageTitle": "Menu Management",
   "moduleName": "Menu",
   "serial": "#",
@@ -66,5 +67,6 @@
   "statusMap": {
     "ON": "Active",
     "OFF": "Disabled"
-  }
+  },
+  "syncPermissionsFailed": "Resources synced, but permission sync failed. Please retry sync."
 }

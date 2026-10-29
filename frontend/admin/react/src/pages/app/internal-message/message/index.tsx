@@ -111,6 +111,7 @@ const InternalMessageList = () => {
           actions={[
             {
               key: 'edit',
+                code: 'message:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -121,6 +122,7 @@ const InternalMessageList = () => {
             },
             {
               key: 'delete',
+                code: 'message:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,

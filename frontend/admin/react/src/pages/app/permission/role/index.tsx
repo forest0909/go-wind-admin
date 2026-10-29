@@ -1,9 +1,10 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Tag, App } from 'antd';
+import { Tag, App } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -128,6 +129,7 @@ const RoleManagement = () => {
           actions={[
             {
               key: 'edit',
+              code: 'role:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -138,6 +140,7 @@ const RoleManagement = () => {
             },
             {
               key: 'delete',
+              code: 'role:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -193,7 +196,9 @@ const RoleManagement = () => {
             }}
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListRoles} columns={columns} filename="roles" />,
-              <Button
+              <AccessButton
+                resource="role"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -205,7 +210,7 @@ const RoleManagement = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

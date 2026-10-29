@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import {
   DrawerForm,
+  ProFormDependency,
   ProFormText,
   ProFormRadio,
 } from '@ant-design/pro-components';
@@ -21,6 +22,7 @@ import { fetchListPermissionGroups } from '@/api/hooks/permission-group';
 import { fetchListMenus } from '@/api/hooks/menu';
 import { useDrawerCloseGuard } from '@/components/common/use-drawer-close-guard';
 import { fetchListApis } from '@/api/hooks/api';
+import { useMenuLabel } from '@/utils/menu-label';
 import {
   getStatusOptions,
   buildTreeSelectData,
@@ -51,6 +53,7 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
   onSuccess,
 }) => {
   const { t } = useTranslation('permission');
+  const menuLabel = useMenuLabel();
   const formRef = useRef<ProFormInstance>(null);
 
   // 关闭守卫：遮罩/ESC/X/取消统一，脏数据先确认（docs/form_drawer_close_guard.md）
@@ -81,7 +84,7 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
       // 加载分组下拉
       fetchListPermissionGroups(new PaginationQuery({ formValues: { status: 'ON' } }))
         .then((res) => {
-          setGroupTreeData(buildTreeSelectData(res?.items || []));
+          setGroupTreeData(buildTreeSelectData(res?.items || [], undefined, menuLabel));
         })
         .catch(() => setGroupTreeData([]));
 
@@ -89,7 +92,7 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
       setMenuTreeLoading(true);
       fetchListMenus(new PaginationQuery({ formValues: { status: 'ON' } }))
         .then((res) => {
-          const tree = buildMenuTree(res?.items);
+          const tree = buildMenuTree(res?.items, menuLabel);
           setMenuTreeData(tree);
           // 默认展开全部
           const keys = collectAllKeys(tree);
@@ -111,7 +114,7 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
         .catch(() => setApiTreeData([]))
         .finally(() => setApiTreeLoading(false));
     }
-  }, [open]);
+  }, [open, menuLabel]);
 
   // 打开时清空上次会话遗留的勾选态（原在 onOpenChange 关闭分支里清理，守卫改道后挪到打开时；
   // 必须声明在填充 effect 之前，否则编辑回填会被清掉）
@@ -297,13 +300,22 @@ const PermissionDrawer: React.FC<PermissionDrawerProps> = ({
       labelCol={{ flex: '0 0 120px' }}
       wrapperCol={{ flex: 'auto' }}
     >
-      <ProFormText
-        name="name"
-        label={t('name')}
-        placeholder={t('namePlaceholder')}
-        rules={[{ required: true, message: t('requiredName') }]}
-        fieldProps={{ allowClear: true }}
-      />
+      <ProFormDependency name={['name']}>
+        {({ name }) => {
+          // 同步生成的名称是翻译 key，在输入框下方给出实际显示的文字
+          const shown = menuLabel(name);
+          return (
+            <ProFormText
+              name="name"
+              label={t('name')}
+              placeholder={t('namePlaceholder')}
+              rules={[{ required: true, message: t('requiredName') }]}
+              fieldProps={{ allowClear: true }}
+              extra={shown !== name ? t('nameDisplayAs', { name: shown }) : undefined}
+            />
+          );
+        }}
+      </ProFormDependency>
 
       <ProFormText
         name="code"

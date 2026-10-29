@@ -1,4 +1,5 @@
 {
+  "navigationFailed": "Menus could not be loaded or no menus are available. Check role menu grants with an administrator or refresh to retry.",
   "button": {
     "add": "Add",
     "search": "Search",

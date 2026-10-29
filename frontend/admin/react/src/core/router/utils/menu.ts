@@ -24,19 +24,21 @@ const sortMenuTree = (menuList: any[]): any[] => {
 export const transformRoutesToMenu = (
   routes: MenuRoute[],
   permissions: string[],
-  parentPath: string = '',
+  { parentPath = '', checkAuthority = true }: { parentPath?: string; checkAuthority?: boolean } = {},
 ): NonNullable<ProLayoutProps['route']>['routes'] => {
   const menus = routes
     .filter((route) => {
       // 过滤隐藏菜单
       if (route.meta?.hideInMenu) return false;
+      // index 路由只负责目录跳转（generate-routes-backend 注入的 <Navigate>），没有路径和标题，不是菜单项
+      if (route.index) return false;
 
       const meta = route.meta;
       // 权限过滤与路由闸（generate-routes-frontend.hasPermission）同语义：
       // 无权限要求=保留；持有任一权限码=保留；两者皆否但声明了
       // menuVisibleWithForbidden 的路由保留进菜单（点击后由路由侧渲染 403），
       // 对齐 vue-vben / vue-element 的"菜单可见但禁止访问"
-      if (!meta?.authority?.length) return true;
+      if (!checkAuthority || !meta?.authority?.length) return true;
       if (meta.authority.some((code: string) => permissions.includes(code))) return true;
       return meta?.menuVisibleWithForbidden === true;
     })
@@ -54,7 +56,7 @@ export const transformRoutesToMenu = (
       };
 
       if (route.children) {
-        menuItem.children = transformRoutesToMenu(route.children, permissions, fullPath);
+        menuItem.children = transformRoutesToMenu(route.children, permissions, { parentPath: fullPath, checkAuthority });
       }
 
       return menuItem;

@@ -1,3 +1,5 @@
+import { apiClient } from '@/api/client';
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
@@ -114,24 +116,26 @@ const MenuManagement = () => {
     },
   });
 
-  // 同步菜单：将本地业务路由全量推送到后端（后端会清空重建，角色授权需重做）
+  // 同步菜单后同步权限点，保留已有菜单 ID 和角色授权。
   const [syncing, setSyncing] = useState(false);
-  const syncMutation = useSyncMenus({
-    onSuccess: () => {
-      message.success(t('syncSuccess'));
-      actionRef.current?.reload();
-      queryClient.invalidateQueries({ queryKey: ['listMenus'] });
-    },
-    onError: (error: Error) => {
-      message.error(error.message || t('syncFailed'));
-    },
-  });
+  const syncMutation = useSyncMenus();
 
   const handleSyncMenus = async () => {
     setSyncing(true);
+    let resourcesSynced = false;
     try {
       const request = await buildSyncMenusRequest(businessRoutes, t);
       await syncMutation.mutateAsync(request);
+      resourcesSynced = true;
+      await apiClient.permissionService.SyncPermissions({});
+      message.success(t('syncSuccess'));
+      actionRef.current?.reload();
+      queryClient.invalidateQueries({ queryKey: ['listMenus'] });
+      queryClient.invalidateQueries({ queryKey: ['listPermissions'] });
+      queryClient.invalidateQueries({ queryKey: ['listPermissionGroups'] });
+    } catch (error) {
+      console.error('Menu/permission sync failed', error);
+      message.error(t(resourcesSynced ? 'syncPermissionsFailed' : 'syncFailed'));
     } finally {
       setSyncing(false);
     }
@@ -315,6 +319,7 @@ const MenuManagement = () => {
           actions={[
             {
               key: 'edit',
+              code: 'menu:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -325,6 +330,7 @@ const MenuManagement = () => {
             },
             {
               key: 'delete',
+              code: 'menu:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -411,7 +417,9 @@ const MenuManagement = () => {
                   {t('sync')}
                 </Button>
               </Popconfirm>,
-              <Button
+              <AccessButton
+                resource="menu"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -423,7 +431,7 @@ const MenuManagement = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

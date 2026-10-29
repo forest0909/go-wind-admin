@@ -8,6 +8,7 @@ import { createLazyRoute } from '@/core/router';
 export const permissionRoutes: AppRouteObject[] = [
   {
     name: 'permission',
+    redirect: '/permission/roles',
     path: 'permission', // 相对路径，会自动拼接到父路由 '/'
     meta: {
       title: 'routes:permission',
@@ -23,6 +24,7 @@ export const permissionRoutes: AppRouteObject[] = [
         element: createLazyRoute(() => import('@/pages/app/permission/permission')),
         meta: {
           title: 'routes:permission-codes',
+          hideInMenu: true,
           icon: 'lucide:shield-ellipsis', // Iconify 格式
           order: 1,
           // permission: 'sys:platform_admin', // 仅平台管理员权限（开发阶段暂时注释）

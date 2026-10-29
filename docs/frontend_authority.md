@@ -288,7 +288,7 @@ const { hasAccessByRoles } = useAccess();
 | Hook 式 | `hasAccessByRoles` / `hasAccessByCodes` | `hasAccessByRoles` / `hasAccessByCodes` / `hasAccessByAuthority`（roles ∪ codes 混合判定，对应路由 `meta.authority`） | `hasAccessByRoles` / `hasAccessByCodes` / `hasAccess`（roles ∪ codes 并集） |
 | 指令式 | `v-access:code` / `v-access:role` | 无（React 无指令机制） | `v-access`（混合判定，无权限 `el.remove()`） |
 | 权限码匹配语义 | **精确匹配**；注意 vben 的 accessCodes 实为 roles∪codes 并集（authentication.store 的 getUserPermissionCodes 把角色码并入），按钮级判定同样吃角色码 | **精确匹配** | **精确 + 前缀授权**：用户持 `sys:a` 即判过 `sys:a:b`（`requiredCode.startsWith(userCode + ":")`）——**比另两端宽** |
-| 路由双模式 | `@vben/access` 的 `generateAccessible` + `VITE_ROUTER_ACCESS_MODE`（env）；后端模式菜单为空/失败**静默降级**为前端模式 | `src/core/router/generators/generate-routes-{frontend,backend}.ts` + `preferences.app.accessMode`（运行时偏好；react 无 UI 开关也无 toggleAccessMode，改偏好即生效）；后端模式失败只 `console.error` 并返回空路由，**不降级** | 同 react 结构，另有 `useAccess().toggleAccessMode()` 运行时切换；后端模式失败同样返回 `[]` 不降级 |
+| 路由双模式 | `@vben/access` 的 `generateAccessible` + `VITE_ROUTER_ACCESS_MODE`（env）；后端模式菜单为空/失败**静默降级**为前端模式 | `src/core/router/generators/generate-routes-{frontend,backend}.ts` + `preferences.app.accessMode`（运行时偏好；react 无 UI 开关也无 toggleAccessMode，改偏好即生效）；默认 backend；后端模式失败显示错误、`console.error` 并返回空菜单，**不降级** | 同 react 结构，另有 `useAccess().toggleAccessMode()` 运行时切换；后端模式失败同样返回 `[]` 不降级 |
 | `meta.authority: []` 语义 | 空数组 = 所有人不可见（`if (!authority) return true`，空数组是 truthy） | **空数组 = 所有人可见**（`if (!meta?.authority?.length) return true`）——与另两端相反 | 空数组 = 所有人不可见（同 vben） |
 | 路由生成防线 | `effects/access/accessible.ts` 生成前 `cloneDeep(options.routes)`（2026-09 实证必要：filterTree 会就地改写 node.children，未登录空权限预构建会把带 authority 路由从共享单例永久剔除、登录后找不回） | `generate-routes-frontend.ts` 纯过滤：递归构造新节点、element 按引用共享、零回写共享单例（react 路由带活的 React 元素，不宜整树 cloneDeep） | `core/router/accessible.ts` 生成前 `cloneDeep(options.routes)`（同 vben） |
 | 权限码/菜单端点 | 权限码三端统一 `adminPortalService.GetMyPermissionCode`（codes+hiddenFields）；后端模式的菜单下发经同域 `GetNavigation`（返回 `ListRouteResponse` 菜单路由） | 同左 | 同左 |
@@ -317,3 +317,69 @@ const { hasAccessByRoles } = useAccess();
 ## 参考资料
 
 * [Vben Admin 权限](https://doc.vben.pro/guide/in-depth/access.html)
+
+
+## React 按钮权限
+
+角色页勾选的按钮由 `GetMyPermissionCode` 返回的 `accessCodes` 控制。平台管理员按
+`operator.GetIsPlatformAdmin()` 返回全部启用权限点的编码；普通用户仍按启用角色绑定获取编码。
+菜单或接口同步成功后会继续同步权限点，两步成功才提示成功；权限点同步失败可重试。
+角色授权变更或权限同步后，用户重新登录以刷新本地权限码。
+
+按钮编码为 `<资源>:<动作>`，动作只使用 `create / edit / delete`（编辑是 `edit`）。
+资源名必须按实际 OpenAPI 路径的 `ConvertCodeByPath` 规则核对，不能直接使用页面名：
+去版本前缀和路径参数，取第一个路径段并转单数。例如 `/admin/v1/users/{id}` → `user`，
+`/admin/v1/org-units` → `org-unit`，字典的 `/admin/v1/dict/types`、`dict/entries`、
+`dict/langs` 均为 `dict`。例外是 `PermissionService` 的 `apiResourceAliases` 里登记的带模块前缀路径：
+站内消息的接口按页面拆成 `message`（含发送 `message:create`、撤回 `message:edit`）、`category`、
+`inbox`（标记已读/状态为 `inbox:edit`，收件箱删除为 `inbox:delete`），与菜单派生的页面编码对齐。
+旧版的 `internal-message:*` 在同步权限时自动把角色授权转给新编码后删除（`retiredPermissionCodes`）。
+新模块若接口也挂在模块前缀下，在 `apiResourceAliases` 加一条，否则按钮挂不到页面下。
+只给确实存在对应接口的 CRUD 操作挂码；自定义 RPC（发送消息、收件箱删除、上传）、
+同步、导出、重置密码、强制下线等保持原有显示。
+
+行内操作用 `TableAction.code`，无权限与 `hidden` 一样，在计算「更多」溢出前过滤；
+未传 `code` 的操作保持原有行为：
+
+```tsx
+<TableActions
+  record={record}
+  actions={[
+    { key: 'edit', code: 'user:edit', label: t('edit'), onClick: () => edit(record) },
+    { key: 'delete', code: 'user:delete', label: t('delete'), onClick: () => remove(record) },
+  ]}
+/>
+```
+
+工具栏新增按钮使用 `src/components/common/AccessButton`，保留 antd Button 的属性，
+组件内部统一拼接编码，页面不重复鉴权逻辑：
+
+```tsx
+import AccessButton from '@/components/common/AccessButton';
+
+<AccessButton resource="user" action="create" onClick={openCreate}>
+  {t('common:button.add')}
+</AccessButton>
+```
+
+权限点管理仅隐藏菜单入口，仍可通过 `/permission/codes` 排查。已部署实例升级后先做
+「接口同步」，再做一次「菜单同步」（MERGE 会更新已有行的 Meta 和 Redirect），两者均会
+自动同步权限点。无需数据库迁移，也无需重新分配已有角色绑定。
+
+## React 默认后端菜单模式
+
+React 默认 `preferences.app.accessMode = "backend"`。升级时 `app-preferences` 的 persist
+版本从 2 升至 3，仅把旧用户的 `app.accessMode` 迁为 `backend`，保留其他偏好；前端路由模式仍可使用。
+侧栏使用 `GetNavigation` 返回的菜单，普通用户由角色绑定的菜单权限决定，只补启用的祖先目录，
+不带兄弟页面。平台管理员按 `operator.GetIsPlatformAdmin()` 返回全部启用的非按钮菜单；隐藏菜单仍注册路由，
+但不会显示在侧栏。后端模式不再用菜单中遗留的 `meta.authority` 二次裁掉后端已授权的菜单。
+
+菜单管理中保存标题（`meta.title`）、图标、排序或隐藏后，刷新页面或重新登录即可重新获取导航。
+「菜单同步」的来源仍是前端 `businessRoutes`，MERGE 按完整路径原位更新已有行并保留 ID、状态和授权；
+其中整份 `meta` 会覆盖，所以代码路由的 `hideInMenu` 是每次同步时的准值，管理员手工修改的隐藏、标题、排序、
+图标可能在下次同步时被覆盖。表单隐藏选项旁有相同提示。MERGE 不会清理数据库里多余的旧菜单。
+
+后端取菜单失败或返回空数组时显示可见错误并记录原始错误，不降级至前端菜单。
+登录、403/404 等静态页始终注册；个人中心 `/opm/profile` 和顶栏通知进入的
+收件箱 `/internal-message/inbox` 在后端模式独立注册，仍受 AuthGuard 保护，不依赖角色是否勾了菜单。
+默认菜单将这两个页面隐藏，旧 `/profile`、`/inbox` 目录的清理见第二阶段交付说明。

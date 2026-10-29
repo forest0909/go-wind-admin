@@ -1,9 +1,10 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Tag, Button, App } from 'antd';
+import { Tag, App } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -179,6 +180,7 @@ const TenantList = () => {
           actions={[
             {
               key: 'edit',
+              code: 'tenant:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -189,6 +191,7 @@ const TenantList = () => {
             },
             {
               key: 'delete',
+              code: 'tenant:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -254,7 +257,9 @@ const TenantList = () => {
             }}
             toolBarRender={() => [
               <TableExportButton key="export" fetcher={fetchListTenants} columns={columns} filename="tenants" />,
-              <Button
+              <AccessButton
+                resource="tenant"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -266,7 +271,7 @@ const TenantList = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

@@ -31,3 +31,4 @@
 
 未收编 OPA 引擎和 zanzibar。`authorizer.newEngine` 删掉这两个分支；未知类型和空类型不再退回 noop，记错误并返回 nil。显式 `noop` 仍可用。
 
+`converter.ApiPermissionConverter` 加了 `WithResourceAliases`：按路径前缀（整段、最长优先）指定资源名或完整编码，给接口挂在模块前缀下（如 `internal-message/...`）的情况用。不设别名时行为不变。

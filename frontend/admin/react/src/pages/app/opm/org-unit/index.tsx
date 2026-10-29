@@ -1,3 +1,4 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
@@ -176,6 +177,7 @@ const OrgUnitManagement = () => {
           actions={[
             {
               key: 'edit',
+              code: 'org-unit:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -186,6 +188,7 @@ const OrgUnitManagement = () => {
             },
             {
               key: 'delete',
+              code: 'org-unit:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -247,7 +250,9 @@ const OrgUnitManagement = () => {
               <Button key="collapseAll" icon={<NodeCollapseOutlined />} onClick={handleCollapseAll}>
                 {t('collapseAll')}
               </Button>,
-              <Button
+              <AccessButton
+                resource="org-unit"
+                action="create"
                 key="create"
                 color="primary"
                 variant="outlined"
@@ -259,7 +264,7 @@ const OrgUnitManagement = () => {
                 }}
               >
                 {t('common:button.add')}
-              </Button>,
+              </AccessButton>,
             ]}
             options={{
               density: true,

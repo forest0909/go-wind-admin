@@ -6,6 +6,7 @@
 // biome-ignore lint: disable
 export {}
 declare global {
+  const AccessButton: typeof import('../src/components/common/AccessButton/index').default
   const Activity: typeof import('react').Activity
   const AiGenerateButton: typeof import('../src/components/common/AiGenerateButton/index').default
   const AuthLayout: typeof import('../src/components/bussiness/AuthLayout/index').default

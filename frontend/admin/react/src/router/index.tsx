@@ -1,3 +1,4 @@
+import { Alert } from 'antd';
 import { useState, useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 
@@ -19,7 +20,7 @@ import { AuthGuard } from '@/router/guards';
 import { errorRoutes } from './config/error-routes';
 import Loading from '@/components/common/Loading';
 import { authRoutes } from './config/auth';
-import { staticRoutes } from './config/static';
+import { staticRoutes, backendSystemRoutes } from './config/static';
 
 // 布局组件映射（后端 component 字段 → React 组件）
 // 后端模式：BasicLayout 需要包裹 AuthGuard（前端模式已在 staticRoutes 中包裹）
@@ -92,6 +93,7 @@ export const AppRouter = () => {
     routes: AppRouteObject[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [navigationError, setNavigationError] = useState(false);
 
   const { accessToken } = useAuthStore();
   const accessMode = usePreferencesStore((s) => s.preferences.app.accessMode);
@@ -104,6 +106,7 @@ export const AppRouter = () => {
 
     const initRouter = async () => {
       setLoading(true);
+      setNavigationError(false);
 
       try {
         // ========== 已认证时的初始化流程 ==========
@@ -140,11 +143,20 @@ export const AppRouter = () => {
         // 无论认证是否成功，都生成路由（未认证时 permissions 为空，AuthGuard 会拦截）
         const { router: appRouter, routes: generatedRoutes } = await createAccessibleRouter(accessMode, {
           routes: allRoutes,
+          backendStaticRoutes: backendSystemRoutes,
           permissions: freshPermissions,
           forbiddenElement: <Forbidden />,
           fetchMenuListAsync: async () => {
-            const data = await apiClient.adminPortalService.GetNavigation({});
-            return data.items ?? [];
+            if (!isAuthenticated) return [];
+            try {
+              const data = await apiClient.adminPortalService.GetNavigation({});
+              if (!data.items?.length) throw new Error('GetNavigation returned no menus');
+              return data.items;
+            } catch (error) {
+              console.error('GetNavigation failed:', error);
+              if (!stale) setNavigationError(true);
+              throw error;
+            }
           },
           layoutMap,
           pageMap,
@@ -179,6 +191,7 @@ export const AppRouter = () => {
   // 前端模式=权限过滤后），避免后端模式侧栏回退静态全量表造成越权观感
   return (
     <AccessibleRoutesContext.Provider value={routerBundle.routes}>
+      {isAuthenticated && navigationError && <Alert type="error" showIcon title={t('navigationFailed')} />}
       <RouterProvider router={routerBundle.router} />
     </AccessibleRoutesContext.Provider>
   );

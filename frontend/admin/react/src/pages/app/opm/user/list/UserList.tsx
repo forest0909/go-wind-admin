@@ -1,9 +1,10 @@
+import AccessButton from '@/components/common/AccessButton';
 import { useRef, useState, useEffect } from 'react';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import TableExportButton from '@/components/common/TableExportButton';
 import TableActions from '@/components/common/TableActions';
 import ListTable from '@/components/common/ListTable';
-import { Button, Tag, App } from 'antd';
+import { Tag, App } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -193,6 +194,7 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
             },
             {
               key: 'edit',
+              code: 'user:edit',
               label: t('common:button.edit'),
               icon: <EditOutlined />,
               onClick: () => {
@@ -203,6 +205,7 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
             },
             {
               key: 'delete',
+              code: 'user:delete',
               label: t('common:button.delete'),
               icon: <DeleteOutlined />,
               danger: true,
@@ -277,7 +280,9 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
           }}
           toolBarRender={() => [
             <TableExportButton key="export" fetcher={fetchListUsers} columns={columns} filename="users" />,
-            <Button
+            <AccessButton
+              resource="user"
+              action="create"
               key="create"
               color="primary"
               variant="outlined"
@@ -289,7 +294,7 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
               }}
             >
               {t('common:button.add')}
-            </Button>,
+            </AccessButton>,
           ]}
           options={{
             density: true,

@@ -4,11 +4,13 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"go-wind-admin/third_party/go-utils/aggregator"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"go-wind-admin/third_party/go-utils/stringcase"
@@ -65,7 +67,7 @@ func NewPermissionService(
 		roleRepo:                roleRepo,
 		authorizer:              authorizer,
 		menuPermissionConverter: converter.NewMenuPermissionConverter(),
-		apiPermissionConverter:  goconv.NewApiPermissionConverter(),
+		apiPermissionConverter:  goconv.NewApiPermissionConverter().WithResourceAliases(apiResourceAliases),
 	}
 
 	svc.init()
@@ -320,8 +322,9 @@ func (s *PermissionService) appendAPis(
 	})
 
 	type moduleApis struct {
-		module string
-		apis   []uint32
+		module      string
+		description string
+		apis        []uint32
 	}
 
 	codes := make(map[string]*moduleApis)
@@ -356,8 +359,9 @@ func (s *PermissionService) appendAPis(
 			}
 
 			codes[code] = &moduleApis{
-				module: module,
-				apis:   []uint32{api.GetId()},
+				module:      module,
+				description: api.GetModuleDescription(),
+				apis:        []uint32{api.GetId()},
 			}
 		} else {
 			curCode.apis = append(curCode.apis, api.GetId())
@@ -375,8 +379,13 @@ func (s *PermissionService) appendAPis(
 	//s.log.Debugf(ctx, "appendAPis: unmatched permission codes: %v", codes)
 
 	for code, apiIDs := range codes {
-		name := strings.ReplaceAll(code, ":", "_")
-		name = stringcase.ToPascalCase(name)
+		name := legacyApiPermissionName(code)
+		// 有业务模块描述时用「模块描述#动作」，前端把动作翻成中文显示
+		if desc := strings.TrimSuffix(strings.TrimSpace(apiIDs.description), "服务"); desc != "" {
+			if _, action, ok := splitPermissionCode(code); ok {
+				name = desc + permissionActionSep + action
+			}
+		}
 
 		perm := &permissionV1.Permission{
 			Name:      trans.Ptr(name),
@@ -410,7 +419,114 @@ func menuPathToModuleName(menuPath string) string {
 	return module
 }
 
+// apiResourceAliases 带模块前缀的接口路径 → 资源（或完整编码）。
+// 默认规则只取路径第一段，站内消息的接口全挂在 internal-message/ 下，
+// 会把消息、分类、收件箱合成一个 internal-message 资源，对不上菜单派生的 message/category/inbox 页面。
+var apiResourceAliases = map[string]string{
+	"internal-message/messages":     "message",
+	"internal-message/send":         "message:create",
+	"internal-message/revoke":       "message:edit",
+	"internal-message/categories":   "category",
+	"internal-message/inbox":        "inbox",
+	"internal-message/inbox/delete": "inbox:delete",
+	"internal-message/read":         "inbox:edit",
+	"internal-message/status":       "inbox:edit",
+}
+
+// retiredPermissionCodes 接口编码规则调整后不再生成的旧编码 → 承接它的新编码。
+// 同步时把旧编码上的角色授权转给新编码，再删掉旧权限点；新编码覆盖旧编码原有的全部接口，
+// 已有角色不会因此少权限。
+var retiredPermissionCodes = map[string][]string{
+	"internal-message:view":   {"message:view", "category:view", "inbox:view"},
+	"internal-message:create": {"message:create", "message:edit", "category:create", "inbox:edit", "inbox:delete"},
+	"internal-message:edit":   {"message:edit", "category:edit"},
+	"internal-message:delete": {"message:delete", "category:delete"},
+}
+
+// syncPermissionsTimeout 同步权限的服务端执行上限，与调用方连接解耦
+const syncPermissionsTimeout = 5 * time.Minute
+
+// permissionActionSep 操作类权限点名称里「页面/模块名」和「动作」的分隔符，
+// 如 menu.permission.menu#edit；前端据此显示成「菜单管理 · 编辑」
+const permissionActionSep = "#"
+
+// splitPermissionCode 把 menu:edit 拆成资源 menu 和动作 edit（按最后一个冒号）
+func splitPermissionCode(code string) (resource, action string, ok bool) {
+	i := strings.LastIndex(code, ":")
+	if i <= 0 || i == len(code)-1 {
+		return "", "", false
+	}
+	return code[:i], code[i+1:], true
+}
+
+// legacyApiPermissionName 旧版同步给接口派生权限点起的名称（编码转驼峰，如 MenuEdit）
+func legacyApiPermissionName(code string) string {
+	return stringcase.ToPascalCase(strings.ReplaceAll(code, ":", "_"))
+}
+
+// attachActionsToPages 把接口派生的操作权限点（如 menu:edit）挂到同资源的页面权限点（menu:view）下：
+// 名称改成「页面标题#动作」，并归入页面所在的权限组，角色页据此按「页面 → 操作」显示。
+func attachActionsToPages(
+	permissions []*permissionV1.Permission,
+	mapPermissions map[string][]*permissionV1.Permission,
+	pageModules map[string]string,
+) {
+	pages := make(map[string]*permissionV1.Permission)
+	for _, p := range permissions {
+		if len(p.GetMenuIds()) > 0 {
+			pages[p.GetCode()] = p
+		}
+	}
+
+	moved := make(map[*permissionV1.Permission]string)
+	for _, p := range permissions {
+		if len(p.GetMenuIds()) > 0 {
+			continue
+		}
+		resource, action, ok := splitPermissionCode(p.GetCode())
+		if !ok {
+			continue
+		}
+		pageCode := resource + ":view"
+		page, ok := pages[pageCode]
+		if !ok {
+			continue
+		}
+		p.Name = trans.Ptr(page.GetName() + permissionActionSep + action)
+		moved[p] = pageModules[pageCode]
+	}
+	if len(moved) == 0 {
+		return
+	}
+
+	for module, perms := range mapPermissions {
+		kept := perms[:0]
+		for _, p := range perms {
+			if _, ok := moved[p]; !ok {
+				kept = append(kept, p)
+			}
+		}
+		mapPermissions[module] = kept
+	}
+	for p, module := range moved {
+		mapPermissions[module] = append(mapPermissions[module], p)
+	}
+}
+
+// menuDisplayName 同步出的权限/分组名称：优先取菜单标题（i18n key，前端按 routes 命名空间翻译），
+// 没有标题再退回菜单内部名。
+func menuDisplayName(menu *permissionV1.Menu) string {
+	if title := strings.TrimSpace(menu.GetMeta().GetTitle()); title != "" {
+		return title
+	}
+	return menu.GetName()
+}
+
 // SyncPermissions 同步权限点
+//
+// 按权限编码增量合并：已有的权限点原地更新（ID 不变，角色上的勾选因此保留），缺的才新建；
+// 分组按模块标识合并。不删除任何权限点——手工新建的权限点不受影响，
+// 菜单删掉后遗留的权限点需要在权限页手动删除。
 func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	// 获取操作人信息
 	operator, err := auth.FromContext(ctx)
@@ -418,13 +534,10 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 		return nil, err
 	}
 
-	// 清理菜单相关权限；清不干净就继续插入必然撞唯一约束整批失败，必须快速失败
-	if err := s.permissionRepo.TruncateBizPermissions(ctx); err != nil {
-		return nil, err
-	}
-	if err := s.permissionGroupRepo.TruncateBizGroup(ctx); err != nil {
-		return nil, err
-	}
+	// 同步是幂等的整批事务：调用方断开（如前端超时）不应把写到一半的事务掐掉，
+	// 改为独立的超时上限
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), syncPermissionsTimeout)
+	defer cancel()
 
 	// 查询所有启用的菜单
 	menus, err := s.menuRepo.List(ctx, &paginationV1.PagingRequest{
@@ -447,6 +560,12 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 	var permissionGroups []*permissionV1.PermissionGroup
 	var permissions []*permissionV1.Permission
 	var mapPermissions = make(map[string][]*permissionV1.Permission)
+	// 旧版同步用菜单内部名做名称，记下来用于判断已有条目能否改名
+	var legacyGroupNames = make(map[string]string)
+	var legacyPermissionNames = make(map[string]string)
+	// 菜单派生权限点所在的模块，接口派生的操作权限点据此归入页面所在的组
+	var pageModules = make(map[string]string)
+
 	// 不同层级的菜单可能推导出同一个权限码（如菜单同步 MERGE 后新旧路径形态
 	// 并存），code 唯一约束会让整批插入失败；同码只保留首个，后续跳过
 	var seenPermissionCodes = make(map[string]struct{})
@@ -461,9 +580,8 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 	})
 
 	for _, menu := range menus.Items {
-		title := menu.GetName()
-
-		permissionCode := s.menuPermissionConverter.ConvertCode(menu.GetPath(), title, menu.GetType())
+		// 权限码仍按菜单内部名推导，保证与已有数据的编码一致
+		permissionCode := s.menuPermissionConverter.ConvertCode(menu.GetPath(), menu.GetName(), menu.GetType())
 		if permissionCode == "" {
 			continue
 		}
@@ -472,62 +590,72 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 		}
 		seenPermissionCodes[permissionCode] = struct{}{}
 
+		name := menuDisplayName(menu)
 		module := menuPathToModuleName(menu.GetPath())
 
-		// 以目录类型的菜单作为权限组
+		// 以目录类型的菜单作为权限组；同模块只取第一个目录
 		if menu.GetType() == permissionV1.Menu_CATALOG {
-			permissionGroups = append(permissionGroups, &permissionV1.PermissionGroup{
-				Name:      trans.Ptr(title),
-				Module:    trans.Ptr(module),
-				Status:    trans.Ptr(permissionV1.PermissionGroup_ON),
-				SortOrder: trans.Ptr(uint32(len(permissionGroups) + 1)),
-				CreatedBy: trans.Ptr(operator.UserId),
-				UpdatedBy: trans.Ptr(operator.UserId),
-			})
-			//s.log.Debugf(ctx, "SyncPermissions: created permission group for menu %s - %s", menu.GetName(), permissionCode)
+			if _, exists := legacyGroupNames[module]; !exists {
+				legacyGroupNames[module] = menu.GetName()
+				permissionGroups = append(permissionGroups, &permissionV1.PermissionGroup{
+					Name:      trans.Ptr(name),
+					Module:    trans.Ptr(module),
+					Status:    trans.Ptr(permissionV1.PermissionGroup_ON),
+					SortOrder: trans.Ptr(uint32(len(permissionGroups) + 1)),
+					CreatedBy: trans.Ptr(operator.UserId),
+					UpdatedBy: trans.Ptr(operator.UserId),
+				})
+			}
 		}
 
 		perm := &permissionV1.Permission{
-			Name:      trans.Ptr(title),
+			Name:      trans.Ptr(name),
 			Code:      trans.Ptr(permissionCode),
 			Status:    trans.Ptr(permissionV1.Permission_ON),
 			MenuIds:   []uint32{menu.GetId()},
 			CreatedBy: trans.Ptr(operator.UserId),
 			UpdatedBy: trans.Ptr(operator.UserId),
 		}
+		legacyPermissionNames[permissionCode] = menu.GetName()
+		pageModules[permissionCode] = module
 
 		permissions = append(permissions, perm)
-
 		mapPermissions[module] = append(mapPermissions[module], perm)
 	}
 
 	// 为权限追加对应的 API 资源 ID 列表
 	_ = s.appendAPis(ctx, &permissions, &mapPermissions, operator.UserId)
+	attachActionsToPages(permissions, mapPermissions, pageModules)
 
-	var finalPermissionGroups []*permissionV1.PermissionGroup
-	if finalPermissionGroups, err = s.permissionGroupRepo.BatchCreate(ctx, permissionGroups); err != nil {
-		s.log.Errorf(ctx, "batch create permission groups failed: %s", err.Error())
+	groupIDs, err := s.mergeSyncedGroups(ctx, permissionGroups, legacyGroupNames, operator.UserId)
+	if err != nil {
 		return nil, err
 	}
-	//for _, pg := range permissionGroups {
-	//	var npg *permissionV1.PermissionGroup
-	//	if npg, err = s.permissionGroupRepo.Create(ctx, &permissionV1.CreatePermissionGroupRequest{Data: pg}); err != nil {
-	//		s.log.Errorf(ctx, "batch create permission groups failed: %s", err.Error())
-	//		return nil, err
-	//	}
-	//	finalPermissionGroups = append(finalPermissionGroups, npg)
-	//}
 
 	// 为权限分配权限组 ID
-	for _, pg := range finalPermissionGroups {
-		curPers := mapPermissions[pg.GetModule()]
+	for module, curPers := range mapPermissions {
+		groupID, ok := groupIDs[module]
+		if !ok {
+			continue
+		}
 		for _, p := range curPers {
-			p.GroupId = pg.Id
+			p.GroupId = trans.Ptr(groupID)
 		}
 	}
 
-	if err = s.permissionRepo.BatchCreate(ctx, permissions); err != nil {
-		s.log.Errorf(ctx, "batch create permissions failed: %s", err.Error())
+	synced := make([]data.SyncedPermission, 0, len(permissions))
+	for _, p := range permissions {
+		// 接口派生的权限点没有菜单来源，旧名是编码转驼峰
+		legacy, ok := legacyPermissionNames[p.GetCode()]
+		if !ok {
+			legacy = legacyApiPermissionName(p.GetCode())
+		}
+		synced = append(synced, data.SyncedPermission{Data: p, LegacyName: legacy})
+	}
+	if err = s.permissionRepo.MergeSynced(ctx, synced, operator.UserId); err != nil {
+		return nil, err
+	}
+	if err = s.permissionRepo.RetireCodes(ctx, retiredPermissionCodes, operator.UserId); err != nil {
 		return nil, err
 	}
 
@@ -537,6 +665,71 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// mergeSyncedGroups 按模块标识合并同步出的权限组，返回 模块标识 → 组 ID。
+// 系统内置组（sys 模块）不参与合并。
+func (s *PermissionService) mergeSyncedGroups(
+	ctx context.Context,
+	groups []*permissionV1.PermissionGroup,
+	legacyNames map[string]string,
+	operatorUserId uint32,
+) (map[string]uint32, error) {
+	existing, err := s.permissionGroupRepo.List(ctx, &paginationV1.PagingRequest{
+		NoPaging: trans.Ptr(true),
+		OrderBy:  trans.Ptr("id"),
+	}, false)
+	if err != nil {
+		return nil, err
+	}
+
+	existingByModule := make(map[string]*permissionV1.PermissionGroup)
+	for _, g := range existing.Items {
+		if g.GetModule() == constants.SystemPermissionModule {
+			continue
+		}
+		if _, ok := existingByModule[g.GetModule()]; !ok {
+			existingByModule[g.GetModule()] = g
+		}
+	}
+
+	groupIDs := make(map[string]uint32)
+	var toCreate []*permissionV1.PermissionGroup
+	for _, g := range groups {
+		cur, ok := existingByModule[g.GetModule()]
+		if !ok {
+			toCreate = append(toCreate, g)
+			continue
+		}
+
+		groupIDs[g.GetModule()] = cur.GetId()
+		if !data.ShouldRenameSynced(cur.GetName(), legacyNames[g.GetModule()], g.GetName()) {
+			continue
+		}
+		if err = s.permissionGroupRepo.Update(ctx, &permissionV1.UpdatePermissionGroupRequest{
+			Id: cur.GetId(),
+			Data: &permissionV1.PermissionGroup{
+				Name:      g.Name,
+				UpdatedBy: trans.Ptr(operatorUserId),
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"name", "updated_by"}},
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	if len(toCreate) > 0 {
+		created, err := s.permissionGroupRepo.BatchCreate(ctx, toCreate)
+		if err != nil {
+			s.log.Errorf(ctx, "batch create permission groups failed: %s", err.Error())
+			return nil, err
+		}
+		for _, g := range created {
+			groupIDs[g.GetModule()] = g.GetId()
+		}
+	}
+
+	return groupIDs, nil
 }
 
 func (s *PermissionService) createDefaultPermissions(ctx context.Context) error {

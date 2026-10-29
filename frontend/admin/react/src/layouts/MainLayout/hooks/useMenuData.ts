@@ -1,3 +1,4 @@
+import { usePreferencesStore } from '@/core/preferences/store';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppRouteObject } from '@/core/router/types';
@@ -16,6 +17,7 @@ export const useMenuData = ({
 }: UseMenuDataOptions) => {
   // 使用 useTranslation 来监听语言变化
   const { i18n } = useTranslation();
+  const accessMode = usePreferencesStore((s) => s.preferences.app.accessMode);
   
   // 优先使用动态路由（后端模式），否则用静态路由
   const routes = useMemo(() => {
@@ -39,6 +41,6 @@ export const useMenuData = ({
   // 转换路由 → 菜单
   // 关键：添加 i18n.language 作为依赖，语言切换时重新生成菜单
   return useMemo(() => {
-    return transformRoutesToMenu(routes, permissions);
-  }, [routes, permissions, i18n.language]);
+    return transformRoutesToMenu(routes, permissions, { checkAuthority: accessMode !== 'backend' });
+  }, [routes, permissions, i18n.language, accessMode]);
 };

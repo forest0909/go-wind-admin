@@ -190,6 +190,7 @@ export type ComponentRecordType = Record<string, ComponentType<any>>;
 export type ComponentRecord = Record<string, ComponentType<any>>;
 
 export interface GenerateMenuAndRoutesOptions {
+  backendStaticRoutes?: AppRouteObject[];
     fetchMenuListAsync?: () => Promise<BackendRoute[]>;
     forbiddenElement?: React.ReactNode;
     layoutMap?: ComponentRecordType;

@@ -367,6 +367,12 @@ func (s *Server) CreateStream(streamId StreamID) *Stream {
 	return stream
 }
 
+// CloseStream 关闭指定流并断开它的全部订阅者（例如该用户的令牌已全部吊销）。
+// 客户端重连时会重新走 authorizeFunc。流不存在时什么也不做。
+func (s *Server) CloseStream(streamId StreamID) {
+	s.streamMgr.RemoveWithID(streamId)
+}
+
 // process applies server-side event transformations before delivery.
 func (s *Server) process(event *Event) *Event {
 	if s.encodeBase64 {

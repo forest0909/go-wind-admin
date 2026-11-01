@@ -8,6 +8,7 @@ import (
 
 type Subscriber struct {
 	quit       chan *Subscriber
+	streamQuit chan struct{}
 	connection chan *Event
 	removed    chan struct{}
 	eventId    string
@@ -16,7 +17,12 @@ type Subscriber struct {
 }
 
 func (s *Subscriber) close() {
-	s.quit <- s
+	// 流已关闭时事件循环不再收 deregister，直接返回，避免 goroutine 永久阻塞。
+	select {
+	case s.quit <- s:
+	case <-s.streamQuit:
+		return
+	}
 	if s.removed != nil {
 		<-s.removed
 	}

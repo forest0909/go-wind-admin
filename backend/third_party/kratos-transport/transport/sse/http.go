@@ -79,14 +79,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sub := stream.addSubscriber(eventId, r)
+	if sub == nil {
+		// 流在拿到引用之后被关闭（CloseStream），让客户端重连重新鉴权。
+		writeError(w, "Stream closed!", http.StatusServiceUnavailable)
+		return
+	}
 
 	go func() {
 		<-r.Context().Done()
 
 		sub.close()
 
+		// 按指针移除：流被 CloseStream 关掉后客户端可能已重连出同名新流，不能把新流删掉。
 		if s.autoStream && !s.autoReplay && stream.getSubscriberCount() == 0 {
-			s.streamMgr.RemoveWithID(StreamID(streamID))
+			s.streamMgr.Remove(stream)
 		}
 	}()
 

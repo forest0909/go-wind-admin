@@ -140,3 +140,26 @@ func TestRefresh_KickDoesNotAffectOtherSessions(t *testing.T) {
 	_, _, err = a.CreateUserTokenGuarded(ctx, ct, &authenticationV1.UserTokenPayload{UserId: uid}, guard)
 	require.NoError(t, err)
 }
+
+// 全量吊销会触发回调（SSE 服务器据此断开该用户的长连接）；单会话踢下线不触发。
+func TestAuthenticator_RevokeAllFiresHooks(t *testing.T) {
+	a, _ := newRaceAuthenticator(t)
+	ctx := context.Background()
+	var fired []uint32
+	a.OnUserTokensRevoked(func(_ context.Context, uid uint32) { fired = append(fired, uid) })
+
+	_, _, jti := raceLogin(t, a)
+	ct := authenticationV1.ClientType_admin
+	require.NoError(t, a.RevokeTokenByJti(ctx, &ct, raceTestUID, jti))
+	require.Empty(t, fired)
+
+	require.NoError(t, a.RevokeUserToken(ctx, ct, raceTestUID))
+	require.Equal(t, []uint32{raceTestUID}, fired)
+
+	fired = nil
+	require.NoError(t, a.RevokeUserTokenAllClientTypes(ctx, raceTestUID))
+	require.NotEmpty(t, fired)
+	for _, uid := range fired {
+		require.Equal(t, raceTestUID, uid)
+	}
+}

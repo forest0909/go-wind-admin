@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
@@ -81,6 +82,30 @@ type Authenticator struct {
 	jwtCfg *conf.Authentication_Jwt
 
 	userTokenCache *UserTokenCache
+
+	// revokeHooksMu / revokeHooks 用户全部令牌被吊销后的回调（如断开该用户的 SSE 连接）。
+	revokeHooksMu sync.RWMutex
+	revokeHooks   []func(ctx context.Context, userId uint32)
+}
+
+// OnUserTokensRevoked 注册「用户某客户端类型的全部令牌被吊销」后的回调。
+// 登出、改密、重置密码、停用、删除、角色变更都经 RevokeUserToken，回调随之触发。
+func (a *Authenticator) OnUserTokensRevoked(fn func(ctx context.Context, userId uint32)) {
+	if fn == nil {
+		return
+	}
+	a.revokeHooksMu.Lock()
+	defer a.revokeHooksMu.Unlock()
+	a.revokeHooks = append(a.revokeHooks, fn)
+}
+
+func (a *Authenticator) fireRevokeHooks(ctx context.Context, userId uint32) {
+	a.revokeHooksMu.RLock()
+	hooks := append([]func(context.Context, uint32){}, a.revokeHooks...)
+	a.revokeHooksMu.RUnlock()
+	for _, fn := range hooks {
+		fn(ctx, userId)
+	}
 }
 
 func NewAuthenticator(
@@ -494,7 +519,10 @@ func (a *Authenticator) RevokeUserToken(ctx context.Context, clientType authenti
 		return err
 	}
 
-	if err := a.userTokenCache.RevokeToken(ctx, clientType, userId); err != nil {
+	err := a.userTokenCache.RevokeToken(ctx, clientType, userId)
+	// 即便部分删除失败也要断开已建立的长连接：连接只在建立时校验过令牌。
+	a.fireRevokeHooks(ctx, userId)
+	if err != nil {
 		a.log.Errorf(ctx, "revoke user token failed: %v", err)
 		return err
 	}

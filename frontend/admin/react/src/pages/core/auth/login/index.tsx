@@ -6,7 +6,6 @@ import { useAuthStore } from '@/stores';
 import { canReuseLoginRedirect } from '@/stores/auth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchGenerateCaptcha } from '@/api';
-import { fetchTenantBranding } from '@/api/hooks/tenant-branding';
 
 /**
  * 验证码控件：输入框与图片盒同排，组成单一受控组件挂进 Form.Item。
@@ -45,24 +44,6 @@ const Login: React.FC = () => {
   const [captchaId, setCaptchaId] = useState<string>('');
   const [captchaImage, setCaptchaImage] = useState<string>('');
   const [captchaLoading, setCaptchaLoading] = useState(false);
-
-  // 租户白标：租户编号失焦后拉取（防抖交给 blur 语义），命中则替换站牌
-  const [tenantBranding, setTenantBranding] = useState<{ found: boolean; name: string; logoUrl: string } | null>(null);
-  const applyTenantBranding = useCallback(async (code: string) => {
-    const trimmed = (code || '').trim();
-    if (!trimmed) {
-      setTenantBranding(null);
-      return;
-    }
-    try {
-      const branding = await fetchTenantBranding(trimmed);
-      setTenantBranding(branding.found ? branding : null);
-    } catch ( brandingError ) {
-      // 白标是非关键路径：失败静默保持默认品牌，原始错误留控制台
-      console.warn('fetch tenant branding failed', brandingError);
-      setTenantBranding(null);
-    }
-  }, []);
 
   // 获取验证码
   const refreshCaptcha = useCallback(async () => {
@@ -107,7 +88,6 @@ const Login: React.FC = () => {
   const handleSubmit = async (values: {
     username: string;
     password: string;
-    tenant_code?: string;
     remember?: boolean;
     captcha?: string;
   }) => {
@@ -129,7 +109,6 @@ const Login: React.FC = () => {
         {
           username: values.username,
           password: values.password,
-          tenant_code: values.tenant_code,
           grant_type: 'password',
         },
         // 传 onSuccess 后 store 跳过 window.location.href 整页跳转。必须在此同步
@@ -178,34 +157,14 @@ const Login: React.FC = () => {
 
   return (
     <div className="w-full max-w-[420px]">
-      {/* 标题（租户白标命中时替换为租户 Logo/名称） */}
+      {/* 标题 */}
       <div className="mb-11">
-        {tenantBranding ? (
-          <>
-            {tenantBranding.logoUrl && (
-              <img
-                src={tenantBranding.logoUrl}
-                alt={tenantBranding.name}
-                className="h-12 mb-3 object-contain"
-              />
-            )}
-            <h2 className="text-[34px] font-extrabold tracking-[-0.5px] mb-2.5 text-[color:var(--ant-color-text)]">
-              {tenantBranding.name}
-            </h2>
-            <p className="text-[15px] leading-relaxed text-[color:var(--gowind-secondary-text)]">
-              {t('welcomeBack')}
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="text-[34px] font-extrabold tracking-[-0.5px] mb-2.5 text-[color:var(--ant-color-text)]">
-              {t('welcomeBack')}
-            </h2>
-            <p className="text-[15px] leading-relaxed text-[color:var(--gowind-secondary-text)]">
-              {t('loginDescription')}
-            </p>
-          </>
-        )}
+        <h2 className="text-[34px] font-extrabold tracking-[-0.5px] mb-2.5 text-[color:var(--ant-color-text)]">
+          {t('welcomeBack')}
+        </h2>
+        <p className="text-[15px] leading-relaxed text-[color:var(--gowind-secondary-text)]">
+          {t('loginDescription')}
+        </p>
       </div>
 
       {/* 登录表单卡片 —— 实底表面色 + 24px 大圆角 + 主色柔影（对齐 vben 认证面板） */}
@@ -217,18 +176,6 @@ const Login: React.FC = () => {
           initialValues={{ remember: true }}
           className="login-form"
         >
-          <Form.Item name="tenant_code" className="login-form-item">
-            <Input
-              prefix={<UserOutlined />}
-              aria-label={t('tenantCodeLabel')}
-              placeholder={t('tenantCodePlaceholder')}
-              autoComplete="off"
-              onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
-                applyTenantBranding(e.target.value);
-              }}
-            />
-          </Form.Item>
-
           <Form.Item
             name="username"
             className="login-form-item"
@@ -244,6 +191,7 @@ const Login: React.FC = () => {
               aria-label={t('usernameLabel')}
               placeholder={t('usernamePlaceholder')}
               autoComplete="username"
+              autoFocus
             />
           </Form.Item>
 

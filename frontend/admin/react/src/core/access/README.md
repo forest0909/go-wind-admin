@@ -52,7 +52,7 @@ src/core/access/
   path: 'permission',
   meta: {
     title: 'routes:permission',
-    authority: ['sys:platform_admin', 'sys:tenant_manager'],
+    authority: ['sys:platform_admin'],
   },
   children: [
     {

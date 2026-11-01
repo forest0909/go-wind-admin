@@ -22,14 +22,13 @@ import { searchOptionRender } from '@/components/common/searchSubmitter';
 import { ColumnSlidersIcon } from '@/components/common/columnSettingIcon';
 
 interface UserListProps {
-  tenantId: number | undefined;
   orgUnitId: number | undefined;
 }
 
 /**
  * 用户列表（右侧）
  */
-const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
+const UserList: React.FC<UserListProps> = ({ orgUnitId }) => {
   const { t } = useTranslation('user');
   const actionRef = useRef<ActionType>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,10 +47,10 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
   const hiddenFieldEntries = useUserStore((s) => s.hiddenFields);
   const userHiddenFields = parseResourceHiddenFields(hiddenFieldEntries, 'User');
 
-  // 当 tenantId 或 orgUnitId 变化时自动刷新列表
+  // 当 orgUnitId 变化时自动刷新列表
   useEffect(() => {
     actionRef.current?.reload();
-  }, [tenantId, orgUnitId]);
+  }, [orgUnitId]);
 
   // 删除 mutation
   const deleteMutation = useDeleteUser({
@@ -235,19 +234,15 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
           actionRef={actionRef}
           columns={columns}
           headerTitle={false}
-          params={{ tenantId, orgUnitId }}
+          params={{ orgUnitId }}
           request={async (params) => {
             const formValues: Record<string, any> = {
               ...Object.fromEntries(
                 Object.entries(params).filter(
-                  ([key]) => !['current', 'pageSize', 'tenantId', 'orgUnitId'].includes(key),
+                  ([key]) => !['current', 'pageSize', 'orgUnitId'].includes(key),
                 ),
               ),
             };
-            // tenantId 存在时带上租户筛选
-            if (tenantId != null) {
-              formValues.tenant_id = tenantId;
-            }
             // orgUnitId 存在时带上组织筛选
             if (orgUnitId != null) {
               formValues.org_unit_id = orgUnitId;
@@ -313,7 +308,6 @@ const UserList: React.FC<UserListProps> = ({ tenantId, orgUnitId }) => {
         open={drawerOpen}
         mode={drawerMode}
         data={editingUser}
-        tenantId={tenantId}
         onClose={() => {
           setDrawerOpen(false);
           setEditingUser(null);

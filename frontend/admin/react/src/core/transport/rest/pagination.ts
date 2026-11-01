@@ -5,15 +5,12 @@ export class PaginationQuery {
   fieldMask?: string | string[] | null;
   orderBy?: string[] | null;
 
-  isTenantUser: boolean = false;
-
   constructor(data?: Partial<PaginationQuery>) {
     if (data) {
       this.paging = data.paging;
       this.formValues = data.formValues;
       this.fieldMask = data.fieldMask;
       this.orderBy = data.orderBy;
-      this.isTenantUser = data?.isTenantUser ?? false;
     }
   }
 
@@ -70,12 +67,10 @@ export class PaginationQuery {
    * `__contains`（contains 是完整值精确匹配的超集，对下拉枚举等完整值查询
    * 结果一致），非字符串（数字/布尔）保持 EQ 精确语义。
    * @param formValues - 查询表单值
-   * @param needCleanTenant - 是否需要清理租户字段
    * @returns JSON 字符串或 undefined
    */
   private static makeQueryString(
     formValues?: null | Record<string, unknown>,
-    needCleanTenant: boolean = false,
   ): string | undefined {
     if (formValues === null || formValues === undefined) {
       return undefined;
@@ -110,19 +105,6 @@ export class PaginationQuery {
       ]),
     );
 
-    if (needCleanTenant) {
-      // 删除租户相关字段 tenant_id 和 tenantId
-      const { tenant_id, tenantId, ...rest } = fuzzy as Record<string, unknown>;
-
-      // 过滤掉空对象
-      if (Object.keys(rest).length === 0) {
-        return undefined;
-      }
-
-      return JSON.stringify(rest);
-    }
-
-    // 默认返回整个 fuzzy 对象的 JSON 字符串
     return JSON.stringify(fuzzy);
   }
 
@@ -153,7 +135,7 @@ export class PaginationQuery {
 
   // 生成 query 字符串
   get queryString(): string | undefined {
-    return PaginationQuery.makeQueryString(this.formValues, this.isTenantUser);
+    return PaginationQuery.makeQueryString(this.formValues);
   }
 
   // 自动格式化 fieldMask

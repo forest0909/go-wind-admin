@@ -29,8 +29,6 @@
   "positionIdsPlaceholder": "请选择职位",
   "remark": "备注",
   "remarkPlaceholder": "请输入备注",
-  "tenantId": "所属租户",
-  "tenantIdPlaceholder": "请选择租户",
   "lastLoginAt": "最后登录",
   "createdAt": "创建时间",
   "action": "操作",

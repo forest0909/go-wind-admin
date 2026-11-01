@@ -10,7 +10,6 @@ import UserList from './UserList';
  * 使用 Splitter 实现左右分栏布局：左侧组织树，右侧用户列表
  */
 const UserManagement = () => {
-  const [currentTenantId, setCurrentTenantId] = useState<number | undefined>(undefined);
   const [currentOrgUnitId, setCurrentOrgUnitId] = useState<number | undefined>(undefined);
 
   return (
@@ -19,13 +18,11 @@ const UserManagement = () => {
         <Splitter.Panel collapsible defaultSize="25%" min="15%" max="40%" style={{ display: 'flex', flexDirection: 'column' }}>
           <OrgList
             currentOrgUnitId={currentOrgUnitId}
-            currentTenantId={currentTenantId}
-            onTenantSelect={setCurrentTenantId}
             onOrgSelect={setCurrentOrgUnitId}
           />
         </Splitter.Panel>
         <Splitter.Panel style={{ display: 'flex', flexDirection: 'column' }}>
-          <UserList tenantId={currentTenantId} orgUnitId={currentOrgUnitId} />
+          <UserList orgUnitId={currentOrgUnitId} />
         </Splitter.Panel>
       </Splitter>
     </ContentContainer>

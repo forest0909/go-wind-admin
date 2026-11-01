@@ -678,7 +678,6 @@ export type permissionservicev1_ListApiResponse = {
 
 // API资源
 export type permissionservicev1_Api = {
-  businessModule?: identityservicev1_Module;
   createdAt?: wellKnownTimestamp;
   createdBy?: number;
   deletedAt?: wellKnownTimestamp;
@@ -696,19 +695,6 @@ export type permissionservicev1_Api = {
   updatedBy?: number;
 };
 
-// 业务功能模块
-export type identityservicev1_Module =
-  | 'DASHBOARD'
-  | 'DICT'
-  | 'FILE'
-  | 'INTERNAL_MESSAGE'
-  | 'LOG'
-  | 'MODULE_UNSPECIFIED'
-  | 'OPM'
-  | 'PERMISSION'
-  | 'SYSTEM'
-  | 'TASK'
-  | 'TENANT';
 // API作用域
 export type permissionservicev1_Api_Scope =
   | 'ADMIN'
@@ -769,10 +755,6 @@ export interface AuthenticationService {
   VerifyCaptcha(
     request: authenticationservicev1_VerifyCaptchaRequest,
   ): Promise<authenticationservicev1_VerifyCaptchaResponse>;
-  // 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
-  GetTenantBranding(
-    request: authenticationservicev1_GetTenantBrandingRequest,
-  ): Promise<authenticationservicev1_GetTenantBrandingResponse>;
 }
 
 export function createAuthenticationServiceClient(
@@ -819,14 +801,6 @@ export function createAuthenticationServiceClient(
         method: 'VerifyCaptcha',
       }) as Promise<authenticationservicev1_VerifyCaptchaResponse>;
     },
-    GetTenantBranding(request) {
-      const path = `admin/v1/tenant-branding`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'AuthenticationService',
-        method: 'GetTenantBranding',
-      }) as Promise<authenticationservicev1_GetTenantBrandingResponse>;
-    },
   };
 }
 // 用户后台登录 - 请求
@@ -846,7 +820,6 @@ export type authenticationservicev1_LoginRequest = {
   redirect_uri?: string;
   refresh_token?: string;
   scope?: string;
-  tenant_code?: string;
   user_id?: number;
   username?: string;
 };
@@ -889,19 +862,6 @@ export type authenticationservicev1_VerifyCaptchaRequest = {
 
 export type authenticationservicev1_VerifyCaptchaResponse = {
   valid: boolean | undefined;
-};
-
-// 租户白标查询（免鉴权；登录前按租户编号取展示信息）。
-// 只暴露展示字段（名称/Logo），不泄露任何运营/配置数据。
-export type authenticationservicev1_GetTenantBrandingRequest = {
-  // 租户编号（登录页 tenant_code 输入框的值）
-  code: string | undefined;
-};
-
-export type authenticationservicev1_GetTenantBrandingResponse = {
-  found: boolean | undefined;
-  logoUrl: string | undefined;
-  name: string | undefined;
 };
 
 // 系统参数管理服务
@@ -1487,7 +1447,6 @@ export type dictservicev1_DictEntry = {
   numericValue?: number;
   sortOrder?: number;
   tenantId?: number;
-  tenantName?: string;
   typeId?: number;
   updatedAt?: wellKnownTimestamp;
   updatedBy?: number;
@@ -1754,7 +1713,6 @@ export type dictservicev1_DictType = {
   isEnabled?: boolean;
   sortOrder?: number;
   tenantId?: number;
-  tenantName?: string;
   typeCode?: string;
   typeName?: string;
   updatedAt?: wellKnownTimestamp;
@@ -2009,7 +1967,6 @@ export type storageservicev1_File = {
   size?: number;
   sizeFormat?: string;
   tenantId?: number;
-  tenantName?: string;
   updatedAt?: wellKnownTimestamp;
   updatedBy?: number;
 };
@@ -2442,7 +2399,6 @@ export type internal_messageservicev1_InternalMessage = {
   senderName?: string;
   status?: internal_messageservicev1_InternalMessage_Status;
   tenantId?: number;
-  tenantName?: string;
   title?: string;
   type?: internal_messageservicev1_InternalMessage_Type;
   updatedAt?: wellKnownTimestamp;
@@ -2718,7 +2674,6 @@ export type internal_messageservicev1_InternalMessageCategory = {
   name?: string;
   sortOrder?: number;
   tenantId?: number;
-  tenantName?: string;
   updatedAt?: wellKnownTimestamp;
   updatedBy?: number;
 };
@@ -2931,7 +2886,6 @@ export type internal_messageservicev1_InternalMessageRecipient = {
   recipientUserId?: number;
   status?: internal_messageservicev1_InternalMessageRecipient_Status;
   tenantId?: number;
-  tenantName?: string;
   title?: string;
   updatedAt?: wellKnownTimestamp;
   updatedBy?: number;
@@ -3417,7 +3371,6 @@ export type auditservicev1_LoginAuditLog = {
   signature?: string;
   status?: auditservicev1_LoginAuditLog_Status;
   tenantId?: number;
-  tenantName?: string;
   traceId?: string;
   userId?: number;
   username?: string;
@@ -3751,9 +3704,6 @@ export type permissionservicev1_Menu = {
   meta?: permissionservicev1_MenuMeta;
   //
   // Behaviors: OPTIONAL
-  module?: identityservicev1_Module;
-  //
-  // Behaviors: OPTIONAL
   name?: string;
   parentId?: number;
   //
@@ -3813,53 +3763,6 @@ export type permissionservicev1_SyncMenusRequest = {
 export type permissionservicev1_SyncMenusRequest_Mode =
   | 'MERGE'
   | 'REPLACE';
-// 租户自助用量服务：租户管理员查看本租户的套餐用量与配额。
-// 与 TenantService.GetUsage（平台管理员按租户 ID 查任意租户）互补——
-// 本服务 server 钉定 operator 的租户，不接受客户端传入租户 ID。
-export interface MyTenantUsageService {
-  // 获取当前租户的套餐用量与配额（配额硬限制 403 时，租户管理员可在此看到原因）
-  GetMyTenantUsage(
-    request: wellKnownEmpty,
-  ): Promise<identityservicev1_TenantUsage>;
-}
-
-export function createMyTenantUsageServiceClient(
-  transport: ClientTransport,
-): MyTenantUsageService {
-  return {
-    GetMyTenantUsage(_request) {
-      const path = `admin/v1/my-tenant-usage`;
-      const body = null;
-      return transport.unary(path, 'GET', body, {
-        service: 'MyTenantUsageService',
-        method: 'GetMyTenantUsage',
-      }) as Promise<identityservicev1_TenantUsage>;
-    },
-  };
-}
-// 租户用量与配额
-export type identityservicev1_TenantUsage = {
-  apiCallCount: number | undefined;
-  planId?: number;
-  planName?: string;
-  quotas: identityservicev1_QuotaUsage[] | undefined;
-  storageUsedBytes: number | undefined;
-  tenantId: number | undefined;
-  userCount: number | undefined;
-};
-
-// 配额用量项
-export type identityservicev1_QuotaUsage = {
-  quotaType: identityservicev1_PlanQuota_QuotaType | undefined;
-  quotaValue: number | undefined;
-};
-
-// 配额类型
-export type identityservicev1_PlanQuota_QuotaType =
-  | 'API_CALL'
-  | 'PLAN_QUOTA_TYPE_UNSPECIFIED'
-  | 'STORAGE'
-  | 'USER_LIMIT';
 // 在线会话管理服务（在线用户列表 + 强制下线）
 export interface OnlineSessionService {
   // 查询在线会话列表
@@ -4173,7 +4076,6 @@ export type auditservicev1_OperationAuditLog = {
   signature?: string;
   success?: boolean;
   tenantId?: number;
-  tenantName?: string;
   traceId?: string;
   userId?: number;
   username?: string;
@@ -4443,7 +4345,6 @@ export type identityservicev1_OrgUnit = {
   status?: identityservicev1_OrgUnit_Status;
   taxId?: string;
   tenantId?: number;
-  tenantName?: string;
   timezone?: string;
   type?: identityservicev1_OrgUnit_Type;
   updatedAt?: wellKnownTimestamp;
@@ -5023,730 +4924,6 @@ export type permissionservicev1_DeletePermissionGroupRequest = {
   id?: number;
 };
 
-// 套餐管理服务
-export interface PlanService {
-  // 分页查询套餐列表
-  List(
-    request: pagination_PagingRequest,
-  ): Promise<identityservicev1_ListPlanResponse>;
-  // 查询套餐详情
-  Get(
-    request: identityservicev1_GetPlanRequest,
-  ): Promise<identityservicev1_Plan>;
-  // 创建套餐
-  Create(
-    request: identityservicev1_CreatePlanRequest,
-  ): Promise<wellKnownEmpty>;
-  // 更新套餐
-  Update(
-    request: identityservicev1_UpdatePlanRequest,
-  ): Promise<wellKnownEmpty>;
-  // 删除套餐
-  Delete(
-    request: identityservicev1_DeletePlanRequest,
-  ): Promise<wellKnownEmpty>;
-}
-
-export function createPlanServiceClient(
-  transport: ClientTransport,
-): PlanService {
-  return {
-    List(request) {
-      const path = `admin/v1/plans`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.page) {
-        queryParams.push(
-          `page=${encodeURIComponent(request.page.toString())}`,
-        );
-      }
-      if (request.pageSize) {
-        queryParams.push(
-          `pageSize=${encodeURIComponent(request.pageSize.toString())}`,
-        );
-      }
-      if (request.offset) {
-        queryParams.push(
-          `offset=${encodeURIComponent(request.offset.toString())}`,
-        );
-      }
-      if (request.limit) {
-        queryParams.push(
-          `limit=${encodeURIComponent(request.limit.toString())}`,
-        );
-      }
-      if (request.token) {
-        queryParams.push(
-          `token=${encodeURIComponent(request.token.toString())}`,
-        );
-      }
-      if (request.noPaging) {
-        queryParams.push(
-          `noPaging=${encodeURIComponent(request.noPaging.toString())}`,
-        );
-      }
-      if (request.query) {
-        queryParams.push(
-          `query=${encodeURIComponent(request.query.toString())}`,
-        );
-      }
-      if (request.filter) {
-        queryParams.push(
-          `filter=${encodeURIComponent(request.filter.toString())}`,
-        );
-      }
-      if (request.filterExpr?.type) {
-        queryParams.push(
-          `filterExpr.type=${encodeURIComponent(request.filterExpr.type.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.field) {
-        queryParams.push(
-          `filterExpr.conditions.field=${encodeURIComponent(request.filterExpr.conditions.field.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.op) {
-        queryParams.push(
-          `filterExpr.conditions.op=${encodeURIComponent(request.filterExpr.conditions.op.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.value) {
-        queryParams.push(
-          `filterExpr.conditions.value=${encodeURIComponent(request.filterExpr.conditions.value.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonValue) {
-        queryParams.push(
-          `filterExpr.conditions.jsonValue=${encodeURIComponent(request.filterExpr.conditions.jsonValue.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.values) {
-        request.filterExpr.conditions.values.forEach((x) => {
-          queryParams.push(
-            `filterExpr.conditions.values=${encodeURIComponent(x.toString())}`,
-          );
-        });
-      }
-      if (request.filterExpr?.conditions?.datePart) {
-        queryParams.push(
-          `filterExpr.conditions.datePart=${encodeURIComponent(request.filterExpr.conditions.datePart.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonPath) {
-        queryParams.push(
-          `filterExpr.conditions.jsonPath=${encodeURIComponent(request.filterExpr.conditions.jsonPath.toString())}`,
-        );
-      }
-      if (request.orderBy) {
-        queryParams.push(
-          `orderBy=${encodeURIComponent(request.orderBy.toString())}`,
-        );
-      }
-      if (request.sorting?.field) {
-        queryParams.push(
-          `sorting.field=${encodeURIComponent(request.sorting.field.toString())}`,
-        );
-      }
-      if (request.sorting?.direction) {
-        queryParams.push(
-          `sorting.direction=${encodeURIComponent(request.sorting.direction.toString())}`,
-        );
-      }
-      if (request.fieldMask) {
-        queryParams.push(
-          `fieldMask=${encodeURIComponent(request.fieldMask.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'PlanService',
-        method: 'List',
-      }) as Promise<identityservicev1_ListPlanResponse>;
-    },
-    Get(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/plans/${request.id}`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.viewMask) {
-        queryParams.push(
-          `viewMask=${encodeURIComponent(request.viewMask.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'PlanService',
-        method: 'Get',
-      }) as Promise<identityservicev1_Plan>;
-    },
-    Create(request) {
-      const path = `admin/v1/plans`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'PlanService',
-        method: 'Create',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Update(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/plans/${request.id}`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'PUT', body, {
-        service: 'PlanService',
-        method: 'Update',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Delete(request) {
-      const path = `admin/v1/plans`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.id) {
-        queryParams.push(
-          `id=${encodeURIComponent(request.id.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'DELETE', body, {
-        service: 'PlanService',
-        method: 'Delete',
-      }) as Promise<wellKnownEmpty>;
-    },
-  };
-}
-// 套餐列表 - 答复
-export type identityservicev1_ListPlanResponse = {
-  items: identityservicev1_Plan[] | undefined;
-  total: number | undefined;
-};
-
-// 套餐
-export type identityservicev1_Plan = {
-  createdAt?: wellKnownTimestamp;
-  createdBy?: number;
-  dataRetentionDays?: number;
-  deletedAt?: wellKnownTimestamp;
-  deletedBy?: number;
-  description?: string;
-  expiryPolicy?: identityservicev1_Plan_ExpiryPolicy;
-  id?: number;
-  name?: string;
-  remark?: string;
-  updatedAt?: wellKnownTimestamp;
-  updatedBy?: number;
-  version?: identityservicev1_Plan_Version;
-};
-
-// 套餐版本
-export type identityservicev1_Plan_Version =
-  | 'ENTERPRISE'
-  | 'FREE'
-  | 'PLAN_VERSION_UNSPECIFIED'
-  | 'STANDARD';
-// 到期处置策略
-export type identityservicev1_Plan_ExpiryPolicy =
-  | 'BLOCK_LOGIN'
-  | 'FREEZE'
-  | 'PLAN_EXPIRY_POLICY_UNSPECIFIED'
-  | 'READONLY';
-// 套餐数据 - 请求
-export type identityservicev1_GetPlanRequest = {
-  id?: number;
-  viewMask?: wellKnownFieldMask;
-};
-
-// 创建套餐 - 请求
-export type identityservicev1_CreatePlanRequest = {
-  data: identityservicev1_Plan | undefined;
-};
-
-// 更新套餐 -请求
-export type identityservicev1_UpdatePlanRequest = {
-  allowMissing?: boolean;
-  data: identityservicev1_Plan | undefined;
-  id: number | undefined;
-  updateMask: undefined | wellKnownFieldMask;
-};
-
-// 删除套餐 - 请求
-export type identityservicev1_DeletePlanRequest = {
-  id?: number;
-};
-
-// 套餐模块白名单管理服务
-export interface PlanModuleService {
-  // 分页查询套餐模块列表
-  List(
-    request: pagination_PagingRequest,
-  ): Promise<identityservicev1_ListPlanModuleResponse>;
-  // 查询套餐模块详情
-  Get(
-    request: identityservicev1_GetPlanModuleRequest,
-  ): Promise<identityservicev1_PlanModule>;
-  // 创建套餐模块
-  Create(
-    request: identityservicev1_CreatePlanModuleRequest,
-  ): Promise<wellKnownEmpty>;
-  // 更新套餐模块
-  Update(
-    request: identityservicev1_UpdatePlanModuleRequest,
-  ): Promise<wellKnownEmpty>;
-  // 删除套餐模块
-  Delete(
-    request: identityservicev1_DeletePlanModuleRequest,
-  ): Promise<wellKnownEmpty>;
-}
-
-export function createPlanModuleServiceClient(
-  transport: ClientTransport,
-): PlanModuleService {
-  return {
-    List(request) {
-      const path = `admin/v1/plan-modules`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.page) {
-        queryParams.push(
-          `page=${encodeURIComponent(request.page.toString())}`,
-        );
-      }
-      if (request.pageSize) {
-        queryParams.push(
-          `pageSize=${encodeURIComponent(request.pageSize.toString())}`,
-        );
-      }
-      if (request.offset) {
-        queryParams.push(
-          `offset=${encodeURIComponent(request.offset.toString())}`,
-        );
-      }
-      if (request.limit) {
-        queryParams.push(
-          `limit=${encodeURIComponent(request.limit.toString())}`,
-        );
-      }
-      if (request.token) {
-        queryParams.push(
-          `token=${encodeURIComponent(request.token.toString())}`,
-        );
-      }
-      if (request.noPaging) {
-        queryParams.push(
-          `noPaging=${encodeURIComponent(request.noPaging.toString())}`,
-        );
-      }
-      if (request.query) {
-        queryParams.push(
-          `query=${encodeURIComponent(request.query.toString())}`,
-        );
-      }
-      if (request.filter) {
-        queryParams.push(
-          `filter=${encodeURIComponent(request.filter.toString())}`,
-        );
-      }
-      if (request.filterExpr?.type) {
-        queryParams.push(
-          `filterExpr.type=${encodeURIComponent(request.filterExpr.type.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.field) {
-        queryParams.push(
-          `filterExpr.conditions.field=${encodeURIComponent(request.filterExpr.conditions.field.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.op) {
-        queryParams.push(
-          `filterExpr.conditions.op=${encodeURIComponent(request.filterExpr.conditions.op.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.value) {
-        queryParams.push(
-          `filterExpr.conditions.value=${encodeURIComponent(request.filterExpr.conditions.value.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonValue) {
-        queryParams.push(
-          `filterExpr.conditions.jsonValue=${encodeURIComponent(request.filterExpr.conditions.jsonValue.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.values) {
-        request.filterExpr.conditions.values.forEach((x) => {
-          queryParams.push(
-            `filterExpr.conditions.values=${encodeURIComponent(x.toString())}`,
-          );
-        });
-      }
-      if (request.filterExpr?.conditions?.datePart) {
-        queryParams.push(
-          `filterExpr.conditions.datePart=${encodeURIComponent(request.filterExpr.conditions.datePart.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonPath) {
-        queryParams.push(
-          `filterExpr.conditions.jsonPath=${encodeURIComponent(request.filterExpr.conditions.jsonPath.toString())}`,
-        );
-      }
-      if (request.orderBy) {
-        queryParams.push(
-          `orderBy=${encodeURIComponent(request.orderBy.toString())}`,
-        );
-      }
-      if (request.sorting?.field) {
-        queryParams.push(
-          `sorting.field=${encodeURIComponent(request.sorting.field.toString())}`,
-        );
-      }
-      if (request.sorting?.direction) {
-        queryParams.push(
-          `sorting.direction=${encodeURIComponent(request.sorting.direction.toString())}`,
-        );
-      }
-      if (request.fieldMask) {
-        queryParams.push(
-          `fieldMask=${encodeURIComponent(request.fieldMask.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'PlanModuleService',
-        method: 'List',
-      }) as Promise<identityservicev1_ListPlanModuleResponse>;
-    },
-    Get(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/plan-modules/${request.id}`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.viewMask) {
-        queryParams.push(
-          `viewMask=${encodeURIComponent(request.viewMask.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'PlanModuleService',
-        method: 'Get',
-      }) as Promise<identityservicev1_PlanModule>;
-    },
-    Create(request) {
-      const path = `admin/v1/plan-modules`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'PlanModuleService',
-        method: 'Create',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Update(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/plan-modules/${request.id}`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'PUT', body, {
-        service: 'PlanModuleService',
-        method: 'Update',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Delete(request) {
-      const path = `admin/v1/plan-modules`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.id) {
-        queryParams.push(
-          `id=${encodeURIComponent(request.id.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'DELETE', body, {
-        service: 'PlanModuleService',
-        method: 'Delete',
-      }) as Promise<wellKnownEmpty>;
-    },
-  };
-}
-// 套餐模块列表 - 答复
-export type identityservicev1_ListPlanModuleResponse = {
-  items: identityservicev1_PlanModule[] | undefined;
-  total: number | undefined;
-};
-
-// 套餐模块
-export type identityservicev1_PlanModule = {
-  createdAt?: wellKnownTimestamp;
-  createdBy?: number;
-  deletedAt?: wellKnownTimestamp;
-  deletedBy?: number;
-  id?: number;
-  module?: identityservicev1_Module;
-  planId?: number;
-  updatedAt?: wellKnownTimestamp;
-  updatedBy?: number;
-};
-
-// 套餐模块数据 - 请求
-export type identityservicev1_GetPlanModuleRequest = {
-  id?: number;
-  viewMask?: wellKnownFieldMask;
-};
-
-// 创建套餐模块 - 请求
-export type identityservicev1_CreatePlanModuleRequest = {
-  data: identityservicev1_PlanModule | undefined;
-};
-
-// 更新套餐模块 -请求
-export type identityservicev1_UpdatePlanModuleRequest = {
-  allowMissing?: boolean;
-  data: identityservicev1_PlanModule | undefined;
-  id: number | undefined;
-  updateMask: undefined | wellKnownFieldMask;
-};
-
-// 删除套餐模块 - 请求
-export type identityservicev1_DeletePlanModuleRequest = {
-  id?: number;
-};
-
-// 套餐配额管理服务
-export interface PlanQuotaService {
-  // 分页查询套餐配额列表
-  List(
-    request: pagination_PagingRequest,
-  ): Promise<identityservicev1_ListPlanQuotaResponse>;
-  // 创建套餐配额
-  Create(
-    request: identityservicev1_CreatePlanQuotaRequest,
-  ): Promise<wellKnownEmpty>;
-  // 更新套餐配额
-  Update(
-    request: identityservicev1_UpdatePlanQuotaRequest,
-  ): Promise<wellKnownEmpty>;
-  // 删除套餐配额
-  Delete(
-    request: identityservicev1_DeletePlanQuotaRequest,
-  ): Promise<wellKnownEmpty>;
-}
-
-export function createPlanQuotaServiceClient(
-  transport: ClientTransport,
-): PlanQuotaService {
-  return {
-    List(request) {
-      const path = `admin/v1/plan-quotas`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.page) {
-        queryParams.push(
-          `page=${encodeURIComponent(request.page.toString())}`,
-        );
-      }
-      if (request.pageSize) {
-        queryParams.push(
-          `pageSize=${encodeURIComponent(request.pageSize.toString())}`,
-        );
-      }
-      if (request.offset) {
-        queryParams.push(
-          `offset=${encodeURIComponent(request.offset.toString())}`,
-        );
-      }
-      if (request.limit) {
-        queryParams.push(
-          `limit=${encodeURIComponent(request.limit.toString())}`,
-        );
-      }
-      if (request.token) {
-        queryParams.push(
-          `token=${encodeURIComponent(request.token.toString())}`,
-        );
-      }
-      if (request.noPaging) {
-        queryParams.push(
-          `noPaging=${encodeURIComponent(request.noPaging.toString())}`,
-        );
-      }
-      if (request.query) {
-        queryParams.push(
-          `query=${encodeURIComponent(request.query.toString())}`,
-        );
-      }
-      if (request.filter) {
-        queryParams.push(
-          `filter=${encodeURIComponent(request.filter.toString())}`,
-        );
-      }
-      if (request.filterExpr?.type) {
-        queryParams.push(
-          `filterExpr.type=${encodeURIComponent(request.filterExpr.type.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.field) {
-        queryParams.push(
-          `filterExpr.conditions.field=${encodeURIComponent(request.filterExpr.conditions.field.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.op) {
-        queryParams.push(
-          `filterExpr.conditions.op=${encodeURIComponent(request.filterExpr.conditions.op.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.value) {
-        queryParams.push(
-          `filterExpr.conditions.value=${encodeURIComponent(request.filterExpr.conditions.value.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonValue) {
-        queryParams.push(
-          `filterExpr.conditions.jsonValue=${encodeURIComponent(request.filterExpr.conditions.jsonValue.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.values) {
-        request.filterExpr.conditions.values.forEach((x) => {
-          queryParams.push(
-            `filterExpr.conditions.values=${encodeURIComponent(x.toString())}`,
-          );
-        });
-      }
-      if (request.filterExpr?.conditions?.datePart) {
-        queryParams.push(
-          `filterExpr.conditions.datePart=${encodeURIComponent(request.filterExpr.conditions.datePart.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonPath) {
-        queryParams.push(
-          `filterExpr.conditions.jsonPath=${encodeURIComponent(request.filterExpr.conditions.jsonPath.toString())}`,
-        );
-      }
-      if (request.orderBy) {
-        queryParams.push(
-          `orderBy=${encodeURIComponent(request.orderBy.toString())}`,
-        );
-      }
-      if (request.sorting?.field) {
-        queryParams.push(
-          `sorting.field=${encodeURIComponent(request.sorting.field.toString())}`,
-        );
-      }
-      if (request.sorting?.direction) {
-        queryParams.push(
-          `sorting.direction=${encodeURIComponent(request.sorting.direction.toString())}`,
-        );
-      }
-      if (request.fieldMask) {
-        queryParams.push(
-          `fieldMask=${encodeURIComponent(request.fieldMask.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'PlanQuotaService',
-        method: 'List',
-      }) as Promise<identityservicev1_ListPlanQuotaResponse>;
-    },
-    Create(request) {
-      const path = `admin/v1/plan-quotas`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'PlanQuotaService',
-        method: 'Create',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Update(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/plan-quotas/${request.id}`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'PUT', body, {
-        service: 'PlanQuotaService',
-        method: 'Update',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Delete(request) {
-      const path = `admin/v1/plan-quotas`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.id) {
-        queryParams.push(
-          `id=${encodeURIComponent(request.id.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'DELETE', body, {
-        service: 'PlanQuotaService',
-        method: 'Delete',
-      }) as Promise<wellKnownEmpty>;
-    },
-  };
-}
-// 套餐配额列表 - 答复
-export type identityservicev1_ListPlanQuotaResponse = {
-  items: identityservicev1_PlanQuota[] | undefined;
-  total: number | undefined;
-};
-
-// 套餐配额
-export type identityservicev1_PlanQuota = {
-  createdAt?: wellKnownTimestamp;
-  createdBy?: number;
-  deletedAt?: wellKnownTimestamp;
-  deletedBy?: number;
-  id?: number;
-  planId?: number;
-  quotaType?: identityservicev1_PlanQuota_QuotaType;
-  quotaValue?: number;
-  updatedAt?: wellKnownTimestamp;
-  updatedBy?: number;
-};
-
-// 创建套餐配额 - 请求
-export type identityservicev1_CreatePlanQuotaRequest = {
-  data: identityservicev1_PlanQuota | undefined;
-};
-
-// 更新套餐配额 -请求
-export type identityservicev1_UpdatePlanQuotaRequest = {
-  allowMissing?: boolean;
-  data: identityservicev1_PlanQuota | undefined;
-  id: number | undefined;
-  updateMask: undefined | wellKnownFieldMask;
-};
-
-// 删除套餐配额 - 请求
-export type identityservicev1_DeletePlanQuotaRequest = {
-  id?: number;
-};
-
 // 职位管理服务
 export interface PositionService {
   // 查询职位列表
@@ -5984,7 +5161,6 @@ export type identityservicev1_Position = {
   startAt?: wellKnownTimestamp;
   status?: identityservicev1_Position_Status;
   tenantId?: number;
-  tenantName?: string;
   type?: identityservicev1_Position_Type;
   updatedAt?: wellKnownTimestamp;
   updatedBy?: number;
@@ -6258,7 +5434,6 @@ export type permissionservicev1_Role = {
   sortOrder?: number;
   status?: permissionservicev1_Role_Status;
   tenantId?: number;
-  tenantName?: string;
   type?: permissionservicev1_Role_Type;
   updatedAt?: wellKnownTimestamp;
   updatedBy?: number;
@@ -6703,445 +5878,6 @@ export type taskservicev1_ControlTaskRequest_ControlType =
   | 'Restart'
   | 'Start'
   | 'Stop';
-// 租户管理服务
-export interface TenantService {
-  // 获取租户列表
-  List(
-    request: pagination_PagingRequest,
-  ): Promise<identityservicev1_ListTenantResponse>;
-  // 获取租户数据
-  Get(
-    request: identityservicev1_GetTenantRequest,
-  ): Promise<identityservicev1_Tenant>;
-  // 创建租户
-  Create(
-    request: identityservicev1_CreateTenantRequest,
-  ): Promise<wellKnownEmpty>;
-  // 更新租户
-  Update(
-    request: identityservicev1_UpdateTenantRequest,
-  ): Promise<wellKnownEmpty>;
-  // 删除租户
-  Delete(
-    request: identityservicev1_DeleteTenantRequest,
-  ): Promise<wellKnownEmpty>;
-  // 创建租户及管理员用户
-  CreateTenantWithAdminUser(
-    request: identityservicev1_CreateTenantWithAdminUserRequest,
-  ): Promise<wellKnownEmpty>;
-  // 租户是否存在
-  TenantExists(
-    request: identityservicev1_TenantExistsRequest,
-  ): Promise<identityservicev1_TenantExistsResponse>;
-  // 查询租户用量与配额
-  GetUsage(
-    request: identityservicev1_GetTenantUsageRequest,
-  ): Promise<identityservicev1_TenantUsage>;
-  // 清理租户数据
-  CleanupData(
-    request: identityservicev1_CleanupTenantDataRequest,
-  ): Promise<wellKnownEmpty>;
-}
-
-export function createTenantServiceClient(
-  transport: ClientTransport,
-): TenantService {
-  return {
-    List(request) {
-      const path = `admin/v1/tenants`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.page) {
-        queryParams.push(
-          `page=${encodeURIComponent(request.page.toString())}`,
-        );
-      }
-      if (request.pageSize) {
-        queryParams.push(
-          `pageSize=${encodeURIComponent(request.pageSize.toString())}`,
-        );
-      }
-      if (request.offset) {
-        queryParams.push(
-          `offset=${encodeURIComponent(request.offset.toString())}`,
-        );
-      }
-      if (request.limit) {
-        queryParams.push(
-          `limit=${encodeURIComponent(request.limit.toString())}`,
-        );
-      }
-      if (request.token) {
-        queryParams.push(
-          `token=${encodeURIComponent(request.token.toString())}`,
-        );
-      }
-      if (request.noPaging) {
-        queryParams.push(
-          `noPaging=${encodeURIComponent(request.noPaging.toString())}`,
-        );
-      }
-      if (request.query) {
-        queryParams.push(
-          `query=${encodeURIComponent(request.query.toString())}`,
-        );
-      }
-      if (request.filter) {
-        queryParams.push(
-          `filter=${encodeURIComponent(request.filter.toString())}`,
-        );
-      }
-      if (request.filterExpr?.type) {
-        queryParams.push(
-          `filterExpr.type=${encodeURIComponent(request.filterExpr.type.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.field) {
-        queryParams.push(
-          `filterExpr.conditions.field=${encodeURIComponent(request.filterExpr.conditions.field.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.op) {
-        queryParams.push(
-          `filterExpr.conditions.op=${encodeURIComponent(request.filterExpr.conditions.op.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.value) {
-        queryParams.push(
-          `filterExpr.conditions.value=${encodeURIComponent(request.filterExpr.conditions.value.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonValue) {
-        queryParams.push(
-          `filterExpr.conditions.jsonValue=${encodeURIComponent(request.filterExpr.conditions.jsonValue.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.values) {
-        request.filterExpr.conditions.values.forEach((x) => {
-          queryParams.push(
-            `filterExpr.conditions.values=${encodeURIComponent(x.toString())}`,
-          );
-        });
-      }
-      if (request.filterExpr?.conditions?.datePart) {
-        queryParams.push(
-          `filterExpr.conditions.datePart=${encodeURIComponent(request.filterExpr.conditions.datePart.toString())}`,
-        );
-      }
-      if (request.filterExpr?.conditions?.jsonPath) {
-        queryParams.push(
-          `filterExpr.conditions.jsonPath=${encodeURIComponent(request.filterExpr.conditions.jsonPath.toString())}`,
-        );
-      }
-      if (request.orderBy) {
-        queryParams.push(
-          `orderBy=${encodeURIComponent(request.orderBy.toString())}`,
-        );
-      }
-      if (request.sorting?.field) {
-        queryParams.push(
-          `sorting.field=${encodeURIComponent(request.sorting.field.toString())}`,
-        );
-      }
-      if (request.sorting?.direction) {
-        queryParams.push(
-          `sorting.direction=${encodeURIComponent(request.sorting.direction.toString())}`,
-        );
-      }
-      if (request.fieldMask) {
-        queryParams.push(
-          `fieldMask=${encodeURIComponent(request.fieldMask.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'TenantService',
-        method: 'List',
-      }) as Promise<identityservicev1_ListTenantResponse>;
-    },
-    Get(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/tenants/${request.id}`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.code) {
-        queryParams.push(
-          `code=${encodeURIComponent(request.code.toString())}`,
-        );
-      }
-      if (request.name) {
-        queryParams.push(
-          `name=${encodeURIComponent(request.name.toString())}`,
-        );
-      }
-      if (request.viewMask) {
-        queryParams.push(
-          `viewMask=${encodeURIComponent(request.viewMask.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'TenantService',
-        method: 'Get',
-      }) as Promise<identityservicev1_Tenant>;
-    },
-    Create(request) {
-      const path = `admin/v1/tenants`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'TenantService',
-        method: 'Create',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Update(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/tenants/${request.id}`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'PUT', body, {
-        service: 'TenantService',
-        method: 'Update',
-      }) as Promise<wellKnownEmpty>;
-    },
-    Delete(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/tenants/${request.id}`;
-      const body = null;
-      return transport.unary(path, 'DELETE', body, {
-        service: 'TenantService',
-        method: 'Delete',
-      }) as Promise<wellKnownEmpty>;
-    },
-    CreateTenantWithAdminUser(request) {
-      const path = `admin/v1/tenants:with-admin`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'TenantService',
-        method: 'CreateTenantWithAdminUser',
-      }) as Promise<wellKnownEmpty>;
-    },
-    TenantExists(request) {
-      const path = `admin/v1/tenants:exists`;
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.code) {
-        queryParams.push(
-          `code=${encodeURIComponent(request.code.toString())}`,
-        );
-      }
-      if (request.name) {
-        queryParams.push(
-          `name=${encodeURIComponent(request.name.toString())}`,
-        );
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join('&')}`;
-      }
-      return transport.unary(uri, 'GET', body, {
-        service: 'TenantService',
-        method: 'TenantExists',
-      }) as Promise<identityservicev1_TenantExistsResponse>;
-    },
-    GetUsage(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/tenants/${request.id}/usage`;
-      const body = null;
-      return transport.unary(path, 'GET', body, {
-        service: 'TenantService',
-        method: 'GetUsage',
-      }) as Promise<identityservicev1_TenantUsage>;
-    },
-    CleanupData(request) {
-      if (request.id === undefined || request.id === null) {
-        throw new Error('missing required field request.id');
-      }
-      const path = `admin/v1/tenants/${request.id}/cleanup`;
-      const body = JSON.stringify(request);
-      return transport.unary(path, 'POST', body, {
-        service: 'TenantService',
-        method: 'CleanupData',
-      }) as Promise<wellKnownEmpty>;
-    },
-  };
-}
-// 租户列表 - 答复
-export type identityservicev1_ListTenantResponse = {
-  items: identityservicev1_Tenant[] | undefined;
-  total: number | undefined;
-};
-
-// 租户
-export type identityservicev1_Tenant = {
-  adminUserId?: number;
-  adminUserName?: string;
-  auditStatus?: identityservicev1_Tenant_AuditStatus;
-  code?: string;
-  createdAt?: wellKnownTimestamp;
-  createdBy?: number;
-  deletedAt?: wellKnownTimestamp;
-  deletedBy?: number;
-  domain?: string;
-  expiredAt?: wellKnownTimestamp;
-  id?: number;
-  industry?: string;
-  logoUrl?: string;
-  memberCount?: number;
-  name?: string;
-  planId?: number;
-  remark?: string;
-  status?: identityservicev1_Tenant_Status;
-  subscriptionAt?: wellKnownTimestamp;
-  subscriptionPlan?: string;
-  type?: identityservicev1_Tenant_Type;
-  unsubscribeAt?: wellKnownTimestamp;
-  updatedAt?: wellKnownTimestamp;
-  updatedBy?: number;
-};
-
-// 租户类型
-export type identityservicev1_Tenant_Type =
-  | 'CUSTOM'
-  | 'INTERNAL'
-  | 'PAID'
-  | 'PARTNER'
-  | 'TENANT_TYPE_UNSPECIFIED'
-  | 'TRIAL';
-// 租户状态
-export type identityservicev1_Tenant_Status =
-  | 'EXPIRED'
-  | 'FREEZE'
-  | 'OFF'
-  | 'ON';
-// 租户审核状态
-export type identityservicev1_Tenant_AuditStatus =
-  | 'APPROVED'
-  | 'PENDING'
-  | 'REJECTED'
-  | 'TENANT_AUDIT_STATUS_UNSPECIFIED';
-// 租户数据 - 请求
-export type identityservicev1_GetTenantRequest = {
-  code?: string;
-  id?: number;
-  name?: string;
-  viewMask?: wellKnownFieldMask;
-};
-
-// 创建租户 - 请求
-export type identityservicev1_CreateTenantRequest = {
-  data: identityservicev1_Tenant | undefined;
-};
-
-// 更新租户 -请求
-export type identityservicev1_UpdateTenantRequest = {
-  allowMissing?: boolean;
-  data: identityservicev1_Tenant | undefined;
-  id: number | undefined;
-  updateMask: undefined | wellKnownFieldMask;
-};
-
-// 删除租户 - 请求
-export type identityservicev1_DeleteTenantRequest = {
-  id?: number;
-};
-
-// 创建租户及管理员用户 - 请求
-export type identityservicev1_CreateTenantWithAdminUserRequest = {
-  password: string | undefined;
-  tenant: identityservicev1_Tenant | undefined;
-  user: identityservicev1_User | undefined;
-};
-
-// 用户
-export type identityservicev1_User = {
-  address?: string;
-  avatar?: string;
-  createdAt?: wellKnownTimestamp;
-  createdBy?: number;
-  deletedAt?: wellKnownTimestamp;
-  deletedBy?: number;
-  description?: string;
-  email?: string;
-  gender?: identityservicev1_User_Gender;
-  id?: number;
-  lastLoginAt?: wellKnownTimestamp;
-  lastLoginIp?: string;
-  // 偏好语言：换绑验证码按此渲染；空 = 按请求 Accept-Language。
-  locale?: string;
-  lockedUntil?: wellKnownTimestamp;
-  mobile?: string;
-  nickname?: string;
-  orgUnitId?: number;
-  orgUnitIds: number[] | undefined;
-  orgUnitName?: string;
-  orgUnitNames: string[] | undefined;
-  positionId?: number;
-  positionIds: number[] | undefined;
-  positionName?: string;
-  positionNames: string[] | undefined;
-  realname?: string;
-  region?: string;
-  remark?: string;
-  roleId?: number;
-  roleIds: number[] | undefined;
-  roleNames: string[] | undefined;
-  roles: string[] | undefined;
-  status?: identityservicev1_User_Status;
-  telephone?: string;
-  tenantId?: number;
-  tenantName?: string;
-  updatedAt?: wellKnownTimestamp;
-  updatedBy?: number;
-  username?: string;
-};
-
-// 用户性别
-export type identityservicev1_User_Gender =
-  | 'FEMALE'
-  | 'MALE'
-  | 'SECRET';
-// 用户状态
-export type identityservicev1_User_Status =
-  | 'CLOSED'
-  | 'DISABLED'
-  | 'EXPIRED'
-  | 'LOCKED'
-  | 'NORMAL'
-  | 'PENDING';
-// 租户是否存在 - 请求
-export type identityservicev1_TenantExistsRequest = {
-  code: string | undefined;
-  name: string | undefined;
-};
-
-// 租户是否存在 - 答复
-export type identityservicev1_TenantExistsResponse = {
-  exist: boolean | undefined;
-};
-
-// 查询租户用量 - 请求
-export type identityservicev1_GetTenantUsageRequest = {
-  id: number | undefined;
-};
-
-// 清理租户数据 - 请求
-export type identityservicev1_CleanupTenantDataRequest = {
-  id: number | undefined;
-};
-
 // 用户管理服务
 export interface UserService {
   // 获取用户列表
@@ -7401,6 +6137,61 @@ export type identityservicev1_ListUserResponse = {
   total: number | undefined;
 };
 
+// 用户
+export type identityservicev1_User = {
+  address?: string;
+  avatar?: string;
+  createdAt?: wellKnownTimestamp;
+  createdBy?: number;
+  deletedAt?: wellKnownTimestamp;
+  deletedBy?: number;
+  description?: string;
+  email?: string;
+  gender?: identityservicev1_User_Gender;
+  id?: number;
+  lastLoginAt?: wellKnownTimestamp;
+  lastLoginIp?: string;
+  // 偏好语言：换绑验证码按此渲染；空 = 按请求 Accept-Language。
+  locale?: string;
+  lockedUntil?: wellKnownTimestamp;
+  mobile?: string;
+  nickname?: string;
+  orgUnitId?: number;
+  orgUnitIds: number[] | undefined;
+  orgUnitName?: string;
+  orgUnitNames: string[] | undefined;
+  positionId?: number;
+  positionIds: number[] | undefined;
+  positionName?: string;
+  positionNames: string[] | undefined;
+  realname?: string;
+  region?: string;
+  remark?: string;
+  roleId?: number;
+  roleIds: number[] | undefined;
+  roleNames: string[] | undefined;
+  roles: string[] | undefined;
+  status?: identityservicev1_User_Status;
+  telephone?: string;
+  tenantId?: number;
+  updatedAt?: wellKnownTimestamp;
+  updatedBy?: number;
+  username?: string;
+};
+
+// 用户性别
+export type identityservicev1_User_Gender =
+  | 'FEMALE'
+  | 'MALE'
+  | 'SECRET';
+// 用户状态
+export type identityservicev1_User_Status =
+  | 'CLOSED'
+  | 'DISABLED'
+  | 'EXPIRED'
+  | 'LOCKED'
+  | 'NORMAL'
+  | 'PENDING';
 // 获取用户数据 - 请求
 export type identityservicev1_GetUserRequest = {
   id?: number;
@@ -7611,19 +6402,14 @@ export class ApiClient {
   private _languageService?: LanguageService;
   private _loginAuditLogService?: LoginAuditLogService;
   private _menuService?: MenuService;
-  private _myTenantUsageService?: MyTenantUsageService;
   private _onlineSessionService?: OnlineSessionService;
   private _operationAuditLogService?: OperationAuditLogService;
   private _orgUnitService?: OrgUnitService;
   private _permissionGroupService?: PermissionGroupService;
   private _permissionService?: PermissionService;
-  private _planModuleService?: PlanModuleService;
-  private _planQuotaService?: PlanQuotaService;
-  private _planService?: PlanService;
   private _positionService?: PositionService;
   private _roleService?: RoleService;
   private _taskService?: TaskService;
-  private _tenantService?: TenantService;
   private readonly _transport: ClientTransport;
   private _userProfileService?: UserProfileService;
   private _userService?: UserService;
@@ -7692,10 +6478,6 @@ export class ApiClient {
     return this._menuService ??= createMenuServiceClient(this._transport);
   }
 
-  get myTenantUsageService(): MyTenantUsageService {
-    return this._myTenantUsageService ??= createMyTenantUsageServiceClient(this._transport);
-  }
-
   get onlineSessionService(): OnlineSessionService {
     return this._onlineSessionService ??= createOnlineSessionServiceClient(this._transport);
   }
@@ -7716,18 +6498,6 @@ export class ApiClient {
     return this._permissionService ??= createPermissionServiceClient(this._transport);
   }
 
-  get planModuleService(): PlanModuleService {
-    return this._planModuleService ??= createPlanModuleServiceClient(this._transport);
-  }
-
-  get planQuotaService(): PlanQuotaService {
-    return this._planQuotaService ??= createPlanQuotaServiceClient(this._transport);
-  }
-
-  get planService(): PlanService {
-    return this._planService ??= createPlanServiceClient(this._transport);
-  }
-
   get positionService(): PositionService {
     return this._positionService ??= createPositionServiceClient(this._transport);
   }
@@ -7738,10 +6508,6 @@ export class ApiClient {
 
   get taskService(): TaskService {
     return this._taskService ??= createTaskServiceClient(this._transport);
-  }
-
-  get tenantService(): TenantService {
-    return this._tenantService ??= createTenantServiceClient(this._transport);
   }
 
   get userProfileService(): UserProfileService {

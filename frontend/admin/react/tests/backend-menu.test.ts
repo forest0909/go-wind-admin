@@ -31,7 +31,7 @@ const menus = [
 describe('backend menus', () => {
   it('maps every default MENU component to an existing React page', () => {
     const pages = menus.filter((menu) => menu.type === 'MENU');
-    expect(pages).toHaveLength(24);
+    expect(pages).toHaveLength(22);
     for (const menu of pages) {
       const path = normalizeViewPath(menu.component ?? '');
       expect(
@@ -46,7 +46,6 @@ describe('backend menus', () => {
     const modules = [
       'dashboard',
       'opm',
-      'tenant',
       'permissions',
       'internal-message',
       'log',
@@ -59,7 +58,7 @@ describe('backend menus', () => {
         imports.push(match[1]);
       }
     }
-    expect(imports).toHaveLength(24);
+    expect(imports).toHaveLength(22);
     for (const page of imports) {
       const component = page.replace('@/pages/', '') + '/index.vue';
       expect(

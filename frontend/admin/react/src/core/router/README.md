@@ -49,7 +49,6 @@ src/router/                         # 业务路由配置（项目特定）
 │   ├── system.tsx                  # 系统管理
 │   ├── permissions.tsx             # 权限管理
 │   ├── opm.tsx                     # 组织架构管理
-│   ├── tenant.tsx                  # 租户管理
 │   ├── log.tsx                     # 审计日志
 │   └── internal-message.tsx        # 内部消息
 └── utils/

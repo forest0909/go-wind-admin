@@ -29,7 +29,6 @@
   "userId": "User ID",
   "loginMethod": "Login Method",
   "riskScore": "Risk Score",
-  "tenantName": "Tenant",
   "osName": "OS",
   "browserName": "Browser",
   "userAgent": "User-Agent",

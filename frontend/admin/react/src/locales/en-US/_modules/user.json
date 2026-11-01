@@ -29,8 +29,6 @@
   "positionIdsPlaceholder": "Select positions",
   "remark": "Remark",
   "remarkPlaceholder": "Enter remark",
-  "tenantId": "Tenant",
-  "tenantIdPlaceholder": "Select tenant",
   "lastLoginAt": "Last Login",
   "createdAt": "Created At",
   "action": "Action",

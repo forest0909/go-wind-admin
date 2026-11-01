@@ -29,7 +29,6 @@
   "userId": "用户ID",
   "loginMethod": "登录方式",
   "riskScore": "风险评分",
-  "tenantName": "租户名称",
   "osName": "操作系统",
   "browserName": "浏览器",
   "userAgent": "User-Agent",

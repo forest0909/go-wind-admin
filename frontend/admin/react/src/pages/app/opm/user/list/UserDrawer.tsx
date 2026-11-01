@@ -20,7 +20,6 @@ interface UserDrawerProps {
   open: boolean;
   mode: 'create' | 'edit';
   data?: any;
-  tenantId: number | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -32,7 +31,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   open,
   mode,
   data,
-  tenantId,
   onClose,
   onSuccess,
 }) => {
@@ -57,23 +55,13 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   const [orgUnitTreeData, setOrgUnitTreeData] = useState<any[]>([]);
   const [positionOptions, setPositionOptions] = useState<{ label: string; value: number }[]>([]);
 
-  // 租户账号进来时页面不带 tenantId（左侧没有租户选择），按自己的租户取角色和组织；
-  // 否则会按平台去查 SYSTEM 角色，结果为空，必填的角色选不了
-  const ownTenantId = useUserStore((s) => s.userInfo?.tenantId);
-  const scopeTenantId = tenantId ?? (ownTenantId && ownTenantId > 0 ? ownTenantId : undefined);
-
   // 加载下拉数据
   useEffect(() => {
     if (open) {
-      // 角色
-      // 角色 —— 与后端 CreateUser 的角色校验语义严格对齐：
-      // 平台用户只接受 SYSTEM 角色，租户用户只接受该租户的 TENANT 角色；
-      // 之前用 type__not: 'TEMPLATE' 会把 TENANT 类型角色也放进下拉，提交必 400。
+      // 角色 —— 与后端 CreateUser 的角色校验语义对齐：只接受 SYSTEM 角色。
       fetchListRoles(
         new PaginationQuery({
-          formValues: scopeTenantId
-            ? { status: 'ON', type: 'TENANT', tenant_id: scopeTenantId }
-            : { status: 'ON', type: 'SYSTEM' },
+          formValues: { status: 'ON', type: 'SYSTEM' },
         }),
       )
         .then((res) => {
@@ -87,7 +75,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
 
       // 组织
       fetchListOrgUnits(
-        new PaginationQuery({ formValues: { status: 'ON', tenant_id: scopeTenantId ?? 0 } }),
+        new PaginationQuery({ formValues: { status: 'ON' } }),
       )
         .then((res) => {
           const tree = buildOrgTreeSelectData(res?.items || []);
@@ -112,7 +100,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           setPositionOptions([]);
         });
     }
-  }, [open, scopeTenantId]);
+  }, [open]);
 
   // 编辑模式下设置表单值
   useEffect(() => {

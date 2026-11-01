@@ -1,8 +1,6 @@
 {
   "title": "在线用户",
   "username": "用户名",
-  "tenant": "租户",
-  "platform": "平台",
   "clientType": "客户端",
   "clientAdmin": "管理端",
   "clientApp": "移动端",

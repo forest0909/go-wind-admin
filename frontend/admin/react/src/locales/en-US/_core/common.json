@@ -162,7 +162,6 @@
       "INVALID_USERID": "Invalid user ID",
       "INVALID_TOKEN": "Invalid token",
       "INVALID_PASSWORD": "Invalid password, please re-enter",
-      "INVALID_TENANT": "The tenant code does not exist, or the tenant is disabled or expired",
       "INVALID_CAPTCHA": "Incorrect verification code, please try again",
       "UNAUTHORIZED": "Unauthorized, please login",
       "USER_FREEZE": "User is frozen, please contact administrator",

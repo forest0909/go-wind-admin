@@ -1,8 +1,6 @@
 {
   "title": "Online Users",
   "username": "Username",
-  "tenant": "Tenant",
-  "platform": "Platform",
   "clientType": "Client",
   "clientAdmin": "Admin",
   "clientApp": "Mobile",

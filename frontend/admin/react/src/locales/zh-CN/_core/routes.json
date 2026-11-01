@@ -33,9 +33,6 @@
   "server-error": "服务器错误",
   "system": "系统管理",
   "tasks": "任务管理",
-  "tenant": "租户管理",
-  "tenant-members": "租户列表",
-  "tenant-plans": "套餐管理",
   "unauthorized": "未授权",
   "user-detail": "用户详情",
   "user-profile": "个人中心",
@@ -44,11 +41,6 @@
     "profile": {
       "settings": "个人中心",
       "internalMessage": "收件箱"
-    },
-    "tenant": {
-      "moduleName": "租户管理",
-      "member": "租户列表",
-      "plan": "套餐管理"
     },
     "opm": {
       "moduleName": "组织人员",

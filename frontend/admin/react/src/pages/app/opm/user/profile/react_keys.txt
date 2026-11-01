@@ -43,7 +43,6 @@ info.lastLoginIp
 info.orgUnitNames
 info.positionNames
 info.roleNames
-info.tenantName
 info.username
 secureSetting.modify
 secureSetting.password
@@ -53,8 +52,3 @@ tab.activeSessions
 tab.basicSettings
 tab.editPassword
 tab.securitySettings
-tab.tenantUsage
-tenantUsage.empty
-tenantUsage.noPlan
-tenantUsage.plan
-tenantUsage.reached

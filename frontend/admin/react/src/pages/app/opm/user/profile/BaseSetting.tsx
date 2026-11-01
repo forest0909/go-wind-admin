@@ -228,9 +228,6 @@ const BaseSetting = () => {
               ))
             ) : '-'}
           </Descriptions.Item>
-          <Descriptions.Item label={t('info.tenantName')}>
-            {user?.tenantName || '-'}
-          </Descriptions.Item>
           <Descriptions.Item label={t('info.lastLoginAt')}>
             {formatDateTime(user?.lastLoginAt ?? '') || '-'}
           </Descriptions.Item>

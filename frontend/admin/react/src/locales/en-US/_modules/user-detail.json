@@ -15,7 +15,6 @@
     "email": "Email",
     "region": "Region",
     "address": "Address",
-    "tenantName": "Tenant",
     "orgUnitName": "Organization",
     "positionName": "Position",
     "createdAt": "Created At",

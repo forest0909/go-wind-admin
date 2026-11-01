@@ -62,18 +62,6 @@ const OnlineSessionPage = () => {
       hideInSearch: true, // 后端仅支持 keyword 聚合过滤（用户名/IP），单独的 username 搜索不生效
     },
     {
-      title: t('tenant'),
-      dataIndex: 'tenantId',
-      width: 90,
-      hideInSearch: true,
-      render: (_, record) =>
-        (record.tenantId ?? 0) === 0 ? (
-          <Tag>{t('platform')}</Tag>
-        ) : (
-          `#${record.tenantId}`
-        ),
-    },
-    {
       title: t('clientType'),
       dataIndex: 'clientType',
       width: 100,

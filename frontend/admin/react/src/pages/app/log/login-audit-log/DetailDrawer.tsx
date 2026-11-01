@@ -80,9 +80,6 @@ const LoginAuditLogDetailDrawer = ({ open, data, onClose }: DetailDrawerProps) =
         <Descriptions.Item label={t('ipAddress')}>
           {data?.ipAddress || '-'}
         </Descriptions.Item>
-        <Descriptions.Item label={t('tenantName')}>
-          {data?.tenantName || '-'}
-        </Descriptions.Item>
         <Descriptions.Item label={t('geoLocation')} span={2}>
           {data?.geoLocation?.province || ''} {data?.geoLocation?.city || ''}
         </Descriptions.Item>

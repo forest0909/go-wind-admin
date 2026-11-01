@@ -38,7 +38,6 @@
   "sectionData": "数据变更",
   "sectionOther": "其他信息",
   "userId": "用户ID",
-  "tenantName": "租户名称",
   "sensitiveLevel": "敏感等级",
   "sensitiveLevel.PUBLIC": "公开",
   "sensitiveLevel.INTERNAL": "内部",

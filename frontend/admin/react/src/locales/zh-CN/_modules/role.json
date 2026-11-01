@@ -8,7 +8,6 @@
   "code": "角色编码",
   "codePlaceholder": "请输入角色编码",
   "requiredCode": "请输入角色编码",
-  "tenantName": "所属租户",
   "status": "状态",
   "statusPlaceholder": "请选择状态",
   "requiredStatus": "请选择状态",

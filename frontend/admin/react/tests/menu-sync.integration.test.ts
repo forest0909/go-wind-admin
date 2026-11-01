@@ -31,14 +31,11 @@ it('maps the real MERGE sync payload into the backend pageMap', async () => {
     }
   };
   visit(request.items ?? []);
-  expect(pages).toBe(24);
+  expect(pages).toBe(22);
   expect(hidden.sort()).toEqual([
     '/internal-message/inbox',
     '/opm/profile',
     '/opm/users/detail/:id',
     '/permission/codes',
-    '/tenant',
-    '/tenant/members',
-    '/tenant/plans',
   ]);
 });

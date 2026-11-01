@@ -2,16 +2,12 @@ import { useState } from 'react';
 import { Card, Tabs } from 'antd';
 import type { TabsProps } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@/stores';
 import ContentContainer from '@/layouts/components/PageContainer/ContentContainer';
 import BaseSetting from './BaseSetting';
 import EditPassword from './EditPassword';
 import SecureSetting from './SecureSetting';
 import AccountBind from './AccountBind';
 import MySessions from './MySessions';
-import TenantUsagePanel from './TenantUsagePanel';
-import { useGetUserProfile } from '@/api/hooks/user-profile';
-import { useMyTenantUsage } from '@/api/hooks/my-tenant-usage';
 
 /**
  * 个人中心页面 — 左页签栏布局（与 vben/ele 统一）
@@ -19,16 +15,6 @@ import { useMyTenantUsage } from '@/api/hooks/my-tenant-usage';
 const UserProfile = () => {
   const { t } = useTranslation('profile');
   const [activeKey, setActiveKey] = useState('1');
-
-  // 获取当前用户信息
-  const { data: userData } = useGetUserProfile();
-  const user = userData as any;
-
-  // 租户自助用量页签已从个人中心拿掉。组件和接口还在，把下面改回 true 即恢复。
-  const showTenantUsageTab = false;
-  const accessStore = useAuthStore((st) => st.accessToken);
-  const isTenantUser = showTenantUsageTab && !!accessStore && (user?.tenantId ?? 0) > 0;
-  const usageQuery = useMyTenantUsage(isTenantUser);
 
   const handleSwitchTab = (key: string) => {
     setActiveKey(key);
@@ -60,13 +46,6 @@ const UserProfile = () => {
       label: t('tab.activeSessions'),
       children: <MySessions />,
     },
-    ...(isTenantUser
-      ? [{
-          key: '7',
-          label: t('tab.tenantUsage'),
-          children: <TenantUsagePanel usageQuery={usageQuery} />,
-        }]
-      : []),
   ];
 
   return (

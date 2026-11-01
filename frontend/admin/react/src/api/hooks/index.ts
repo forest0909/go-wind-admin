@@ -16,8 +16,6 @@ export * from './user';
 export * from './user-profile';
 
 // 租户管理
-export * from './tenant';
-export * from './plan';
 
 // 组织人员管理 (OPM)
 export * from './org-unit';

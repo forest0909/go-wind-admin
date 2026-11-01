@@ -46,10 +46,6 @@ declare global {
          */
         roles?: string[];
         /**
-         * 租户id
-         */
-        tenantId: number;
-        /**
          * 用户名
          */
         username: string;
@@ -72,10 +68,6 @@ declare global {
          */
         token: string;
 
-        /**
-         * 租户id
-         */
-        tenantId: number;
     }
 }
 

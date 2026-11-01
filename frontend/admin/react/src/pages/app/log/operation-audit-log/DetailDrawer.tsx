@@ -83,9 +83,6 @@ const OperationAuditLogDetailDrawer = ({ open, data, onClose }: DetailDrawerProp
         <Descriptions.Item label={t('userId')}>
           {data?.userId ?? '-'}
         </Descriptions.Item>
-        <Descriptions.Item label={t('tenantName')}>
-          {data?.tenantName || '-'}
-        </Descriptions.Item>
         <Descriptions.Item label={t('ipAddress')}>
           {data?.ipAddress || '-'}
         </Descriptions.Item>

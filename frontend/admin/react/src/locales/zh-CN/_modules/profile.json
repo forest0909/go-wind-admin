@@ -8,7 +8,6 @@
     "securitySettings": "安全设置",
     "sessions": "活跃会话",
     "activeSessions": "活跃会话",
-    "tenantUsage": "套餐用量",
     "accountBind": "账号绑定"
   },
   "avatar": "头像",
@@ -32,7 +31,6 @@
   "roleNames": "角色",
   "orgUnitNames": "组织",
   "positionNames": "职位",
-  "tenantName": "所属租户",
   "lastLoginAt": "最后登录",
   "lastLoginIp": "最后登录IP",
   "createdAt": "创建时间",
@@ -58,17 +56,6 @@
     "FEMALE": "女",
     "SECRET": "保密"
   },
-  "tenantUsage": {
-    "plan": "当前套餐：",
-    "noPlan": "未订阅套餐",
-    "empty": "当前账号无套餐用量数据。",
-    "reached": "已达上限",
-    "quota": {
-      "USER_LIMIT": "用户数",
-      "STORAGE": "存储空间 (MB)",
-      "API_CALL": "API 调用次数"
-    }
-  },
   "locale": "偏好语言",
   "localePlaceholder": "跟随浏览器语言",
   "field": {
@@ -89,7 +76,6 @@
     "roleNames": "角色",
     "orgUnitNames": "所属组织",
     "positionNames": "所属岗位",
-    "tenantName": "所属租户",
     "lastLoginAt": "最后登录时间",
     "lastLoginIp": "最后登录IP",
     "createdAt": "创建时间"

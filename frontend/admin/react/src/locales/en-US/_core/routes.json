@@ -33,9 +33,6 @@
   "server-error": "Server Error",
   "system": "System Management",
   "tasks": "Task Management",
-  "tenant": "Tenant Management",
-  "tenant-members": "Tenant List",
-  "tenant-plans": "Subscription Plans",
   "unauthorized": "Unauthorized",
   "user-detail": "User Details",
   "user-profile": "Profile Center",
@@ -44,11 +41,6 @@
     "profile": {
       "settings": "Profile Center",
       "internalMessage": "Inbox"
-    },
-    "tenant": {
-      "moduleName": "Tenant Management",
-      "member": "Tenant List",
-      "plan": "Subscription Plans"
     },
     "opm": {
       "moduleName": "Organization & Personnel",

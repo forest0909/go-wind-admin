@@ -118,11 +118,11 @@ async function applySuccessfulLogin(
 }
 
 // 退出时记下是哪个账号退出的。登录页 ?redirect= 是上一个账号停留的页面，
-// 换了账号再跳过去，新账号可能根本没有这个页面（平台页对租户账号就是 404）。
+// 换了账号再跳过去，新账号可能根本没有这个页面（没有授权的页面就是 404）。
 const SIGNED_OUT_ACCOUNT_KEY = 'signed-out-account';
 
 function accountKey(info: UserInfo | null): string | null {
-  return info?.id ? `${info.tenantId ?? 0}:${info.id}` : null;
+  return info?.id ? `${info.id}` : null;
 }
 
 function rememberSignedOutAccount(info: UserInfo | null): void {

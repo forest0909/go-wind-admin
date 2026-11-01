@@ -593,7 +593,7 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 			targetUsername = targetUser.GetUsername()
 		}
 
-		if err = s.userCredentialRepo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+		if err = s.userCredentialRepo.ResetCredential(ctx, req.GetId(), &authenticationV1.ResetCredentialRequest{
 			IdentityType:  authenticationV1.UserCredential_USERNAME,
 			Identifier:    targetUsername,
 			NewCredential: req.GetPassword(),
@@ -726,7 +726,7 @@ func (s *UserService) EditUserPassword(ctx context.Context, req *identityV1.Edit
 		return nil, adminV1.ErrorForbidden("no permission to reset password of user in other tenant")
 	}
 
-	if err = s.userCredentialRepo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+	if err = s.userCredentialRepo.ResetCredential(ctx, u.GetId(), &authenticationV1.ResetCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    u.GetUsername(),
 		NewCredential: req.GetNewPassword(),

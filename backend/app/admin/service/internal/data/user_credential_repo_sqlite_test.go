@@ -610,7 +610,7 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	}
 
 	// ChangeCredential：错误旧口令拒绝
-	require.Error(t, repo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	require.Error(t, repo.ChangeCredential(ctx, 77, &authenticationV1.ChangeCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		OldCredential: "Wr0ng!Passw0rd#00",
@@ -618,7 +618,7 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	}), "错误旧口令应被拒绝")
 
 	// ChangeCredential：弱新口令被复杂度校验拒绝
-	require.Error(t, repo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	require.Error(t, repo.ChangeCredential(ctx, 77, &authenticationV1.ChangeCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		OldCredential: pw0,
@@ -626,7 +626,7 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	}), "弱新口令应被复杂度校验拒绝")
 
 	// ChangeCredential：正确旧口令轮换到 pw1，旧哈希进入历史（1 条）
-	require.NoError(t, repo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	require.NoError(t, repo.ChangeCredential(ctx, 77, &authenticationV1.ChangeCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		OldCredential: pw0,
@@ -644,7 +644,7 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	require.Error(t, err, "轮换后旧口令 pw0 应失效")
 
 	// 历史口令检查：轮换回 pw0 应被历史拒绝
-	require.Error(t, repo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	require.Error(t, repo.ChangeCredential(ctx, 77, &authenticationV1.ChangeCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		OldCredential: pw1,
@@ -656,7 +656,7 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	encNew, err := crypto.AesEncrypt([]byte(pw2), crypto.DefaultAESKey, nil)
 	require.NoError(t, err)
-	require.NoError(t, repo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	require.NoError(t, repo.ChangeCredential(ctx, 77, &authenticationV1.ChangeCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		OldCredential: base64.StdEncoding.EncodeToString(encOld),
@@ -669,7 +669,7 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	require.Equal(t, uint32(77), uid)
 
 	// ChangeCredential 的 AES needDecrypt 路径：非法 base64 拒绝
-	require.Error(t, repo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	require.Error(t, repo.ChangeCredential(ctx, 77, &authenticationV1.ChangeCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		OldCredential: "!!not-base64!!",
@@ -678,7 +678,7 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	}), "非法 base64 旧口令应被拒绝")
 
 	// ResetCredential：跳过旧口令校验直接轮换到 pw3，历史封顶 3 条
-	require.NoError(t, repo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+	require.NoError(t, repo.ResetCredential(ctx, 77, &authenticationV1.ResetCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		NewCredential: pw3,
@@ -691,19 +691,19 @@ func TestUserCredentialRepoSqlite_PasswordLifecycle(t *testing.T) {
 	require.Error(t, err, "重置后旧口令 pw2 应失效")
 
 	// ResetCredential：历史口令与弱口令均被拒绝
-	require.Error(t, repo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+	require.Error(t, repo.ResetCredential(ctx, 77, &authenticationV1.ResetCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		NewCredential: pw0,
 	}), "重置为历史口令 pw0 应被拒绝")
-	require.Error(t, repo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+	require.Error(t, repo.ResetCredential(ctx, 77, &authenticationV1.ResetCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "sqlite_pw_user",
 		NewCredential: "abc",
 	}), "重置为弱口令应被拒绝")
 
 	// ResetCredential：不存在的标识符
-	require.Error(t, repo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+	require.Error(t, repo.ResetCredential(ctx, 77, &authenticationV1.ResetCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    "no_such_pw_user_zzz",
 		NewCredential: pw3,

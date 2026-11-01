@@ -29,7 +29,7 @@ func TestUserCredentialRepoSqlite_LegacyTenantDuplicateUsername(t *testing.T) {
 	}
 	ctx := viewer.WithContext(context.Background(), viewer.NewUserContext(1, 0, 0, "", nil))
 
-	require.NoError(t, repo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	require.NoError(t, repo.ChangeCredential(ctx, 1, &authenticationV1.ChangeCredentialRequest{
 		IdentityType: authenticationV1.UserCredential_USERNAME, Identifier: "admin",
 		OldCredential: oldPw, NewCredential: "N3w!Passw0rd#77",
 	}), "租户 0 的 admin 应能改密")
@@ -37,7 +37,7 @@ func TestUserCredentialRepoSqlite_LegacyTenantDuplicateUsername(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint32(1), uid)
 
-	require.NoError(t, repo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+	require.NoError(t, repo.ResetCredential(ctx, 1, &authenticationV1.ResetCredentialRequest{
 		IdentityType: authenticationV1.UserCredential_USERNAME, Identifier: "admin", NewCredential: "R3set!Passw0rd#99",
 	}), "租户 0 的 admin 应能被重置")
 	_, err = repo.FindUserCredential(sys, 0, authenticationV1.UserCredential_USERNAME, "admin", "R3set!Passw0rd#99", false)

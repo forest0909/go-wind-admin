@@ -26,6 +26,7 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
+	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
@@ -872,6 +873,20 @@ func (r *userRepo) Delete(ctx context.Context, req *identityV1.DeleteUserRequest
 		builder.Where(user.IDEQ(req.GetId()))
 	}
 
+	// 按用户名删除时 req.GetId() 为 0，先解析出真实 ID，后面的关联与凭证清理按它来。
+	userID := req.GetId()
+	if _, byName := req.QueryBy.(*identityV1.DeleteUserRequest_Username); byName {
+		if userID, err = tx.User.Query().
+			Where(user.UsernameEQ(req.GetUsername()), user.TenantIDEQ(0)).
+			OnlyID(ctx); err != nil {
+			if ent.IsNotFound(err) {
+				return identityV1.ErrorNotFound("user not found")
+			}
+			r.log.Errorf(ctx, "resolve user id by username failed: %s", err.Error())
+			return identityV1.ErrorInternalServerError("delete failed")
+		}
+	}
+
 	if _, err = builder.Exec(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return identityV1.ErrorNotFound("user not found")
@@ -884,13 +899,19 @@ func (r *userRepo) Delete(ctx context.Context, req *identityV1.DeleteUserRequest
 
 	switch constants.DefaultUserTenantRelationType {
 	case constants.UserTenantRelationNone, constants.UserTenantRelationOneToOne:
-		if err = r.removeUserRelations(ctx, tx, req.GetId()); err != nil {
+		if err = r.removeUserRelations(ctx, tx, userID); err != nil {
 			return err
 		}
 	case constants.UserTenantRelationOneToMany:
-		if err = r.removeMembershipRelations(ctx, tx, req.GetId()); err != nil {
+		if err = r.removeMembershipRelations(ctx, tx, userID); err != nil {
 			return err
 		}
+	}
+
+	// 凭证随用户一起删。留下的孤儿凭证会让同名重建的用户登录时 NotSingular → 503。
+	if _, err = tx.UserCredential.Delete().Where(usercredential.UserIDEQ(userID)).Exec(ctx); err != nil {
+		r.log.Errorf(ctx, "delete user credentials failed: %s", err.Error())
+		return identityV1.ErrorInternalServerError("delete user credentials failed")
 	}
 
 	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {

@@ -178,7 +178,7 @@
       "NOT_ACCEPTABLE": "Not acceptable",
       "PROXY_AUTHENTICATION_REQUIRED": "Proxy authentication required",
       "REQUEST_TIMEOUT": "Request timeout",
-      "CONFLICT": "Request conflict",
+      "CONFLICT": "Conflicts with existing data (e.g. the username, email or code is already in use)",
       "GONE": "Resource has been deleted",
       "LENGTH_REQUIRED": "Content-Length required",
       "PRECONDITION_FAILED": "Precondition failed",

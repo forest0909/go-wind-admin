@@ -88,6 +88,14 @@ func (s *PermissionService) init() {
 	if err := s.permissionRepo.AlignLinkSequences(ctx); err != nil {
 		s.log.Errorf(ctx, "权限关联表 id 序列对齐失败: %v", err)
 	}
+	// 多租户已移除：清掉旧库遗留的租户 / 套餐菜单、权限点、模板角色和权限组。
+	// 必须在权限点同步之前，否则同步会从遗留菜单再派生出权限点。没有遗留时只有查询。
+	if res, err := s.permissionRepo.PurgeLegacyTenantConfig(ctx); err != nil {
+		s.log.Errorf(ctx, "清理遗留租户配置失败: %v", err)
+	} else if !res.Empty() {
+		s.log.Infof(ctx, "已清理遗留租户配置: 菜单 %d、权限点 %d、角色 %d、权限组 %d",
+			res.Menus, res.Permissions, res.Roles, res.PermissionGroups)
+	}
 	apiCount, _ := s.apiRepo.Count(ctx, nil)
 	menusCount, _ := s.menuRepo.Count(ctx, []func(s *sql.Selector){})
 	if apiCount.Count > 0 && menusCount > 0 {

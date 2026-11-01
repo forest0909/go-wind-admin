@@ -417,20 +417,55 @@ func (r *userRepo) List(ctx context.Context, req *paginationV1.PagingRequest) (*
 		Items: ret.Items,
 	}
 
-	for _, item := range resp.Items {
-		roleIDs, positionIDs, orgUnitIDs, err = r.ListUserRelationIDs(ctx, item.GetId())
-		if err != nil {
-			r.log.Errorf(ctx, "list user relation ids failed: %s", err.Error())
-			continue
-		}
-		item.RoleIds = roleIDs
-		item.PositionIds = positionIDs
-		item.OrgUnitIds = orgUnitIDs
-
-		//r.log.Debugf(ctx, "user id=%d role_ids=%v position_ids=%v org_unit_ids=%v", item.GetId(), roleIDs, positionIDs, orgUnitIDs)
+	if err = r.fillRelationIDs(ctx, resp.Items); err != nil {
+		return nil, err
 	}
 
 	return resp, nil
+}
+
+// fillRelationIDs 给一页用户回填角色、岗位、组织单元 ID。
+// 一对一模式下每种关联按 user_id IN (...) 各查一次；以前逐个用户查三次，一页 100 人是 300 次查询。
+// 一对多（Membership）模式不是默认配置，仍逐个用户查。
+func (r *userRepo) fillRelationIDs(ctx context.Context, users []*identityV1.User) error {
+	if len(users) == 0 {
+		return nil
+	}
+
+	if constants.DefaultUserTenantRelationType == constants.UserTenantRelationOneToMany {
+		for _, item := range users {
+			roleIDs, positionIDs, orgUnitIDs, err := r.ListUserRelationIDs(ctx, item.GetId())
+			if err != nil {
+				r.log.Errorf(ctx, "list user relation ids failed: %s", err.Error())
+				return err
+			}
+			item.RoleIds, item.PositionIds, item.OrgUnitIds = roleIDs, positionIDs, orgUnitIDs
+		}
+		return nil
+	}
+
+	userIDs := make([]uint32, 0, len(users))
+	for _, item := range users {
+		userIDs = append(userIDs, item.GetId())
+	}
+	roleIDs, err := r.userRoleRepo.ListRoleIDsByUserIDs(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+	positionIDs, err := r.userPositionRepo.ListPositionIDsByUserIDs(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+	orgUnitIDs, err := r.userOrgUnitRepo.ListOrgUnitIDsByUserIDs(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+	for _, item := range users {
+		item.RoleIds = roleIDs[item.GetId()]
+		item.PositionIds = positionIDs[item.GetId()]
+		item.OrgUnitIds = orgUnitIDs[item.GetId()]
+	}
+	return nil
 }
 
 // Get 获取用户

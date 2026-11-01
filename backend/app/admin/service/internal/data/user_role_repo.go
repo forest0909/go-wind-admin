@@ -197,6 +197,30 @@ func (r *UserRoleRepo) AssignUserRoles(ctx context.Context, tx *ent.Tx, userID u
 	return nil
 }
 
+
+// ListRoleIDsByUserIDs 一次查出多个用户的role ID，按用户分组（不排除过期关联，与 ListRoleIDs(…, false) 同口径）。
+// 给用户列表用：以前逐个用户调 ListRoleIDs，一页 100 个用户就是 100 次查询。
+func (r *UserRoleRepo) ListRoleIDsByUserIDs(ctx context.Context, userIDs []uint32) (map[uint32][]uint32, error) {
+	result := make(map[uint32][]uint32, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	rows, err := r.entClient.Client().UserRole.Query().
+		Where(userrole.UserIDIn(userIDs...)).
+		Select(userrole.FieldUserID, userrole.FieldRoleID).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "query role ids by user ids failed: %s", err.Error())
+		return nil, permissionV1.ErrorInternalServerError("query role ids by user ids failed")
+	}
+	for _, row := range rows {
+		if row.UserID == nil || row.RoleID == nil {
+			continue
+		}
+		result[*row.UserID] = append(result[*row.UserID], *row.RoleID)
+	}
+	return result, nil
+}
 // ListRoleIDs 获取用户关联的角色ID列表
 func (r *UserRoleRepo) ListRoleIDs(ctx context.Context, userID uint32, excludeExpired bool) ([]uint32, error) {
 	if userID == 0 {

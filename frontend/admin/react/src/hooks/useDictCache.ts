@@ -33,8 +33,9 @@ export async function fetchAllDictEntries(): Promise<void> {
   }
 
   const [typesResult, entriesResult] = await Promise.all([
-    fetchListDictTypes(new PaginationQuery({ paging: { page: 1, pageSize: 9999 } })),
-    fetchListDictEntries(new PaginationQuery({ paging: { page: 1, pageSize: 99999 } })),
+    // 不传 paging 即 noPaging 拉全量：页长超过 100 会被后端静默截断
+    fetchListDictTypes(new PaginationQuery({})),
+    fetchListDictEntries(new PaginationQuery({})),
   ]);
 
   const types = typesResult?.items || [];

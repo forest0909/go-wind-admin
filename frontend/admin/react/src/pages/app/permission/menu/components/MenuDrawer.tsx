@@ -118,8 +118,8 @@ const MenuDrawer: React.FC<MenuDrawerProps> = ({ open, mode, data, onClose, onSu
   // 加载菜单树数据
   const fetchMenuTree = async () => {
     try {
+      // 不传 paging 即 noPaging 拉全量：页长超过 100 会被后端静默截断，父菜单下拉会缺项
       const query = new PaginationQuery({
-        paging: { page: 1, pageSize: 1000 },
         formValues: { status: 'ON' },
       });
       const response = await fetchListMenus(query);

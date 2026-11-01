@@ -10,6 +10,7 @@ import (
 	"go-wind-admin/third_party/go-utils/trans"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
+	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 
 	"go-wind-admin/third_party/go-crud/viewer"
 )
@@ -70,7 +71,8 @@ func parseResourceAndAction(operation string) (string, auditV1.OperationAuditLog
 	return resourceType, action
 }
 
-func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transport, middleErr error, latencyMs int64) {
+// ut 是认证中间件已验签的身份；为 nil 表示匿名。
+func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transport, ut *authenticationV1.UserTokenPayload, middleErr error, latencyMs int64) {
 	// 仅对写操作落库。按 HTTP 方法判读请求（比方法名前缀猜测可靠）：
 	// GET/HEAD/OPTIONS 属读请求，不构成变更，不记操作日志。
 	if req := htr.Request(); req != nil {
@@ -108,7 +110,6 @@ func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Tran
 	operationAuditLog.IpAddress = trans.Ptr(clientIp)
 	operationAuditLog.RequestId = trans.Ptr(auditutil.RequestID(htr.Request()))
 
-	ut := extractAuthToken(htr)
 	if ut != nil {
 		operationAuditLog.UserId = trans.Ptr(ut.UserId)
 		operationAuditLog.TenantId = ut.TenantId

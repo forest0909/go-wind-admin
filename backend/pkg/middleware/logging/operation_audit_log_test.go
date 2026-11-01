@@ -92,7 +92,7 @@ func TestOperationAuditLogHandleFieldMapping(t *testing.T) {
 	env := newAuditServer(t)
 	env.fire(nethttp.MethodPost, "/case/5", map[string]string{
 		"X-Test-Operation": "/demo.v1.GadgetService/Update",
-		"Authorization":    "Bearer " + mintTestToken(t),
+		"X-Test-Verified":  "1",
 		"X-Request-ID":     "req-op-1",
 	}, "", "127.0.0.1:1234")
 
@@ -217,7 +217,7 @@ func TestOperationAuditLogHandleDirectNilRequest(t *testing.T) {
 		tr := &khttp.Transport{}
 		ctx := transport.NewServerContext(context.Background(), tr)
 		khttp.SetOperation(ctx, "/demo.v1.GadgetService/Update")
-		mw.Handle(ctx, tr, nil, 0)
+		mw.Handle(ctx, tr, nil, nil, 0)
 		require.Len(t, *recs, 1)
 		rec := (*recs)[0]
 		assert.Equal(t, "gadget", rec.GetResourceType())
@@ -237,7 +237,7 @@ func TestOperationAuditLogHandleDirectNilRequest(t *testing.T) {
 		tr := &khttp.Transport{}
 		ctx := transport.NewServerContext(context.Background(), tr)
 		khttp.SetOperation(ctx, "/demo.v1.GadgetService/Update")
-		mw.Handle(ctx, tr, kerrors.New(403, "TEST_FORBIDDEN", "forbidden for test"), 0)
+		mw.Handle(ctx, tr, nil, kerrors.New(403, "TEST_FORBIDDEN", "forbidden for test"), 0)
 		require.Len(t, *recs, 1)
 		rec := (*recs)[0]
 		assert.False(t, rec.GetSuccess())
@@ -264,4 +264,37 @@ func TestOperationAuditLogHashAndSignatureEdges(t *testing.T) {
 	sig, err := auditutil.SignLogContent(nil, 0, 0, nil, "")
 	assert.Error(t, err, "无私钥时签名必须显式报错")
 	assert.Nil(t, sig)
+}
+
+// a1 F3：未验签的 JWT 不能决定审计身份。伪造 tid=9/uid=1 的令牌打写接口，
+// 认证失败（这里不注入已验签身份），审计按匿名记录：user_id=0、tenant 0、无用户名。
+func TestOperationAuditLogIgnoresUnverifiedToken(t *testing.T) {
+	env := newAuditServer(t)
+	env.fire(nethttp.MethodDelete, "/case/77", map[string]string{
+		"X-Test-Operation": "/admin.service.v1.UserService/Delete",
+		"Authorization":    "Bearer " + mintForgedToken(t),
+		"X-Test-Error":     "kratos",
+	}, "", "127.0.0.1:1234")
+
+	require.Len(t, env.capture.operation, 1)
+	rec := env.capture.operation[0]
+	assert.Zero(t, rec.GetUserId())
+	assert.Zero(t, rec.GetTenantId())
+	assert.Empty(t, rec.GetUsername())
+	assert.False(t, rec.GetSuccess())
+}
+
+// 登出等登录审计同理：只有验签过的身份才落 user_id。
+func TestLoginAuditLogIgnoresUnverifiedToken(t *testing.T) {
+	env := newAuditServer(t)
+	env.fire(nethttp.MethodPost, "/case", map[string]string{
+		"X-Test-Operation": "/admin.service.v1.AuthenticationService/Logout",
+		"Authorization":    "Bearer " + mintForgedToken(t),
+	}, "", "127.0.0.1:1234")
+
+	require.Len(t, env.capture.login, 1)
+	rec := env.capture.login[0]
+	assert.Zero(t, rec.GetUserId())
+	assert.Zero(t, rec.GetTenantId())
+	assert.Empty(t, rec.GetUsername())
 }

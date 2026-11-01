@@ -1,52 +1,20 @@
 package logging
 
 import (
-	"context"
-	"fmt"
-	"strings"
-
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/transport/http"
 	"go-wind-admin/third_party/go-utils/auditutil"
 	"go-wind-admin/third_party/go-utils/geoip"
 	"go-wind-admin/third_party/go-utils/geoip/geolite"
-	"go-wind-admin/third_party/go-utils/jwtutil"
 	"go-wind-admin/third_party/go-utils/trans"
-	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"github.com/mileusna/useragent"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
-
-	"go-wind-admin/pkg/jwt"
 )
 
 var ipClient, _ = geolite.NewClient()
-
-// extractAuthToken 从JWT Token中提取用户信息
-func extractAuthToken(htr *http.Transport) *authenticationV1.UserTokenPayload {
-	authToken := htr.RequestHeader().Get(HeaderKeyAuthorization)
-	if len(authToken) == 0 {
-		return nil
-	}
-
-	jwtToken := strings.TrimPrefix(authToken, "Bearer ")
-
-	claims, err := jwtutil.ParseJWTPayload(jwtToken)
-	if err != nil {
-		bLogger.GetLogger().Error(context.Background(), fmt.Sprintf("extractAuthToken ParseJWTPayload failed: %v", err))
-		return nil
-	}
-
-	ut, err := jwt.NewUserTokenPayloadWithJwtMapClaims(claims)
-	if err != nil {
-		bLogger.GetLogger().Error(context.Background(), fmt.Sprintf("extractAuthToken NewUserTokenPayloadWithJwtMapClaims failed: %v", err))
-		return nil
-	}
-
-	return ut
-}
 
 // getClientID 获取客户端ID
 func getClientID(request *http.Request, userToken *authenticationV1.UserTokenPayload) string {

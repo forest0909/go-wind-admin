@@ -115,6 +115,8 @@ func NewRestMiddleware(
 			auth.WithInjectMetadata(false),
 			auth.WithInjectEnt(true),
 		),
+		// 紧跟认证：把已验签身份交给外层审计中间件（认证失败的请求按匿名记）
+		applogging.CaptureVerifiedIdentity(),
 		selector.Server(authz.Server(authorizer.Engine())).
 			Match(newAuthzRequiredMatcher()).
 			Build(),

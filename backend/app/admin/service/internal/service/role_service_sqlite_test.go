@@ -586,6 +586,10 @@ func pageRoleData(src *permissionV1.Role, includeOrgUnits bool, mutate func(*per
 
 type roleHolderListErrStub struct{}
 
+func (roleHolderListErrStub) ListRoleIDs(context.Context, uint32, bool) ([]uint32, error) {
+	return nil, nil
+}
+
 func (roleHolderListErrStub) ListUserIDsByRoleIDs(context.Context, []uint32, bool) ([]uint32, error) {
 	return nil, errors.New("user role query failed")
 }

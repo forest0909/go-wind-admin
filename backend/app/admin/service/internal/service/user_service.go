@@ -381,6 +381,12 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	req.Data.RoleId = nil
 	req.Data.RoleIds = roleIds
 
+	// 授权上限：非超级管理员只能分配权限点不超出自己的角色。
+	if err = ensureRolesWithinOperator(ctx, s.roleRepo, s.userRepo.ListRoleIDsByUserID, operator, roleIds); err != nil {
+		s.log.Errorf(ctx, "operator [%d] assign roles %v rejected: %v", operator.GetUserId(), roleIds, err)
+		return nil, err
+	}
+
 	// 创建请求里的密码与改密、重置同一条传输契约：前端 AES 密文。
 	// 必须显式给密码：不再回落到公开的统一默认密码。
 	if len(req.GetPassword()) == 0 {
@@ -538,8 +544,16 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		if listErr != nil {
 			s.log.Errorf(ctx, "list roles before update failed for user [%d]: %v", req.GetId(), listErr)
 			revokeForRoleChange = true
+			currentRoleIDs = nil // 现有集合不明：按全部是新加的角色做上限校验
 		} else if !sameUint32Set(sliceutil.Unique(currentRoleIDs), roleIds) {
 			revokeForRoleChange = true
+		}
+
+		// 授权上限只看新加的角色：页面保存会带上目标用户原有的角色，原样保留不算分配。
+		added := newlyAdded(roleIds, currentRoleIDs)
+		if err = ensureRolesWithinOperator(ctx, s.roleRepo, s.userRepo.ListRoleIDsByUserID, operator, added); err != nil {
+			s.log.Errorf(ctx, "operator [%d] assign roles %v to user [%d] rejected: %v", operator.GetUserId(), added, req.GetId(), err)
+			return nil, err
 		}
 	}
 

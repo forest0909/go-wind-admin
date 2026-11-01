@@ -32,6 +32,14 @@ message Server {
 
     bool enable_swagger = 20;  // 启用SwaggerUI
     bool enable_pprof = 21;  // 启用pprof
+
+    // 可信反向代理：只有直连对端属于这些网段时才采信 X-Forwarded-For / X-Real-IP。
+    // 不配置时保持默认（RFC1918 私网 + 回环），docker 网络和常见反向代理依赖这一默认；
+    // 配置了但 cidrs 为空表示不信任任何代理，始终用 TCP 对端地址。
+    message TrustedProxies {
+      repeated string cidrs = 1;  // CIDR 或单个 IP
+    }
+    TrustedProxies trusted_proxies = 22;  // 可信反向代理
   }
 
   // gPRC

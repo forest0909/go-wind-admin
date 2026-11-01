@@ -44,6 +44,16 @@ const (
 	// 踢下线沿此链回溯删除整条会话世系的 AT，保住「踢即全灭」的语义。
 	TokenLineageKeyFormat = "lin:%d:%d:%s"
 
+	// RevokeVersionKeyFormat 用户级吊销版本 rv:{ct}:{uid}。全量吊销先 INCR。
+	// 刷新在消费旧 RT 的同一个脚本里读出版本，写新令牌时在同一个脚本里比对，
+	// 中间被全量吊销穿插就不写，避免在途刷新把已吊销的会话写回来。
+	RevokeVersionKeyFormat = "rv:%d:%d"
+
+	// KickedSessionKeyFormat 被踢会话标记 kj:{ct}:{uid}:{jti}，TTL=宽限窗口。
+	// 踢单个会话时给它和整条代际世系的祖先都打上标记：
+	// 世系里的宽限 RT 不能再兑换，以该会话为父的在途刷新也不能写新令牌。
+	KickedSessionKeyFormat = "kj:%d:%d:%s"
+
 	// RefreshTokenGraceWindow 单个旧 RT 的宽限窗口。只覆盖并发刷新对撞和
 	// 后台标签页定时器的抖动，60 秒按成员单独计算，后一次轮换不会把更早的成员续期。
 	RefreshTokenGraceWindow = 60 * time.Second
@@ -57,24 +67,27 @@ const (
 
 // verifyAndRevokeRefreshTokenScript 原子验证并轮换刷新令牌的 Lua 脚本。
 // 在单次 Redis 调用中完成「验证 RT → 删除 RT → 删除会话元数据 → 旧 RT 入宽限集合」，
-// 避免 TOCTOU 竞态。KEYS: [rtKey, usKey, graceKey]，ARGV: [refreshToken, graceTTLSeconds]。
+// 避免 TOCTOU 竞态。KEYS: [rtKey, usKey, graceKey, rvKey]，ARGV: [refreshToken, graceTTLSeconds]。
 // usKey 传空串表示不删除。
 // 宽限集合是 ZSET，score 为该成员的过期 Unix 秒。写入时用 Redis TIME 清掉已过期成员，
 // 不把整组 TTL 往后推。旧版 SET 在第一次写入时删掉，避免 WRONGTYPE。
 // 旧 AT（atKey）不再删除：多标签页/多前端共享同一浏览器 cookie jar，顺序轮换
 // 会把上一枚刚发给其他标签页在用的 AT 作废，引发持续互杀的 401 风暴；旧 AT
-// 改为自然存活至自身 TTL，踢下线经代际链（lin: 键）追杀。返回值: 1=验证成功,
-// 0=令牌不存在或值不匹配
+// 改为自然存活至自身 TTL，踢下线经代际链（lin: 键）追杀。返回值: {ok, 吊销版本}，
+// ok 1=验证成功, 0=令牌不存在或值不匹配；吊销版本与消费旧 RT 在同一原子操作里读出。
 var verifyAndRevokeRefreshTokenScript = redis.NewScript(`
 	local rtKey = KEYS[1]
 	local usKey = KEYS[2]
 	local graceKey = KEYS[3]
+	local rvKey = KEYS[4]
 	local refreshToken = ARGV[1]
 	local graceTTL = tonumber(ARGV[2])
 
+	local ver = tonumber(redis.call('GET', rvKey) or '0') or 0
+
 	local stored = redis.call('GET', rtKey)
 	if not stored or stored ~= refreshToken then
-		return 0
+		return {0, ver}
 	end
 
 	redis.call('DEL', rtKey)
@@ -91,36 +104,72 @@ var verifyAndRevokeRefreshTokenScript = redis.NewScript(`
 	redis.call('ZREMRANGEBYSCORE', graceKey, '-inf', now)
 	redis.call('ZADD', graceKey, now + graceTTL, refreshToken)
 	redis.call('EXPIRE', graceKey, graceTTL)
-	return 1
+	return {1, ver}
 `)
 
 // isGraceRefreshTokenScript 只承认还没过期的宽限成员。
-// KEYS: [graceKey]，ARGV: [refreshToken]。返回 1=未过期成员，0=不是。
+// KEYS: [graceKey, kickedKey, rvKey]，ARGV: [refreshToken]。返回 {ok, 吊销版本}，ok 1=未过期成员，0=不是。
+// kickedKey 为空串表示不查踢下线标记；该 RT 所在会话已被踢时删掉成员并拒绝。
 // 查询时顺手清掉已过期成员。旧版 SET 直接删除并拒绝，避免 WRONGTYPE 被当成命中。
 var isGraceRefreshTokenScript = redis.NewScript(`
 	local graceKey = KEYS[1]
+	local kickedKey = KEYS[2]
+	local rvKey = KEYS[3]
 	local refreshToken = ARGV[1]
+
+	local ver = tonumber(redis.call('GET', rvKey) or '0') or 0
 
 	local typ = redis.call('TYPE', graceKey)
 	if not typ or typ.ok == 'none' then
-		return 0
+		return {0, ver}
 	end
 	if typ.ok == 'set' then
 		redis.call('DEL', graceKey)
-		return 0
+		return {0, ver}
+	end
+
+	if kickedKey and kickedKey ~= '' and redis.call('EXISTS', kickedKey) == 1 then
+		redis.call('ZREM', graceKey, refreshToken)
+		return {0, ver}
 	end
 
 	local now = tonumber(redis.call('TIME')[1])
 	redis.call('ZREMRANGEBYSCORE', graceKey, '-inf', now)
 	local score = redis.call('ZSCORE', graceKey, refreshToken)
 	if not score then
-		return 0
+		return {0, ver}
 	end
 	if tonumber(score) <= now then
+		return {0, ver}
+	end
+	return {1, ver}
+`)
+
+// addGuardedTokenPairScript 刷新签发新令牌对：吊销版本没变、父会话没被踢才写入。
+// 比对和写入在同一个脚本里，全量吊销 / 踢下线不能从中间穿插。
+// KEYS: [atKey, rtKey, rvKey, kickedParentKey]，ARGV: [at, rt, atTTLms, rtTTLms, expectedVersion]。
+// kickedParentKey 为空串表示没有父会话。返回 1=已写入，0=会话已被吊销。
+var addGuardedTokenPairScript = redis.NewScript(`
+	local ver = tonumber(redis.call('GET', KEYS[3]) or '0') or 0
+	if ver ~= tonumber(ARGV[5]) then
 		return 0
 	end
+	if KEYS[4] and KEYS[4] ~= '' and redis.call('EXISTS', KEYS[4]) == 1 then
+		return 0
+	end
+	redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[3])
+	redis.call('SET', KEYS[2], ARGV[2], 'PX', ARGV[4])
 	return 1
 `)
+
+// ErrSessionRevoked 在途刷新期间会话已被吊销，新令牌没有写入。
+var ErrSessionRevoked = errors.New("session revoked during refresh")
+
+// TokenWriteGuard 刷新写新令牌时的条件：吊销版本仍为 RevokeVersion，父会话 ParentJti 没被踢。
+type TokenWriteGuard struct {
+	RevokeVersion int64
+	ParentJti     string
+}
 
 // UserTokenCache 用户令牌缓存
 type UserTokenCache struct {
@@ -159,6 +208,43 @@ func (r *UserTokenCache) AddTokenPair(
 	_, err = pipe.Exec(ctx)
 
 	return err
+}
+
+// AddTokenPairGuarded 按 guard 条件写入令牌对；会话已被吊销时返回 ErrSessionRevoked。
+func (r *UserTokenCache) AddTokenPairGuarded(
+	ctx context.Context,
+	clientType authenticationV1.ClientType,
+	userId uint32,
+	jti string,
+	accessToken string,
+	refreshToken string,
+	accessTokenExpires time.Duration,
+	refreshTokenExpires time.Duration,
+	guard TokenWriteGuard,
+) error {
+	kickedParentKey := ""
+	if guard.ParentJti != "" {
+		kickedParentKey = r.makeKickedSessionKey(clientType, userId, guard.ParentJti)
+	}
+	n, err := addGuardedTokenPairScript.Run(ctx, r.rdb,
+		[]string{
+			r.makeAccessTokenFieldKey(clientType, userId, jti),
+			r.makeRefreshTokenFieldKey(clientType, userId, jti),
+			r.makeRevokeVersionKey(clientType, userId),
+			kickedParentKey,
+		},
+		accessToken, refreshToken,
+		accessTokenExpires.Milliseconds(), refreshTokenExpires.Milliseconds(),
+		guard.RevokeVersion,
+	).Int64()
+	if err != nil {
+		r.log.Errorf(ctx, "add guarded token pair failed for user [%d] jti [%s]: %v", userId, jti, err)
+		return err
+	}
+	if n != 1 {
+		return ErrSessionRevoked
+	}
+	return nil
 }
 
 // AddAccessToken 添加访问令牌
@@ -208,6 +294,11 @@ func (r *UserTokenCache) GetRefreshTokens(ctx context.Context, clientType authen
 // RevokeToken 移除所有令牌（含会话元数据）
 func (r *UserTokenCache) RevokeToken(ctx context.Context, clientType authenticationV1.ClientType, userId uint32) error {
 	var err error
+	// 先抬吊销版本，再删令牌：在途刷新写新令牌时比对版本失败，不会把会话写回来。
+	if err = r.rdb.Incr(ctx, r.makeRevokeVersionKey(clientType, userId)).Err(); err != nil {
+		r.log.Errorf(ctx, "bump revoke version failed for user [%d]: [%v]", userId, err)
+	}
+
 	if err = r.RevokeUserAllAccessToken(ctx, clientType, userId); err != nil {
 		r.log.Errorf(ctx, "remove user access token failed: [%v]", err)
 	}
@@ -377,19 +468,45 @@ func (r *UserTokenCache) VerifyAndRevokeTokenPair(
 	jti string,
 	refreshToken string,
 ) (bool, error) {
+	ok, _, err := r.VerifyAndRevokeTokenPairVersioned(ctx, clientType, userId, jti, refreshToken)
+	return ok, err
+}
+
+// VerifyAndRevokeTokenPairVersioned 同 VerifyAndRevokeTokenPair，另外返回消费旧 RT 时的吊销版本，
+// 刷新写新令牌时用它做条件（见 AddTokenPairGuarded）。
+func (r *UserTokenCache) VerifyAndRevokeTokenPairVersioned(
+	ctx context.Context,
+	clientType authenticationV1.ClientType,
+	userId uint32,
+	jti string,
+	refreshToken string,
+) (bool, int64, error) {
 	rtKey := r.makeRefreshTokenFieldKey(clientType, userId, jti)
 	// 会话元数据随旧令牌对一并原子删除（刷新轮换后旧会话记录即失效）
 	usKey := r.makeUserSessionKey(clientType, userId, jti)
 	graceKey := r.makeRefreshTokenGraceKey(clientType, userId)
 
-	result, err := verifyAndRevokeRefreshTokenScript.Run(ctx, r.rdb, []string{rtKey, usKey, graceKey},
-		refreshToken, int(RefreshTokenGraceWindow.Seconds())).Int64()
+	ok, ver, err := runOkVersionScript(ctx, r.rdb, verifyAndRevokeRefreshTokenScript,
+		[]string{rtKey, usKey, graceKey, r.makeRevokeVersionKey(clientType, userId)},
+		refreshToken, int(RefreshTokenGraceWindow.Seconds()))
 	if err != nil {
 		r.log.Errorf(ctx, "verifyAndRevokeTokenPair failed for user [%d] jti [%s]: %v", userId, jti, err)
-		return false, err
+		return false, 0, err
 	}
 
-	return result == 1, nil
+	return ok, ver, nil
+}
+
+// runOkVersionScript 执行返回 {ok, version} 的脚本。
+func runOkVersionScript(ctx context.Context, rdb *redis.Client, script *redis.Script, keys []string, args ...interface{}) (bool, int64, error) {
+	vals, err := script.Run(ctx, rdb, keys, args...).Int64Slice()
+	if err != nil {
+		return false, 0, err
+	}
+	if len(vals) != 2 {
+		return false, 0, fmt.Errorf("unexpected script result length %d", len(vals))
+	}
+	return vals[0] == 1, vals[1], nil
 }
 
 // IsGraceRefreshToken 刷新令牌是否处于宽限窗口内（刚被他人并发轮换掉的 RT）。
@@ -400,13 +517,31 @@ func (r *UserTokenCache) IsGraceRefreshToken(
 	userId uint32,
 	refreshToken string,
 ) bool {
-	graceKey := r.makeRefreshTokenGraceKey(clientType, userId)
-	n, err := isGraceRefreshTokenScript.Run(ctx, r.rdb, []string{graceKey}, refreshToken).Int64()
+	ok, _ := r.CheckGraceRefreshToken(ctx, clientType, userId, "", refreshToken)
+	return ok
+}
+
+// CheckGraceRefreshToken 宽限判断，另外返回吊销版本。jti 是该 RT 自己的 jti：
+// 它所在的会话世系被踢过时不再接受（jti 为空则不查踢下线标记）。
+func (r *UserTokenCache) CheckGraceRefreshToken(
+	ctx context.Context,
+	clientType authenticationV1.ClientType,
+	userId uint32,
+	jti string,
+	refreshToken string,
+) (bool, int64) {
+	kickedKey := ""
+	if jti != "" {
+		kickedKey = r.makeKickedSessionKey(clientType, userId, jti)
+	}
+	ok, ver, err := runOkVersionScript(ctx, r.rdb, isGraceRefreshTokenScript,
+		[]string{r.makeRefreshTokenGraceKey(clientType, userId), kickedKey, r.makeRevokeVersionKey(clientType, userId)},
+		refreshToken)
 	if err != nil {
 		r.log.Errorf(ctx, "check refresh token grace failed for user [%d]: %v", userId, err)
-		return false
+		return false, 0
 	}
-	return n == 1
+	return ok, ver
 }
 
 // AddTokenLineage 记录令牌代际：newJti 由 prevJti 轮换而来。TTL 与 AT 生命周期
@@ -431,6 +566,11 @@ func (r *UserTokenCache) AddTokenLineage(
 // 沿 lin: 链回溯逐代删除，恢复「踢即全灭」语义。环/断链由深度上限兜底。
 func (r *UserTokenCache) RevokeTokenByJti(ctx context.Context, clientType authenticationV1.ClientType, userId uint32, jti string) error {
 	var err error
+	// 先给本会话打踢下线标记：宽限 RT 和以它为父的在途刷新都会被拒。祖先在下面回溯时逐个标记。
+	if err = r.markKicked(ctx, clientType, userId, jti); err != nil {
+		r.log.Errorf(ctx, "mark kicked session failed: [%v]", err)
+	}
+
 	if err = r.RevokeAccessToken(ctx, clientType, userId, jti); err != nil {
 		r.log.Errorf(ctx, "remove user access token failed: [%v]", err)
 	}
@@ -450,6 +590,10 @@ func (r *UserTokenCache) RevokeTokenByJti(ctx context.Context, clientType authen
 		parent, err := r.rdb.GetDel(ctx, lineageKey).Result()
 		if err != nil || parent == "" {
 			break
+		}
+		// 祖先代的 RT 可能还在宽限集合里，打上标记后不能再兑换
+		if err = r.markKicked(ctx, clientType, userId, parent); err != nil {
+			r.log.Errorf(ctx, "mark kicked lineage session failed: [%v]", err)
 		}
 		if err = r.RevokeAccessToken(ctx, clientType, userId, parent); err != nil {
 			r.log.Errorf(ctx, "remove lineage access token failed: [%v]", err)
@@ -492,6 +636,24 @@ func (r *UserTokenCache) makeRefreshTokenGraceKey(clientType authenticationV1.Cl
 // makeTokenLineageKey 生成令牌代际链键 lin:{ct}:{uid}:{jti}
 func (r *UserTokenCache) makeTokenLineageKey(clientType authenticationV1.ClientType, userId uint32, jti string) string {
 	return fmt.Sprintf(TokenLineageKeyFormat, clientType.Number(), userId, jti)
+}
+
+// markKicked 标记会话已被踢。宽限 RT 和在途刷新最多存活一个宽限窗口，标记同样长即可。
+func (r *UserTokenCache) markKicked(ctx context.Context, clientType authenticationV1.ClientType, userId uint32, jti string) error {
+	if jti == "" {
+		return nil
+	}
+	return r.set(ctx, r.makeKickedSessionKey(clientType, userId, jti), "1", RefreshTokenGraceWindow)
+}
+
+// makeRevokeVersionKey 生成用户级吊销版本键 rv:{ct}:{uid}
+func (r *UserTokenCache) makeRevokeVersionKey(clientType authenticationV1.ClientType, userId uint32) string {
+	return fmt.Sprintf(RevokeVersionKeyFormat, clientType.Number(), userId)
+}
+
+// makeKickedSessionKey 生成被踢会话标记键 kj:{ct}:{uid}:{jti}
+func (r *UserTokenCache) makeKickedSessionKey(clientType authenticationV1.ClientType, userId uint32, jti string) string {
+	return fmt.Sprintf(KickedSessionKeyFormat, clientType.Number(), userId, jti)
 }
 
 // makeBlacklistKey 生成黑名单键

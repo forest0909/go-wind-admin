@@ -603,7 +603,7 @@ func (s *AuthenticationService) doGrantTypeRefreshToken(ctx context.Context, req
 	// 不再依赖 access token 提供的身份信息。旧 jti 用于继承会话元数据的登录时间。
 	// grace=true 表示 RT 处于宽限窗口（刚被并发刷新对撞方轮换掉），本次兑换
 	// 一个独立新会话，不做旧会话元数据继承。
-	userId, oldJti, grace, err := s.authenticator.VerifyRefreshToken(ctx, req.GetClientType(), refreshToken)
+	userId, oldJti, grace, writeGuard, err := s.authenticator.VerifyRefreshToken(ctx, req.GetClientType(), refreshToken)
 	if err != nil {
 		s.log.Errorf(ctx, "verify refresh token failed: [%s]", err)
 		return nil, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
@@ -640,8 +640,8 @@ func (s *AuthenticationService) doGrantTypeRefreshToken(ctx context.Context, req
 		return nil, err
 	}
 
-	// 生成令牌
-	accessToken, newRefreshToken, err := s.authenticator.CreateUserToken(ctx, req.GetClientType(), tokenPayload)
+	// 生成令牌。writeGuard：验证旧 RT 之后若发生全量吊销或踢下线，新令牌不会写入。
+	accessToken, newRefreshToken, err := s.authenticator.CreateUserTokenGuarded(ctx, req.GetClientType(), tokenPayload, writeGuard)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,7 +40,8 @@ func NewAuditLogArchiveRepo(ctx *bootstrap.Context, entClient *entCrud.EntClient
 const archiveBatch = 5000
 
 // ArchiveExpired 归档所有审计表中 created_at < before 的行。
-// 返回各表归档行数。导出成功才删除；单表失败跳过并记日志，不影响其他表。
+// 返回各表归档行数。导出成功才删除；单表失败记日志后继续处理其他表，
+// 所有失败汇总成一个 error 在最后返回，让任务队列把这次执行记为失败。
 func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Time, outDir string) (map[string]int, error) {
 	ctx = viewer.WithSystemContext(ctx)
 	client := r.client
@@ -98,6 +100,7 @@ func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Ti
 		},
 	}
 
+	var errs []error
 	stamp := time.Now().Format("20060102-150405")
 	for _, job := range jobs {
 		total := 0
@@ -105,6 +108,7 @@ func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Ti
 			rows, ids, err := job.query()
 			if err != nil {
 				r.log.Errorf(ctx, "archive %s: query: %s", job.name, err.Error())
+				errs = append(errs, fmt.Errorf("archive %s: query: %w", job.name, err))
 				break
 			}
 			if len(rows) == 0 {
@@ -115,6 +119,7 @@ func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Ti
 			f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o640)
 			if err != nil {
 				r.log.Errorf(ctx, "archive %s: open file: %s", job.name, err.Error())
+				errs = append(errs, fmt.Errorf("archive %s: open file: %w", job.name, err))
 				break
 			}
 			werr := func() error {
@@ -129,12 +134,14 @@ func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Ti
 			}()
 			if werr != nil {
 				r.log.Errorf(ctx, "archive %s: write: %s", job.name, werr.Error())
+				errs = append(errs, fmt.Errorf("archive %s: write: %w", job.name, werr))
 				break
 			}
 
 			// 导出成功才删除；删除行数应与导出一致（同批 id）。
 			if _, derr := job.del(ids); derr != nil {
 				r.log.Errorf(ctx, "archive %s: delete: %s（文件已落盘，重跑将产生重复行）", job.name, derr.Error())
+				errs = append(errs, fmt.Errorf("archive %s: delete: %w", job.name, derr))
 				break
 			}
 			total += len(rows)
@@ -147,5 +154,5 @@ func (r *AuditLogArchiveRepo) ArchiveExpired(ctx context.Context, before time.Ti
 		}
 	}
 
-	return results, nil
+	return results, errors.Join(errs...)
 }

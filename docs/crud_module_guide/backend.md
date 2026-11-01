@@ -98,7 +98,7 @@ Produces `api/gen/go/<domain>/service/v1/*.pb.go` and `api/gen/go/admin/service/
 
 ## Step 4 — Ent schema
 
-Path: `backend/app/admin/service/internal/data/ent/schema/<entity>.go`. Mirror `schema/api.go` (plain) or `schema/dict_type.go` (with tenant + edges).
+Path: `backend/app/admin/service/internal/data/ent/schema/<entity>.go`. Mirror `schema/api.go` (plain) or `schema/dict_type.go` (with edges).
 
 ```go
 package schema
@@ -140,7 +140,7 @@ func (<Entity>) Mixin() []ent.Mixin {
         // Optional extras:
         // mixin.IsEnabled{},         // bool is_enabled
         // mixin.SortOrder{},         // uint32 sort_order
-        // mixin.TenantID[uint32]{},  // tenant_id (multi-tenant)
+        // mixin.TenantID[uint32]{},  // legacy tenant_id column, always 0 — copy it if the sibling tables have it, never branch on it
     }
 }
 
@@ -394,7 +394,7 @@ Consequences for a new module:
 
 - **Fresh deployment**: everything (including Api registry rows) appears automatically on first boot.
 - **Existing deployment never re-seeds.** Adding entries to `DefaultMenus` / `DefaultRoles` / etc. changes nothing on a running instance — new menus go in via the 菜单管理 admin page.
-- **New endpoints register on restart.** On every boot `ApiService.init()` compares the Api table with the embedded `openapi.yaml` and runs `SyncApis` when they differ; `PermissionService.init()` then re-syncs permission points. So run `make openapi` before building/restarting — an endpoint missing from the embedded document stays out of the Api table and the tenant access checker fails closed with 403. 接口管理 →「接口同步」 still works for a manual run.
+- **New endpoints register on restart.** On every boot `ApiService.init()` compares the Api table with the embedded `openapi.yaml` and runs `SyncApis` when they differ; `PermissionService.init()` then re-syncs permission points. So run `make openapi` before building/restarting — an endpoint missing from the embedded document stays out of the Api table, gets no permission point, and every non-platform-admin role gets 403. 接口管理 →「接口同步」 still works for a manual run.
 - **Button codes are checked by `go test`.** `TestPermissionCodeConsistency` (`internal/service/permission_consistency_test.go`) derives codes from the embedded OpenAPI, `DefaultMenus` and the React `code:` / `<AccessButton>` usages; a button code no API produces, or one without a matching `<resource>:view` page, fails the test.
 - If the module needs its own built-in rows (like default dict types), follow the same pattern: data in `pkg/constants/default_data.go`, seeded from the service's `init()` behind `count == 0`.
 

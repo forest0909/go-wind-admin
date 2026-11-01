@@ -369,7 +369,7 @@ import AccessButton from '@/components/common/AccessButton';
 
 按钮编码由 `go test` 里的 `TestPermissionCodeConsistency` 把关：从内嵌 OpenAPI、`DefaultMenus` 和前端的
 `code:` / `<AccessButton>` 推出三方编码，按钮编码没有接口能生成、或者没有对应的 `<资源>:view` 页面都会失败。
-确实是某页面里的子资源（如套餐页里的配额列表）时，在该测试的 `actionsWithoutPage` 里登记并写明原因。
+确实是某页面里的子资源（如权限点页里的分组子列表）时，在该测试的 `actionsWithoutPage` 里登记并写明原因。
 
 ## React 默认后端菜单模式
 

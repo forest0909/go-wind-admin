@@ -30,7 +30,7 @@
 
 **单租户管理端：Go 后端 + React 前端。** 没有第二套前端，也没有 AI 模块。
 
-租户、套餐、配额的代码还在，侧栏菜单已隐藏。接口鉴权是 Casbin。
+租户、套餐、配额已删除；底层 `tenant_id` 列保留，值固定为 0，新模块不用管租户。接口鉴权是 Casbin。
 
 依赖在 `backend/third_party/`，许可证见 [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES)。命令见 [AGENTS.md](./AGENTS.md)。
 
@@ -175,7 +175,7 @@ pnpm dev                    # 端口 15888
 <tr><td><strong>实时通信</strong></td><td><code>SSE</code>（服务端推送） · <code>Asynq</code>（异步任务）</td></tr>
 <tr><td><strong>前端</strong></td><td>只有 React，技术见「React 版」那一行</td></tr>
 <tr><td><strong>已删除</strong></td><td>第二套前端、AI、SSO、MFA、程序内备份都不在本仓库</td></tr>
-<tr><td><strong>不对外的代码</strong></td><td>租户、套餐、配额的页面还在，侧栏不展示</td></tr>
+<tr><td><strong>已删除（多租户）</strong></td><td>租户、套餐、配额、用量、租户白标。底层 <code>tenant_id</code> 列保留，值固定为 0</td></tr>
 <tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code>（无 UMI） · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>部署运维</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -191,7 +191,7 @@ pnpm dev                    # 端口 15888
 | **安全审计** | 登录日志和操作日志，记录客户端 IP（并解析归属地）与前端下发的 `X-Request-ID` 请求号。asynq 每日定时归档：库内留存 180 天（`AUDIT_RETENTION_DAYS` 可调），超期数据导出 JSONL 归档文件留痕，库瘦身与日志留存两不误 |
 | **身份鉴别** | 口令复杂度（≥8 位、小写/大写/数字/符号四类取三）、历史口令复用检查（默认近 3 条）、口令有效期（默认 90 天），阈值经「参数管理」平台参数调整（内置参数启动时播种，环境变量配置已废弃）；图形验证码；Redis 登录失败限流（IP + 用户名双维度） |
 | **访问控制** | 接口鉴权是 Casbin。角色、权限、接口的对应关系存在数据库里，权限变更会热更新。另有菜单和按钮权限、角色级数据范围、字段级权限 |
-| **租户代码** | 隔离和套餐代码仍在，侧栏已隐藏。本仓库按单租户管理端使用，不作为多租户 SaaS 交付 |
+| **租户** | 多租户业务层已删除，只剩值固定为 0 的 `tenant_id` 列。本仓库是单租户管理端 |
 | **数据保密性** | 登录、创建用户、重置密码和个人中心改密的口令均应用层 AES 加密传输、bcrypt 哈希存储；敏感任务配置 AES-256-GCM 静态加密（Ent Hook 透明加解密）；JWT RS256 非对称签名；refresh token 走 HttpOnly Cookie；传输层 TLS 由部署层启用（后端 `server.rest.tls` 配置或 nginx / 负载均衡终止） |
 | **数据备份恢复** | 程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练恢复 |
 | **前端安全** | React 的 `frontend/admin/react/scripts/deploy/nginx.conf` 在生产侧下发 X-Frame-Options / HSTS / Content-Security-Policy。构建期还会向 `index.html` 注入 CSP `<meta>` |
@@ -209,8 +209,6 @@ pnpm dev                    # 端口 15888
 | 功能 | 说明 |
 |------|-----|
 | 用户管理 | 管理和查询用户，支持高级查询和按部门联动用户，用户可禁用/启用、设置/取消主管、重置密码、配置多角色、多部门和上级主管、一键登录指定用户等功能 |
-| 租户管理 | 代码和页面还在（`/tenant/members`），侧栏不展示。本仓库不作为多租户 SaaS 使用 |
-| 套餐与配额管理 | 代码和页面还在（`/tenant/plans`），侧栏不展示 |
 | 角色管理 | 管理角色和角色分组，支持按角色联动用户，设置菜单授权、数据权限范围（五档 / 自定义组织单元集）与字段级权限（黑名单字段集），批量添加和移除员工 |
 | 权限管理 | 管理权限分组、菜单、权限点，支持树形列表展示 |
 | 组织管理 | 管理组织，支持树形列表展示 |
@@ -227,7 +225,7 @@ pnpm dev                    # 端口 15888
 | 文件管理 | 管理文件上传，支持文件查询、上传到 OSS 或本地、下载、复制文件地址、删除文件、图片支持查看大图功能 |
 | 账号登录 | 支持用户名 / 邮箱 / 手机号多标识登录，并带图形验证码与登录限流 |
 | 验证码发信 | 个人中心换绑邮箱、换绑手机读 `app/admin/service/configs/mail.yaml` 的 SMTP 和短信账号。host 或 provider 留空表示这一路未配置；发送不再进任务队列 |
-| 在线用户 | 查看当前在线会话（用户、租户、客户端类型、登录 IP、User-Agent、设备 ID、登录时间），支持关键词过滤、分页（登录时间倒序）与单会话强制下线，30 秒自动刷新 |
+| 在线用户 | 查看当前在线会话（用户、客户端类型、登录 IP、User-Agent、设备 ID、登录时间），支持关键词过滤、分页（登录时间倒序）与单会话强制下线，30 秒自动刷新 |
 | 参数管理 | 平台全局系统参数的键值管理（区别于业务字典），内置参数启动时播种、禁删可改；服务侧经缓存 accessor 读取，多实例部署下参数变更经 Redis 发布订阅广播失效各实例缓存 |
 | 语言管理 | 管理系统支持的多语言，配置语言名称、语言代码、本地名称、启用与默认状态 |
 
@@ -285,10 +283,6 @@ go-wind-admin/
     <tr>
         <td><img src="./docs/images/admin_user_list.png" alt="后台用户列表界面"/></td>
         <td><img src="./docs/images/admin_user_create.png" alt="后台创建用户界面"/></td>
-    </tr>
-    <tr>
-        <td><img src="./docs/images/admin_tenant_list.png" alt="后台租户列表界面"/></td>
-        <td><img src="./docs/images/admin_tenant_create.png" alt="后台创建租户界面"/></td>
     </tr>
     <tr>
         <td><img src="./docs/images/admin_org_unit_list.png" alt="组织单位列表界面"/></td>

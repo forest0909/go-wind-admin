@@ -324,7 +324,7 @@ const <group>: RouteRecordRaw[] = [{
     icon: 'lucide:box',
     title: $t('menu.<group>.moduleName'),
     keepAlive: true,
-    authority: ['sys:platform_admin', 'sys:tenant_manager'],   // role codes, ARRAY
+    authority: ['sys:platform_admin'],   // role codes, ARRAY
   },
   children: [
     {
@@ -334,7 +334,7 @@ const <group>: RouteRecordRaw[] = [{
         order: 1,
         icon: 'lucide:package',
         title: $t('menu.<group>.<entity>'),
-        authority: ['sys:platform_admin', 'sys:tenant_manager'],
+        authority: ['sys:platform_admin'],
       },
       component: () => import('#/views/app/<group>/<entity>/index.vue'),
     },
@@ -369,6 +369,6 @@ Use **`authority: ['role_code', ...]` in route meta** (role-based). The guard ca
 
 9. **Strict `===`, never `==`.** Lint enforces it.
 
-10. **Routes group by functional domain in one file.** Add to `opm.ts`/`permission.ts`/`system.ts`/`tenant.ts`/`log.ts`/`internal_message.ts` as appropriate; only create a new file for a brand-new domain. AGENTS.md says "one file per module" — that is not how the real code is organized.
+10. **Routes group by functional domain in one file.** Add to `opm.ts`/`permission.ts`/`system.ts`/`log.ts`/`internal_message.ts` as appropriate; only create a new file for a brand-new domain. AGENTS.md says "one file per module" — that is not how the real code is organized.
 
 11. **Access is role-based `authority` arrays in route meta**, not `v-access` button codes. `views/app/` has zero `v-access` usages today.

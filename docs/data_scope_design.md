@@ -13,11 +13,10 @@
 
 | 机制 | 管什么 | 层 |
 | --- | --- | --- |
-| 租户隔离（TenantPrivacy） | 行属于哪个**租户**（tenant_id 列） | ent 隐私层，mixin 编译进全部表 |
 | authz 引擎（casbin/opa） | 用户能否调用某个**接口/操作** | HTTP 中间件 + 策略引擎 |
-| **数据范围（本文）** | 租户内能看到哪些**业务行** | ent 查询隐私规则（逐表 opt-in） |
+| **数据范围（本文）** | 能看到哪些**业务行** | ent 查询隐私规则（逐表 opt-in） |
 
-三者正交叠加：先过 authz（接口级），再过租户闸门（行级租户），最后过数据范围（行级组织/个人）。
+两者正交叠加：先过 authz（接口级），再过数据范围（行级组织/个人）。`tenant_id` 列是遗留设施，值固定为 0，见 [tenant_isolation.md](./tenant_isolation.md)。
 
 ## 2. 五档语义
 
@@ -25,7 +24,7 @@
 
 | 档位 | proto 值 | 语义 | 行级谓词 |
 | --- | --- | --- | --- |
-| 全部 | `ALL` | 租户内全部 | 无（放行） |
+| 全部 | `ALL` | 全部 | 无（放行） |
 | 本部门 | `UNIT_ONLY` | 用户所属组织单元 | `org_unit_id IN (own units)` |
 | 本部门及以下 | `UNIT_AND_CHILD` | 所属单元 + 全部后代 | `org_unit_id IN (own ∪ descendants)` |
 | 自定义 | `SELECTED_UNITS` | 角色配置的单元集（`sys_role_org_units`） | `org_unit_id IN (configured)` |
@@ -141,7 +140,7 @@ from sys_org_units p where c.parent_id = p.id and c.path <> p.path || c.id || '/
 
 1. **新端点与 Api 表**：本特性未新增管理端点（org_units 走 Role 消息内联关联），
    已部署实例**无需**接口同步；R2 新接入表如有新端点，`make openapi` 后重启即自动同步，
-   漏了 `make openapi` 则租户闸门 fail-closed 403。
+   漏了 `make openapi` 则新端点不在 Api 表里，非平台管理员角色拿不到授权（403）。
 2. **生效时延**：给某个用户换角色集合时，`UserService.Update` 会吊销该用户全部令牌，
    下次登录按新角色重算数据范围。改角色定义本身（权限、数据范围档位、选定组织、
    字段权限、启用/停用）或删除角色时，`RoleService` 会吊销所有持有人（含操作者自己），

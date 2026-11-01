@@ -16,7 +16,7 @@
 2. 业务字段清单（审计字段 mixin 自动加，不列）；
 3. 归属 domain：已有（`dict`/`permission`/`identity`/…）还是全新（全新要多动一处 buf 配置）；
 4. 哪些前端：react / vue-element / vue-vben（后端必然包含）；
-5. 模块形态：普通 CRUD / 树（parent_id）/ 主从（如 dict_type+dict_entry）/ 租户表。
+5. 模块形态：普通 CRUD / 树（parent_id）/ 主从（如 dict_type+dict_entry）。
 
 ## 后端十步
 
@@ -139,7 +139,7 @@ i18n：页面文案全部走 `$t`/`t` + locale JSON（`import.meta.glob` 自动�
 
 - **全新库**：首启自动播种一切（含 Api 表行、菜单），无需动作；
 - **已部署实例**：新端点**不会**自动进 Api 表——必须在管理页「接口管理 → 接口同步」全量重建，
-  否则租户请求被 `(path, method)` 闸门 fail-closed 403（第 6 章讲为什么）；新菜单走「菜单管理」
+  否则新端点没有权限点，非平台管理员角色调用 403；新菜单走「菜单管理」
   页面加（改 `pkg/constants/default_data.go` 只影响全新库）；
 - 把整个链路跑通后，对照手册的 completion checklist 逐项勾。
 

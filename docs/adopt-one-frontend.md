@@ -77,7 +77,7 @@ vite 端口被占用时会自动 +1（教程 02 第 6 节），**实际监听的
 
 机制：
 
-- `sys_menu` 只有 `type / path / redirect / alias / name / component / meta / module` 八列（`backend/app/admin/service/internal/data/ent/schema/menu.go:32-98`，其余列来自 mixin：`parent_id` 与审计字段）。其中 `module` 是**业务模块**枚举（套餐白名单靠它过滤），**不是端标识**；`GetNavigation` 也只按角色 + 套餐白名单过滤，没有任何"哪个前端"的维度。
+- `sys_menu` 只有 `type / path / redirect / alias / name / component / meta` 七列（`backend/app/admin/service/internal/data/ent/schema/menu.go`，其余列来自 mixin：`parent_id` 与审计字段），没有端标识；`GetNavigation` 也只按角色过滤，没有任何"哪个前端"的维度。
 - 三端的「菜单同步」都写死 `mode: 'MERGE'`（`frontend/admin/react/src/api/hooks/menu.ts:201`、`frontend/admin/vue-element/src/api/composables/menu.ts:176`、`frontend/admin/vue-vben/src/api/composables/menu.ts:193`），而 MERGE 的定义就是"**数据库多出的菜单保留**"（`backend/api/protos/permission/service/v1/menu.proto:450`）。
 - ⇒ 你删掉的两端此前同步进库的菜单行**不会因为删目录而消失**。
 

@@ -269,7 +269,7 @@ Add a child entry:
     order: 3,
     icon: 'lucide:box',
     title: 'routes.<group>.<entity>',       // matches the routes.json key
-    authority: ['sys:platform_admin', 'sys:tenant_manager'],   // role codes, ARRAY
+    authority: ['sys:platform_admin'],   // role codes, ARRAY
   },
   component: () => import('@/pages/app/<group>/<entity>/index.vue'),
 }
@@ -292,10 +292,9 @@ Top-level domain entry wraps with `component: Layout`, `redirect`, `meta.order` 
 
 7. **`composables/index.ts` export is mandatory** — without it, neither hooks nor enum utils resolve.
 
-8. **Routes are grouped by functional domain** in one file (`opm.ts`, `permission.ts`, `system.ts`, `tenant.ts`, `log.ts`, `internal_message.ts`). Add to the right file; only create a new file for a brand-new domain.
+8. **Routes are grouped by functional domain** in one file (`opm.ts`, `permission.ts`, `system.ts`, `log.ts`, `internal_message.ts`). Add to the right file; only create a new file for a brand-new domain.
 
 9. **`$t` vs `t`:** `$t` in `.vue` `<template>` and `<script setup>`; `t = i18n.global.t` in composables (no setup context, but enum `computed`s need reactive i18n).
 
-10. **`isTenantUser` flag on `PaginationQuery`** filters out tenant fields from the query — use it for cross-tenant dropdown data sources where you don't want `tenant_id` in the filter.
 
-11. **`ProPage` is config-driven.** Don't hand-roll `<vxe-table>` for a standard CRUD list — describe it via `pageConfig` and let ProPage wire search/table/pagination/toolbar.
+10. **`ProPage` is config-driven.** Don't hand-roll `<vxe-table>` for a standard CRUD list — describe it via `pageConfig` and let ProPage wire search/table/pagination/toolbar.

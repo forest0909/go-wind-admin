@@ -26,9 +26,9 @@ Before writing anything, ask the requester (batch all of them into one round) fo
 
 1. **Entity name** in three forms: PascalCase (`Product`), snake_case (`product`), and Chinese label (`商品`).
 2. **Core fields** — a list of `{name, type, enum?, required?}`. Distinguish business fields from the audit fields (created_by/updated_by/deleted_by + timestamps) which are added automatically by Ent mixins and need not be listed.
-3. **Functional domain** — does it belong to an existing domain (`permission`, `dict`, `identity`, `opm`, `system`, `tenant`, `log`, …) or is it a brand-new domain? This decides whether you edit an existing proto package / route file or create a new one.
+3. **Functional domain** — does it belong to an existing domain (`permission`, `dict`, `identity`, `opm`, `system`, `log`, …) or is it a brand-new domain? This decides whether you edit an existing proto package / route file or create a new one.
 4. **Which frontends** — react, vue-element, vue-vben (pick one or more). Backend is always included.
-5. **Module shape** — plain CRUD, tree (parent_id), master-detail (two linked tables like dict_type+dict_entry), or tenant-scoped. Plain CRUD is the default; the other shapes extend the chapter templates.
+5. **Module shape** — plain CRUD, tree (parent_id), or master-detail (two linked tables like dict_type+dict_entry). Modules need no tenant handling: `tenant_id` is a legacy column fixed at 0. Plain CRUD is the default; the other shapes extend the chapter templates.
 
 Only proceed once you have these answers. Guessing leads to rework across all four ends.
 
@@ -130,4 +130,4 @@ These recur on every module regardless of framework. Read them once here, then t
 | User chose react | `react.md` |
 | User chose vue-element | `vue-element.md` |
 | User chose vue-vben | `vue-vben.md` |
-| Tree / master-detail / tenant shape | The base chapter for that framework, plus inspect a real sample of that shape (e.g. `system/dict/` for master-detail, menu module for tree) |
+| Tree / master-detail shape | The base chapter for that framework, plus inspect a real sample of that shape (e.g. `system/dict/` for master-detail, menu module for tree) |

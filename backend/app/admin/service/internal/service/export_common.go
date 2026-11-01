@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -15,6 +16,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	paginationFilter "go-wind-admin/third_party/go-crud/pagination/filter"
+	"go-wind-admin/third_party/go-crud/pagination/paginator"
 
 	"go-wind-admin/third_party/go-crud/viewer"
 
@@ -161,8 +164,9 @@ func requireExportPlatformAdmin(w http.ResponseWriter, operator *authenticationV
 }
 
 // parseExportRequest 解析导出参数：format（xlsx/csv，缺省 xlsx）与行数上限
-// （cap 为该资源的硬顶，maxRows 只能往下调）。
-// query JSON（列表页同源条件）原样透传给 repo List，"导出的就是当前搜索看到的"。
+// （cap 为该资源的硬顶，maxRows 只能往下调，放在 req.Limit 里）。
+// query JSON（列表页同源条件）原样带上，由 collectExportRows 和 id 游标组合后分批查询，
+// "导出的就是当前搜索看到的"。
 func parseExportRequest(w http.ResponseWriter, r *http.Request, cap int) (string, *paginationV1.PagingRequest, bool) {
 	q := r.URL.Query()
 	format := strings.ToLower(q.Get("format"))
@@ -181,13 +185,94 @@ func parseExportRequest(w http.ResponseWriter, r *http.Request, cap int) (string
 	}
 
 	req := &paginationV1.PagingRequest{
-		NoPaging: trans.Ptr(true),
-		Limit:    trans.Ptr(uint32(maxRows)),
+		Limit: trans.Ptr(uint32(maxRows)),
 	}
 	if query := strings.TrimSpace(q.Get("query")); query != "" {
 		req.FilteringType = &paginationV1.PagingRequest_Query{Query: query}
 	}
 	return format, req, true
+}
+
+// errExportBadQuery 导出的 query 解析失败。调用方回 400：
+// 不能像列表接口那样丢掉条件继续查，否则一个写坏的后缀就导出全表。
+var errExportBadQuery = errors.New("invalid export query")
+
+// collectExportRows 按 id 倒序（最新在前）、用 id 游标分批拉取导出数据，最多 req.Limit 行。
+// truncated 为 true 表示符合条件的数据超过上限、没有全部导出。
+//
+// 以前一次 NoPaging 查询了事：go-crud 的 NoPaging 兜底上限是 1 万行、而且忽略 Limit，
+// 又没有 ORDER BY，导出的是最旧的 1 万行，maxRows 和 50 万上限都不生效。
+// 分批时：剩余量不超过 paginator.MaxLimit 就按剩余量取一页，否则走 NoPaging（每批至多
+// NoPagingMaxLimit 行），取回 0 行才结束。多取一行用来判断是否截断。
+func collectExportRows[T any](
+	ctx context.Context,
+	req *paginationV1.PagingRequest,
+	fetch func(ctx context.Context, req *paginationV1.PagingRequest) ([]T, error),
+	idOf func(T) uint32,
+) (rows []T, truncated bool, err error) {
+	limit := int(req.GetLimit())
+	if limit <= 0 {
+		return nil, false, fmt.Errorf("export limit must be positive, got %d", limit)
+	}
+
+	userFilter, err := paginationFilter.ConvertFilterByPagingRequest(req)
+	if err != nil {
+		return nil, false, fmt.Errorf("%w: %v", errExportBadQuery, err)
+	}
+
+	var cursor uint32
+	for len(rows) <= limit {
+		expr := &paginationV1.FilterExpr{Type: paginationV1.ExprType_AND}
+		if userFilter != nil {
+			expr.Groups = append(expr.Groups, userFilter)
+		}
+		if cursor > 0 {
+			expr.Conditions = append(expr.Conditions, &paginationV1.FilterCondition{
+				Field:      "id",
+				Op:         paginationV1.Operator_LT,
+				ValueOneof: &paginationV1.FilterCondition_Value{Value: strconv.FormatUint(uint64(cursor), 10)},
+			})
+		}
+		batchReq := &paginationV1.PagingRequest{
+			Sorting:       []*paginationV1.Sorting{{Field: "id", Direction: paginationV1.Sorting_DESC}},
+			FilteringType: &paginationV1.PagingRequest_FilterExpr{FilterExpr: expr},
+		}
+		if need := limit + 1 - len(rows); need <= paginator.MaxLimit {
+			batchReq.Page = trans.Ptr(uint32(1))
+			batchReq.PageSize = trans.Ptr(uint32(need))
+		} else {
+			batchReq.NoPaging = trans.Ptr(true)
+		}
+
+		batch, ferr := fetch(ctx, batchReq)
+		if ferr != nil {
+			return nil, false, ferr
+		}
+		if len(batch) == 0 {
+			break
+		}
+		next := idOf(batch[len(batch)-1])
+		if cursor > 0 && next >= cursor {
+			return nil, false, fmt.Errorf("export cursor did not advance (cursor %d, got %d)", cursor, next)
+		}
+		cursor = next
+		rows = append(rows, batch...)
+	}
+
+	if len(rows) > limit {
+		return rows[:limit], true, nil
+	}
+	return rows, false, nil
+}
+
+// setExportTruncationHeaders 截断时在响应头里写明，前端据此提示"只导出了前 N 行"。
+// 跨域部署（独立 API 域）时这些头必须 expose 才读得到，Content-Disposition 同理。
+func setExportTruncationHeaders(w http.ResponseWriter, truncated bool, limit int) {
+	w.Header().Add("Access-Control-Expose-Headers", "Content-Disposition, X-Export-Truncated, X-Export-Row-Limit")
+	if truncated {
+		w.Header().Set("X-Export-Truncated", "true")
+		w.Header().Set("X-Export-Row-Limit", strconv.Itoa(limit))
+	}
 }
 
 // emitExportFile 把列化的数据按 format 写成下载响应。

@@ -13,6 +13,8 @@ package service
 
 import (
 	"context"
+	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/hibiken/asynq"
@@ -252,22 +254,36 @@ type broadcastUserRepoStub struct {
 	usersByTenant map[uint32][]*identityV1.User
 }
 
-func (r *broadcastUserRepoStub) List(ctx context.Context, _ *paginationV1.PagingRequest) (*identityV1.ListUserResponse, error) {
+func (r *broadcastUserRepoStub) List(ctx context.Context, req *paginationV1.PagingRequest) (*identityV1.ListUserResponse, error) {
 	tid := uint64(0)
 	if vc, ok := viewer.FromContext(ctx); ok {
 		tid = vc.TenantID()
 	}
 	r.seenTenantIDs = append(r.seenTenantIDs, tid)
 
+	var candidates []*identityV1.User
 	if tid == 0 {
-		var all []*identityV1.User
 		for _, users := range r.usersByTenant {
-			all = append(all, users...)
+			candidates = append(candidates, users...)
 		}
-		return &identityV1.ListUserResponse{Items: all, Total: uint64(len(all))}, nil
+	} else {
+		candidates = r.usersByTenant[uint32(tid)]
 	}
 
-	users := r.usersByTenant[uint32(tid)]
+	// 照广播的 id 游标请求过滤：id > after，按 id 升序。
+	var after uint64
+	for _, c := range req.GetFilterExpr().GetConditions() {
+		if c.GetField() == "id" && c.GetOp() == paginationV1.Operator_GT {
+			after, _ = strconv.ParseUint(c.GetValue(), 10, 32)
+		}
+	}
+	var users []*identityV1.User
+	for _, u := range candidates {
+		if uint64(u.GetId()) > after {
+			users = append(users, u)
+		}
+	}
+	sort.Slice(users, func(i, j int) bool { return users[i].GetId() < users[j].GetId() })
 	return &identityV1.ListUserResponse{Items: users, Total: uint64(len(users))}, nil
 }
 

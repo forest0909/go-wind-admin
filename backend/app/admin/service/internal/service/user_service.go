@@ -382,15 +382,17 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	req.Data.RoleIds = roleIds
 
 	// 创建请求里的密码与改密、重置同一条传输契约：前端 AES 密文。
-	// 空密码不解密，下面仍填 DefaultUserPassword 明文常量。
-	if len(req.GetPassword()) > 0 {
-		plainPassword, derr := decryptTransportPassword(req.GetPassword())
-		if derr != nil {
-			s.log.Errorf(ctx, "decrypt create user password failed: %s", derr.Error())
-			return nil, derr
-		}
-		req.Password = trans.Ptr(plainPassword)
+	// 必须显式给密码：不再回落到公开的统一默认密码。
+	if len(req.GetPassword()) == 0 {
+		s.log.Errorf(ctx, "create user without password rejected")
+		return nil, adminV1.ErrorBadRequest("password is required")
 	}
+	plainPassword, derr := decryptTransportPassword(req.GetPassword())
+	if derr != nil {
+		s.log.Errorf(ctx, "decrypt create user password failed: %s", derr.Error())
+		return nil, derr
+	}
+	req.Password = trans.Ptr(plainPassword)
 
 	// 用户行、角色/组织/岗位关联、凭据在同一个事务里。
 	// 凭据复杂度校验失败或写入过程 panic 时整笔回滚，避免留下没有密码的用户。
@@ -405,31 +407,24 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 			return err
 		}
 
-		if len(req.GetPassword()) == 0 {
-			// 如果没有设置密码，则设置为默认密码。明文常量，不要再解密。
-			req.Password = trans.Ptr(constants.DefaultUserPassword)
+		// 测试注入：模拟凭据写入过程中 panic。生产路径保持 nil。
+		if userCreateCredentialHook != nil {
+			userCreateCredentialHook()
 		}
+		if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
+			UserId:   user.Id,
+			TenantId: user.TenantId,
 
-		if len(req.GetPassword()) > 0 {
-			// 测试注入：模拟凭据写入过程中 panic。生产路径保持 nil。
-			if userCreateCredentialHook != nil {
-				userCreateCredentialHook()
-			}
-			if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
-				UserId:   user.Id,
-				TenantId: user.TenantId,
+			IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
+			Identifier:   req.Data.Username,
 
-				IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
-				Identifier:   req.Data.Username,
+			CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
+			Credential:     req.Password,
 
-				CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
-				Credential:     req.Password,
-
-				IsPrimary: trans.Ptr(true),
-				Status:    authenticationV1.UserCredential_ENABLED.Enum(),
-			}); err != nil {
-				return err
-			}
+			IsPrimary: trans.Ptr(true),
+			Status:    authenticationV1.UserCredential_ENABLED.Enum(),
+		}); err != nil {
+			return err
 		}
 		return nil
 	}, func(rollbackErr error) {
@@ -548,16 +543,19 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		}
 	}
 
+	// 停用、锁定、注销等非正常状态：旧令牌不能继续认证（认证器只核对 Redis，不查用户状态）。
+	revokeForStatus := userUpdateDeactivates(req)
+
 	// 更新用户
 	if err = s.userRepo.Update(ctx, req); err != nil {
 		s.log.Error(ctx, err.Error())
 		return nil, err
 	}
 
-	// 角色集合已经落库。吊销失败只记日志：更新已提交，不能再把本次请求判失败。
-	if revokeForRoleChange {
+	// 角色集合或状态已经落库。吊销失败只记日志：更新已提交，不能再把本次请求判失败。
+	if revokeForRoleChange || revokeForStatus {
 		if rerr := s.authenticator.RevokeUserTokenAllClientTypes(ctx, req.GetId()); rerr != nil {
-			s.log.Errorf(ctx, "revoke tokens after role change failed for user [%d]: %v", req.GetId(), rerr)
+			s.log.Errorf(ctx, "revoke tokens after role/status change failed for user [%d]: %v", req.GetId(), rerr)
 		}
 	}
 
@@ -630,6 +628,24 @@ func userUpdateRewritesRoles(req *identityV1.UpdateUserRequest) bool {
 	return false
 }
 
+// userUpdateDeactivates 判断本次更新是否把用户写成非 NORMAL 状态。
+// 无 mask 或空 paths 视为全量更新；有 mask 时只看 status 是否在 mask 里。
+func userUpdateDeactivates(req *identityV1.UpdateUserRequest) bool {
+	if req.GetData().Status == nil || req.GetData().GetStatus() == identityV1.User_NORMAL {
+		return false
+	}
+	fm := req.GetUpdateMask()
+	if fm == nil || len(fm.GetPaths()) == 0 {
+		return true
+	}
+	for _, p := range fm.GetPaths() {
+		if p == "status" {
+			return true
+		}
+	}
+	return false
+}
+
 // sameUint32Set 忽略顺序，按多重集合比较。角色 ID 在写入前已经去重。
 func sameUint32Set(a, b []uint32) bool {
 	if len(a) != len(b) {
@@ -692,9 +708,16 @@ func (s *UserService) Delete(ctx context.Context, req *identityV1.DeleteUserRequ
 	}
 
 	// 删除用户
-	err = s.userRepo.Delete(ctx, req)
+	if err = s.userRepo.Delete(ctx, req); err != nil {
+		return nil, err
+	}
 
-	return &emptypb.Empty{}, err
+	// 删除已提交，旧令牌必须失效。吊销失败只记日志，不把已完成的删除判失败。
+	if rerr := s.authenticator.RevokeUserTokenAllClientTypes(ctx, target.GetId()); rerr != nil {
+		s.log.Errorf(ctx, "revoke tokens after delete failed for user [%d]: %v", target.GetId(), rerr)
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (s *UserService) UserExists(ctx context.Context, req *identityV1.UserExistsRequest) (*identityV1.UserExistsResponse, error) {

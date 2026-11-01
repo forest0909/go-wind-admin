@@ -460,7 +460,7 @@ func TestUserServiceSqlite_CreateGuards(t *testing.T) {
 }
 
 // TestUserServiceSqlite_CreatePlatform 验证平台操作人的创建路径：
-// 未显式给密码时注入默认密码（明文常量，不解密），凭证行经真实 bcrypt 落库；
+// 未给密码直接 BadRequest（不再回落默认密码）；给定密码的凭证行经真实 bcrypt 落库；
 // 自定义密码按创建契约传入 AES 密文，解密后能登录；
 // 不满足复杂度的密文被拒绝；CreatedBy 注入操作人。
 func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
@@ -469,17 +469,29 @@ func TestUserServiceSqlite_CreatePlatform(t *testing.T) {
 	e.registerOperator(9001)
 	platformOp := opCtx(e.ctx, 9001, 0, true)
 
-	// 默认密码路径。
+	// 未给密码：直接拒绝，不再回落到公开的统一默认密码，也不落任何行。
 	_, err := e.svc.Create(platformOp, &identityV1.CreateUserRequest{
+		Data: &identityV1.User{
+			Username: trans.Ptr("usersvc-no-pw"),
+			RoleIds:  []uint32{systemRoleID},
+		},
+	})
+	require.Error(t, err)
+	require.True(t, adminV1.IsBadRequest(err), "缺密码应返回 BadRequest")
+	require.Equal(t, 0, e.credentialCount(t))
+	require.Empty(t, e.stub.creates, "缺密码不应写用户行")
+
+	_, err = e.svc.Create(platformOp, &identityV1.CreateUserRequest{
 		Data: &identityV1.User{
 			Username: trans.Ptr("usersvc-default-pw"),
 			RoleIds:  []uint32{systemRoleID},
 		},
+		Password: trans.Ptr(encryptLoginPassword(t, constants.DefaultUserPassword)),
 	})
-	require.NoError(t, err, "默认密码创建应成功")
+	require.NoError(t, err, "带密码创建应成功")
 	require.Equal(t, 1, e.credentialCount(t), "应恰好落库一条凭证")
 	matched, ferr := e.findCred(t, 0, "usersvc-default-pw", constants.DefaultUserPassword)
-	require.NoError(t, ferr, "默认密码应能通过凭证校验")
+	require.NoError(t, ferr, "给定密码应能通过凭证校验")
 	require.Equal(t, uint32(66001), matched, "凭证应绑定桩返回的用户 ID")
 	// 记录的创建请求：CreatedBy 被注入操作人 ID。
 	require.Len(t, e.stub.creates, 1)
@@ -620,6 +632,7 @@ func TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected(t *testing.
 			Username: trans.Ptr("usersvc-tx-default"),
 			RoleIds:  []uint32{roleID},
 		},
+		Password: trans.Ptr(encryptLoginPassword(t, constants.DefaultUserPassword)),
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, countUsersByUsername(t, client, sys, "usersvc-tx-default"))
@@ -627,7 +640,7 @@ func TestUserServiceSqlite_CreateRollsBackUserWhenCredentialRejected(t *testing.
 	require.NoError(t, err)
 	matched, ferr = svc.userCredentialRepo.FindUserCredential(sys, 0,
 		authenticationV1.UserCredential_USERNAME, "usersvc-tx-default", constants.DefaultUserPassword, false)
-	require.NoError(t, ferr, "未传密码时应能用默认密码通过登录凭证校验")
+	require.NoError(t, ferr, "给定密码应能通过登录凭证校验")
 	require.Equal(t, defaultRow.ID, matched)
 }
 
@@ -702,6 +715,7 @@ func TestUserServiceSqlite_CreatePanicRollsBackUser(t *testing.T) {
 				OrgUnitIds:  []uint32{orgUnitID},
 				PositionIds: []uint32{positionID},
 			},
+			Password: trans.Ptr(encryptLoginPassword(t, constants.DefaultUserPassword)),
 		})
 	}()
 	require.True(t, panicked, "凭据写入 hook 应该 panic 出来")
@@ -798,6 +812,7 @@ func TestUserServiceSqlite_CreateIgnoresRequestTenant(t *testing.T) {
 			Username: trans.Ptr("usersvc-forced-t0"),
 			RoleIds:  []uint32{systemRoleID},
 		},
+		Password: trans.Ptr(encryptLoginPassword(t, constants.DefaultUserPassword)),
 	})
 	require.NoError(t, err)
 	require.Len(t, e.stub.creates, 1)

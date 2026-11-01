@@ -1153,3 +1153,18 @@ func TestUserServiceSqlite_CreateDefaultUserCredentialsOverride(t *testing.T) {
 	require.NoError(t, ferr)
 	require.Equal(t, uint32(2002), matched, "凭证应绑定显式传入的 overrideUserID")
 }
+
+// TestUserServiceSqlite_InitSeedsAdminPasswordFromEnv 验证设置了
+// GWA_ADMIN_INITIAL_PASSWORD 时，空库播种的 admin 凭证用该值而不是公开默认密码。
+func TestUserServiceSqlite_InitSeedsAdminPasswordFromEnv(t *testing.T) {
+	t.Setenv(constants.AdminInitialPasswordEnv, "Deploy#Pass2026")
+	e := newUserServiceForTest(t)
+
+	e.svc.init()
+
+	require.Equal(t, 1, e.credentialCount(t))
+	_, ferr := e.findCred(t, 0, "admin", "Deploy#Pass2026")
+	require.NoError(t, ferr, "播种凭证应使用环境变量里的初始密码")
+	_, ferr = e.findCred(t, 0, "admin", constants.DefaultUserPassword)
+	require.Error(t, ferr, "设置了环境变量后公开默认密码不应再能登录")
+}

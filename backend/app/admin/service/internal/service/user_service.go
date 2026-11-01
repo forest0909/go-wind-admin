@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"go-wind-admin/third_party/go-utils/aggregator"
@@ -791,10 +792,18 @@ func (s *UserService) createDefaultUser(ctx context.Context) error {
 // overrideUserID > 0 时覆盖种子里的 UserId（初始化路径绑定实际生成的用户 ID）；
 // 为 0 时保留种子原值（自愈补种路径，此时 admin 即空表首行 id=1）。
 func (s *UserService) createDefaultUserCredentials(ctx context.Context, overrideUserID uint32) error {
+	initialPassword := os.Getenv(constants.AdminInitialPasswordEnv)
+	if initialPassword == "" {
+		s.log.Warnf(ctx, "⚠️ 未设置 %s，admin 初始密码使用仓库公开的默认值，部署后必须立即修改",
+			constants.AdminInitialPasswordEnv)
+	}
 	for _, userCredential := range constants.DefaultUserCredentials {
 		credential := proto.Clone(userCredential).(*authenticationV1.UserCredential)
 		if overrideUserID > 0 {
 			credential.UserId = trans.Ptr(overrideUserID)
+		}
+		if initialPassword != "" {
+			credential.Credential = trans.Ptr(initialPassword)
 		}
 		if err := s.userCredentialRepo.Create(ctx, &authenticationV1.CreateUserCredentialRequest{
 			Data: credential,

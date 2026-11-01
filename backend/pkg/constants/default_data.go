@@ -22,6 +22,10 @@ const (
 	// 口令复杂度策略（go-utils/password）：≥8位且至少3类字符——种子凭证经 prepareCredential
 	// 入库时会做复杂度校验，不达标会被拒、初始化半途而废，admin 从此无法登录）
 	DefaultUserPassword = "Abcd@1234"
+
+	// AdminInitialPasswordEnv 首次播种 admin 凭证时读取的环境变量。
+	// 设置了就用它（同样要满足口令复杂度）；没设置仍用 DefaultUserPassword 并打 WARN。
+	AdminInitialPasswordEnv = "GWA_ADMIN_INITIAL_PASSWORD"
 )
 
 // DefaultPermissionGroups 系统初始化默认权限组数据

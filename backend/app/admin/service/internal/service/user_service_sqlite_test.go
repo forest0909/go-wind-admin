@@ -994,7 +994,7 @@ func requireAccessTokenValid(t *testing.T, e *userServiceEnv, access string, val
 
 // TestUserServiceSqlite_EditUserPassword 验证 EditUserPassword：
 // 无操作人 401；目标用户行缺失错误透传；跨租户 403；
-// 平台管理员与本租户管理员重置走真实 ResetCredential（新旧密码切换生效）。
+// 平台管理员重置走真实 ResetCredential（新旧密码切换生效）。
 func TestUserServiceSqlite_EditUserPassword(t *testing.T) {
 	e := newUserServiceForTest(t)
 	base := context.Background()
@@ -1004,8 +1004,6 @@ func TestUserServiceSqlite_EditUserPassword(t *testing.T) {
 	e.seedUserSvcCredential(t, nil, 10601, "usersvc-edit-target-platform")
 	// Username 必填：EditUserPassword 以目标用户行的用户名为标识符定位凭证。
 	e.stub.usersByID[10601] = &identityV1.User{Id: trans.Ptr(uint32(10601)), Username: trans.Ptr("usersvc-edit-target-platform")}
-	e.seedUserSvcCredential(t, trans.Ptr(tenantA), 10602, "usersvc-edit-target-tenant")
-	e.stub.usersByID[10602] = &identityV1.User{Id: trans.Ptr(uint32(10602)), TenantId: trans.Ptr(tenantA), Username: trans.Ptr("usersvc-edit-target-tenant")}
 	e.seedUserSvcCredential(t, trans.Ptr(tenantB), 10603, "usersvc-edit-target-foreign")
 	e.stub.usersByID[10603] = &identityV1.User{Id: trans.Ptr(uint32(10603)), TenantId: trans.Ptr(tenantB), Username: trans.Ptr("usersvc-edit-target-foreign")}
 
@@ -1047,17 +1045,6 @@ func TestUserServiceSqlite_EditUserPassword(t *testing.T) {
 	_, ferr = e.findCred(t, 0, "usersvc-edit-target-platform", "PlatformP@ss66")
 	require.NoError(t, ferr, "重置后新密码应生效")
 	_, ferr = e.findCred(t, 0, "usersvc-edit-target-platform", constants.DefaultUserPassword)
-	require.True(t, authenticationV1.IsInvalidPassword(ferr), "旧密码应失效")
-
-	// 本租户管理员改本租户用户。
-	_, err = e.svc.EditUserPassword(tenantOpA, &identityV1.EditUserPasswordRequest{
-		UserId:      10602,
-		NewPassword: encryptLoginPassword(t, "TenantP@ss55"),
-	})
-	require.NoError(t, err)
-	_, ferr = e.findCred(t, tenantA, "usersvc-edit-target-tenant", "TenantP@ss55")
-	require.NoError(t, ferr, "本租户重置后新密码应生效")
-	_, ferr = e.findCred(t, tenantA, "usersvc-edit-target-tenant", constants.DefaultUserPassword)
 	require.True(t, authenticationV1.IsInvalidPassword(ferr), "旧密码应失效")
 }
 

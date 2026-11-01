@@ -154,11 +154,13 @@ func TestTaskRepoSqlite_Get(t *testing.T) {
 	})
 	require.Error(t, err, "不存在的 ID 查询应返回错误")
 
-	// 平台上下文（无租户）按 type_name 查询应被拒绝
-	_, err = repo.Get(ctx, &taskV1.GetTaskRequest{
+	// 按 type_name 查询：固定按租户 0 匹配，旧库遗留的同名 tenant_id>0 任务不干扰
+	repo.entClient.Client().Task.Create().SetTenantID(5).SetTypeName("sqlite_task_get_name").SaveX(ctx)
+	byName, err := repo.Get(ctx, &taskV1.GetTaskRequest{
 		QueryBy: &taskV1.GetTaskRequest_TypeName{TypeName: "sqlite_task_get_name"},
 	})
-	require.Error(t, err, "系统级上下文按 type_name 查询应返回 BadRequest")
+	require.NoError(t, err, "按 type_name 查询应命中租户 0 的任务")
+	require.Equal(t, createdID, byName.GetId())
 }
 
 // TestTaskRepoSqlite_Update 验证 Update 只更新掩码内字段（remark），

@@ -446,13 +446,8 @@ func (r *userRepo) Get(ctx context.Context, req *identityV1.GetUserRequest) (*id
 	case *identityV1.GetUserRequest_Id:
 		whereCond = append(whereCond, user.IDEQ(req.GetId()))
 	case *identityV1.GetUserRequest_Username:
-		// username 仅在 (tenant_id, username) 维度唯一，平台上下文(tid=0)下按 username 查询
-		// 会跨租户匹配多行导致 .Only() 报 not singular，且会泄露其他租户用户。
-		// 仅允许在具名租户上下文(tid>0)下按 username 查询。
-		if _, hasTenant := maybeTenantFromViewer(ctx); !hasTenant {
-			return nil, identityV1.ErrorBadRequest("tenant scope required to query user by username")
-		}
-		whereCond = append(whereCond, user.UsernameEQ(req.GetUsername()))
+		// username 只在 (tenant_id, username) 上唯一：固定按租户 0 查，旧库遗留的 tenant_id>0 行不参与匹配
+		whereCond = append(whereCond, user.UsernameEQ(req.GetUsername()), user.TenantIDEQ(0))
 	default:
 		whereCond = append(whereCond, user.IDEQ(req.GetId()))
 	}
@@ -802,14 +797,8 @@ func (r *userRepo) Delete(ctx context.Context, req *identityV1.DeleteUserRequest
 	case *identityV1.DeleteUserRequest_Id:
 		builder.Where(user.IDEQ(req.GetId()))
 	case *identityV1.DeleteUserRequest_Username:
-		// username 仅在 (tenant_id, username) 维度唯一，平台上下文(tid=0)下按 username 删除
-		// 会误删所有租户的同名用户。仅允许在具名租户上下文(tid>0)下按 username 删除。
-		// (Delete 不经 Querier interceptor，必须显式加租户过滤)
-		tid, hasTenant := maybeTenantFromViewer(ctx)
-		if !hasTenant {
-			return identityV1.ErrorBadRequest("tenant scope required to delete user by username")
-		}
-		builder.Where(user.UsernameEQ(req.GetUsername()), user.TenantIDEQ(tid))
+		// username 只在 (tenant_id, username) 上唯一：固定按租户 0 删，不波及旧库遗留的同名 tenant_id>0 用户
+		builder.Where(user.UsernameEQ(req.GetUsername()), user.TenantIDEQ(0))
 	default:
 		builder.Where(user.IDEQ(req.GetId()))
 	}
@@ -874,12 +863,8 @@ func (r *userRepo) UserExists(ctx context.Context, req *identityV1.UserExistsReq
 	case *identityV1.UserExistsRequest_Id:
 		builder.Where(user.IDEQ(req.GetId()))
 	case *identityV1.UserExistsRequest_Username:
-		// username 仅在 (tenant_id, username) 维度唯一，平台上下文(tid=0)下按 username 查存在性
-		// 会跨租户泄露（任意租户有同名即 true）。仅允许在具名租户上下文(tid>0)下查询。
-		if _, hasTenant := maybeTenantFromViewer(ctx); !hasTenant {
-			return &identityV1.UserExistsResponse{Exist: false}, identityV1.ErrorBadRequest("tenant scope required to check user exists by username")
-		}
-		builder.Where(user.UsernameEQ(req.GetUsername()))
+		// username 只在 (tenant_id, username) 上唯一：固定按租户 0 查
+		builder.Where(user.UsernameEQ(req.GetUsername()), user.TenantIDEQ(0))
 	default:
 		return &identityV1.UserExistsResponse{
 			Exist: false,

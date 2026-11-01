@@ -40,7 +40,7 @@ func (s *UserProfileService) sendContactVCode(ctx context.Context, kind, contact
 	}
 
 	// 文案语言：绑定场景操作者即收件人，读其偏好 locale（未设置回落请求头判定）。
-	if operator, opErr := auth.FromContext(ctx); opErr == nil && operator.GetTenantId() > 0 {
+	if operator, opErr := auth.FromContext(ctx); opErr == nil {
 		if user, uErr := s.userRepo.Get(ctx, &identityV1.GetUserRequest{
 			QueryBy: &identityV1.GetUserRequest_Id{Id: operator.GetUserId()},
 		}); uErr == nil && user.GetLocale() != "" {

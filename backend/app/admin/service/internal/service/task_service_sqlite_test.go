@@ -36,7 +36,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
-	crudViewer "go-wind-admin/third_party/go-crud/viewer"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
@@ -362,15 +361,16 @@ func TestTaskService_DeleteRemovesSchedulerEntry(t *testing.T) {
 // ── ControlTask ───────────────────────────────────────────────────────────
 
 // TestTaskService_ControlTaskGuards 验证 ControlTask 的守卫分支：
-// 未知控制类型拒绝、平台上下文按名查询被租户闸门拒绝、
+// 未知控制类型拒绝、按不存在的名查询报错、
 // 停用任务停止拒绝、一次性任务停止语义拒绝。
 func TestTaskService_ControlTaskGuards(t *testing.T) {
 	stub := newTaskSchedulerStub("tasksvc_ctl_type", "tasksvc_delay_ctl")
 	svc, _ := newTaskServiceForTest(t, stub)
 	sysCtx := enttest.NewSystemContext(context.Background())
-	tenantCtx := crudViewer.WithContext(sysCtx, crudViewer.NewUserContext(1, 42, 0, "", nil))
+	opCtx := sysCtx
 
-	// 未知控制类型（先于取行）
+	// 未知控制类型：取到任务行后按控制类型分派，未知类型 400
+	seedTaskRow(t, svc, sysCtx, 0, "tasksvc_ctl_type", taskV1.Task_PERIODIC, "0 */5 * * * *", true)
 	_, err := svc.ControlTask(sysCtx, &taskV1.ControlTaskRequest{
 		TypeName:    "tasksvc_ctl_type",
 		ControlType: taskV1.ControlTaskRequest_ControlType(99),
@@ -378,32 +378,24 @@ func TestTaskService_ControlTaskGuards(t *testing.T) {
 	require.Error(t, err, "未知控制类型应拒绝")
 	require.True(t, adminV1.IsBadRequest(err))
 
-	// 平台上下文（tid=0）按名查询：租户闸门拒绝
-	_, err = svc.ControlTask(sysCtx, &taskV1.ControlTaskRequest{
-		TypeName:    "tasksvc_ctl_type",
-		ControlType: taskV1.ControlTaskRequest_Stop,
-	})
-	require.Error(t, err, "平台上下文按名查询任务应被租户闸门拒绝")
-	require.True(t, adminV1.IsBadRequest(err))
-
-	// 租户上下文按不存在的名查询：报错
-	_, err = svc.ControlTask(tenantCtx, &taskV1.ControlTaskRequest{
+	// 按不存在的名查询：报错
+	_, err = svc.ControlTask(opCtx, &taskV1.ControlTaskRequest{
 		TypeName:    "tasksvc_no_such_type",
 		ControlType: taskV1.ControlTaskRequest_Stop,
 	})
-	require.Error(t, err, "租户上下文查询不存在的任务名应报错")
+	require.Error(t, err, "查询不存在的任务名应报错")
 
 	// 停用任务：stopTask 拒绝
-	seedTaskRow(t, svc, sysCtx, 42, "tasksvc_disabled_ctl", taskV1.Task_PERIODIC, "0 */5 * * * *", false)
-	_, err = svc.ControlTask(tenantCtx, &taskV1.ControlTaskRequest{
+	seedTaskRow(t, svc, sysCtx, 0, "tasksvc_disabled_ctl", taskV1.Task_PERIODIC, "0 */5 * * * *", false)
+	_, err = svc.ControlTask(opCtx, &taskV1.ControlTaskRequest{
 		TypeName:    "tasksvc_disabled_ctl",
 		ControlType: taskV1.ControlTaskRequest_Stop,
 	})
 	require.EqualError(t, err, "task is not enable", "停用任务的停止应拒绝")
 
 	// 一次性任务（DELAY）停止语义拒绝
-	seedTaskRow(t, svc, sysCtx, 42, "tasksvc_delay_ctl", taskV1.Task_DELAY, "0 */5 * * * *", true)
-	_, err = svc.ControlTask(tenantCtx, &taskV1.ControlTaskRequest{
+	seedTaskRow(t, svc, sysCtx, 0, "tasksvc_delay_ctl", taskV1.Task_DELAY, "0 */5 * * * *", true)
+	_, err = svc.ControlTask(opCtx, &taskV1.ControlTaskRequest{
 		TypeName:    "tasksvc_delay_ctl",
 		ControlType: taskV1.ControlTaskRequest_Stop,
 	})
@@ -411,24 +403,24 @@ func TestTaskService_ControlTaskGuards(t *testing.T) {
 		"DELAY 任务停止应被语义拒绝")
 }
 
-// TestTaskService_ControlTaskDispatch 租户上下文下启用 PERIODIN 任务的
+// TestTaskService_ControlTaskDispatch 启用 PERIODIC 任务的
 // Stop/Start/Restart 调度分发。
 func TestTaskService_ControlTaskDispatch(t *testing.T) {
 	stub := newTaskSchedulerStub("tasksvc_ctl_dispatch")
 	svc, _ := newTaskServiceForTest(t, stub)
 	sysCtx := enttest.NewSystemContext(context.Background())
-	tenantCtx := crudViewer.WithContext(sysCtx, crudViewer.NewUserContext(1, 42, 0, "", nil))
+	opCtx := sysCtx
 
-	seedTaskRow(t, svc, sysCtx, 42, "tasksvc_ctl_dispatch", taskV1.Task_PERIODIC, "0 */5 * * * *", true)
+	seedTaskRow(t, svc, sysCtx, 0, "tasksvc_ctl_dispatch", taskV1.Task_PERIODIC, "0 */5 * * * *", true)
 
-	_, err := svc.ControlTask(tenantCtx, &taskV1.ControlTaskRequest{
+	_, err := svc.ControlTask(opCtx, &taskV1.ControlTaskRequest{
 		TypeName:    "tasksvc_ctl_dispatch",
 		ControlType: taskV1.ControlTaskRequest_Stop,
 	})
 	require.NoError(t, err, "Stop 应成功（桩注销返回 nil）")
 	require.Equal(t, []string{"tasksvc_ctl_dispatch"}, stub.removedPeriodic, "Stop 应注销调度项")
 
-	_, err = svc.ControlTask(tenantCtx, &taskV1.ControlTaskRequest{
+	_, err = svc.ControlTask(opCtx, &taskV1.ControlTaskRequest{
 		TypeName:    "tasksvc_ctl_dispatch",
 		ControlType: taskV1.ControlTaskRequest_Start,
 	})
@@ -437,7 +429,7 @@ func TestTaskService_ControlTaskDispatch(t *testing.T) {
 
 	stub.removedPeriodic = nil
 	stub.newPeriodicTask = nil
-	_, err = svc.ControlTask(tenantCtx, &taskV1.ControlTaskRequest{
+	_, err = svc.ControlTask(opCtx, &taskV1.ControlTaskRequest{
 		TypeName:    "tasksvc_ctl_dispatch",
 		ControlType: taskV1.ControlTaskRequest_Restart,
 	})

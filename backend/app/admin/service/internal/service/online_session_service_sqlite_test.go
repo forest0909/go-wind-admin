@@ -318,35 +318,3 @@ func TestOnlineSessionServiceSqlite_ForceLogoutSession(t *testing.T) {
 	require.Error(t, err, "空 jti 应被拒绝")
 	require.Contains(t, err.Error(), "user id and jti are required")
 }
-
-// TestOnlineSessionServiceSqlite_TenantScoped 租户操作人只看得到、踢得了本租户的会话。
-// seedOnlineSession 把租户 ID 设成用户 ID：用户 601 属于租户 601，602 属于 602。
-func TestOnlineSessionServiceSqlite_TenantScoped(t *testing.T) {
-	svc, tokenCache := newOnlineSessionServiceForTest(t)
-	sysCtx := enttest.NewSystemContext(context.Background())
-	seedOnlineSession(t, svc, tokenCache, sysCtx, authenticationV1.ClientType_admin, 601, "jti-601", "user-601", "10.6.0.1", 1000)
-	seedOnlineSession(t, svc, tokenCache, sysCtx, authenticationV1.ClientType_admin, 602, "jti-602", "user-602", "10.6.0.2", 2000)
-
-	tenantCtx := auth.NewContext(sysCtx, &authenticationV1.UserTokenPayload{UserId: 601, TenantId: trans.Ptr(uint32(601))})
-	list, err := svc.ListOnlineSession(tenantCtx, &onlineSessionV1.ListOnlineSessionRequest{})
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), list.GetTotal(), "租户只看本租户的会话")
-	require.Equal(t, "jti-601", list.GetItems()[0].GetJti())
-
-	_, err = svc.ForceLogoutSession(tenantCtx, &onlineSessionV1.ForceLogoutSessionRequest{
-		ClientType: authenticationV1.ClientType_admin.Enum(),
-		UserId:     trans.Ptr(uint32(602)),
-		Jti:        trans.Ptr("jti-602"),
-	})
-	require.Error(t, err, "不能踢别的租户的会话")
-	meta, err := svc.authenticator.GetSessionMeta(sysCtx, authenticationV1.ClientType_admin, 602, "jti-602")
-	require.NoError(t, err)
-	require.NotNil(t, meta, "别的租户的会话应保留")
-
-	_, err = svc.ForceLogoutSession(tenantCtx, &onlineSessionV1.ForceLogoutSessionRequest{
-		ClientType: authenticationV1.ClientType_admin.Enum(),
-		UserId:     trans.Ptr(uint32(601)),
-		Jti:        trans.Ptr("jti-601"),
-	})
-	require.NoError(t, err, "本租户的会话可以踢")
-}

@@ -72,6 +72,8 @@ func NewRestMiddleware(
 	// recovery 必须置于链首：任何中间件/handler 的 panic（如审计日志解析畸形 JWT）
 	// 兜底为 500，避免崩溃请求 goroutine、被用作未认证 DoS。
 	ms = append(ms, recovery.Recovery())
+	// 紧跟 recovery：内层（含访问日志、审计日志）看到的仍是原始错误，响应里只出映射后的 kratos 错误。
+	ms = append(ms, ErrorMapping(ctx.NewLoggerHelper("server/error-mapping")))
 	// 不用 Kratos logging.Server：它只认 Redact() string，本仓生成的是原地 Redact()，
 	// 对不上就把整个请求按 String() 打进访问日志。AccessLogServer 在克隆上脱敏。
 	ms = append(ms, applogging.AccessLogServer(bLogger.AsKratosLogger(ctx.GetLogger())))

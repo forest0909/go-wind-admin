@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Form, Input, Button, Checkbox, App } from 'antd';
 import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores';
+import { canReuseLoginRedirect } from '@/stores/auth';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchGenerateCaptcha } from '@/api';
 import { fetchTenantBranding } from '@/api/hooks/tenant-branding';
@@ -111,11 +112,12 @@ const Login: React.FC = () => {
     captcha?: string;
   }) => {
     try {
-      // 跳转目标：redirect 参数 → 用户 homePath → 首页。
+      // 跳转目标：redirect 参数 → 用户 homePath → 首页。换了账号登录时不沿用 redirect。
       // 同源相对路径校验保留，防开放重定向（如 ?redirect=https://evil.com 或 //evil.com）
       const resolveSafeRedirect = () => {
-        const rawRedirect =
-          searchParams.get('redirect') || useAuthStore.getState().userInfo?.homePath || '/';
+        const { userInfo } = useAuthStore.getState();
+        const redirect = canReuseLoginRedirect(userInfo) ? searchParams.get('redirect') : null;
+        const rawRedirect = redirect || userInfo?.homePath || '/';
         return typeof rawRedirect === 'string' &&
           rawRedirect.startsWith('/') &&
           !rawRedirect.startsWith('//')

@@ -382,7 +382,7 @@ func TestAuthSvcSqlite_LoginGrantDispatch(t *testing.T) {
 }
 
 // TestAuthSvcSqlite_LoginCaptchaGate 验证强制验证码闸门：
-// 无传输上下文（取不到头）、空验证码头、错误验证码值均 400 拒绝；
+// 无传输上下文（取不到头）、空验证码头、错误验证码值均 400 INVALID_CAPTCHA 拒绝；
 // 正确验证码放行后进入后续凭证校验（此处以未播种凭证的 INVALID_PASSWORD 证明放行）。
 func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
@@ -392,13 +392,13 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	// 无传输上下文：HeaderFromContext 取不到头 → 闸门拒绝。
 	resp, err := e.svc.Login(base, req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 有传输上下文但无验证码头。
 	resp, err = e.svc.Login(headerCtx(base, http.Header{}), req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 有传输上下文、验证码头为空白值。
@@ -407,7 +407,7 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	blank.Set("X-Captcha-Value", "  ")
 	resp, err = e.svc.Login(headerCtx(base, blank), req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 错误验证码值：通过闸门头存在性检查后 Verify 比对失败。
@@ -419,7 +419,7 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	wrong.Set("X-Captcha-Value", "WRONGANSWER")
 	resp, err = e.svc.Login(headerCtx(base, wrong), req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 正确验证码：闸门放行，流程推进到凭证校验（凭证未播种 → 归一化的 INVALID_PASSWORD）。
@@ -431,7 +431,7 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 }
 
 // TestAuthSvcSqlite_LoginTenantResolution 验证租户解析：
-// 未知租户编号 / 非启用租户 / 凭证租户与用户租户不一致（纵深防御）均 400 invalid tenant。
+// 未知租户编号 / 非启用租户 / 凭证租户与用户租户不一致（纵深防御）均 400 INVALID_TENANT。
 func TestAuthSvcSqlite_LoginTenantResolution(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
 	base := context.Background()
@@ -448,7 +448,7 @@ func TestAuthSvcSqlite_LoginTenantResolution(t *testing.T) {
 	req1.TenantCode = trans.Ptr("AUTHSVC_TENANT_NO_SUCH")
 	resp, err := e.svc.Login(ctx1, req1)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "未知租户编号应 400")
+	require.True(t, authenticationV1.IsInvalidTenant(err), "未知租户编号应 400 INVALID_TENANT")
 	require.Nil(t, resp)
 
 	// 非启用租户。
@@ -456,7 +456,7 @@ func TestAuthSvcSqlite_LoginTenantResolution(t *testing.T) {
 	req2.TenantCode = trans.Ptr(authSvcTenantCodeOff)
 	resp, err = e.svc.Login(ctx2, req2)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "停用租户应 400 且文案与未知租户一致")
+	require.True(t, authenticationV1.IsInvalidTenant(err), "停用租户应 400 INVALID_TENANT 且文案与未知租户一致")
 	require.Nil(t, resp)
 
 	// 凭证租户（=解析出的租户）与用户行租户不一致。
@@ -466,7 +466,7 @@ func TestAuthSvcSqlite_LoginTenantResolution(t *testing.T) {
 	req3.TenantCode = trans.Ptr(authSvcTenantCode)
 	resp, err = e.svc.Login(ctx3, req3)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "凭证/用户租户不一致应 400 invalid tenant")
+	require.True(t, authenticationV1.IsInvalidTenant(err), "凭证/用户租户不一致应 400 invalid tenant")
 	require.Nil(t, resp)
 }
 
@@ -583,7 +583,7 @@ func TestAuthSvcSqlite_LoginFullPlatformChain(t *testing.T) {
 }
 
 // TestAuthSvcSqlite_LoginRateLimiterLockout 验证登录限流的锁定窗口：
-// 连续 5 次密码错误后，第 6 次在预检阶段即被 400 拒绝（先于验证码与凭证校验），
+// 连续 5 次密码错误后，第 6 次在预检阶段即被 429 拒绝（先于验证码与凭证校验），
 // 双维度计数均达到阈值。
 func TestAuthSvcSqlite_LoginRateLimiterLockout(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
@@ -609,7 +609,7 @@ func TestAuthSvcSqlite_LoginRateLimiterLockout(t *testing.T) {
 	ctx, req := e.loginHappyReq(t, base, authSvcTestUsername, constants.DefaultUserPassword)
 	resp, err := e.svc.Login(ctx, req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "锁定窗口内应 400")
+	require.True(t, authenticationV1.IsTooManyRequests(err), "锁定窗口内应 429 TOO_MANY_REQUESTS")
 	require.Contains(t, err.Error(), "too many login failures")
 	require.Nil(t, resp)
 }

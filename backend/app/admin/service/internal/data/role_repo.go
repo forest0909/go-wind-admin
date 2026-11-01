@@ -812,6 +812,24 @@ func (r *RoleRepo) ListPermissionIDsByRoleCodes(ctx context.Context, roleCodes [
 	return r.rolePermissionRepo.ListPermissionIDsByRoleIDs(ctx, roleIDs)
 }
 
+// AllTenantGrantable 判断这些权限点能否授给租户内的角色：只能在租户管理员拥有的范围内，
+// 平台专属的权限点（接口、菜单、租户、套餐等）不行。
+func (r *RoleRepo) AllTenantGrantable(ctx context.Context, permissionIDs []uint32) (bool, error) {
+	if len(permissionIDs) == 0 {
+		return true, nil
+	}
+	codes, err := r.permissionRepo.GetPermissionCodesByIDs(ctx, permissionIDs)
+	if err != nil {
+		return false, err
+	}
+	for _, code := range codes {
+		if !constants.IsTenantManagerPermissionCode(code) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 // assignPermissionsToRole 分配权限给角色
 func (r *RoleRepo) assignPermissionsToRole(ctx context.Context, tx *ent.Tx,
 	tenantID, operatorID uint32,

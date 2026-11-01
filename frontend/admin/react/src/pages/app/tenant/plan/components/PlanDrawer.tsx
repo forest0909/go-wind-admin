@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import {
   DrawerForm,
@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import {
   useCreatePlan,
   useUpdatePlan,
+  fetchListPlans,
   useListPlanModules,
   useCreatePlanModule,
   useDeletePlanModule,
@@ -76,7 +77,11 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
   const { data: planModuleData } = useListPlanModules(moduleIdQuery, {
     enabled: open && mode === 'edit' && !!data?.id,
   });
-  const existingModules = extractModuleNames(planModuleData?.items);
+  // 必须 memo：每次渲染都新建数组会让下面的回填 effect 每次渲染都重跑，冲掉用户正在改的值
+  const existingModules = useMemo(
+    () => extractModuleNames(planModuleData?.items),
+    [planModuleData],
+  );
 
   // 编辑模式下设置表单值（destroyOnHidden 时需延迟赋值）
   useEffect(() => {
@@ -95,88 +100,97 @@ const PlanDrawer: React.FC<PlanDrawerProps> = ({
     }
   }, [open, mode, data, existingModules]);
 
-  // 创建 mutation
+  // 创建/更新成功后的提示与关闭放在 handleSubmit 里，等模块白名单同步完再做，
+  // 否则抽屉先关掉卸载，白名单请求还没发出去。
   const createMutation = useCreatePlan({
-    onSuccess: () => {
-      message.success(t('createSuccess'));
-      queryClient.invalidateQueries({ queryKey: ['listPlans'] });
-      onSuccess();
-      onClose();
-    },
     onError: (error: Error) => {
       message.error(error.message || t('createFailed'));
     },
   });
-
-  // 更新 mutation
   const updateMutation = useUpdatePlan({
-    onSuccess: () => {
-      message.success(t('updateSuccess'));
-      queryClient.invalidateQueries({ queryKey: ['listPlans'] });
-      onSuccess();
-      onClose();
-    },
     onError: (error: Error) => {
       message.error(error.message || t('updateFailed'));
     },
   });
 
   // 模块白名单 CRUD mutations
-  const createModuleMutation = useCreatePlanModule({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listPlanModules'] });
-    },
-  });
-  const deleteModuleMutation = useDeletePlanModule({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['listPlanModules'] });
-    },
-  });
+  const createModuleMutation = useCreatePlanModule();
+  const deleteModuleMutation = useDeletePlanModule();
+
+  // Create 接口不回传 id。套餐名有唯一索引（uix_sys_plans_name），按名称查回新建的那一条。
+  const findPlanIdByName = async (name: string): Promise<number | undefined> => {
+    const resp = await fetchListPlans(
+      new PaginationQuery({ paging: { page: 1, pageSize: 100 }, formValues: { name } }),
+    );
+    // name 查询走 contains，可能带出同前缀的其他套餐，这里再精确比对
+    return resp?.items?.find((it) => it?.name === name)?.id;
+  };
+
+  // 同步模块白名单：计算 diff（新增、删除），逐一调用 create/delete。
+  const syncModules = async (planId: number, selected: string[], existing: string[]) => {
+    const toAdd = selected.filter((m) => !existing.includes(m));
+    const toRemove = existing.filter((m) => !selected.includes(m));
+
+    for (const mod of toAdd) {
+      await createModuleMutation.mutateAsync({
+        data: { planId, module: mod as any },
+      } as any);
+    }
+    for (const mod of toRemove) {
+      // 查找该模块对应的 plan_module 记录 ID 以执行删除。
+      const item = planModuleData?.items?.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (it: any) => it?.module === mod,
+      );
+      if (item?.id) {
+        await deleteModuleMutation.mutateAsync({ id: item.id } as any);
+      }
+    }
+  };
 
   // 提交表单
   const handleSubmit = async (values: Record<string, any>) => {
+    setConfirmLoading(true);
+
+    // 剥离模块白名单字段，不传入套餐主体 CRUD。
+    const { moduleWhitelist, ...planValues } = values;
+    const selectedModules: string[] = Array.isArray(moduleWhitelist) ? moduleWhitelist : [];
+    const isEdit = mode === 'edit' && !!data?.id;
+
     try {
-      setConfirmLoading(true);
-
-      // 剥离模块白名单字段，不传入套餐主体 CRUD。
-      const { moduleWhitelist, ...planValues } = values;
-      const selectedModules: string[] = Array.isArray(moduleWhitelist) ? moduleWhitelist : [];
-
-      if (mode === 'edit' && data?.id) {
+      if (isEdit) {
         await updateMutation.mutateAsync({ id: data.id, values: planValues });
       } else {
         await createMutation.mutateAsync({ data: planValues });
       }
-
-      // 同步模块白名单：计算 diff（新增、删除），逐一调用 create/delete。
-      // 新套餐创建后 data.id 不可用（create 不回传 id），此处仅对编辑模式同步。
-      if (mode === 'edit' && data?.id) {
-        const toAdd = selectedModules.filter((m) => !existingModules.includes(m));
-        const toRemove = existingModules.filter((m) => !selectedModules.includes(m));
-
-        for (const mod of toAdd) {
-          await createModuleMutation.mutateAsync({
-            data: { planId: data.id, module: mod as any },
-          } as any);
-        }
-        for (const mod of toRemove) {
-          // 查找该模块对应的 plan_module 记录 ID 以执行删除。
-          const item = planModuleData?.items?.find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (it: any) => it?.module === mod,
-          );
-          if (item?.id) {
-            await deleteModuleMutation.mutateAsync({ id: item.id } as any);
-          }
-        }
-      }
-
-      return true;
-    } catch {
+    } catch (error) {
+      // 失败提示已由 mutation 的 onError 弹出，这里只记原始错误
+      console.error('save plan failed', error);
+      setConfirmLoading(false);
       return false;
+    }
+
+    // 套餐主体已经保存。白名单失败时也要刷新列表并关闭抽屉，提示用户去编辑页补救，
+    // 否则再点一次提交会因为重名而创建失败。
+    try {
+      const planId = isEdit ? data.id : await findPlanIdByName(planValues.name);
+      if (!planId) {
+        throw new Error(`created plan not found by name: ${planValues.name}`);
+      }
+      await syncModules(planId, selectedModules, isEdit ? existingModules : []);
+      message.success(t(isEdit ? 'updateSuccess' : 'createSuccess'));
+    } catch (error) {
+      console.error('sync plan modules failed', error);
+      message.error(t('moduleSyncFailed'));
     } finally {
+      queryClient.invalidateQueries({ queryKey: ['listPlans'] });
+      queryClient.invalidateQueries({ queryKey: ['listPlanModules'] });
       setConfirmLoading(false);
     }
+
+    onSuccess();
+    onClose();
+    return true;
   };
 
   return (

@@ -454,13 +454,13 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 			s.log.Errorf(ctx, "login rate limiter pre-check failed: %s", lerr.Error())
 		} else if locked {
 			s.log.Warnf(ctx, "login blocked by rate limiter: ip=%s, username=%s", clientIP, username)
-			return nil, authenticationV1.ErrorBadRequest("too many login failures, please try again later")
+			return nil, authenticationV1.ErrorTooManyRequests("too many login failures, please try again later")
 		}
 	}
 
 	// ===== H5 闸门 2：强制验证码（始终启用；通过 HTTP Header 传递，避免改动 proto/前端生成代码）=====
 	if !s.verifyLoginCaptcha(ctx) {
-		return nil, authenticationV1.ErrorBadRequest("invalid or missing captcha")
+		return nil, authenticationV1.ErrorInvalidCaptcha("invalid or missing captcha")
 	}
 
 	// ===== 租户解析：tenant_code 留空视为平台（tenant 0），非空则按编号定位租户 =====
@@ -472,7 +472,7 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 		})
 		// 查不到、或租户非启用状态，统一返回同一文案，防止通过返回差异枚举有效租户编号
 		if tenant == nil || tenant.GetStatus() != identityV1.Tenant_ON {
-			return nil, authenticationV1.ErrorBadRequest("invalid tenant")
+			return nil, authenticationV1.ErrorInvalidTenant("invalid tenant")
 		}
 		tenantID = tenant.GetId()
 	}
@@ -518,7 +518,7 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 	if user.GetTenantId() != tenantID {
 		s.log.Errorf(ctx, "tenant mismatch for user [%d]: credential tenant [%d] vs user tenant [%d]",
 			matchedUserID, tenantID, user.GetTenantId())
-		return nil, authenticationV1.ErrorBadRequest("invalid tenant")
+		return nil, authenticationV1.ErrorInvalidTenant("invalid tenant")
 	}
 
 	tokenPayload := &authenticationV1.UserTokenPayload{

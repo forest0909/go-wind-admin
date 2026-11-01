@@ -85,6 +85,9 @@ func (s *PermissionService) init() {
 	// 每次启动都按当前菜单和接口同步一次权限点，部署后不必再手点同步。
 	// 同步按编码合并、不删手工数据，权限点没变化时只有查询。
 	// SyncPermissions 要从令牌取操作人，启动期没有登录用户，用 0 代表系统。
+	if err := s.permissionRepo.AlignLinkSequences(ctx); err != nil {
+		s.log.Errorf(ctx, "权限关联表 id 序列对齐失败: %v", err)
+	}
 	apiCount, _ := s.apiRepo.Count(ctx, nil)
 	menusCount, _ := s.menuRepo.Count(ctx, []func(s *sql.Selector){})
 	if apiCount.Count > 0 && menusCount > 0 {
@@ -660,6 +663,10 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 		return nil, err
 	}
 	if err = s.permissionRepo.RetireCodes(ctx, retiredPermissionCodes, operator.UserId); err != nil {
+		return nil, err
+	}
+	// 权限点有增减时，租户管理员要跟着拿到新的租户功能
+	if err = s.permissionRepo.SyncTenantManagerGrants(ctx, operator.UserId); err != nil {
 		return nil, err
 	}
 

@@ -162,6 +162,8 @@
       "INVALID_USERID": "无效的用户ID",
       "INVALID_TOKEN": "无效的令牌",
       "INVALID_PASSWORD": "密码错误，请重新输入",
+      "INVALID_TENANT": "租户编码不存在，或租户已停用、已过期",
+      "INVALID_CAPTCHA": "验证码错误，请重新输入",
       "UNAUTHORIZED": "未授权，请登录",
       "USER_FREEZE": "用户被冻结，请联系管理员",
       "INCORRECT_APP_SECRET": "应用密钥错误",

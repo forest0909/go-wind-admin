@@ -48,6 +48,7 @@ declare global {
   const VideoModal: typeof import('../src/components/common/Editor/src/TiptapEditor/modals').VideoModal
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
+  const canReuseLoginRedirect: typeof import('../src/stores/auth').canReuseLoginRedirect
   const connectSSEServer: typeof import('../src/hooks/useTokenRefresh').connectSSEServer
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef

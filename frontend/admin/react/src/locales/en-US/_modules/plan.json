@@ -68,5 +68,6 @@
     "FILE": "File Management",
     "TASK": "Task Scheduler"
   },
-  "quotaEdit": "Update Quota"
+  "quotaEdit": "Update Quota",
+  "moduleSyncFailed": "The plan was saved, but its module whitelist was not. Open the plan again and save the whitelist."
 }

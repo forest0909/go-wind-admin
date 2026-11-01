@@ -28,8 +28,9 @@ import (
 )
 
 type PermissionRepo struct {
-	entClient *entCrud.EntClient[*ent.Client]
-	log       *bLogger.Helper
+	entClient  *entCrud.EntClient[*ent.Client]
+	log        *bLogger.Helper
+	driverName string
 
 	mapper          *mapper.CopierMapper[permissionV1.Permission, ent.Permission]
 	statusConverter *mapper.EnumTypeConverter[permissionV1.Permission_Status, permission.Status]
@@ -54,9 +55,10 @@ func NewPermissionRepo(
 	permissionMenuRepo *PermissionMenuRepo,
 ) *PermissionRepo {
 	repo := &PermissionRepo{
-		log:       ctx.NewLoggerHelper("permission/repo/admin-service"),
-		entClient: entClient,
-		mapper:    mapper.NewCopierMapper[permissionV1.Permission, ent.Permission](),
+		log:        ctx.NewLoggerHelper("permission/repo/admin-service"),
+		entClient:  entClient,
+		driverName: driverNameOf(ctx),
+		mapper:     mapper.NewCopierMapper[permissionV1.Permission, ent.Permission](),
 		statusConverter: mapper.NewEnumTypeConverter[permissionV1.Permission_Status, permission.Status](
 			permissionV1.Permission_Status_name, permissionV1.Permission_Status_value,
 		),

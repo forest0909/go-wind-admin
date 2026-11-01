@@ -51,7 +51,7 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
   // 加载分类列表
   useEffect(() => {
     if (open) {
-      fetchListMessageCategories(new PaginationQuery({ formValues: { isEnabled: 'true' } }))
+      fetchListMessageCategories(new PaginationQuery({ formValues: { isEnabled: true } }))
         .then((res) => {
           const items = res?.items || [];
           // 分类是平级列表，转为 select 选项
@@ -65,7 +65,10 @@ const MessageDrawer: React.FC<MessageDrawerProps> = ({ open, mode, data, onClose
             })),
           );
         })
-        .catch(() => setCategoryTreeData([]));
+        .catch((err) => {
+          console.error('[MessageDrawer] load categories failed', err);
+          setCategoryTreeData([]);
+        });
     }
   }, [open]);
 

@@ -182,6 +182,9 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 	if operator.GetTenantId() > 0 && req.Data.GetType() != permissionV1.Role_TENANT {
 		req.Data.Type = trans.Ptr(permissionV1.Role_TENANT)
 	}
+	if err = s.ensureTenantGrantable(ctx, operator.GetTenantId(), req.Data.GetPermissions()); err != nil {
+		return nil, err
+	}
 
 	if err = s.roleRepo.Create(ctx, req); err != nil {
 		return nil, err
@@ -192,6 +195,22 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// ensureTenantGrantable 租户内建角色、改角色时，只能勾租户可用的权限点。
+// 授权层也会挡掉平台专属接口，这里再挡一次，免得侧栏和按钮露出平台页面。
+func (s *RoleService) ensureTenantGrantable(ctx context.Context, tenantID uint32, permissionIDs []uint32) error {
+	if tenantID == 0 {
+		return nil
+	}
+	ok, err := s.roleRepo.AllTenantGrantable(ctx, permissionIDs)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return adminV1.ErrorForbidden("permission not available to tenants")
+	}
+	return nil
 }
 
 func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRequest) (*emptypb.Empty, error) {
@@ -215,6 +234,9 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 
 	if operator.GetTenantId() > 0 && req.Data.GetType() != permissionV1.Role_TENANT {
 		req.Data.Type = trans.Ptr(permissionV1.Role_TENANT)
+	}
+	if err = s.ensureTenantGrantable(ctx, operator.GetTenantId(), req.Data.GetPermissions()); err != nil {
+		return nil, err
 	}
 
 	r, err := s.roleRepo.Get(ctx, &permissionV1.GetRoleRequest{

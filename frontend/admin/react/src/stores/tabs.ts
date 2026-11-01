@@ -47,6 +47,9 @@ interface TabsState {
   
   // 更新所有标签页的标题（用于切换语言时）
   updateAllTitles: (translateFn: (key: string) => string) => void;
+
+  // 清空全部标签页（含固定的），登出时用，防止下一个账号看到上一个账号的标签
+  $reset: () => void;
 }
 
 export const useTabsStore = create<TabsState>()(
@@ -181,6 +184,8 @@ export const useTabsStore = create<TabsState>()(
           }),
         }));
       },
+
+      $reset: () => set({ tabs: [] }),
     }),
     {
       name: 'app-tabs',

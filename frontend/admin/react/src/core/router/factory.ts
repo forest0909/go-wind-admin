@@ -18,7 +18,9 @@ function separateRoutes(routes: AppRouteObject[]) {
   const otherRoutes: AppRouteObject[] = [];    // 其他静态路由（auth/error等）
 
   for (const route of routes) {
-    if (route.path === '/' && route.children) {
+    // 错误页组（error-pages）也挂在 '/' 下且有 children，但它是 401/403/404 兜底，
+    // 误当成主布局丢掉后，后端模式下未授权的地址只剩 react-router 的默认报错页
+    if (route.path === '/' && route.children && route.name !== 'error-pages') {
       layoutRoutes.push(route);
     } else {
       otherRoutes.push(route);

@@ -53,3 +53,6 @@ node_modules/
 
 # 本机配置覆盖（数据库、Redis、MinIO 口令）。后加载，同名键覆盖主配置。不要把这个目录提交进来。
 backend/app/admin/service/configs/local/
+
+# 端到端测试证据（截图等），不入库
+test-evidence/

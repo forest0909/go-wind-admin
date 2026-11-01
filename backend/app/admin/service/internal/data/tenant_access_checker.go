@@ -18,6 +18,7 @@ import (
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
+	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/third_party/go-crud/viewer"
 )
@@ -69,7 +70,21 @@ func (c *TenantAccessCheckerImpl) CheckTenantAccess(ctx context.Context, tenantI
 	}
 	planExpired := t.ExpiredAt != nil && !t.ExpiredAt.IsZero() && t.ExpiredAt.Before(time.Now())
 
-	if planExpired && planExpiryPolicy == plan.ExpiryPolicyReadonly {
+	a, aerr := c.entClient.Api.Query().
+		Where(api.PathEQ(path), api.MethodEQ(method)).
+		Only(sysCtx)
+	if aerr != nil || a == nil {
+		// 找不到对应 API 记录，无法判定模块。fail-closed 拒绝。
+		c.log.Errorf(ctx, "tenant access check: api not found for %s %s", method, path)
+		return adminV1.ErrorForbidden("access denied")
+	}
+	service := ""
+	if a.Module != nil {
+		service = *a.Module
+	}
+
+	// 到期只读也要能退出登录、刷新令牌
+	if planExpired && planExpiryPolicy == plan.ExpiryPolicyReadonly && service != "AuthenticationService" {
 		switch method {
 		case "GET", "HEAD", "OPTIONS":
 			// 只读放行，但仍需过白名单（见第 3 步）
@@ -78,19 +93,13 @@ func (c *TenantAccessCheckerImpl) CheckTenantAccess(ctx context.Context, tenantI
 		}
 	}
 
-	// 3. 套餐模块白名单
+	// 3. 套餐模块白名单。进入系统本身要用的接口（菜单、权限码、自己的资料）不看白名单
+	if constants.IsTenantBaselineService(service) {
+		return nil
+	}
 	bizModule := identityV1.Module_MODULE_UNSPECIFIED
-	a, aerr := c.entClient.Api.Query().
-		Where(api.PathEQ(path), api.MethodEQ(method)).
-		Only(sysCtx)
-	if aerr == nil && a != nil {
-		if a.BusinessModule != nil {
-			bizModule = mapApiBusinessModuleToProto(*a.BusinessModule)
-		}
-	} else {
-		// 找不到对应 API 记录，无法判定模块。fail-closed 拒绝。
-		c.log.Errorf(ctx, "tenant access check: api not found for %s %s", method, path)
-		return adminV1.ErrorForbidden("access denied")
+	if a.BusinessModule != nil {
+		bizModule = mapApiBusinessModuleToProto(*a.BusinessModule)
 	}
 
 	if bizModule == identityV1.Module_MODULE_UNSPECIFIED {

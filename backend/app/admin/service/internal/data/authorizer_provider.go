@@ -137,6 +137,10 @@ func (p *AuthorizerProvider) ProvidePolicies(_ context.Context) (authorizer.Perm
 			if api.GetPath() == "" || api.GetMethod() == "" {
 				continue
 			}
+			// 租户域的角色拿不到平台专属接口，哪怕权限点被勾给了它
+			if role.GetTenantId() > 0 && constants.IsPlatformOnlyApi(api.GetModule(), api.GetMethod()) {
+				continue
+			}
 
 			var data = authorizer.PermissionData{
 				Domain: strconv.FormatUint(uint64(role.GetTenantId()), 10),

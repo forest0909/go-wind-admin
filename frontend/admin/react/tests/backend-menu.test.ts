@@ -103,11 +103,15 @@ describe('backend menus', () => {
       },
     ];
     const Page = () => null;
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const routes = await generateRoutesByBackend({
       fetchMenuListAsync: async () => menus,
       pageMap: { '/opm/user/list': Page },
       layoutMap: { BasicLayout: Page },
     });
+    // 注入的 index 跳转路由没有 name，不应触发 Route name is required
+    expect(log).not.toHaveBeenCalledWith('Route name is required', expect.anything());
+    log.mockRestore();
     expect(routes[0].redirect).toBe('/root/only');
     expect(routes[0].children?.find((r) => r.path === 'only')?.element).toBeTruthy();
     expect(routes[0].children?.some((r) => r.path === 'sibling')).toBe(false);
@@ -143,6 +147,20 @@ describe('backend menus', () => {
     }
     expect(log).toHaveBeenCalledWith('Failed to generate routes from backend:', expect.any(Error));
     log.mockRestore();
+  });
+
+  it('keeps the error-pages group so unknown paths render the 404 page in backend mode', async () => {
+    const bundle = await createAccessibleRouter('backend', {
+      routes: [
+        { path: '/', children: [{ path: 'dashboard' }] },
+        { name: 'error-pages', path: '/', children: [{ path: '403' }, { path: '*' }] },
+      ],
+      fetchMenuListAsync: async () => [],
+    });
+    const errorPages = bundle.routes.find((r) => r.name === 'error-pages');
+    expect(errorPages?.children?.some((c) => c.path === '*')).toBe(true);
+    expect(bundle.routes.some((r) => r.children?.some((c) => c.path === 'dashboard'))).toBe(false);
+    bundle.router.dispose();
   });
 
   it('migrates only accessMode from persisted version 2 and retains other preferences', async () => {

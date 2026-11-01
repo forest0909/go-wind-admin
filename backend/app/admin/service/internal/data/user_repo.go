@@ -459,6 +459,10 @@ func (r *userRepo) Get(ctx context.Context, req *identityV1.GetUserRequest) (*id
 
 	dto, err := r.repository.Get(ctx, builder, req.GetViewMask(), whereCond...)
 	if err != nil {
+		// 不存在（含别的租户的用户被租户过滤掉）回 404，不当成 500
+		if ent.IsNotFound(err) {
+			return nil, identityV1.ErrorNotFound("user not found")
+		}
 		return nil, err
 	}
 

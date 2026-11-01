@@ -57,6 +57,11 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   const [orgUnitTreeData, setOrgUnitTreeData] = useState<any[]>([]);
   const [positionOptions, setPositionOptions] = useState<{ label: string; value: number }[]>([]);
 
+  // 租户账号进来时页面不带 tenantId（左侧没有租户选择），按自己的租户取角色和组织；
+  // 否则会按平台去查 SYSTEM 角色，结果为空，必填的角色选不了
+  const ownTenantId = useUserStore((s) => s.userInfo?.tenantId);
+  const scopeTenantId = tenantId ?? (ownTenantId && ownTenantId > 0 ? ownTenantId : undefined);
+
   // 加载下拉数据
   useEffect(() => {
     if (open) {
@@ -66,8 +71,8 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
       // 之前用 type__not: 'TEMPLATE' 会把 TENANT 类型角色也放进下拉，提交必 400。
       fetchListRoles(
         new PaginationQuery({
-          formValues: tenantId
-            ? { status: 'ON', type: 'TENANT', tenant_id: tenantId }
+          formValues: scopeTenantId
+            ? { status: 'ON', type: 'TENANT', tenant_id: scopeTenantId }
             : { status: 'ON', type: 'SYSTEM' },
         }),
       )
@@ -75,17 +80,23 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           const tree = buildRoleTreeSelect(res?.items || []);
           setRoleTreeData(tree);
         })
-        .catch(() => setRoleTreeData([]));
+        .catch((err) => {
+          console.error('[UserDrawer] load roles failed', err);
+          setRoleTreeData([]);
+        });
 
       // 组织
       fetchListOrgUnits(
-        new PaginationQuery({ formValues: { status: 'ON', tenant_id: tenantId ?? 0 } }),
+        new PaginationQuery({ formValues: { status: 'ON', tenant_id: scopeTenantId ?? 0 } }),
       )
         .then((res) => {
           const tree = buildOrgTreeSelectData(res?.items || []);
           setOrgUnitTreeData(tree);
         })
-        .catch(() => setOrgUnitTreeData([]));
+        .catch((err) => {
+          console.error('[UserDrawer] load org units failed', err);
+          setOrgUnitTreeData([]);
+        });
 
       // 职位
       fetchListPositions(new PaginationQuery({ formValues: { status: 'ON' } }))
@@ -96,9 +107,12 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           }));
           setPositionOptions(opts);
         })
-        .catch(() => setPositionOptions([]));
+        .catch((err) => {
+          console.error('[UserDrawer] load positions failed', err);
+          setPositionOptions([]);
+        });
     }
-  }, [open, tenantId]);
+  }, [open, scopeTenantId]);
 
   // 编辑模式下设置表单值
   useEffect(() => {

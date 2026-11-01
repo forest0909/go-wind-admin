@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -25,6 +25,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { PaginationQuery } from '@/core';
+import { AccessibleRoutesContext } from '@/core/router';
+import type { AppRouteObject } from '@/core/router';
 import { useI18n } from '@/core/i18n';
 import { useUserStore } from '@/stores';
 import { usePreferencesStore } from '@/core/preferences/store';
@@ -37,8 +39,8 @@ const { Text, Title } = Typography;
 
 /**
  * 快捷入口：与 ele/vben 共用的叶子路由（三端路由对账过），label 复用
- * routes 命名空间的既有菜单文案，不新增同义 key。不做权限过滤——与
- * 「菜单可见但禁止访问」口径一致，无权限点击由路由闸渲染 403。
+ * routes 命名空间的既有菜单文案，不新增同义 key。只显示实际挂载了的路由：
+ * 后端模式下没下发的菜单（如租户看不到的菜单管理）点进去只会是 404。
  */
 const QUICK_LINKS = [
   { path: '/opm/users', labelKey: 'users', icon: <UserOutlined /> },
@@ -50,6 +52,22 @@ const QUICK_LINKS = [
   { path: '/system/online-sessions', labelKey: 'online-sessions', icon: <GlobalOutlined /> },
   { path: '/log/login-audit-logs', labelKey: 'login-audit-log', icon: <FileSearchOutlined /> },
 ];
+
+/** 收集路由树里所有的完整路径（子路由的相对路径拼上父路径），通配路由不算 */
+const collectRoutePaths = (routes: AppRouteObject[], parent = '', out = new Set<string>()) => {
+  for (const route of routes) {
+    const path = route.path;
+    const full =
+      !path || path === '*'
+        ? parent
+        : path.startsWith('/')
+          ? path
+          : `${parent.replace(/\/$/, '')}/${path}`;
+    if (path && path !== '*') out.add(full);
+    if (route.children) collectRoutePaths(route.children, full, out);
+  }
+  return out;
+};
 
 /** 按本地时段返回问候语 key（与 en/zh 各四条文案一一对应） */
 const greetingKeyByHour = (hour: number) => {
@@ -68,6 +86,12 @@ const Workspace = () => {
   const { t: tRoutes } = useI18n('routes');
   const { t: tSession } = useI18n('online-session');
   const navigate = useNavigate();
+  const mountedRoutes = useContext(AccessibleRoutesContext);
+  const quickLinks = useMemo(() => {
+    if (!mountedRoutes) return QUICK_LINKS;
+    const paths = collectRoutePaths(mountedRoutes);
+    return QUICK_LINKS.filter((link) => paths.has(link.path));
+  }, [mountedRoutes]);
 
   const userInfo = useUserStore((s) => s.userInfo);
   const locale = usePreferencesStore((s) => s.preferences.app.locale);
@@ -137,7 +161,7 @@ const Workspace = () => {
       {/* 快捷入口 */}
       <Card title={t('workspace.quickAccess.title')} style={{ marginTop: 16 }}>
         <Row gutter={[8, 8]}>
-          {QUICK_LINKS.map((link) => (
+          {quickLinks.map((link) => (
             <Col xs={12} sm={8} lg={6} key={link.path}>
               <div
                 role="button"

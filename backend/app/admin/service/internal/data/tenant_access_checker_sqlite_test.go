@@ -161,6 +161,35 @@ func TestTenantAccessCheckerDecisionMatrix(t *testing.T) {
 		require.Contains(t, forbiddenMessage(t, err), "read-only")
 	})
 
+	t.Run("基础服务_不看白名单", func(t *testing.T) {
+		// 套餐白名单只挂 FILE：取菜单（AdminPortalService，归仪表盘）和 /me（归组织人员）照样放行，
+		// 同一模块下的业务接口仍按白名单拒绝
+		checker, client, sysCtx := newCheckerSqlite(t)
+		p := client.Plan.Create().SetExpiryPolicy(plan.ExpiryPolicyReadonly).SaveX(sysCtx)
+		tid := client.Tenant.Create().SetName("t-baseline").SetStatus(tenant.StatusOn).SetPlanID(p.ID).SaveX(sysCtx).ID
+		_ = client.PlanModule.Create().SetPlanID(p.ID).SetModule(planmodule.ModuleFile).SaveX(sysCtx)
+		_ = client.Api.Create().SetPath("/t/routes").SetMethod("GET").SetModule("AdminPortalService").
+			SetBusinessModule(api.BusinessModuleDashboard).SaveX(sysCtx)
+		_ = client.Api.Create().SetPath("/t/me").SetMethod("GET").SetModule("UserProfileService").
+			SetBusinessModule(api.BusinessModuleOpm).SaveX(sysCtx)
+		_ = client.Api.Create().SetPath("/t/users").SetMethod("GET").SetModule("UserService").
+			SetBusinessModule(api.BusinessModuleOpm).SaveX(sysCtx)
+		require.NoError(t, checker.CheckTenantAccess(context.Background(), tid, "/t/routes", "GET"))
+		require.NoError(t, checker.CheckTenantAccess(context.Background(), tid, "/t/me", "GET"))
+		err := checker.CheckTenantAccess(context.Background(), tid, "/t/users", "GET")
+		require.Contains(t, forbiddenMessage(t, err), "module not allowed")
+	})
+
+	t.Run("到期READONLY_仍能退出登录", func(t *testing.T) {
+		checker, client, sysCtx := newCheckerSqlite(t)
+		p := client.Plan.Create().SetExpiryPolicy(plan.ExpiryPolicyReadonly).SaveX(sysCtx)
+		tid := client.Tenant.Create().SetName("t-readonly-logout").SetStatus(tenant.StatusOn).
+			SetNillableExpiredAt(&pastTime).SetPlanID(p.ID).SaveX(sysCtx).ID
+		_ = client.Api.Create().SetPath("/t/logout").SetMethod("POST").SetModule("AuthenticationService").
+			SetBusinessModule(api.BusinessModuleDashboard).SaveX(sysCtx)
+		require.NoError(t, checker.CheckTenantAccess(context.Background(), tid, "/t/logout", "POST"))
+	})
+
 	t.Run("到期BLOCKLOGIN_无只读门控", func(t *testing.T) {
 		// 到期但策略为 BLOCK_LOGIN（≠READONLY）：只读门控不生效，按白名单判定
 		checker, client, sysCtx := newCheckerSqlite(t)

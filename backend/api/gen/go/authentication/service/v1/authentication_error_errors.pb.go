@@ -81,6 +81,34 @@ func ErrorInvalidPassword(format string, args ...interface{}) *errors.Error {
 	return errors.New(400, AuthenticationErrorReason_INVALID_PASSWORD.String(), fmt.Sprintf(format, args...))
 }
 
+// 租户编号不存在或租户不可用（不区分两者，防枚举）
+func IsInvalidTenant(err error) bool {
+	if err == nil {
+		return false
+	}
+	e := errors.FromError(err)
+	return e.Reason == AuthenticationErrorReason_INVALID_TENANT.String() && e.Code == 400
+}
+
+// 租户编号不存在或租户不可用（不区分两者，防枚举）
+func ErrorInvalidTenant(format string, args ...interface{}) *errors.Error {
+	return errors.New(400, AuthenticationErrorReason_INVALID_TENANT.String(), fmt.Sprintf(format, args...))
+}
+
+// 验证码缺失或错误
+func IsInvalidCaptcha(err error) bool {
+	if err == nil {
+		return false
+	}
+	e := errors.FromError(err)
+	return e.Reason == AuthenticationErrorReason_INVALID_CAPTCHA.String() && e.Code == 400
+}
+
+// 验证码缺失或错误
+func ErrorInvalidCaptcha(format string, args ...interface{}) *errors.Error {
+	return errors.New(400, AuthenticationErrorReason_INVALID_CAPTCHA.String(), fmt.Sprintf(format, args...))
+}
+
 // 401
 func IsUnauthorized(err error) bool {
 	if err == nil {

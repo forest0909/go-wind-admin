@@ -42,6 +42,11 @@ func NewOnlineSessionService(
 // ListOnlineSession 返回当前在线会话列表，支持按用户名/IP 关键词过滤，
 // 按登录时间倒序排序后在内存中分页。
 func (s *OnlineSessionService) ListOnlineSession(ctx context.Context, req *onlineSessionV1.ListOnlineSessionRequest) (*onlineSessionV1.ListOnlineSessionResponse, error) {
+	operator, err := auth.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	entries, err := s.authenticator.ListSessionEntries(ctx)
 	if err != nil {
 		s.log.Errorf(ctx, "list session entries failed: %v", err)
@@ -54,6 +59,10 @@ func (s *OnlineSessionService) ListOnlineSession(ctx context.Context, req *onlin
 	for _, entry := range entries {
 		meta := entry.Meta
 		if meta == nil {
+			continue
+		}
+		// 会话存在 Redis 里，没有数据库那层租户过滤：租户只看本租户的会话
+		if operator.GetTenantId() > 0 && meta.TenantId != operator.GetTenantId() {
 			continue
 		}
 		if keyword != "" &&
@@ -194,6 +203,22 @@ func (s *OnlineSessionService) ForceLogoutSession(ctx context.Context, req *onli
 	jti := req.GetJti()
 	if userId == 0 || jti == "" {
 		return nil, adminV1.ErrorBadRequest("user id and jti are required")
+	}
+
+	operator, err := auth.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// 租户只能踢本租户的会话；查不到和不属于本租户返回同一个错误，不暴露别家会话是否存在
+	if operator.GetTenantId() > 0 {
+		meta, merr := s.authenticator.GetSessionMeta(ctx, req.GetClientType(), userId, jti)
+		if merr != nil {
+			s.log.Errorf(ctx, "get session meta failed for user [%d] jti [%s]: %v", userId, jti, merr)
+			return nil, merr
+		}
+		if meta == nil || meta.TenantId != operator.GetTenantId() {
+			return nil, adminV1.ErrorNotFound("session not found or already offline")
+		}
 	}
 
 	if err := s.authenticator.RevokeTokenByJti(ctx, trans.Ptr(req.GetClientType()), userId, jti); err != nil {

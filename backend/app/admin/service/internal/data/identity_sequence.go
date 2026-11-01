@@ -13,6 +13,14 @@ import (
 const (
 	identityTableMenus = "sys_menus"
 	identityTableApis  = "sys_apis"
+
+	// 两张权限关联表的代码里不带显式 ID，但 2026-10-29 的测试库上 sys_permission_menus
+	// 的序列落在 max(id) 之下（来源查不到，代码里没有回拨序列的路径），启动期权限点同步
+	// 因此撞 sys_permission_menus_pkey。启动同步之前先对齐，序列被外部回拨后也能自愈。
+	identityTablePermissionMenus = "sys_permission_menus"
+	identityTablePermissionApis  = "sys_permission_apis"
+	// 同步完权限点还会按差异补租户管理员角色的授权（SyncTenantManagerGrants）
+	identityTableRolePermissions = "sys_role_permissions"
 )
 
 // alignIdentitySequenceSQL 把 <table>_id_seq 推到 max(id)+1，只前进不回退。
@@ -85,4 +93,16 @@ func (r *MenuRepo) AlignIdentitySequence(ctx context.Context) error {
 // 接口同步是 truncate + 按显式 ID 重建，每跑一次都要重新对齐。
 func (r *ApiRepo) AlignIdentitySequence(ctx context.Context) error {
 	return alignIdentitySequence(ctx, r.entClient.DB(), r.driverName, identityTableApis)
+}
+
+// AlignLinkSequences 对齐 sys_permission_menus、sys_permission_apis、sys_role_permissions 的 id 序列。
+// 权限点同步会往这几张表批量插入，必须在同步之前调用。
+func (r *PermissionRepo) AlignLinkSequences(ctx context.Context) error {
+	db := r.entClient.DB()
+	for _, table := range []string{identityTablePermissionMenus, identityTablePermissionApis, identityTableRolePermissions} {
+		if err := alignIdentitySequence(ctx, db, r.driverName, table); err != nil {
+			return err
+		}
+	}
+	return nil
 }

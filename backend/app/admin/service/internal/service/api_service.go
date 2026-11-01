@@ -18,10 +18,8 @@ import (
 	"go-wind-admin/app/admin/service/internal/data"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
-	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/third_party/go-crud/viewer"
 	"go-wind-admin/third_party/go-utils/authorizer"
@@ -221,19 +219,11 @@ func (s *ApiService) loadOpenAPIApis(ctx context.Context) ([]*permissionV1.Api, 
 				}
 			}
 
-			var businessModule = identityV1.Module_MODULE_UNSPECIFIED
-			if module != "" {
-				if bm, ok := constants.ServiceTagToBusinessModule[module]; ok {
-					businessModule = bm
-				}
-			}
-
 			apiList = append(apiList, &permissionV1.Api{
 				Path:              trans.Ptr(path),
 				Method:            trans.Ptr(method),
 				Module:            trans.Ptr(module),
 				ModuleDescription: trans.Ptr(moduleDescription),
-				BusinessModule:    trans.Ptr(businessModule),
 				Description:       trans.Ptr(operation.Description),
 				Operation:         trans.Ptr(operation.OperationID),
 			})
@@ -273,7 +263,6 @@ func (s *ApiService) apisOutdated(ctx context.Context) (bool, error) {
 		if !ok ||
 			h.GetModule() != w.GetModule() ||
 			h.GetModuleDescription() != w.GetModuleDescription() ||
-			h.GetBusinessModule() != w.GetBusinessModule() ||
 			h.GetDescription() != w.GetDescription() ||
 			h.GetOperation() != w.GetOperation() {
 			return true, nil

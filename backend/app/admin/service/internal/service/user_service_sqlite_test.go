@@ -149,6 +149,8 @@ type userServiceEnv struct {
 	svc  *UserService
 	stub *userServiceUserRepoStub
 	ctx  context.Context // SystemContext（仅用于种子数据写入）
+
+	nextLegacyTenant uint32
 }
 
 // newUserServiceForTest 白盒复刻 NewUserService 的字段初始化：log 换 NopLogger，
@@ -183,7 +185,6 @@ func newUserServiceForTest(t *testing.T) *userServiceEnv {
 		roleRepo:           data.NewRoleRepoForTest(entClient),
 		positionRepo:       data.NewPositionRepoForTest(entClient),
 		orgUnitRepo:        data.NewOrgUnitRepoForTest(entClient),
-		tenantRepo:         data.NewTenantRepoForTest(entClient),
 		membershipRepo:     nil,
 		authenticator:      authenticator,
 	}
@@ -222,19 +223,12 @@ func (e *userServiceEnv) seedUserSvcRole(t *testing.T, tenantID *uint32, roleTyp
 	return 0
 }
 
-// seedUserSvcTenant 落库一个启用租户并返回其 ID。
+// seedUserSvcTenant 只分配一个遗留租户 ID（sys_tenants 已删除，租户号只是数据行上的数字）。
+// name/code 仅为可读性保留。
 func (e *userServiceEnv) seedUserSvcTenant(t *testing.T, name, code string) uint32 {
 	t.Helper()
-	created, err := e.svc.tenantRepo.Create(e.ctx, &identityV1.Tenant{
-		Name:        trans.Ptr(name),
-		Code:        trans.Ptr(code),
-		Status:      identityV1.Tenant_ON.Enum(),
-		Type:        identityV1.Tenant_TRIAL.Enum(),
-		AuditStatus: identityV1.Tenant_APPROVED.Enum(),
-	})
-	require.NoError(t, err)
-	require.NotNil(t, created.GetId())
-	return created.GetId()
+	e.nextLegacyTenant++
+	return 500 + e.nextLegacyTenant
 }
 
 // seedUserSvcCredential 落库一条 USERNAME/PASSWORD_HASH 凭证（bcrypt 经复杂度校验）。
@@ -285,23 +279,21 @@ func (e *userServiceEnv) registerOperator(userID uint32) {
 }
 
 // TestUserServiceSqlite_ListEnrichment 验证 List 的关联实体名称富集：
-// 租户名、角色（列表与单值两轨道）名称/编码、组织单元名称（列表与单值）、
+// 角色（列表与单值两轨道）名称/编码、组织单元名称（列表与单值）、
 // 职位名称（列表与单值）按真实关联表回填；列表中的 nil 项被跳过。
 func TestUserServiceSqlite_ListEnrichment(t *testing.T) {
 	e := newUserServiceForTest(t)
 
-	tenantID := e.seedUserSvcTenant(t, "UserService 富集租户", "USERSVC_TENANT_ENRICH")
-	tenantRoleID := e.seedUserSvcRole(t, trans.Ptr(tenantID), permissionV1.Role_TENANT, "USERSVC_ROLE_TENANT_ENRICH")
+	multiRoleID := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_MULTI_ENRICH")
 	systemRoleID := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_SYSTEM_ENRICH")
 
 	// 组织单元与职位（真实落库，经列表反查 ID）。
 	require.NoError(t, e.svc.orgUnitRepo.Create(e.ctx, &identityV1.CreateOrgUnitRequest{
 		Data: &identityV1.OrgUnit{
-			TenantId: trans.Ptr(tenantID),
-			Name:     trans.Ptr("UserService 富集组织单元"),
-			Code:     trans.Ptr("USERSVC_ORGUNIT_ENRICH"),
-			Status:   identityV1.OrgUnit_ON.Enum(),
-			Type:     identityV1.OrgUnit_DEPARTMENT.Enum(),
+			Name:   trans.Ptr("UserService 富集组织单元"),
+			Code:   trans.Ptr("USERSVC_ORGUNIT_ENRICH"),
+			Status: identityV1.OrgUnit_ON.Enum(),
+			Type:   identityV1.OrgUnit_DEPARTMENT.Enum(),
 		},
 	}))
 	orgListResp, err := e.svc.orgUnitRepo.List(e.ctx, &paginationV1.PagingRequest{})
@@ -316,7 +308,6 @@ func TestUserServiceSqlite_ListEnrichment(t *testing.T) {
 
 	require.NoError(t, e.svc.positionRepo.Create(e.ctx, &identityV1.CreatePositionRequest{
 		Data: &identityV1.Position{
-			TenantId:  trans.Ptr(tenantID),
 			OrgUnitId: trans.Ptr(orgUnitID), // 职位挂靠组织单元（表外键，缺省 0 会被外键约束拒绝）
 			Name:      trans.Ptr("UserService 富集职位"),
 			Code:      trans.Ptr("USERSVC_POSITION_ENRICH"),
@@ -342,8 +333,7 @@ func TestUserServiceSqlite_ListEnrichment(t *testing.T) {
 	// OrgUnitId / PositionId）。
 	u1 := &identityV1.User{
 		Id:          trans.Ptr(uint32(88001)),
-		TenantId:    trans.Ptr(tenantID),
-		RoleIds:     []uint32{tenantRoleID},
+		RoleIds:     []uint32{multiRoleID},
 		OrgUnitIds:  []uint32{orgUnitID},
 		PositionIds: []uint32{positionID},
 	}
@@ -368,13 +358,11 @@ func TestUserServiceSqlite_ListEnrichment(t *testing.T) {
 		enriched++
 		switch item.GetId() {
 		case 88001:
-			require.Equal(t, "UserService 富集租户", item.GetTenantName(), "租户名应回填")
-			require.Equal(t, []string{"UserService 角色 USERSVC_ROLE_TENANT_ENRICH"}, item.GetRoleNames(), "多值角色轨道应回填角色名")
-			require.Equal(t, []string{"USERSVC_ROLE_TENANT_ENRICH"}, item.GetRoles(), "多值角色轨道应回填角色码")
+			require.Equal(t, []string{"UserService 角色 USERSVC_ROLE_MULTI_ENRICH"}, item.GetRoleNames(), "多值角色轨道应回填角色名")
+			require.Equal(t, []string{"USERSVC_ROLE_MULTI_ENRICH"}, item.GetRoles(), "多值角色轨道应回填角色码")
 			require.Equal(t, "UserService 富集组织单元", item.GetOrgUnitNames()[0], "多值组织单元轨道应回填名称")
 			require.Equal(t, "UserService 富集职位", item.GetPositionNames()[0], "多值职位轨道应回填名称")
 		case 88002:
-			require.Empty(t, item.GetTenantName(), "平台用户不回填租户名")
 			// 单值 RoleId 轨道：与租户/组织单元/职位的单值轨道一致，
 			// 单值角色引用参与角色富集，回填角色名与角色码。
 			require.Equal(t, []string{"UserService 角色 USERSVC_ROLE_SYSTEM_ENRICH"}, item.GetRoleNames(), "单值角色轨道应回填角色名")
@@ -386,22 +374,6 @@ func TestUserServiceSqlite_ListEnrichment(t *testing.T) {
 		}
 	}
 	require.Equal(t, 2, enriched, "仅两条有效用户参与富集")
-}
-
-// TestUserServiceSqlite_GetEnrichment 验证 Get 单条查询的富集回填。
-func TestUserServiceSqlite_GetEnrichment(t *testing.T) {
-	e := newUserServiceForTest(t)
-	tenantID := e.seedUserSvcTenant(t, "UserService 单条富集租户", "USERSVC_TENANT_GET")
-	e.stub.usersByID[88003] = &identityV1.User{
-		Id:       trans.Ptr(uint32(88003)),
-		TenantId: trans.Ptr(tenantID),
-	}
-
-	resp, err := e.svc.Get(e.ctx, &identityV1.GetUserRequest{
-		QueryBy: &identityV1.GetUserRequest_Id{Id: 88003},
-	})
-	require.NoError(t, err)
-	require.Equal(t, "UserService 单条富集租户", resp.GetTenantName(), "Get 应回填租户名")
 }
 
 // TestUserServiceSqlite_CountAndUserExists 验证 Count / UserExists 对仓储的委托。
@@ -475,16 +447,15 @@ func TestUserServiceSqlite_CreateGuards(t *testing.T) {
 	require.True(t, adminV1.IsBadRequest(err), "不存在的角色应 400 some roles not found")
 	require.Nil(t, resp)
 
-	// 租户操作人请求平台（SYSTEM）角色：类型过滤不命中。
-	tenantOp := opCtx(e.ctx, 9002, tenantID, false)
-	resp, err = e.svc.Create(tenantOp, &identityV1.CreateUserRequest{
+	// 旧库遗留的 TENANT 类型角色：只认 SYSTEM 角色，类型过滤不命中。
+	resp, err = e.svc.Create(platformOp, &identityV1.CreateUserRequest{
 		Data: &identityV1.User{
-			Username: trans.Ptr("usersvc-crosstyperole"),
-			RoleIds:  []uint32{systemRoleID},
+			Username: trans.Ptr("usersvc-legacytenantrole"),
+			RoleIds:  []uint32{tenantRoleID},
 		},
 	})
 	require.Error(t, err)
-	require.True(t, adminV1.IsBadRequest(err), "租户操作人请求 SYSTEM 角色应被类型过滤拒绝")
+	require.True(t, adminV1.IsBadRequest(err), "遗留 TENANT 角色应被类型过滤拒绝")
 	require.Nil(t, resp)
 }
 
@@ -776,7 +747,6 @@ func newUserServiceWithRealUserRepo(t *testing.T) (*UserService, *ent.Client, co
 		roleRepo:           data.NewRoleRepoForTest(entClient),
 		positionRepo:       data.NewPositionRepoForTest(entClient),
 		orgUnitRepo:        data.NewOrgUnitRepoForTest(entClient),
-		tenantRepo:         data.NewTenantRepoForTest(entClient),
 	}
 	return svc, entClient.Client(), sys
 }
@@ -814,49 +784,42 @@ func countUsersByUsername(t *testing.T, client *ent.Client, ctx context.Context,
 	return n
 }
 
-// TestUserServiceSqlite_CreateTenant 验证租户操作人的创建路径：
-// 请求被改写为操作人租户（TenantId 覆盖 + TENANT 类型角色过滤），
-// 凭证行绑定租户并可用默认密码校验。
-func TestUserServiceSqlite_CreateTenant(t *testing.T) {
+// TestUserServiceSqlite_CreateIgnoresRequestTenant 单租户：调用方在请求里给的
+// TenantId 被丢弃，用户与凭证一律落在租户 0，可用默认密码在租户 0 校验通过。
+func TestUserServiceSqlite_CreateIgnoresRequestTenant(t *testing.T) {
 	e := newUserServiceForTest(t)
-	tenantID := e.seedUserSvcTenant(t, "UserService 创建租户", "USERSVC_TENANT_CREATE")
-	tenantRoleID := e.seedUserSvcRole(t, trans.Ptr(tenantID), permissionV1.Role_TENANT, "USERSVC_ROLE_TENANT_CREATE")
-	e.registerOperator(9002)
-	tenantOp := opCtx(e.ctx, 9002, tenantID, false)
+	systemRoleID := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_SYSTEM_T0")
+	e.registerOperator(9001)
+	platformOp := opCtx(e.ctx, 9001, 0, true)
 
-	_, err := e.svc.Create(tenantOp, &identityV1.CreateUserRequest{
+	_, err := e.svc.Create(platformOp, &identityV1.CreateUserRequest{
 		Data: &identityV1.User{
-			Username: trans.Ptr("usersvc-tenant-created"),
-			RoleIds:  []uint32{tenantRoleID},
+			TenantId: trans.Ptr(uint32(501)),
+			Username: trans.Ptr("usersvc-forced-t0"),
+			RoleIds:  []uint32{systemRoleID},
 		},
 	})
-	require.NoError(t, err, "租户内创建应成功")
-	require.Equal(t, 1, e.credentialCount(t), "应恰好落库一条租户凭证")
-	// 记录的创建请求：TenantId 被强制覆盖为操作人租户。
+	require.NoError(t, err)
 	require.Len(t, e.stub.creates, 1)
-	require.Equal(t, tenantID, e.stub.creates[0].Data.GetTenantId(), "请求租户应被覆盖为操作人租户")
-	matched, ferr := e.findCred(t, tenantID, "usersvc-tenant-created", constants.DefaultUserPassword)
-	require.NoError(t, ferr, "租户凭证应能以默认密码通过校验")
+	require.Nil(t, e.stub.creates[0].Data.TenantId, "请求里的 TenantId 应被丢弃")
+	matched, ferr := e.findCred(t, 0, "usersvc-forced-t0", constants.DefaultUserPassword)
+	require.NoError(t, ferr, "凭证应落在租户 0")
 	require.Equal(t, uint32(66001), matched)
-	_, ferr = e.findCred(t, 0, "usersvc-tenant-created", constants.DefaultUserPassword)
-	require.Error(t, ferr, "平台(0)上下文不应命中租户凭证")
+	_, ferr = e.findCred(t, 501, "usersvc-forced-t0", constants.DefaultUserPassword)
+	require.Error(t, ferr, "不应在请求指定的租户下落凭证")
 }
 
 // TestUserServiceSqlite_UpdatePasswordReset 验证 Update 的密码重置与注入：
 // 无密码路径记录 userRepo.Update（UpdatedBy 注入、update_mask 追加 updated_by、
 // Data.Id 对齐目标）；平台管理员重置密码走真实 ResetCredential（旧失效新生效）；
-// 弱密码被拒；租户操作人重置跨租户用户被 403。
+// 弱密码被拒。
 func TestUserServiceSqlite_UpdatePasswordReset(t *testing.T) {
 	e := newUserServiceForTest(t)
 	systemRoleID := e.seedUserSvcRole(t, nil, permissionV1.Role_SYSTEM, "USERSVC_ROLE_SYSTEM_UPDATE")
-	tenantA := e.seedUserSvcTenant(t, "UserService 更新租户甲", "USERSVC_TENANT_UPDATE_A")
-	tenantB := e.seedUserSvcTenant(t, "UserService 更新租户乙", "USERSVC_TENANT_UPDATE_B")
 
 	e.seedUserSvcCredential(t, nil, 10501, "usersvc-reset-target")
 	// Username 必填：ResetCredential 以目标用户行（而非请求体）的用户名为标识符定位凭证。
 	e.stub.usersByID[10501] = &identityV1.User{Id: trans.Ptr(uint32(10501)), Username: trans.Ptr("usersvc-reset-target")}
-	e.seedUserSvcCredential(t, trans.Ptr(tenantB), 10502, "usersvc-cross-tenant-target")
-	e.stub.usersByID[10502] = &identityV1.User{Id: trans.Ptr(uint32(10502)), TenantId: trans.Ptr(tenantB), Username: trans.Ptr("usersvc-cross-tenant-target")}
 
 	// 操作人占位行（下方平台/租户操作人分支用）。
 	e.registerOperator(9001)
@@ -908,25 +871,6 @@ func TestUserServiceSqlite_UpdatePasswordReset(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, adminV1.IsBadRequest(err), "弱密码重置应被复杂度策略拒绝")
 	require.Contains(t, err.Error(), "password too short", "复杂度拒绝的具体原因应透传（长度不足）")
-
-	// 租户操作人重置跨租户用户：403。
-	// 角色校验会先于租户检查执行：租户操作人的请求须携带本租户（TENANT）角色
-	// 才能走到跨租户拒绝分支（否则先被"some roles not found"拦截）。
-	tenantRoleA := e.seedUserSvcRole(t, trans.Ptr(tenantA), permissionV1.Role_TENANT, "USERSVC_ROLE_TENANT_UPDATE_A")
-	tenantOp := opCtx(e.ctx, 9002, tenantA, false)
-	resp, err := e.svc.Update(tenantOp, &identityV1.UpdateUserRequest{
-		Id:       10502,
-		Password: trans.Ptr(encryptLoginPassword(t, "HackedP@ss999")),
-		Data: &identityV1.User{
-			Username: trans.Ptr("usersvc-cross-tenant-target"),
-			RoleIds:  []uint32{tenantRoleA},
-		},
-	})
-	require.Error(t, err)
-	require.True(t, adminV1.IsForbidden(err), "跨租户重置应 403")
-	require.Nil(t, resp)
-	_, ferr = e.findCred(t, tenantB, "usersvc-cross-tenant-target", constants.DefaultUserPassword)
-	require.NoError(t, ferr, "跨租户目标的密码不应被改动")
 }
 
 // TestUserServiceSqlite_UpdateRoleChangeRevokesTokens 验证用户角色集合变化后旧访问令牌立即失效：

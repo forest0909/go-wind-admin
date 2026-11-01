@@ -160,7 +160,6 @@ func (s *MenuService) SyncMenus(ctx context.Context, req *permissionV1.SyncMenus
 
 func (s *MenuService) createDefaultMenus(ctx context.Context) error {
 	for _, m := range constants.DefaultMenus {
-		m.Module = trans.Ptr(constants.ComponentToModule(m.GetComponent()))
 		if err := s.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{Data: m}); err != nil {
 			s.log.Errorf(ctx, "create default menu err: %v", err)
 			return err

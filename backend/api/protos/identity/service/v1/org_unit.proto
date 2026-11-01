@@ -83,7 +83,6 @@ message OrgUnit {
   ];  // 负责人用户名称
 
   optional uint32 tenant_id = 12 [json_name = "tenantId", (gnostic.openapi.v3.property) = {description: "租户ID"}];  // 租户ID
-  optional string tenant_name = 13 [json_name = "tenantName", (gnostic.openapi.v3.property) = {description: "租户名称"}];  // 租户名称
 
   optional string remark = 20 [json_name = "remark", (gnostic.openapi.v3.property) = {description: "备注"}];  // 备注
   optional string description = 21 [json_name = "description", (gnostic.openapi.v3.property) = {description: "描述信息"}];  // 描述信息

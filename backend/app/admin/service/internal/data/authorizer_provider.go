@@ -95,9 +95,6 @@ func (p *AuthorizerProvider) ProvidePolicies(_ context.Context) (authorizer.Perm
 		if role.GetStatus() != permissionV1.Role_ON {
 			continue
 		}
-		if constants.IsTemplateRoleCode(role.GetCode()) {
-			continue
-		}
 
 		// 平台管理员放行全部接口：它的语义就是"拥有所有功能"，不能依赖逐条接口绑定——
 		// 种子里的接口 ID 清单是按位置写死的，新增接口也不会自动绑给它，
@@ -137,10 +134,6 @@ func (p *AuthorizerProvider) ProvidePolicies(_ context.Context) (authorizer.Perm
 			if api.GetPath() == "" || api.GetMethod() == "" {
 				continue
 			}
-			// 租户域的角色拿不到平台专属接口，哪怕权限点被勾给了它
-			if role.GetTenantId() > 0 && constants.IsPlatformOnlyApi(api.GetModule(), api.GetMethod()) {
-				continue
-			}
 
 			var data = authorizer.PermissionData{
 				Domain: strconv.FormatUint(uint64(role.GetTenantId()), 10),
@@ -149,9 +142,7 @@ func (p *AuthorizerProvider) ProvidePolicies(_ context.Context) (authorizer.Perm
 			}
 			authorizerDataArray = append(authorizerDataArray, data)
 		}
-		// 角色编码只在租户内唯一（uix_sys_roles_tenant_code），各租户由模板复制出的
-		// 角色编码相同；必须追加而非覆盖，否则只剩最后遍历到的租户的策略。
-		// 每条策略自带租户域，追加不会串租户。
+		// 每条策略自带角色所属租户域（固定为 0），追加而非覆盖。
 		if len(authorizerDataArray) > 0 {
 			result[role.GetCode()] = append(result[role.GetCode()], authorizerDataArray...)
 		}

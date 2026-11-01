@@ -44,23 +44,6 @@ func (Api) Fields() []ent.Field {
 			Optional().
 			Nillable(),
 
-		field.Enum("business_module").
-			Comment("所属业务功能模块（用于套餐白名单过滤）").
-			NamedValues(
-				"Dashboard", "DASHBOARD",
-				"Opm", "OPM",
-				"System", "SYSTEM",
-				"Dict", "DICT",
-				"Tenant", "TENANT",
-				"Permission", "PERMISSION",
-				"Log", "LOG",
-				"InternalMessage", "INTERNAL_MESSAGE",
-				"File", "FILE",
-				"Task", "TASK",
-			).
-			Optional().
-			Nillable(),
-
 		field.String("operation").
 			Comment("接口操作名").
 			Optional().
@@ -113,10 +96,6 @@ func (Api) Indexes() []ent.Index {
 		// 按作用域（Admin/App）过滤
 		index.Fields("scope").
 			StorageKey("idx_sys_api_res_scope"),
-
-		// 按业务功能模块过滤（套餐白名单）
-		index.Fields("business_module").
-			StorageKey("idx_sys_api_res_business_module"),
 
 		// 按路径 + 方法 快速定位接口
 		index.Fields("path", "method").

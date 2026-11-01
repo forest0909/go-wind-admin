@@ -22,7 +22,6 @@ var _ = binding.EncodeURL
 const _ = http.SupportPackageIsVersion1
 
 const OperationAuthenticationServiceGenerateCaptcha = "/admin.service.v1.AuthenticationService/GenerateCaptcha"
-const OperationAuthenticationServiceGetTenantBranding = "/admin.service.v1.AuthenticationService/GetTenantBranding"
 const OperationAuthenticationServiceLogin = "/admin.service.v1.AuthenticationService/Login"
 const OperationAuthenticationServiceLogout = "/admin.service.v1.AuthenticationService/Logout"
 const OperationAuthenticationServiceRefreshToken = "/admin.service.v1.AuthenticationService/RefreshToken"
@@ -31,8 +30,6 @@ const OperationAuthenticationServiceVerifyCaptcha = "/admin.service.v1.Authentic
 type AuthenticationServiceHTTPServer interface {
 	// GenerateCaptcha 生成验证码
 	GenerateCaptcha(context.Context, *emptypb.Empty) (*v1.GenerateCaptchaResponse, error)
-	// GetTenantBranding 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
-	GetTenantBranding(context.Context, *v1.GetTenantBrandingRequest) (*v1.GetTenantBrandingResponse, error)
 	// Login 登录
 	Login(context.Context, *v1.LoginRequest) (*v1.LoginResponse, error)
 	// Logout 登出
@@ -50,7 +47,6 @@ func RegisterAuthenticationServiceHTTPServer(s *http.Server, srv AuthenticationS
 	r.POST("/admin/v1/refresh-token", _AuthenticationService_RefreshToken0_HTTP_Handler(srv))
 	r.GET("/admin/v1/captcha", _AuthenticationService_GenerateCaptcha0_HTTP_Handler(srv))
 	r.POST("/admin/v1/captcha/verify", _AuthenticationService_VerifyCaptcha0_HTTP_Handler(srv))
-	r.POST("/admin/v1/tenant-branding", _AuthenticationService_GetTenantBranding0_HTTP_Handler(srv))
 }
 
 func _AuthenticationService_Login0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
@@ -160,33 +156,9 @@ func _AuthenticationService_VerifyCaptcha0_HTTP_Handler(srv AuthenticationServic
 	}
 }
 
-func _AuthenticationService_GetTenantBranding0_HTTP_Handler(srv AuthenticationServiceHTTPServer) func(ctx http.Context) error {
-	return func(ctx http.Context) error {
-		var in v1.GetTenantBrandingRequest
-		if err := ctx.Bind(&in); err != nil {
-			return err
-		}
-		if err := ctx.BindQuery(&in); err != nil {
-			return err
-		}
-		http.SetOperation(ctx, OperationAuthenticationServiceGetTenantBranding)
-		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
-			return srv.GetTenantBranding(ctx, req.(*v1.GetTenantBrandingRequest))
-		})
-		out, err := h(ctx, &in)
-		if err != nil {
-			return err
-		}
-		reply := out.(*v1.GetTenantBrandingResponse)
-		return ctx.Result(200, reply)
-	}
-}
-
 type AuthenticationServiceHTTPClient interface {
 	// GenerateCaptcha 生成验证码
 	GenerateCaptcha(ctx context.Context, req *emptypb.Empty, opts ...http.CallOption) (rsp *v1.GenerateCaptchaResponse, err error)
-	// GetTenantBranding 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
-	GetTenantBranding(ctx context.Context, req *v1.GetTenantBrandingRequest, opts ...http.CallOption) (rsp *v1.GetTenantBrandingResponse, err error)
 	// Login 登录
 	Login(ctx context.Context, req *v1.LoginRequest, opts ...http.CallOption) (rsp *v1.LoginResponse, err error)
 	// Logout 登出
@@ -213,20 +185,6 @@ func (c *AuthenticationServiceHTTPClientImpl) GenerateCaptcha(ctx context.Contex
 	opts = append(opts, http.Operation(OperationAuthenticationServiceGenerateCaptcha))
 	opts = append(opts, http.PathTemplate(pattern))
 	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
-}
-
-// GetTenantBranding 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
-func (c *AuthenticationServiceHTTPClientImpl) GetTenantBranding(ctx context.Context, in *v1.GetTenantBrandingRequest, opts ...http.CallOption) (*v1.GetTenantBrandingResponse, error) {
-	var out v1.GetTenantBrandingResponse
-	pattern := "/admin/v1/tenant-branding"
-	path := binding.EncodeURL(pattern, in, false)
-	opts = append(opts, http.Operation(OperationAuthenticationServiceGetTenantBranding))
-	opts = append(opts, http.PathTemplate(pattern))
-	err := c.cc.Invoke(ctx, "POST", path, in, &out, opts...)
 	if err != nil {
 		return nil, err
 	}

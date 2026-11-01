@@ -40,8 +40,6 @@ type UserService struct {
 	roleRepo     *data.RoleRepo
 	positionRepo *data.PositionRepo
 	orgUnitRepo  *data.OrgUnitRepo
-	tenantRepo   *data.TenantRepo
-	usageRepo    *data.TenantUsageRepo
 
 	membershipRepo *data.MembershipRepo
 
@@ -55,8 +53,6 @@ func NewUserService(
 	userCredentialRepo *data.UserCredentialRepo,
 	positionRepo *data.PositionRepo,
 	orgUnitRepo *data.OrgUnitRepo,
-	tenantRepo *data.TenantRepo,
-	usageRepo *data.TenantUsageRepo,
 	membershipRepo *data.MembershipRepo,
 	authenticator *data.Authenticator,
 ) *UserService {
@@ -67,8 +63,6 @@ func NewUserService(
 		userCredentialRepo: userCredentialRepo,
 		positionRepo:       positionRepo,
 		orgUnitRepo:        orgUnitRepo,
-		tenantRepo:         tenantRepo,
-		usageRepo:          usageRepo,
 		membershipRepo:     membershipRepo,
 		authenticator:      authenticator,
 	}
@@ -102,17 +96,12 @@ func (s *UserService) init() {
 func (s *UserService) extractRelationIDs(
 	users []*identityV1.User,
 	roleSet aggregator.ResourceMap[uint32, *permissionV1.Role],
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
 	orgUnitSet aggregator.ResourceMap[uint32, *identityV1.OrgUnit],
 	posSet aggregator.ResourceMap[uint32, *identityV1.Position],
 ) {
 	for _, v := range users {
 		if v == nil {
 			continue
-		}
-
-		if id := v.GetTenantId(); id > 0 {
-			tenantSet[id] = nil
 		}
 
 		if id := v.GetRoleId(); id > 0 {
@@ -152,7 +141,6 @@ func (s *UserService) extractRelationIDs(
 func (s *UserService) fetchRelationInfo(
 	ctx context.Context,
 	roleSet aggregator.ResourceMap[uint32, *permissionV1.Role],
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
 	orgUnitSet aggregator.ResourceMap[uint32, *identityV1.OrgUnit],
 	posSet aggregator.ResourceMap[uint32, *identityV1.Position],
 ) error {
@@ -170,23 +158,6 @@ func (s *UserService) fetchRelationInfo(
 
 		for _, role := range roles {
 			roleSet[role.GetId()] = role
-		}
-	}
-
-	if len(tenantSet) > 0 {
-		tenantIds := make([]uint32, 0, len(tenantSet))
-		for id := range tenantSet {
-			tenantIds = append(tenantIds, id)
-		}
-
-		tenants, err := s.tenantRepo.ListTenantsByIds(ctx, tenantIds)
-		if err != nil {
-			s.log.Errorf(context.Background(), "query tenants err: %v", err)
-			return err
-		}
-
-		for _, tenant := range tenants {
-			tenantSet[tenant.GetId()] = tenant
 		}
 	}
 
@@ -230,7 +201,6 @@ func (s *UserService) fetchRelationInfo(
 func (s *UserService) bindRelations(
 	users []*identityV1.User,
 	roleSet aggregator.ResourceMap[uint32, *permissionV1.Role],
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
 	orgUnitSet aggregator.ResourceMap[uint32, *identityV1.OrgUnit],
 	posSet aggregator.ResourceMap[uint32, *identityV1.Position],
 ) {
@@ -252,15 +222,6 @@ func (s *UserService) bindRelations(
 		func(ou *identityV1.User, r *permissionV1.Role) {
 			ou.RoleNames = append(ou.RoleNames, r.GetName())
 			ou.Roles = append(ou.Roles, r.GetCode())
-		},
-	)
-
-	aggregator.Populate(
-		users,
-		tenantSet,
-		func(ou *identityV1.User) uint32 { return ou.GetTenantId() },
-		func(ou *identityV1.User, r *identityV1.Tenant) {
-			ou.TenantName = r.Name
 		},
 	)
 
@@ -305,15 +266,14 @@ func (s *UserService) bindRelations(
 
 func (s *UserService) enrichRelations(ctx context.Context, users []*identityV1.User) error {
 	var roleSet = make(aggregator.ResourceMap[uint32, *permissionV1.Role])
-	var tenantSet = make(aggregator.ResourceMap[uint32, *identityV1.Tenant])
 	var orgUnitSet = make(aggregator.ResourceMap[uint32, *identityV1.OrgUnit])
 	var posSet = make(aggregator.ResourceMap[uint32, *identityV1.Position])
 
-	s.extractRelationIDs(users, roleSet, tenantSet, orgUnitSet, posSet)
-	if err := s.fetchRelationInfo(ctx, roleSet, tenantSet, orgUnitSet, posSet); err != nil {
+	s.extractRelationIDs(users, roleSet, orgUnitSet, posSet)
+	if err := s.fetchRelationInfo(ctx, roleSet, orgUnitSet, posSet); err != nil {
 		return err
 	}
-	s.bindRelations(users, roleSet, tenantSet, orgUnitSet, posSet)
+	s.bindRelations(users, roleSet, orgUnitSet, posSet)
 	return nil
 }
 
@@ -373,9 +333,8 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	}
 
 	req.Data.CreatedBy = trans.Ptr(operator.UserId)
-	if operator.GetTenantId() > 0 {
-		req.Data.TenantId = operator.TenantId
-	}
+	// 单租户：用户固定落在租户 0，不接受调用方指定租户
+	req.Data.TenantId = nil
 
 	var roleIds []uint32
 	if len(req.Data.GetRoleIds()) > 0 {
@@ -390,17 +349,9 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 		return nil, adminV1.ErrorBadRequest("role_ids is required")
 	}
 
-	var queryString string
-	if operator.GetTenantId() > 0 || req.Data.GetTenantId() > 0 {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "TENANT", "tenant_id": %d}`,
-			sliceutil.NumberSliceToString(roleIds),
-			req.Data.GetTenantId(),
-		)
-	} else {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
-			sliceutil.NumberSliceToString(roleIds),
-		)
-	}
+	queryString := fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
+		sliceutil.NumberSliceToString(roleIds),
+	)
 	roles, err := s.roleRepo.List(ctx, &paginationV1.PagingRequest{
 		NoPaging: trans.Ptr(true),
 		FilteringType: &paginationV1.PagingRequest_Query{
@@ -423,22 +374,6 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 
 	req.Data.RoleId = nil
 	req.Data.RoleIds = roleIds
-
-	// 套餐 USER_LIMIT 硬限制：租户用户创建前检查配额（平台用户/计量失败 fail-open）
-	targetTenantID := req.Data.GetTenantId()
-	if targetTenantID == 0 {
-		targetTenantID = operator.GetTenantId()
-	}
-	if targetTenantID > 0 && s.usageRepo != nil {
-		usage, uerr := s.usageRepo.GetUsage(ctx, targetTenantID)
-		if uerr == nil {
-			if limit, ok := quotaLimitFromUsages(usage.GetQuotas(), identityV1.PlanQuota_USER_LIMIT); ok {
-				if uint64(usage.GetUserCount()) >= limit {
-					return nil, quotaExceededError("USER_LIMIT", limit, usage.GetUserCount())
-				}
-			}
-		}
-	}
 
 	// 创建请求里的密码与改密、重置同一条传输契约：前端 AES 密文。
 	// 空密码不解密，下面仍填 DefaultUserPassword 明文常量。
@@ -551,9 +486,8 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 
 	req.Data.Id = trans.Ptr(req.GetId())
 
-	if operator.GetTenantId() > 0 {
-		req.Data.TenantId = operator.TenantId
-	}
+	// 单租户：用户固定落在租户 0，不接受调用方指定租户
+	req.Data.TenantId = nil
 
 	var roleIds []uint32
 	if len(req.Data.GetRoleIds()) > 0 {
@@ -568,17 +502,9 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		return nil, adminV1.ErrorBadRequest("role_ids is required")
 	}
 
-	var queryString string
-	if operator.GetTenantId() > 0 || req.Data.GetTenantId() > 0 {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "TENANT", "tenant_id": %d}`,
-			sliceutil.NumberSliceToString(roleIds),
-			req.Data.GetTenantId(),
-		)
-	} else {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
-			sliceutil.NumberSliceToString(roleIds),
-		)
-	}
+	queryString := fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
+		sliceutil.NumberSliceToString(roleIds),
+	)
 	roles, err := s.roleRepo.List(ctx, &paginationV1.PagingRequest{
 		NoPaging: trans.Ptr(true),
 		FilteringType: &paginationV1.PagingRequest_Query{

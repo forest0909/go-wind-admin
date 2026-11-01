@@ -32,7 +32,6 @@ const (
 	AuthenticationErrorReason_INVALID_USERID     AuthenticationErrorReason = 2 // 用户ID无效
 	AuthenticationErrorReason_INVALID_TOKEN      AuthenticationErrorReason = 3 // token无效
 	AuthenticationErrorReason_INVALID_PASSWORD   AuthenticationErrorReason = 4 // 密码无效
-	AuthenticationErrorReason_INVALID_TENANT     AuthenticationErrorReason = 5 // 租户编号不存在或租户不可用（不区分两者，防枚举）
 	AuthenticationErrorReason_INVALID_CAPTCHA    AuthenticationErrorReason = 6 // 验证码缺失或错误
 	// 401
 	AuthenticationErrorReason_UNAUTHORIZED            AuthenticationErrorReason = 100 // 未授权
@@ -135,7 +134,6 @@ var (
 		2:    "INVALID_USERID",
 		3:    "INVALID_TOKEN",
 		4:    "INVALID_PASSWORD",
-		5:    "INVALID_TENANT",
 		6:    "INVALID_CAPTCHA",
 		100:  "UNAUTHORIZED",
 		101:  "USER_FREEZE",
@@ -194,7 +192,6 @@ var (
 		"INVALID_USERID":                  2,
 		"INVALID_TOKEN":                   3,
 		"INVALID_PASSWORD":                4,
-		"INVALID_TENANT":                  5,
 		"INVALID_CAPTCHA":                 6,
 		"UNAUTHORIZED":                    100,
 		"USER_FREEZE":                     101,
@@ -280,14 +277,13 @@ var File_authentication_service_v1_authentication_error_proto protoreflect.FileD
 
 const file_authentication_service_v1_authentication_error_proto_rawDesc = "" +
 	"\n" +
-	"4authentication/service/v1/authentication_error.proto\x12\x19authentication.service.v1\x1a\x13errors/errors.proto*\xcb\r\n" +
+	"4authentication/service/v1/authentication_error.proto\x12\x19authentication.service.v1\x1a\x13errors/errors.proto*\xb1\r\n" +
 	"\x19AuthenticationErrorReason\x12\x15\n" +
 	"\vBAD_REQUEST\x10\x00\x1a\x04\xa8E\x90\x03\x12\x1c\n" +
 	"\x12INVALID_GRANT_TYPE\x10\x01\x1a\x04\xa8E\x90\x03\x12\x18\n" +
 	"\x0eINVALID_USERID\x10\x02\x1a\x04\xa8E\x90\x03\x12\x17\n" +
 	"\rINVALID_TOKEN\x10\x03\x1a\x04\xa8E\x90\x03\x12\x1a\n" +
-	"\x10INVALID_PASSWORD\x10\x04\x1a\x04\xa8E\x90\x03\x12\x18\n" +
-	"\x0eINVALID_TENANT\x10\x05\x1a\x04\xa8E\x90\x03\x12\x19\n" +
+	"\x10INVALID_PASSWORD\x10\x04\x1a\x04\xa8E\x90\x03\x12\x19\n" +
 	"\x0fINVALID_CAPTCHA\x10\x06\x1a\x04\xa8E\x90\x03\x12\x16\n" +
 	"\fUNAUTHORIZED\x10d\x1a\x04\xa8E\x91\x03\x12\x15\n" +
 	"\vUSER_FREEZE\x10e\x1a\x04\xa8E\x91\x03\x12\x1e\n" +

@@ -17,8 +17,6 @@ import (
 	"unicode/utf8"
 
 	"google.golang.org/protobuf/types/known/anypb"
-
-	identitypb "go-wind-admin/api/gen/go/identity/service/v1"
 )
 
 // ensure the imports are used
@@ -35,8 +33,6 @@ var (
 	_ = (*mail.Address)(nil)
 	_ = anypb.Any{}
 	_ = sort.Sort
-
-	_ = identitypb.Module(0)
 )
 
 // Validate checks the field values on Menu with the rules defined in the proto
@@ -157,10 +153,6 @@ func (m *Menu) validate(all bool) error {
 			}
 		}
 
-	}
-
-	if m.Module != nil {
-		// no validation rules for Module
 	}
 
 	if m.ParentId != nil {

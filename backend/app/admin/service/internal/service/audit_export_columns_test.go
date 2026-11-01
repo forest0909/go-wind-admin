@@ -19,12 +19,12 @@ func TestAuditExportColumnHeaders(t *testing.T) {
 		want []string
 	}{
 		{"login", headersOf(loginExportColumns()), []string{
-			"id", "createdAt", "username", "tenantName", "actionType", "status",
+			"id", "createdAt", "username", "actionType", "status",
 			"loginMethod", "mfaStatus", "failureReason", "ipAddress", "deviceInfo",
 			"requestId", "traceId",
 		}},
 		{"operation", headersOf(operationExportColumns()), []string{
-			"id", "createdAt", "username", "tenantName", "resourceType", "resourceId",
+			"id", "createdAt", "username", "resourceType", "resourceId",
 			"action", "success", "sensitiveLevel", "requestId",
 		}},
 	}

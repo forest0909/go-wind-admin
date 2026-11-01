@@ -48,7 +48,6 @@ type TaskService struct {
 
 	userRepo            data.UserRepo
 	taskRepo            *data.TaskRepo
-	tenantUsageRepo     *data.TenantUsageRepo
 	auditLogArchiveRepo *data.AuditLogArchiveRepo
 }
 
@@ -56,14 +55,12 @@ func NewTaskService(
 	ctx *bootstrap.Context,
 	taskRepo *data.TaskRepo,
 	userRepo data.UserRepo,
-	tenantUsageRepo *data.TenantUsageRepo,
 	auditLogArchiveRepo *data.AuditLogArchiveRepo,
 ) *TaskService {
 	svc := &TaskService{
 		log:                 ctx.NewLoggerHelper("task/service/admin-service"),
 		taskRepo:            taskRepo,
 		userRepo:            userRepo,
-		tenantUsageRepo:     tenantUsageRepo,
 		auditLogArchiveRepo: auditLogArchiveRepo,
 	}
 
@@ -338,20 +335,10 @@ func (s *TaskService) startAllTask(ctx context.Context) (int32, error) {
 
 	s.log.Infof(ctx, "总共成功开启定时任务[%d]个", count)
 
-	// 注册系统级常驻任务：租户到期扫描（不依赖 sys_tasks 表，规避 typeName 去重问题）。
+	// 注册系统级常驻任务（不依赖 sys_tasks 表，规避 typeName 去重问题）。
 	// 放在 startAllTask 末尾，确保初始启动与 RestartAllTask（先 RemoveAllPeriodicTask 再
 	// startAllTask）后均能恢复调度项。handler 已在 NewAsynqServer 中通过 RegisterSubscriber 注册。
 	if s.hasScheduler() {
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.TenantExpiryScanCronSpec,
-			task.TenantExpiryScanTaskType,
-			&task.TenantExpiryScanTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册系统级到期扫描定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "系统级到期扫描定时任务已注册（cron=%s）", task.TenantExpiryScanCronSpec)
-		}
-
 		// 审计日志归档（等保 ≥6 个月留存）：超保留期行导出 JSONL 后删除，
 		// 目录/保留期走环境变量（见 AsyncAuditLogArchive）。
 		if _, err := s.taskScheduler.NewPeriodicTask(
@@ -362,19 +349,6 @@ func (s *TaskService) startAllTask(ctx context.Context) (int32, error) {
 			s.log.Errorf(ctx, "注册审计日志归档定时任务失败: %s", err.Error())
 		} else {
 			s.log.Infof(ctx, "审计日志归档定时任务已注册（cron=%s）", task.AuditLogArchiveCronSpec)
-		}
-
-		// 套餐配额水位扫描：扫全部 ON 租户三类配额水位，命中租户的告警经站内信
-		// 投递其管理员。handler 属套餐计费域（PlanQuotaWatermarkService.
-		// AsyncPlanQuotaWatermarkScan），调度项在此注册（同上理由）。
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.PlanQuotaWatermarkCronSpec,
-			task.PlanQuotaWatermarkTaskType,
-			&task.PlanQuotaWatermarkTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册套餐配额水位扫描定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "套餐配额水位扫描定时任务已注册（cron=%s）", task.PlanQuotaWatermarkCronSpec)
 		}
 	}
 
@@ -549,34 +523,5 @@ func (s *TaskService) AsyncAuditLogArchive(taskType string, taskData *task.Audit
 	for table, n := range results {
 		s.log.Infof(ctx, "audit log archived: %s -> %d rows (dir=%s)", table, n, outDir)
 	}
-	return nil
-}
-
-// AsyncTenantExpiryScan 租户到期扫描任务的实际执行逻辑。
-//
-// 系统级常驻定时任务（每小时整点），由 NewAsynqServer 启动时注册，不写入 sys_tasks 表。
-// 逻辑详见 TenantUsageRepo.EnforceExpiryPolicies：扫描 status==ON 且 expired_at<=now 的租户，
-// 按其套餐的 expiry_policy 修改租户状态（BLOCK_LOGIN→EXPIRED、FREEZE→FREEZE、READONLY 保持 ON），
-// 并吊销受影响租户全部用户的在线令牌。
-//
-// READONLY 策略的即时读写拦截由 TenantAccessChecker 中间件承担，不需要等待本扫描任务。
-func (s *TaskService) AsyncTenantExpiryScan(taskType string, taskData *task.TenantExpiryScanTaskData) error {
-	s.log.Infof(context.Background(), "AsyncTenantExpiryScan [%s] [%+v]", taskType, taskData)
-
-	if s.tenantUsageRepo == nil {
-		s.log.Errorf(context.Background(), "AsyncTenantExpiryScan: tenantUsageRepo is nil, aborting")
-		return errors.New("tenantUsageRepo is not configured")
-	}
-
-	// 用 SystemContext 包裹：到期扫描需要跨租户查询。
-	ctx := viewer.WithSystemContext(context.Background())
-
-	count, err := s.tenantUsageRepo.EnforceExpiryPolicies(ctx)
-	if err != nil {
-		s.log.Errorf(context.Background(), "AsyncTenantExpiryScan: enforce failed: %v", err)
-		return err
-	}
-
-	s.log.Infof(context.Background(), "AsyncTenantExpiryScan: completed, %d tenants enforced", count)
 	return nil
 }

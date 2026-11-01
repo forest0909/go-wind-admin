@@ -13,7 +13,6 @@ import (
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
-	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/api"
@@ -34,16 +33,13 @@ func newApiRepoSqlite(t *testing.T, entClient *entCrud.EntClient[*ent.Client]) *
 		scopeConverter: mapper.NewEnumTypeConverter[permissionV1.Api_Scope, api.Scope](
 			permissionV1.Api_Scope_name, permissionV1.Api_Scope_value,
 		),
-		businessModuleConverter: mapper.NewEnumTypeConverter[identityV1.Module, api.BusinessModule](
-			identityV1.Module_name, identityV1.Module_value,
-		),
 	}
 	repo.init()
 	return repo
 }
 
 // TestApiRepoSqlite_Create 通过 repo.Create 写入后直查 SQLite 断言落库
-// （含 scope / business_module 枚举经 converter 的落库值）。
+// （含 scope 枚举经 converter 的落库值）。
 func TestApiRepoSqlite_Create(t *testing.T) {
 	entClient := enttest.NewEntClientForTest(t)
 	repo := newApiRepoSqlite(t, entClient)
@@ -58,7 +54,6 @@ func TestApiRepoSqlite_Create(t *testing.T) {
 			ModuleDescription: trans.Ptr("模块描述"),
 			Description:       trans.Ptr("接口描述"),
 			Scope:             permissionV1.Api_ADMIN.Enum(),
-			BusinessModule:    identityV1.Module_SYSTEM.Enum(),
 		},
 	})
 	require.NoError(t, err, "repo.Create 应写入 SQLite 成功")
@@ -71,17 +66,14 @@ func TestApiRepoSqlite_Create(t *testing.T) {
 	require.Equal(t, "GET", *rows[0].Method, "method 应按请求落库")
 	require.Equal(t, "sqlite-module", *rows[0].Module, "module 应按请求落库")
 	require.Equal(t, api.ScopeAdmin, *rows[0].Scope, "scope 枚举应经 converter 落为 ADMIN")
-	require.NotNil(t, rows[0].BusinessModule, "business_module 枚举应经 converter 落库")
-	require.Equal(t, api.BusinessModuleSystem, *rows[0].BusinessModule, "business_module 枚举应落为 SYSTEM")
 
-	// 读视图（Get 按主键）：scope/business_module 为写入值、status 未显式指定
+	// 读视图（Get 按主键）：scope 为写入值、status 未显式指定
 	// 按列默认（ON）落库，三者均经 queryEnumsAndBackfill 如实回显。
 	got, err := repo.Get(ctx, &permissionV1.GetApiRequest{
 		QueryBy: &permissionV1.GetApiRequest_Id{Id: rows[0].ID},
 	})
 	require.NoError(t, err, "按主键读取刚创建的行应命中")
 	require.Equal(t, permissionV1.Api_ADMIN, got.GetScope(), "读视图应回填写入的 scope")
-	require.Equal(t, identityV1.Module_SYSTEM, got.GetBusinessModule(), "读视图应回填写入的 business_module")
 	require.Equal(t, permissionV1.Api_ON, got.GetStatus(), "读视图应回填列默认 status")
 }
 
@@ -146,8 +138,7 @@ func TestApiRepoSqlite_ListContainsFilter(t *testing.T) {
 	require.Equal(t, uint64(2), all.Total, "无过滤时应返回全部 2 行")
 	require.Len(t, all.Items, 2)
 	// 列表读视图：status/scope 未显式指定、均按列默认（ON/ADMIN）落库，经
-	// queryEnumsAndBackfill 如实回显；business_module 列为 NULL，无可回填值、
-	// 读视图保持缺省。
+	// queryEnumsAndBackfill 如实回显。
 	for _, item := range all.Items {
 		require.Equal(t, permissionV1.Api_ON, item.GetStatus(), "列表读视图应回填列默认 status")
 		require.Equal(t, permissionV1.Api_ADMIN, item.GetScope(), "列表读视图应回填列默认 scope")
@@ -179,8 +170,7 @@ func TestApiRepoSqlite_Get(t *testing.T) {
 	require.NoError(t, err, "按存在的 ID 查询应命中")
 	require.Equal(t, createdID, hit.GetId())
 	// 读视图（Get 按主键）：status/scope 未显式指定、均按列默认（ON/ADMIN）
-	// 落库，经 queryEnumsAndBackfill 如实回显；business_module 列为 NULL，
-	// 无可回填值、读视图保持缺省。
+	// 落库，经 queryEnumsAndBackfill 如实回显。
 	require.Equal(t, permissionV1.Api_ON, hit.GetStatus(), "读视图应回填列默认 status")
 	require.Equal(t, permissionV1.Api_ADMIN, hit.GetScope(), "读视图应回填列默认 scope")
 	_, err = repo.Get(ctx, &permissionV1.GetApiRequest{

@@ -40,20 +40,17 @@ type FileTransferService struct {
 
 	mc                *oss.MinIOClient
 	fileServiceClient *data.FileRepo
-	usageRepo         *data.TenantUsageRepo
 }
 
 func NewFileTransferService(
 	ctx *bootstrap.Context,
 	mc *oss.MinIOClient,
 	fileServiceClient *data.FileRepo,
-	usageRepo *data.TenantUsageRepo,
 ) *FileTransferService {
 	return &FileTransferService{
 		log:               ctx.NewLoggerHelper("file-transfer/service/app-service"),
 		mc:                mc,
 		fileServiceClient: fileServiceClient,
-		usageRepo:         usageRepo,
 	}
 }
 
@@ -167,20 +164,6 @@ func (s *FileTransferService) directUploadFile(ctx context.Context, req *storage
 	// H3: 文件大小校验，防 DoS / 超大文件滥用
 	if int64(len(req.GetFile())) > ossutil.MaxUploadSize {
 		return nil, storageV1.ErrorFileTooLarge("file size %d exceeds max upload size %d", len(req.GetFile()), ossutil.MaxUploadSize)
-	}
-
-	// 套餐 STORAGE 硬限制：租户用户上传前检查配额（当前占用+本次大小>上限拒绝；
-	// fail-open：无套餐/无配额条目/计量失败放行）。平台用户（tenantId==0）不检查。
-	if operator, opErr := auth.FromContext(ctx); opErr == nil && operator != nil && operator.GetTenantId() > 0 && s.usageRepo != nil {
-		used, usedErr := s.usageRepo.SumStorageInTenant(ctx, operator.GetTenantId())
-		if usedErr == nil {
-			quotas, qErr := s.usageRepo.GetUsage(ctx, operator.GetTenantId())
-			if qErr == nil {
-				if qerr := checkStorageQuotaWith(quotas.GetQuotas(), used, uint64(len(req.GetFile()))); qerr != nil {
-					return nil, storageV1.ErrorFileTooLarge("plan storage quota: %v", qerr)
-				}
-			}
-		}
 	}
 
 	// H3: 通过文件内容嗅探真实 MIME，避免信任客户端可伪造的 mime 字段

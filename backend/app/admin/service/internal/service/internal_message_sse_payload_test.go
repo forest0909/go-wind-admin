@@ -42,7 +42,7 @@ func TestInternalMessageSsePayloadContract(t *testing.T) {
 	svc.RegisterInternalMessagePublisher(rec)
 
 	now := time.Now()
-	recipient := newMessageRecipient(11, 22, 33, 44, &now, "标题", "正文")
+	recipient := newMessageRecipient(11, 22, 33, &now, "标题", "正文")
 
 	svc.publishNotification(context.Background(), recipient)
 
@@ -56,14 +56,13 @@ func TestInternalMessageSsePayloadContract(t *testing.T) {
 
 	assert.Equal(t, float64(11), payload["messageId"])
 	assert.Equal(t, float64(22), payload["recipientUserId"])
-	assert.Equal(t, float64(44), payload["tenantId"])
 	assert.Equal(t, "标题", payload["title"])
 	assert.Equal(t, "正文", payload["content"])
 	// status 必须是枚举名：面板按 item.status === 'READ' 判断已读，拿到 varint 会永远为 false
 	assert.Equal(t, internalMessageV1.InternalMessageRecipient_RECEIVED.String(), payload["status"])
 	assert.NotEmpty(t, payload["createdAt"], "dateUtil(createdAt).fromNow() 依赖该字段")
 
-	for _, snake := range []string{"message_id", "recipient_user_id", "created_at", "tenant_id"} {
+	for _, snake := range []string{"message_id", "recipient_user_id", "created_at"} {
 		assert.NotContains(t, payload, snake, "SSE data 必须是 protojson 的 camelCase 形状")
 	}
 }

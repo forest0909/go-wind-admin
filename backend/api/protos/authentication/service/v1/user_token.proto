@@ -92,13 +92,6 @@ message UserTokenPayload {
     }
   ]; // 是否平台超级管理员
 
-  optional bool is_tenant_admin = 21 [
-    json_name = "ita",
-    (gnostic.openapi.v3.property) = {
-      description: "是否租户管理员"
-    }
-  ]; // 是否租户管理员
-
   optional string jti = 100 [
     json_name = "jti",
     (gnostic.openapi.v3.property) = {

@@ -56,12 +56,6 @@ type Tx struct {
 	PermissionMenu *PermissionMenuClient
 	// PermissionPolicy is the client for interacting with the PermissionPolicy builders.
 	PermissionPolicy *PermissionPolicyClient
-	// Plan is the client for interacting with the Plan builders.
-	Plan *PlanClient
-	// PlanModule is the client for interacting with the PlanModule builders.
-	PlanModule *PlanModuleClient
-	// PlanQuota is the client for interacting with the PlanQuota builders.
-	PlanQuota *PlanQuotaClient
 	// Position is the client for interacting with the Position builders.
 	Position *PositionClient
 	// Role is the client for interacting with the Role builders.
@@ -78,8 +72,6 @@ type Tx struct {
 	SysConfig *SysConfigClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
-	// Tenant is the client for interacting with the Tenant builders.
-	Tenant *TenantClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 	// UserCredential is the client for interacting with the UserCredential builders.
@@ -243,9 +235,6 @@ func (tx *Tx) init() {
 	tx.PermissionGroup = NewPermissionGroupClient(tx.config)
 	tx.PermissionMenu = NewPermissionMenuClient(tx.config)
 	tx.PermissionPolicy = NewPermissionPolicyClient(tx.config)
-	tx.Plan = NewPlanClient(tx.config)
-	tx.PlanModule = NewPlanModuleClient(tx.config)
-	tx.PlanQuota = NewPlanQuotaClient(tx.config)
 	tx.Position = NewPositionClient(tx.config)
 	tx.Role = NewRoleClient(tx.config)
 	tx.RoleFieldPermission = NewRoleFieldPermissionClient(tx.config)
@@ -254,7 +243,6 @@ func (tx *Tx) init() {
 	tx.RolePermission = NewRolePermissionClient(tx.config)
 	tx.SysConfig = NewSysConfigClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
-	tx.Tenant = NewTenantClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserCredential = NewUserCredentialClient(tx.config)
 	tx.UserOrgUnit = NewUserOrgUnitClient(tx.config)

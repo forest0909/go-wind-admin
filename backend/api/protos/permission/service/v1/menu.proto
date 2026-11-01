@@ -11,7 +11,6 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
 
 import "pagination/v1/pagination.proto";
-import "identity/service/v1/module.proto";
 
 // 菜单服务
 service MenuService {
@@ -115,12 +114,6 @@ message Menu {
     (google.api.field_behavior) = OPTIONAL,
     (gnostic.openapi.v3.property) = {description: "路由元信息"}
   ]; // 路由元信息
-
-  optional identity.service.v1.Module module = 16 [
-    json_name = "module",
-    (google.api.field_behavior) = OPTIONAL,
-    (gnostic.openapi.v3.property) = {description: "所属业务功能模块"}
-  ]; // 所属业务功能模块
 
   optional uint32 parent_id = 50 [json_name = "parentId", (gnostic.openapi.v3.property) = {description: "父节点ID"}];  // 父节点ID
   repeated Menu children = 51 [json_name = "children", (gnostic.openapi.v3.property) = {description: "子节点树"}];  // 子节点树

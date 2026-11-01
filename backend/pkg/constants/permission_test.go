@@ -12,17 +12,13 @@ import (
 func TestPermissionCodeConstants(t *testing.T) {
 	assert.Equal(t, "sys:", SystemPermissionCodePrefix)
 	assert.Equal(t, "sys:access_backend", SystemAccessBackendPermissionCode)
-	assert.Equal(t, "sys:manage_tenants", SystemManageTenantsPermissionCode)
 	assert.Equal(t, "sys:audit_logs", SystemAuditLogsPermissionCode)
 	assert.Equal(t, "sys:platform_admin", SystemPlatformAdminPermissionCode)
-	assert.Equal(t, "sys:tenant_manager", SystemTenantManagerPermissionCode)
 
 	// 系统权限代码必须由统一前缀拼出，防止引入脱离前缀体系的平行常量
 	assert.Equal(t, SystemPermissionCodePrefix+"access_backend", SystemAccessBackendPermissionCode)
-	assert.Equal(t, SystemPermissionCodePrefix+"manage_tenants", SystemManageTenantsPermissionCode)
 	assert.Equal(t, SystemPermissionCodePrefix+"audit_logs", SystemAuditLogsPermissionCode)
 	assert.Equal(t, SystemPermissionCodePrefix+"platform_admin", SystemPlatformAdminPermissionCode)
-	assert.Equal(t, SystemPermissionCodePrefix+"tenant_manager", SystemTenantManagerPermissionCode)
 
 	assert.Equal(t, "sys", SystemPermissionModule)
 	assert.Equal(t, "biz", DefaultBizPermissionModule)
@@ -35,10 +31,8 @@ func TestPermissionCodeConstants(t *testing.T) {
 func TestProtectedPermissionCodes(t *testing.T) {
 	expected := []string{
 		SystemAccessBackendPermissionCode,
-		SystemManageTenantsPermissionCode,
 		SystemAuditLogsPermissionCode,
 		SystemPlatformAdminPermissionCode,
-		SystemTenantManagerPermissionCode,
 	}
 	assert.ElementsMatch(t, expected, ProtectedPermissionCodes,
 		"受保护权限代码清单漂移；如有意变更请同步更新本测试")

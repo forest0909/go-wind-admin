@@ -659,36 +659,6 @@ func ModuleDescriptionContainsFold(v string) predicate.Api {
 	return predicate.Api(sql.FieldContainsFold(FieldModuleDescription, v))
 }
 
-// BusinessModuleEQ applies the EQ predicate on the "business_module" field.
-func BusinessModuleEQ(v BusinessModule) predicate.Api {
-	return predicate.Api(sql.FieldEQ(FieldBusinessModule, v))
-}
-
-// BusinessModuleNEQ applies the NEQ predicate on the "business_module" field.
-func BusinessModuleNEQ(v BusinessModule) predicate.Api {
-	return predicate.Api(sql.FieldNEQ(FieldBusinessModule, v))
-}
-
-// BusinessModuleIn applies the In predicate on the "business_module" field.
-func BusinessModuleIn(vs ...BusinessModule) predicate.Api {
-	return predicate.Api(sql.FieldIn(FieldBusinessModule, vs...))
-}
-
-// BusinessModuleNotIn applies the NotIn predicate on the "business_module" field.
-func BusinessModuleNotIn(vs ...BusinessModule) predicate.Api {
-	return predicate.Api(sql.FieldNotIn(FieldBusinessModule, vs...))
-}
-
-// BusinessModuleIsNil applies the IsNil predicate on the "business_module" field.
-func BusinessModuleIsNil() predicate.Api {
-	return predicate.Api(sql.FieldIsNull(FieldBusinessModule))
-}
-
-// BusinessModuleNotNil applies the NotNil predicate on the "business_module" field.
-func BusinessModuleNotNil() predicate.Api {
-	return predicate.Api(sql.FieldNotNull(FieldBusinessModule))
-}
-
 // OperationEQ applies the EQ predicate on the "operation" field.
 func OperationEQ(v string) predicate.Api {
 	return predicate.Api(sql.FieldEQ(FieldOperation, v))

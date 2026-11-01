@@ -2,7 +2,7 @@
 // 字段初始化必须与生产 NewXxxRepo 逐字段一致，改生产构造器须同步此处。
 //
 // 说明：
-//   - 本文件覆盖 repo_testkit.go 之外批次的 repo（plan / plan_module / plan_quota /
+//   - 本文件覆盖 repo_testkit.go 之外批次的 repo（
 //     language / dict_type / dict_entry / position / api / permission_group / menu）。
 //     各构造器与对应 *_repo.go 的生产构造器逐字段对齐（含 mapper/converter 初始化
 //     与 init() 调用），唯一差异是 log 一律 bLogger.NewHelper(bLogger.NopLogger())；
@@ -24,66 +24,12 @@ import (
 	entApi "go-wind-admin/app/admin/service/internal/data/ent/api"
 	entMenu "go-wind-admin/app/admin/service/internal/data/ent/menu"
 	entPermissionGroup "go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
-	entPlan "go-wind-admin/app/admin/service/internal/data/ent/plan"
-	entPlanModule "go-wind-admin/app/admin/service/internal/data/ent/planmodule"
-	entPlanQuota "go-wind-admin/app/admin/service/internal/data/ent/planquota"
 	entPosition "go-wind-admin/app/admin/service/internal/data/ent/position"
 
 	dictV1 "go-wind-admin/api/gen/go/dict/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 )
-
-// NewPlanRepoForTest 与生产 NewPlanRepo 逐字段一致（log 换 NopLogger），并调用 init()。
-func NewPlanRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *PlanRepo {
-	repo := &PlanRepo{
-		log:       bLogger.NewHelper(bLogger.NopLogger()),
-		entClient: entClient,
-		mapper:    mapper.NewCopierMapper[identityV1.Plan, ent.Plan](),
-		versionConverter: mapper.NewEnumTypeConverter[identityV1.Plan_Version, entPlan.Version](
-			identityV1.Plan_Version_name, identityV1.Plan_Version_value,
-		),
-		expiryPolicyConv: mapper.NewEnumTypeConverter[identityV1.Plan_ExpiryPolicy, entPlan.ExpiryPolicy](
-			identityV1.Plan_ExpiryPolicy_name, identityV1.Plan_ExpiryPolicy_value,
-		),
-	}
-
-	repo.init()
-
-	return repo
-}
-
-// NewPlanModuleRepoForTest 与生产 NewPlanModuleRepo 逐字段一致（log 换 NopLogger），并调用 init()。
-func NewPlanModuleRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *PlanModuleRepo {
-	repo := &PlanModuleRepo{
-		log:       bLogger.NewHelper(bLogger.NopLogger()),
-		entClient: entClient,
-		mapper:    mapper.NewCopierMapper[identityV1.PlanModule, ent.PlanModule](),
-		moduleConv: mapper.NewEnumTypeConverter[identityV1.Module, entPlanModule.Module](
-			identityV1.Module_name, identityV1.Module_value,
-		),
-	}
-
-	repo.init()
-
-	return repo
-}
-
-// NewPlanQuotaRepoForTest 与生产 NewPlanQuotaRepo 逐字段一致（log 换 NopLogger），并调用 init()。
-func NewPlanQuotaRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *PlanQuotaRepo {
-	repo := &PlanQuotaRepo{
-		log:       bLogger.NewHelper(bLogger.NopLogger()),
-		entClient: entClient,
-		mapper:    mapper.NewCopierMapper[identityV1.PlanQuota, ent.PlanQuota](),
-		quotaTypeConv: mapper.NewEnumTypeConverter[identityV1.PlanQuota_QuotaType, entPlanQuota.QuotaType](
-			identityV1.PlanQuota_QuotaType_name, identityV1.PlanQuota_QuotaType_value,
-		),
-	}
-
-	repo.init()
-
-	return repo
-}
 
 // NewPositionRepoForTest 与生产 NewPositionRepo 逐字段一致（log 换 NopLogger），并调用 init()。
 func NewPositionRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *PositionRepo {
@@ -116,9 +62,6 @@ func NewApiRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *ApiRepo {
 		scopeConverter: mapper.NewEnumTypeConverter[permissionV1.Api_Scope, entApi.Scope](
 			permissionV1.Api_Scope_name, permissionV1.Api_Scope_value,
 		),
-		businessModuleConverter: mapper.NewEnumTypeConverter[identityV1.Module, entApi.BusinessModule](
-			identityV1.Module_name, identityV1.Module_value,
-		),
 	}
 
 	repo.init()
@@ -150,7 +93,6 @@ func NewMenuRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *MenuRepo {
 		mapper:          mapper.NewCopierMapper[permissionV1.Menu, ent.Menu](),
 		statusConverter: mapper.NewEnumTypeConverter[permissionV1.Menu_Status, entMenu.Status](permissionV1.Menu_Status_name, permissionV1.Menu_Status_value),
 		typeConverter:   mapper.NewEnumTypeConverter[permissionV1.Menu_Type, entMenu.Type](permissionV1.Menu_Type_name, permissionV1.Menu_Type_value),
-		moduleConverter: mapper.NewEnumTypeConverter[identityV1.Module, entMenu.Module](identityV1.Module_name, identityV1.Module_value),
 	}
 
 	repo.init()

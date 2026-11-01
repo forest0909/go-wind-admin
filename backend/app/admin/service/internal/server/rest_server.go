@@ -64,7 +64,6 @@ func newAuthzRequiredMatcher() selector.MatchFunc {
 func NewRestMiddleware(
 	ctx *bootstrap.Context,
 	accessTokenChecker auth.AccessTokenChecker,
-	tenantAccessChecker auth.TenantAccessChecker,
 	authorizer *authorizer.Authorizer,
 	loginLogRepo *data.LoginAuditLogRepo,
 	operationAuditLogRepo *data.OperationAuditLogRepo,
@@ -101,8 +100,6 @@ func NewRestMiddleware(
 		// 可脱离 access token 独立鉴权。页面刷新后 access token 丢失时，前端凭
 		// refresh cookie 静默恢复会话，不再强制重新登录。
 		adminV1.OperationAuthenticationServiceRefreshToken,
-		// 租户白标查询免鉴权：登录前按租户编号取名称/Logo（只暴露展示字段）
-		adminV1.OperationAuthenticationServiceGetTenantBranding,
 		//OperationFileTransferServiceDownloadFile,
 		//OperationFileTransferServicePostUploadFile,
 		//OperationFileTransferServicePutUploadFile,
@@ -111,7 +108,6 @@ func NewRestMiddleware(
 	ms = append(ms, selector.Server(
 		auth.Server(
 			auth.WithAccessTokenChecker(accessTokenChecker),
-			auth.WithTenantAccessChecker(tenantAccessChecker),
 			auth.WithInjectMetadata(false),
 			auth.WithInjectEnt(true),
 		),
@@ -145,10 +141,6 @@ func NewRestServer(
 	dictEntryService *service.DictEntryService,
 	languageService *service.LanguageService,
 
-	tenantService *service.TenantService,
-	planService *service.PlanService,
-	planQuotaService *service.PlanQuotaService,
-	planModuleService *service.PlanModuleService,
 	userService *service.UserService,
 	userProfileService *service.UserProfileService,
 	roleService *service.RoleService,
@@ -170,7 +162,6 @@ func NewRestServer(
 	internalMessageRecipientService *service.InternalMessageRecipientService,
 
 	// register:param ── 新模块服务形参在此行后注册(make register 工具锚点,勿删)
-	myTenantUsageService *service.MyTenantUsageService,
 	auditExportService *service.AuditExportService,
 	configService *service.ConfigService,
 ) (*http.Server, error) {
@@ -216,10 +207,6 @@ func NewRestServer(
 	adminV1.RegisterOrgUnitServiceHTTPServer(srv, orgUnitService)
 	adminV1.RegisterRoleServiceHTTPServer(srv, roleService)
 	adminV1.RegisterPositionServiceHTTPServer(srv, positionService)
-	adminV1.RegisterTenantServiceHTTPServer(srv, tenantService)
-	adminV1.RegisterPlanServiceHTTPServer(srv, planService)
-	adminV1.RegisterPlanQuotaServiceHTTPServer(srv, planQuotaService)
-	adminV1.RegisterPlanModuleServiceHTTPServer(srv, planModuleService)
 
 	adminV1.RegisterLoginAuditLogServiceHTTPServer(srv, loginAuditLogService)
 	adminV1.RegisterOperationAuditLogServiceHTTPServer(srv, operationAuditLogService)
@@ -244,7 +231,6 @@ func NewRestServer(
 	adminV1.RegisterInternalMessageRecipientServiceHTTPServer(srv, internalMessageRecipientService)
 
 	// register:route ── 新模块路由在此行后注册(make register 工具锚点,勿删)
-	adminV1.RegisterMyTenantUsageServiceHTTPServer(srv, myTenantUsageService)
 	adminV1.RegisterConfigServiceHTTPServer(srv, configService)
 
 	if cfg.GetServer().GetRest().GetEnableSwagger() {

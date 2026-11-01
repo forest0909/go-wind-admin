@@ -158,29 +158,7 @@ func (s *PermissionService) enrichRelations(ctx context.Context, permissions []*
 }
 
 func (s *PermissionService) List(ctx context.Context, req *paginationV1.PagingRequest) (*permissionV1.ListPermissionResponse, error) {
-	// 获取操作人信息
-	operator, err := auth.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var limitPermissionIDs []uint32
-	if operator.GetTenantId() > 0 {
-		limitPermissionIDs, err = s.roleRepo.ListPermissionIDsByRoleCodes(ctx, operator.GetRoles())
-		if err != nil {
-			return nil, err
-		}
-
-		// 没有任何 permission 可访问，直接返回空列表
-		if len(limitPermissionIDs) == 0 {
-			return &permissionV1.ListPermissionResponse{
-				Items: []*permissionV1.Permission{},
-				Total: 0,
-			}, nil
-		}
-	}
-
-	resp, err := s.permissionRepo.List(ctx, req, limitPermissionIDs)
+	resp, err := s.permissionRepo.List(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -195,33 +173,9 @@ func (s *PermissionService) Count(ctx context.Context, req *paginationV1.PagingR
 }
 
 func (s *PermissionService) Get(ctx context.Context, req *permissionV1.GetPermissionRequest) (*permissionV1.Permission, error) {
-	// 获取操作人信息
-	operator, err := auth.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.permissionRepo.Get(ctx, req)
 	if err != nil {
 		return nil, err
-	}
-
-	if operator.GetTenantId() > 0 {
-		permissionIDs, err := s.roleRepo.ListPermissionIDsByRoleCodes(ctx, operator.GetRoles())
-		if err != nil {
-			return nil, err
-		}
-
-		found := false
-		for _, pid := range permissionIDs {
-			if pid == resp.GetId() {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return nil, adminV1.ErrorForbidden("no access to the permission")
-		}
 	}
 
 	fakeItems := []*permissionV1.Permission{resp}
@@ -663,10 +617,6 @@ func (s *PermissionService) SyncPermissions(ctx context.Context, _ *emptypb.Empt
 		return nil, err
 	}
 	if err = s.permissionRepo.RetireCodes(ctx, retiredPermissionCodes, operator.UserId); err != nil {
-		return nil, err
-	}
-	// 权限点有增减时，租户管理员要跟着拿到新的租户功能
-	if err = s.permissionRepo.SyncTenantManagerGrants(ctx, operator.UserId); err != nil {
 		return nil, err
 	}
 

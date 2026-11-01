@@ -261,7 +261,6 @@ type LoginAuditLog struct {
 	state         protoimpl.MessageState     `protogen:"open.v1"`
 	Id            *uint32                    `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`                                                                                   // 登录审计日志ID
 	TenantId      *uint32                    `protobuf:"varint,2,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`                                                       // 租户ID
-	TenantName    *string                    `protobuf:"bytes,3,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`                                                  // 租户名称
 	UserId        *uint32                    `protobuf:"varint,4,opt,name=user_id,json=userId,proto3,oneof" json:"user_id,omitempty"`                                                             // 用户ID
 	Username      *string                    `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`                                                                        // 账号名
 	IpAddress     *string                    `protobuf:"bytes,10,opt,name=ip_address,json=ipAddress,proto3,oneof" json:"ip_address,omitempty"`                                                    // IP地址
@@ -327,13 +326,6 @@ func (x *LoginAuditLog) GetTenantId() uint32 {
 		return *x.TenantId
 	}
 	return 0
-}
-
-func (x *LoginAuditLog) GetTenantName() string {
-	if x != nil && x.TenantName != nil {
-		return *x.TenantName
-	}
-	return ""
 }
 
 func (x *LoginAuditLog) GetUserId() uint32 {
@@ -646,42 +638,40 @@ var File_audit_service_v1_login_audit_log_proto protoreflect.FileDescriptor
 
 const file_audit_service_v1_login_audit_log_proto_rawDesc = "" +
 	"\n" +
-	"&audit/service/v1/login_audit_log.proto\x12\x10audit.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1epagination/v1/pagination.proto\x1a#audit/service/v1/geo_location.proto\x1a\"audit/service/v1/device_info.proto\"\xa2\x14\n" +
+	"&audit/service/v1/login_audit_log.proto\x12\x10audit.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1epagination/v1/pagination.proto\x1a#audit/service/v1/geo_location.proto\x1a\"audit/service/v1/device_info.proto\"\xd8\x13\n" +
 	"\rLoginAuditLog\x12/\n" +
 	"\x02id\x18\x01 \x01(\rB\x1a\xbaG\x17\x92\x02\x14登录审计日志IDH\x00R\x02id\x88\x01\x01\x120\n" +
-	"\ttenant_id\x18\x02 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\x01R\btenantId\x88\x01\x01\x128\n" +
-	"\vtenant_name\x18\x03 \x01(\tB\x12\xbaG\x0f\x92\x02\f租户名称H\x02R\n" +
-	"tenantName\x88\x01\x01\x12,\n" +
-	"\auser_id\x18\x04 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDH\x03R\x06userId\x88\x01\x01\x120\n" +
-	"\busername\x18\x05 \x01(\tB\x0f\xbaG\f\x92\x02\t账号名H\x04R\busername\x88\x01\x01\x122\n" +
+	"\ttenant_id\x18\x02 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\x01R\btenantId\x88\x01\x01\x12,\n" +
+	"\auser_id\x18\x04 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDH\x02R\x06userId\x88\x01\x01\x120\n" +
+	"\busername\x18\x05 \x01(\tB\x0f\xbaG\f\x92\x02\t账号名H\x03R\busername\x88\x01\x01\x122\n" +
 	"\n" +
 	"ip_address\x18\n" +
-	" \x01(\tB\x0e\xbaG\v\x92\x02\bIP地址H\x05R\tipAddress\x88\x01\x01\x12f\n" +
-	"\fgeo_location\x18\v \x01(\v2\x1d.audit.service.v1.GeoLocationB\x1f\xbaG\x1c\x92\x02\x19地理位置(来自IP库)H\x06R\vgeoLocation\x88\x01\x01\x122\n" +
+	" \x01(\tB\x0e\xbaG\v\x92\x02\bIP地址H\x04R\tipAddress\x88\x01\x01\x12f\n" +
+	"\fgeo_location\x18\v \x01(\v2\x1d.audit.service.v1.GeoLocationB\x1f\xbaG\x1c\x92\x02\x19地理位置(来自IP库)H\x05R\vgeoLocation\x88\x01\x01\x122\n" +
 	"\n" +
-	"session_id\x18\f \x01(\tB\x0e\xbaG\v\x92\x02\b会话IDH\aR\tsessionId\x88\x01\x01\x12V\n" +
-	"\vdevice_info\x18\r \x01(\v2\x1c.audit.service.v1.DeviceInfoB\x12\xbaG\x0f\x92\x02\f设备信息H\bR\n" +
+	"session_id\x18\f \x01(\tB\x0e\xbaG\v\x92\x02\b会话IDH\x06R\tsessionId\x88\x01\x01\x12V\n" +
+	"\vdevice_info\x18\r \x01(\v2\x1c.audit.service.v1.DeviceInfoB\x12\xbaG\x0f\x92\x02\f设备信息H\aR\n" +
 	"deviceInfo\x88\x01\x01\x12P\n" +
 	"\n" +
-	"request_id\x18\x10 \x01(\tB,\xbaG)\x92\x02&全局请求ID（关联网关日志）H\tR\trequestId\x88\x01\x01\x12:\n" +
-	"\btrace_id\x18\x11 \x01(\tB\x1a\xbaG\x17\x92\x02\x14全局链路追踪IDH\n" +
-	"R\atraceId\x88\x01\x01\x12j\n" +
-	"\vaction_type\x18\x14 \x01(\x0e2*.audit.service.v1.LoginAuditLog.ActionTypeB\x18\xbaG\x15\x92\x02\x12事件动作类型H\vR\n" +
+	"request_id\x18\x10 \x01(\tB,\xbaG)\x92\x02&全局请求ID（关联网关日志）H\bR\trequestId\x88\x01\x01\x12:\n" +
+	"\btrace_id\x18\x11 \x01(\tB\x1a\xbaG\x17\x92\x02\x14全局链路追踪IDH\tR\atraceId\x88\x01\x01\x12j\n" +
+	"\vaction_type\x18\x14 \x01(\x0e2*.audit.service.v1.LoginAuditLog.ActionTypeB\x18\xbaG\x15\x92\x02\x12事件动作类型H\n" +
+	"R\n" +
 	"actionType\x88\x01\x01\x12]\n" +
-	"\x06status\x18\x15 \x01(\x0e2&.audit.service.v1.LoginAuditLog.StatusB\x18\xbaG\x15\x92\x02\x12操作结果状态H\fR\x06status\x88\x01\x01\x12l\n" +
-	"\x0efailure_reason\x18\x16 \x01(\tB@\xbaG=\x92\x02:失败原因：密码错误/MFA验证失败/IP黑名单等H\rR\rfailureReason\x88\x01\x01\x12Z\n" +
+	"\x06status\x18\x15 \x01(\x0e2&.audit.service.v1.LoginAuditLog.StatusB\x18\xbaG\x15\x92\x02\x12操作结果状态H\vR\x06status\x88\x01\x01\x12l\n" +
+	"\x0efailure_reason\x18\x16 \x01(\tB@\xbaG=\x92\x02:失败原因：密码错误/MFA验证失败/IP黑名单等H\fR\rfailureReason\x88\x01\x01\x12Z\n" +
 	"\n" +
-	"mfa_status\x18\x17 \x01(\tB6\xbaG3\x92\x020MFA状态：UNVERIFIED/VERIFYING/VERIFIED/FAILEDH\x0eR\tmfaStatus\x88\x01\x01\x12g\n" +
-	"\flogin_method\x18\x18 \x01(\x0e2+.audit.service.v1.LoginAuditLog.LoginMethodB\x12\xbaG\x0f\x92\x02\f登录方式H\x0fR\vloginMethod\x88\x01\x01\x12\\\n" +
+	"mfa_status\x18\x17 \x01(\tB6\xbaG3\x92\x020MFA状态：UNVERIFIED/VERIFYING/VERIFIED/FAILEDH\rR\tmfaStatus\x88\x01\x01\x12g\n" +
+	"\flogin_method\x18\x18 \x01(\x0e2+.audit.service.v1.LoginAuditLog.LoginMethodB\x12\xbaG\x0f\x92\x02\f登录方式H\x0eR\vloginMethod\x88\x01\x01\x12\\\n" +
 	"\n" +
-	"risk_score\x18\x1e \x01(\rB8\xbaG5\x92\x022风险评分（0-100，分值越高风险越大）H\x10R\triskScore\x88\x01\x01\x12\x7f\n" +
+	"risk_score\x18\x1e \x01(\rB8\xbaG5\x92\x022风险评分（0-100，分值越高风险越大）H\x0fR\triskScore\x88\x01\x01\x12\x7f\n" +
 	"\n" +
-	"risk_level\x18\x1f \x01(\x0e2).audit.service.v1.LoginAuditLog.RiskLevelB0\xbaG-\x92\x02*风险等级（高风险需实时告警）H\x11R\triskLevel\x88\x01\x01\x12\x82\x01\n" +
+	"risk_level\x18\x1f \x01(\x0e2).audit.service.v1.LoginAuditLog.RiskLevelB0\xbaG-\x92\x02*风险等级（高风险需实时告警）H\x10R\triskLevel\x88\x01\x01\x12\x82\x01\n" +
 	"\frisk_factors\x18  \x03(\tB_\xbaG\\\x92\x02Y风险因素（ISO 27001标准，如：异地登录/新设备/密码尝试次数过多）R\vriskFactors\x12\\\n" +
-	"\blog_hash\x18( \x01(\tB<\xbaG9\x92\x026日志内容哈希（SHA256，十六进制字符串）H\x12R\alogHash\x88\x01\x01\x12}\n" +
-	"\tsignature\x18) \x01(\fBZ\xbaGW\x92\x02T日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）H\x13R\tsignature\x88\x01\x01\x12X\n" +
+	"\blog_hash\x18( \x01(\tB<\xbaG9\x92\x026日志内容哈希（SHA256，十六进制字符串）H\x11R\alogHash\x88\x01\x01\x12}\n" +
+	"\tsignature\x18) \x01(\fBZ\xbaGW\x92\x02T日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）H\x12R\tsignature\x88\x01\x01\x12X\n" +
 	"\n" +
-	"created_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12日志创建时间H\x14R\tcreatedAt\x88\x01\x01\"y\n" +
+	"created_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12日志创建时间H\x13R\tcreatedAt\x88\x01\x01\"y\n" +
 	"\n" +
 	"ActionType\x12\x1b\n" +
 	"\x17ACTION_TYPE_UNSPECIFIED\x10\x00\x12\t\n" +
@@ -716,8 +706,7 @@ const file_audit_service_v1_login_audit_log_proto_rawDesc = "" +
 	"\x05FIDO2\x10\x06B\x05\n" +
 	"\x03_idB\f\n" +
 	"\n" +
-	"_tenant_idB\x0e\n" +
-	"\f_tenant_nameB\n" +
+	"_tenant_idB\n" +
 	"\n" +
 	"\b_user_idB\v\n" +
 	"\t_usernameB\r\n" +

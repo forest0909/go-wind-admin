@@ -63,8 +63,8 @@ func TestPermissionGroupServiceSqlite_InitSeedsDefaultTree_AndListAssemblesTree(
 		require.NotNil(t, child.ParentId, "子分组的 ParentId 应指向根")
 		require.Equal(t, root.GetId(), *child.ParentId, "子分组的 ParentId 应指向根节点 ID")
 	}
-	require.Len(t, childNames, len(constants.DefaultPermissionGroups)-1, "四个默认子分组应各自出现一次")
-	for _, name := range []string{"系统权限", "租户管理", "审计管理", "安全策略"} {
+	require.Len(t, childNames, len(constants.DefaultPermissionGroups)-1, "三个默认子分组应各自出现一次")
+	for _, name := range []string{"系统权限", "审计管理", "安全策略"} {
 		require.True(t, childNames[name], "默认子分组 [%s] 应出现在根的 Children 中", name)
 	}
 }

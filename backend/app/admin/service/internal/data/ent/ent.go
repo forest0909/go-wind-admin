@@ -28,9 +28,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionmenu"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionpolicy"
-	"go-wind-admin/app/admin/service/internal/data/ent/plan"
-	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
-	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolefieldpermission"
@@ -39,7 +36,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/rolepermission"
 	"go-wind-admin/app/admin/service/internal/data/ent/sysconfig"
 	"go-wind-admin/app/admin/service/internal/data/ent/task"
-	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
@@ -133,9 +129,6 @@ func checkColumn(t, c string) error {
 			permissiongroup.Table:          permissiongroup.ValidColumn,
 			permissionmenu.Table:           permissionmenu.ValidColumn,
 			permissionpolicy.Table:         permissionpolicy.ValidColumn,
-			plan.Table:                     plan.ValidColumn,
-			planmodule.Table:               planmodule.ValidColumn,
-			planquota.Table:                planquota.ValidColumn,
 			position.Table:                 position.ValidColumn,
 			role.Table:                     role.ValidColumn,
 			rolefieldpermission.Table:      rolefieldpermission.ValidColumn,
@@ -144,7 +137,6 @@ func checkColumn(t, c string) error {
 			rolepermission.Table:           rolepermission.ValidColumn,
 			sysconfig.Table:                sysconfig.ValidColumn,
 			task.Table:                     task.ValidColumn,
-			tenant.Table:                   tenant.ValidColumn,
 			user.Table:                     user.ValidColumn,
 			usercredential.Table:           usercredential.ValidColumn,
 			userorgunit.Table:              userorgunit.ValidColumn,

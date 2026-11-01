@@ -224,26 +224,6 @@ func (_u *APIUpdate) ClearModuleDescription() *APIUpdate {
 	return _u
 }
 
-// SetBusinessModule sets the "business_module" field.
-func (_u *APIUpdate) SetBusinessModule(v api.BusinessModule) *APIUpdate {
-	_u.mutation.SetBusinessModule(v)
-	return _u
-}
-
-// SetNillableBusinessModule sets the "business_module" field if the given value is not nil.
-func (_u *APIUpdate) SetNillableBusinessModule(v *api.BusinessModule) *APIUpdate {
-	if v != nil {
-		_u.SetBusinessModule(*v)
-	}
-	return _u
-}
-
-// ClearBusinessModule clears the value of the "business_module" field.
-func (_u *APIUpdate) ClearBusinessModule() *APIUpdate {
-	_u.mutation.ClearBusinessModule()
-	return _u
-}
-
 // SetOperation sets the "operation" field.
 func (_u *APIUpdate) SetOperation(v string) *APIUpdate {
 	_u.mutation.SetOperation(v)
@@ -363,11 +343,6 @@ func (_u *APIUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Api.status": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.BusinessModule(); ok {
-		if err := api.BusinessModuleValidator(v); err != nil {
-			return &ValidationError{Name: "business_module", err: fmt.Errorf(`ent: validator failed for field "Api.business_module": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Scope(); ok {
 		if err := api.ScopeValidator(v); err != nil {
 			return &ValidationError{Name: "scope", err: fmt.Errorf(`ent: validator failed for field "Api.scope": %w`, err)}
@@ -456,12 +431,6 @@ func (_u *APIUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ModuleDescriptionCleared() {
 		_spec.ClearField(api.FieldModuleDescription, field.TypeString)
-	}
-	if value, ok := _u.mutation.BusinessModule(); ok {
-		_spec.SetField(api.FieldBusinessModule, field.TypeEnum, value)
-	}
-	if _u.mutation.BusinessModuleCleared() {
-		_spec.ClearField(api.FieldBusinessModule, field.TypeEnum)
 	}
 	if value, ok := _u.mutation.Operation(); ok {
 		_spec.SetField(api.FieldOperation, field.TypeString, value)
@@ -704,26 +673,6 @@ func (_u *APIUpdateOne) ClearModuleDescription() *APIUpdateOne {
 	return _u
 }
 
-// SetBusinessModule sets the "business_module" field.
-func (_u *APIUpdateOne) SetBusinessModule(v api.BusinessModule) *APIUpdateOne {
-	_u.mutation.SetBusinessModule(v)
-	return _u
-}
-
-// SetNillableBusinessModule sets the "business_module" field if the given value is not nil.
-func (_u *APIUpdateOne) SetNillableBusinessModule(v *api.BusinessModule) *APIUpdateOne {
-	if v != nil {
-		_u.SetBusinessModule(*v)
-	}
-	return _u
-}
-
-// ClearBusinessModule clears the value of the "business_module" field.
-func (_u *APIUpdateOne) ClearBusinessModule() *APIUpdateOne {
-	_u.mutation.ClearBusinessModule()
-	return _u
-}
-
 // SetOperation sets the "operation" field.
 func (_u *APIUpdateOne) SetOperation(v string) *APIUpdateOne {
 	_u.mutation.SetOperation(v)
@@ -856,11 +805,6 @@ func (_u *APIUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Api.status": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.BusinessModule(); ok {
-		if err := api.BusinessModuleValidator(v); err != nil {
-			return &ValidationError{Name: "business_module", err: fmt.Errorf(`ent: validator failed for field "Api.business_module": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.Scope(); ok {
 		if err := api.ScopeValidator(v); err != nil {
 			return &ValidationError{Name: "scope", err: fmt.Errorf(`ent: validator failed for field "Api.scope": %w`, err)}
@@ -966,12 +910,6 @@ func (_u *APIUpdateOne) sqlSave(ctx context.Context) (_node *Api, err error) {
 	}
 	if _u.mutation.ModuleDescriptionCleared() {
 		_spec.ClearField(api.FieldModuleDescription, field.TypeString)
-	}
-	if value, ok := _u.mutation.BusinessModule(); ok {
-		_spec.SetField(api.FieldBusinessModule, field.TypeEnum, value)
-	}
-	if _u.mutation.BusinessModuleCleared() {
-		_spec.ClearField(api.FieldBusinessModule, field.TypeEnum)
 	}
 	if value, ok := _u.mutation.Operation(); ok {
 		_spec.SetField(api.FieldOperation, field.TypeString, value)

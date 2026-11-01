@@ -9,7 +9,6 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/field_mask.proto";
 
 import "pagination/v1/pagination.proto";
-import "identity/service/v1/module.proto";
 
 
 // API资源服务
@@ -84,11 +83,6 @@ message Api {
     json_name = "moduleDescription",
     (gnostic.openapi.v3.property) = { description: "模块描述" }
   ]; // 模块描述
-
-  optional identity.service.v1.Module business_module = 9 [
-    json_name = "businessModule",
-    (gnostic.openapi.v3.property) = { description: "所属业务功能模块（用于套餐白名单过滤）" }
-  ]; // 所属业务功能模块（用于套餐白名单过滤）
 
   optional string description = 7 [
     json_name = "description",

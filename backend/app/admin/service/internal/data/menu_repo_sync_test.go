@@ -9,7 +9,6 @@ import (
 	"go-wind-admin/third_party/go-utils/trans"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
-	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/menu"
@@ -27,7 +26,6 @@ func newMenuRepoSqlite(t *testing.T) *MenuRepo {
 		mapper:          mapper.NewCopierMapper[permissionV1.Menu, ent.Menu](),
 		statusConverter: mapper.NewEnumTypeConverter[permissionV1.Menu_Status, menu.Status](permissionV1.Menu_Status_name, permissionV1.Menu_Status_value),
 		typeConverter:   mapper.NewEnumTypeConverter[permissionV1.Menu_Type, menu.Type](permissionV1.Menu_Type_name, permissionV1.Menu_Type_value),
-		moduleConverter: mapper.NewEnumTypeConverter[identityV1.Module, menu.Module](identityV1.Module_name, identityV1.Module_value),
 	}
 	repo.init()
 	return repo
@@ -97,8 +95,6 @@ func TestMenuRepoSyncMenus_MergePreservesIDs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, systemID, *configs.ParentID, "configs 应挂在 /system 下")
 	require.Equal(t, "app/system/config/index.vue", derefStrP(configs.Component))
-	require.NotNil(t, configs.Module)
-	require.Equal(t, menu.ModuleSystem, *configs.Module, "component 应归类到 SYSTEM 模块")
 }
 
 // TestMenuRepoSyncMenus_RebuildReplace 全量重建：清空后重建，旧 ID 全部变化（兼容旧行为）。

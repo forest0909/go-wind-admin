@@ -30,7 +30,6 @@ enum IdentityErrorReason {
   DEPARTMENT_NOT_FOUND = 403 [(errors.code) = 404]; // 部门不存在
   ORGANIZATION_NOT_FOUND = 404 [(errors.code) = 404]; // 组织不存在
   POSITION_NOT_FOUND = 405 [(errors.code) = 404]; // 职位不存在
-  TENANT_NOT_FOUND = 406 [(errors.code) = 404]; // 租户不存在
 
   // 405
   METHOD_NOT_ALLOWED = 500 [(errors.code) = 405]; // 方法不允许

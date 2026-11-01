@@ -165,7 +165,6 @@ type AuthenticationService struct {
 	userCredentialRepo *data.UserCredentialRepo
 
 	roleRepo                *data.RoleRepo
-	tenantRepo              *data.TenantRepo
 	membershipRepo          *data.MembershipRepo
 	orgUnitRepo             *data.OrgUnitRepo
 	roleOrgUnitRepo         *data.RoleOrgUnitRepo
@@ -184,7 +183,6 @@ func NewAuthenticationService(
 	userRepo data.UserRepo,
 	userCredentialRepo *data.UserCredentialRepo,
 	roleRepo *data.RoleRepo,
-	tenantRepo *data.TenantRepo,
 	membershipRepo *data.MembershipRepo,
 	orgUnitRepo *data.OrgUnitRepo,
 	roleOrgUnitRepo *data.RoleOrgUnitRepo,
@@ -199,7 +197,6 @@ func NewAuthenticationService(
 		log:                     ctx.NewLoggerHelper("authn/service/admin-service"),
 		userRepo:                userRepo,
 		userCredentialRepo:      userCredentialRepo,
-		tenantRepo:              tenantRepo,
 		roleRepo:                roleRepo,
 		membershipRepo:          membershipRepo,
 		orgUnitRepo:             orgUnitRepo,
@@ -254,16 +251,6 @@ func containsPermission(perms []string, target string) bool {
 // authorizeAndEnrichUserTokenPayloadUserTenantRelationOneToOne 一对一用户-租户关系的授权与丰富
 func (s *AuthenticationService) authorizeAndEnrichUserTokenPayloadUserTenantRelationOneToOne(ctx context.Context, userID, tenantID uint32, tokenPayload *authenticationV1.UserTokenPayload) error {
 	hasBackendAccess := false
-
-	if tenantID > 0 {
-		// 检查租户状态
-		tenant, _ := s.tenantRepo.Get(ctx, &identityV1.GetTenantRequest{
-			QueryBy: &identityV1.GetTenantRequest_Id{Id: tenantID},
-		})
-		if tenant == nil || tenant.GetStatus() != identityV1.Tenant_ON {
-			return authenticationV1.ErrorForbidden("insufficient authority")
-		}
-	}
 
 	// 获取角色 ID 列表。停用角色不参与后台访问、角色码、管理员标志、数据范围和隐藏字段。
 	roleIDs, err := s.userRepo.ListRoleIDsByUserID(ctx, userID)
@@ -343,16 +330,6 @@ func (s *AuthenticationService) authorizeAndEnrichUserTokenPayloadUserTenantRela
 	hasBackendAccess := false
 	var validRoleIDs []uint32
 	for _, m := range memberships {
-		if m.GetTenantId() > 0 {
-			// 检查租户状态
-			tenant, _ := s.tenantRepo.Get(ctx, &identityV1.GetTenantRequest{
-				QueryBy: &identityV1.GetTenantRequest_Id{Id: m.GetTenantId()},
-			})
-			if tenant == nil || tenant.GetStatus() != identityV1.Tenant_ON {
-				continue
-			}
-		}
-
 		// 获取角色 ID 列表。停用角色不参与该成员身份的授权。
 		roleIDs, err := s.membershipRepo.GetRoleIDsByMembership(ctx, m.GetId())
 		if err != nil || len(roleIDs) == 0 {
@@ -463,19 +440,8 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 		return nil, authenticationV1.ErrorInvalidCaptcha("invalid or missing captcha")
 	}
 
-	// ===== 租户解析：tenant_code 留空视为平台（tenant 0），非空则按编号定位租户 =====
-	// 解析后的 tenantID 限定后续凭证查询范围，消除同名 identifier 跨租户歧义。
-	var tenantID uint32 = 0
-	if code := req.GetTenantCode(); strings.TrimSpace(code) != "" {
-		tenant, _ := s.tenantRepo.Get(ctx, &identityV1.GetTenantRequest{
-			QueryBy: &identityV1.GetTenantRequest_Code{Code: code},
-		})
-		// 查不到、或租户非启用状态，统一返回同一文案，防止通过返回差异枚举有效租户编号
-		if tenant == nil || tenant.GetStatus() != identityV1.Tenant_ON {
-			return nil, authenticationV1.ErrorInvalidTenant("invalid tenant")
-		}
-		tenantID = tenant.GetId()
-	}
+	// 单租户：登录只认租户 0。旧库里遗留的 tenant_id>0 用户与凭证一律查不到。
+	const tenantID uint32 = 0
 
 	// ===== identifier 智能解析：输入含 @ 视为 email、纯数字视为 mobile， =====
 	// ===== 经 user 表反查得到真实 username 后仍走 USERNAME 维度凭证校验。
@@ -486,7 +452,7 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 		username = resolved
 	}
 
-	// ===== 凭证校验：在解析出的 tenant 范围内查单条凭证并校验密码 =====
+	// ===== 凭证校验：在租户 0 范围内查单条凭证并校验密码 =====
 	// 注意用解析后的 username 局部变量（可能是 email/mobile 反查所得），而非 req 原始输入
 	var matchedUserID uint32
 	var err error
@@ -514,11 +480,11 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 		return nil, err
 	}
 
-	// 纵深防御：凭证行的 tenant 必须与用户行的 tenant 一致，否则拒绝登录
+	// 纵深防御：凭证行与用户行都必须属于租户 0，否则按用户名或密码错误拒绝
 	if user.GetTenantId() != tenantID {
 		s.log.Errorf(ctx, "tenant mismatch for user [%d]: credential tenant [%d] vs user tenant [%d]",
 			matchedUserID, tenantID, user.GetTenantId())
-		return nil, authenticationV1.ErrorInvalidTenant("invalid tenant")
+		return nil, authenticationV1.ErrorInvalidPassword("invalid username or password")
 	}
 
 	tokenPayload := &authenticationV1.UserTokenPayload{
@@ -589,16 +555,13 @@ func recordUserLastLogin(ctx context.Context, log *bLogger.Helper, userRepo data
 	}
 }
 
-// fillAdminFlags 按角色码填充 token 的平台/租户管理员标志。
+// fillAdminFlags 按角色码填充 token 的平台管理员标志。
 // 该标志此前从未被赋值（全仓库仅消费无生产），导致下游
 // GetIsPlatformAdmin 判定（用户管理越权校验等）形同虚设。
 func fillAdminFlags(tokenPayload *authenticationV1.UserTokenPayload, roleCodes []string) {
 	for _, rc := range roleCodes {
 		if rc == constants.PlatformAdminRoleCode {
 			tokenPayload.IsPlatformAdmin = trans.Ptr(true)
-		}
-		if rc == constants.TenantAdminRoleCode {
-			tokenPayload.IsTenantAdmin = trans.Ptr(true)
 		}
 	}
 }

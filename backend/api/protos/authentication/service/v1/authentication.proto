@@ -192,12 +192,6 @@ message LoginRequest {
     }
   ];
 
-  optional string tenant_code = 70 [
-    json_name = "tenant_code",
-    (gnostic.openapi.v3.property) = {
-      description: "租户编号，留空表示平台登录（平台超级管理员）；非空时按该编号解析对应租户"
-    }
-  ]; // 租户编号，留空表示平台登录，非空时解析对应租户
 }
 
 // 用户后台登录 - 回应

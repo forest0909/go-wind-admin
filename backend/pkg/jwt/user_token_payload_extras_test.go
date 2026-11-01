@@ -23,7 +23,6 @@ func TestNewUserTokenAuthClaims_OptionalFieldsSet(t *testing.T) {
 	payload.Jti = trans.Ptr("jti-123")
 	payload.HiddenFields = []string{"user.password", "user.phone"}
 	payload.IsPlatformAdmin = trans.Ptr(true)
-	payload.IsTenantAdmin = trans.Ptr(true)
 	exp := time.Now().Add(2 * time.Hour)
 
 	claims := NewUserTokenAuthClaims(payload, &exp)
@@ -33,7 +32,6 @@ func TestNewUserTokenAuthClaims_OptionalFieldsSet(t *testing.T) {
 	assert.Equal(t, []string{"user.password", "user.phone"},
 		(*claims)[ClaimFieldHiddenFields], "隐藏字段集应原样写入")
 	assert.Equal(t, true, (*claims)[ClaimFieldIsPlatformAdmin])
-	assert.Equal(t, true, (*claims)[ClaimFieldIsTenantAdmin])
 	assert.EqualValues(t, exp.Unix(), (*claims)[authn.ClaimFieldExpirationTime],
 		"显式过期时间应落位到 exp 声明")
 }
@@ -53,7 +51,6 @@ func TestNewUserTokenAuthClaims_OmittedOptionals(t *testing.T) {
 	for _, absent := range []string{
 		authn.ClaimFieldJwtID,
 		ClaimFieldHiddenFields,
-		ClaimFieldIsTenantAdmin,
 		authn.ClaimFieldExpirationTime,
 	} {
 		assert.NotContains(t, *claims, absent, "缺省的可选字段 %q 不应出现", absent)
@@ -69,7 +66,6 @@ func TestNewUserTokenPayloadWithClaims_OptionalFieldsRoundTrip(t *testing.T) {
 			authn.ClaimFieldJwtID:     "jti-456",
 			ClaimFieldHiddenFields:    []string{"user.email"},
 			ClaimFieldIsPlatformAdmin: true,
-			ClaimFieldIsTenantAdmin:   true,
 		}
 		payload, err := NewUserTokenPayloadWithClaims(claims)
 		require.NoError(t, err)
@@ -77,17 +73,14 @@ func TestNewUserTokenPayloadWithClaims_OptionalFieldsRoundTrip(t *testing.T) {
 		assert.EqualValues(t, "jti-456", payload.GetJti())
 		assert.Equal(t, []string{"user.email"}, payload.GetHiddenFields())
 		assert.True(t, payload.GetIsPlatformAdmin())
-		assert.True(t, payload.GetIsTenantAdmin())
 	})
 	t.Run("explicit false flags not set", func(t *testing.T) {
 		claims := &authn.AuthClaims{
 			ClaimFieldIsPlatformAdmin: false,
-			ClaimFieldIsTenantAdmin:   false,
 		}
 		payload, err := NewUserTokenPayloadWithClaims(claims)
 		require.NoError(t, err)
 		assert.False(t, payload.GetIsPlatformAdmin(), "false 标记不应置位字段")
-		assert.False(t, payload.GetIsTenantAdmin(), "false 标记不应置位字段")
 	})
 }
 
@@ -160,7 +153,6 @@ func TestNewUserTokenPayloadWithClaims_MalformedClaimTypes(t *testing.T) {
 	assert.Empty(t, payload.GetHiddenFields())
 	assert.EqualValues(t, 0, payload.GetOrgUnitId())
 	assert.False(t, payload.GetIsPlatformAdmin())
-	assert.False(t, payload.GetIsTenantAdmin())
 }
 
 // TestNewUserTokenPayloadWithJwtMapClaims_ListTypeVariants MapClaims 路径
@@ -191,12 +183,10 @@ func TestNewUserTokenPayloadWithJwtMapClaims_ListTypeVariants(t *testing.T) {
 	t.Run("admin flags", func(t *testing.T) {
 		mapClaims := jwtV5.MapClaims{
 			ClaimFieldIsPlatformAdmin: true,
-			ClaimFieldIsTenantAdmin:   true,
 		}
 		payload, err := NewUserTokenPayloadWithJwtMapClaims(mapClaims)
 		require.NoError(t, err)
 		assert.True(t, payload.GetIsPlatformAdmin())
-		assert.True(t, payload.GetIsTenantAdmin())
 	})
 	t.Run("numeric fields with wrong types stay empty", func(t *testing.T) {
 		mapClaims := jwtV5.MapClaims{

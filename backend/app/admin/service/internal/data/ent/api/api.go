@@ -33,8 +33,6 @@ const (
 	FieldModule = "module"
 	// FieldModuleDescription holds the string denoting the module_description field in the database.
 	FieldModuleDescription = "module_description"
-	// FieldBusinessModule holds the string denoting the business_module field in the database.
-	FieldBusinessModule = "business_module"
 	// FieldOperation holds the string denoting the operation field in the database.
 	FieldOperation = "operation"
 	// FieldPath holds the string denoting the path field in the database.
@@ -60,7 +58,6 @@ var Columns = []string{
 	FieldDescription,
 	FieldModule,
 	FieldModuleDescription,
-	FieldBusinessModule,
 	FieldOperation,
 	FieldPath,
 	FieldMethod,
@@ -105,37 +102,6 @@ func StatusValidator(s Status) error {
 		return nil
 	default:
 		return fmt.Errorf("api: invalid enum value for status field: %q", s)
-	}
-}
-
-// BusinessModule defines the type for the "business_module" enum field.
-type BusinessModule string
-
-// BusinessModule values.
-const (
-	BusinessModuleDashboard       BusinessModule = "DASHBOARD"
-	BusinessModuleOpm             BusinessModule = "OPM"
-	BusinessModuleSystem          BusinessModule = "SYSTEM"
-	BusinessModuleDict            BusinessModule = "DICT"
-	BusinessModuleTenant          BusinessModule = "TENANT"
-	BusinessModulePermission      BusinessModule = "PERMISSION"
-	BusinessModuleLog             BusinessModule = "LOG"
-	BusinessModuleInternalMessage BusinessModule = "INTERNAL_MESSAGE"
-	BusinessModuleFile            BusinessModule = "FILE"
-	BusinessModuleTask            BusinessModule = "TASK"
-)
-
-func (bm BusinessModule) String() string {
-	return string(bm)
-}
-
-// BusinessModuleValidator is a validator for the "business_module" field enum values. It is called by the builders before save.
-func BusinessModuleValidator(bm BusinessModule) error {
-	switch bm {
-	case BusinessModuleDashboard, BusinessModuleOpm, BusinessModuleSystem, BusinessModuleDict, BusinessModuleTenant, BusinessModulePermission, BusinessModuleLog, BusinessModuleInternalMessage, BusinessModuleFile, BusinessModuleTask:
-		return nil
-	default:
-		return fmt.Errorf("api: invalid enum value for business_module field: %q", bm)
 	}
 }
 
@@ -221,11 +187,6 @@ func ByModule(opts ...sql.OrderTermOption) OrderOption {
 // ByModuleDescription orders the results by the module_description field.
 func ByModuleDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModuleDescription, opts...).ToFunc()
-}
-
-// ByBusinessModule orders the results by the business_module field.
-func ByBusinessModule(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldBusinessModule, opts...).ToFunc()
 }
 
 // ByOperation orders the results by the operation field.

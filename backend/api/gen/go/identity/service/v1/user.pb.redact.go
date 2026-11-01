@@ -176,8 +176,6 @@ func (x *User) Redact() {
 
 	// Safe field: TenantId
 
-	// Safe field: TenantName
-
 	// Safe field: OrgUnitId
 
 	// Safe field: OrgUnitIds

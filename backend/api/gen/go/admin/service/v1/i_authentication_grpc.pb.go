@@ -21,12 +21,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthenticationService_Login_FullMethodName             = "/admin.service.v1.AuthenticationService/Login"
-	AuthenticationService_Logout_FullMethodName            = "/admin.service.v1.AuthenticationService/Logout"
-	AuthenticationService_RefreshToken_FullMethodName      = "/admin.service.v1.AuthenticationService/RefreshToken"
-	AuthenticationService_GenerateCaptcha_FullMethodName   = "/admin.service.v1.AuthenticationService/GenerateCaptcha"
-	AuthenticationService_VerifyCaptcha_FullMethodName     = "/admin.service.v1.AuthenticationService/VerifyCaptcha"
-	AuthenticationService_GetTenantBranding_FullMethodName = "/admin.service.v1.AuthenticationService/GetTenantBranding"
+	AuthenticationService_Login_FullMethodName           = "/admin.service.v1.AuthenticationService/Login"
+	AuthenticationService_Logout_FullMethodName          = "/admin.service.v1.AuthenticationService/Logout"
+	AuthenticationService_RefreshToken_FullMethodName    = "/admin.service.v1.AuthenticationService/RefreshToken"
+	AuthenticationService_GenerateCaptcha_FullMethodName = "/admin.service.v1.AuthenticationService/GenerateCaptcha"
+	AuthenticationService_VerifyCaptcha_FullMethodName   = "/admin.service.v1.AuthenticationService/VerifyCaptcha"
 )
 
 // AuthenticationServiceClient is the client API for AuthenticationService service.
@@ -45,8 +44,6 @@ type AuthenticationServiceClient interface {
 	GenerateCaptcha(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*v1.GenerateCaptchaResponse, error)
 	// 验证验证码
 	VerifyCaptcha(ctx context.Context, in *v1.VerifyCaptchaRequest, opts ...grpc.CallOption) (*v1.VerifyCaptchaResponse, error)
-	// 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
-	GetTenantBranding(ctx context.Context, in *v1.GetTenantBrandingRequest, opts ...grpc.CallOption) (*v1.GetTenantBrandingResponse, error)
 }
 
 type authenticationServiceClient struct {
@@ -107,16 +104,6 @@ func (c *authenticationServiceClient) VerifyCaptcha(ctx context.Context, in *v1.
 	return out, nil
 }
 
-func (c *authenticationServiceClient) GetTenantBranding(ctx context.Context, in *v1.GetTenantBrandingRequest, opts ...grpc.CallOption) (*v1.GetTenantBrandingResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1.GetTenantBrandingResponse)
-	err := c.cc.Invoke(ctx, AuthenticationService_GetTenantBranding_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AuthenticationServiceServer is the server API for AuthenticationService service.
 // All implementations must embed UnimplementedAuthenticationServiceServer
 // for forward compatibility.
@@ -133,8 +120,6 @@ type AuthenticationServiceServer interface {
 	GenerateCaptcha(context.Context, *emptypb.Empty) (*v1.GenerateCaptchaResponse, error)
 	// 验证验证码
 	VerifyCaptcha(context.Context, *v1.VerifyCaptchaRequest) (*v1.VerifyCaptchaResponse, error)
-	// 租户白标查询（免鉴权；登录前按租户编号取名称/Logo 等展示信息）
-	GetTenantBranding(context.Context, *v1.GetTenantBrandingRequest) (*v1.GetTenantBrandingResponse, error)
 	mustEmbedUnimplementedAuthenticationServiceServer()
 }
 
@@ -159,9 +144,6 @@ func (UnimplementedAuthenticationServiceServer) GenerateCaptcha(context.Context,
 }
 func (UnimplementedAuthenticationServiceServer) VerifyCaptcha(context.Context, *v1.VerifyCaptchaRequest) (*v1.VerifyCaptchaResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method VerifyCaptcha not implemented")
-}
-func (UnimplementedAuthenticationServiceServer) GetTenantBranding(context.Context, *v1.GetTenantBrandingRequest) (*v1.GetTenantBrandingResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetTenantBranding not implemented")
 }
 func (UnimplementedAuthenticationServiceServer) mustEmbedUnimplementedAuthenticationServiceServer() {}
 func (UnimplementedAuthenticationServiceServer) testEmbeddedByValue()                               {}
@@ -274,24 +256,6 @@ func _AuthenticationService_VerifyCaptcha_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthenticationService_GetTenantBranding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.GetTenantBrandingRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthenticationServiceServer).GetTenantBranding(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthenticationService_GetTenantBranding_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthenticationServiceServer).GetTenantBranding(ctx, req.(*v1.GetTenantBrandingRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // AuthenticationService_ServiceDesc is the grpc.ServiceDesc for AuthenticationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -318,10 +282,6 @@ var AuthenticationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VerifyCaptcha",
 			Handler:    _AuthenticationService_VerifyCaptcha_Handler,
-		},
-		{
-			MethodName: "GetTenantBranding",
-			Handler:    _AuthenticationService_GetTenantBranding_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

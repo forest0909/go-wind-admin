@@ -4,7 +4,6 @@ import (
 	"context"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
-	"go-wind-admin/third_party/go-utils/aggregator"
 	"go-wind-admin/third_party/go-utils/stringcase"
 	"go-wind-admin/third_party/go-utils/trans"
 	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
@@ -33,7 +32,6 @@ type RoleService struct {
 	authorizer *authorizer.Authorizer
 
 	roleRepo     *data.RoleRepo
-	tenantRepo   *data.TenantRepo
 	userRoleRepo roleHolderLister
 
 	authenticator *data.Authenticator
@@ -48,7 +46,6 @@ func NewRoleService(
 	ctx *bootstrap.Context,
 	authorizer *authorizer.Authorizer,
 	roleRepo *data.RoleRepo,
-	tenantRepo *data.TenantRepo,
 	userRoleRepo *data.UserRoleRepo,
 	authenticator *data.Authenticator,
 ) *RoleService {
@@ -56,7 +53,6 @@ func NewRoleService(
 		log:           ctx.NewLoggerHelper("role/service/admin-service"),
 		authorizer:    authorizer,
 		roleRepo:      roleRepo,
-		tenantRepo:    tenantRepo,
 		userRoleRepo:  userRoleRepo,
 		authenticator: authenticator,
 	}
@@ -73,72 +69,11 @@ func (s *RoleService) init() {
 	}
 }
 
-func (s *RoleService) extractRelationIDs(
-	roles []*permissionV1.Role,
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
-) {
-	for _, p := range roles {
-		if p.GetTenantId() > 0 {
-			tenantSet[p.GetTenantId()] = nil
-		}
-	}
-}
-
-func (s *RoleService) fetchRelationInfo(
-	ctx context.Context,
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
-) error {
-	if len(tenantSet) > 0 {
-		tenantIds := make([]uint32, 0, len(tenantSet))
-		for id := range tenantSet {
-			tenantIds = append(tenantIds, id)
-		}
-
-		tenants, err := s.tenantRepo.ListTenantsByIds(ctx, tenantIds)
-		if err != nil {
-			s.log.Errorf(context.Background(), "query tenants err: %v", err)
-			return err
-		}
-
-		for _, tenant := range tenants {
-			tenantSet[tenant.GetId()] = tenant
-		}
-	}
-
-	return nil
-}
-
-func (s *RoleService) bindRelations(
-	roles []*permissionV1.Role,
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
-) {
-	aggregator.Populate(
-		roles,
-		tenantSet,
-		func(ou *permissionV1.Role) uint32 { return ou.GetTenantId() },
-		func(ou *permissionV1.Role, r *identityV1.Tenant) {
-			ou.TenantName = r.Name
-		},
-	)
-}
-
-func (s *RoleService) enrichRelations(ctx context.Context, roles []*permissionV1.Role) error {
-	var tenantSet = make(aggregator.ResourceMap[uint32, *identityV1.Tenant])
-	s.extractRelationIDs(roles, tenantSet)
-	if err := s.fetchRelationInfo(ctx, tenantSet); err != nil {
-		return err
-	}
-	s.bindRelations(roles, tenantSet)
-	return nil
-}
-
 func (s *RoleService) List(ctx context.Context, req *paginationV1.PagingRequest) (*permissionV1.ListRoleResponse, error) {
 	resp, err := s.roleRepo.List(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-
-	_ = s.enrichRelations(ctx, resp.Items)
 
 	return resp, nil
 }
@@ -160,9 +95,6 @@ func (s *RoleService) Get(ctx context.Context, req *permissionV1.GetRoleRequest)
 		return nil, err
 	}
 
-	fakeItems := []*permissionV1.Role{resp}
-	_ = s.enrichRelations(ctx, fakeItems)
-
 	return resp, nil
 }
 
@@ -179,13 +111,6 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 
 	req.Data.CreatedBy = trans.Ptr(operator.UserId)
 
-	if operator.GetTenantId() > 0 && req.Data.GetType() != permissionV1.Role_TENANT {
-		req.Data.Type = trans.Ptr(permissionV1.Role_TENANT)
-	}
-	if err = s.ensureTenantGrantable(ctx, operator.GetTenantId(), req.Data.GetPermissions()); err != nil {
-		return nil, err
-	}
-
 	if err = s.roleRepo.Create(ctx, req); err != nil {
 		return nil, err
 	}
@@ -195,22 +120,6 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 	}
 
 	return &emptypb.Empty{}, nil
-}
-
-// ensureTenantGrantable 租户内建角色、改角色时，只能勾租户可用的权限点。
-// 授权层也会挡掉平台专属接口，这里再挡一次，免得侧栏和按钮露出平台页面。
-func (s *RoleService) ensureTenantGrantable(ctx context.Context, tenantID uint32, permissionIDs []uint32) error {
-	if tenantID == 0 {
-		return nil
-	}
-	ok, err := s.roleRepo.AllTenantGrantable(ctx, permissionIDs)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return adminV1.ErrorForbidden("permission not available to tenants")
-	}
-	return nil
 }
 
 func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRequest) (*emptypb.Empty, error) {
@@ -232,13 +141,6 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "updated_by")
 	}
 
-	if operator.GetTenantId() > 0 && req.Data.GetType() != permissionV1.Role_TENANT {
-		req.Data.Type = trans.Ptr(permissionV1.Role_TENANT)
-	}
-	if err = s.ensureTenantGrantable(ctx, operator.GetTenantId(), req.Data.GetPermissions()); err != nil {
-		return nil, err
-	}
-
 	r, err := s.roleRepo.Get(ctx, &permissionV1.GetRoleRequest{
 		QueryBy: &permissionV1.GetRoleRequest_Id{
 			Id: req.GetId(),
@@ -246,11 +148,6 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	// 非系统管理员禁止修改系统角色
-	if r.GetType() == permissionV1.Role_SYSTEM && operator.GetTenantId() > 0 {
-		return nil, adminV1.ErrorForbidden("no permission to update system role")
 	}
 
 	// Get 会填权限、组织单元和字段权限；填充失败时只记日志，这里补查。

@@ -9,9 +9,6 @@
 //     依赖 redis/minio 等外部件的构造器不在此导出。
 //   - RoleRepo / OrgUnitRepo 的关联子 repo 由本文件内 testkitXxx 私有构造器组装，
 //     组装关系对齐 cmd/server/wiring_ent.go 的仓储层装配小节。
-//   - NewTenantUsageRepoForTest 的 authenticator 参数按生产签名保留：
-//     TenantUsageRepo 仅在 CleanupTenantData/EnforceExpiryPolicies 中解引用它且有
-//     nil 守卫，GetUsage 不触碰；测试不覆盖吊销令牌链路时可传 nil。
 package data
 
 import (
@@ -29,39 +26,12 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolemetadata"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolepermission"
-	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
 
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 )
-
-// NewTenantRepoForTest 逐字段复刻 tenant_repo.go 的 NewTenantRepo（log 换 NopLogger）。
-func NewTenantRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *TenantRepo {
-	repo := &TenantRepo{
-		log:                  bLogger.NewHelper(bLogger.NopLogger()),
-		entClient:            entClient,
-		mapper:               mapper.NewCopierMapper[identityV1.Tenant, ent.Tenant](),
-		statusConverter:      mapper.NewEnumTypeConverter[identityV1.Tenant_Status, tenant.Status](identityV1.Tenant_Status_name, identityV1.Tenant_Status_value),
-		typeConverter:        mapper.NewEnumTypeConverter[identityV1.Tenant_Type, tenant.Type](identityV1.Tenant_Type_name, identityV1.Tenant_Type_value),
-		auditStatusConverter: mapper.NewEnumTypeConverter[identityV1.Tenant_AuditStatus, tenant.AuditStatus](identityV1.Tenant_AuditStatus_name, identityV1.Tenant_AuditStatus_value),
-	}
-
-	repo.init()
-
-	return repo
-}
-
-// NewTenantUsageRepoForTest 逐字段复刻 tenant_usage_repo.go 的 NewTenantUsageRepo
-// （log 换 NopLogger；authenticator 语义见文件头说明）。
-func NewTenantUsageRepoForTest(entClient *entCrud.EntClient[*ent.Client], authenticator *Authenticator) *TenantUsageRepo {
-	return &TenantUsageRepo{
-		entClient:     entClient,
-		authenticator: authenticator,
-		log:           bLogger.NewHelper(bLogger.NopLogger()),
-	}
-}
 
 // NewRoleRepoForTest 逐字段复刻 role_repo.go 的 NewRoleRepo（log 换 NopLogger；
 // 关联子 repo 由 testkit 私有构造器组装，对齐 wiring_ent.go 的装配关系）。

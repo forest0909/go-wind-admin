@@ -114,7 +114,6 @@ type File struct {
 	LinkUrl       *string                `protobuf:"bytes,11,opt,name=link_url,json=linkUrl,proto3,oneof" json:"link_url,omitempty"`                        // 链接地址
 	ContentHash   *string                `protobuf:"bytes,12,opt,name=content_hash,json=contentHash,proto3,oneof" json:"content_hash,omitempty"`            // 文件内容hash值
 	TenantId      *uint32                `protobuf:"varint,40,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`                    // 租户ID，0代表系统全局角色
-	TenantName    *string                `protobuf:"bytes,41,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`               // 租户名称
 	CreatedBy     *uint32                `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`                // 创建者用户ID
 	UpdatedBy     *uint32                `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`                // 更新者用户ID
 	DeletedBy     *uint32                `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`                // 删除者用户ID
@@ -244,13 +243,6 @@ func (x *File) GetTenantId() uint32 {
 		return *x.TenantId
 	}
 	return 0
-}
-
-func (x *File) GetTenantName() string {
-	if x != nil && x.TenantName != nil {
-		return *x.TenantName
-	}
-	return ""
 }
 
 func (x *File) GetCreatedBy() uint32 {
@@ -652,7 +644,7 @@ var File_storage_service_v1_file_proto protoreflect.FileDescriptor
 
 const file_storage_service_v1_file_proto_rawDesc = "" +
 	"\n" +
-	"\x1dstorage/service/v1/file.proto\x12\x12storage.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\x90\x0e\n" +
+	"\x1dstorage/service/v1/file.proto\x12\x12storage.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\xc6\r\n" +
 	"\x04File\x12&\n" +
 	"\x02id\x18\x01 \x01(\rB\x11\xe0A\x01\xbaG\v\x92\x02\b文件IDH\x00R\x02id\x88\x01\x01\x12T\n" +
 	"\bprovider\x18\x02 \x01(\x0e2\x1f.storage.service.v1.OSSProviderB\x12\xbaG\x0f\x92\x02\fOSS供应商H\x01R\bprovider\x88\x01\x01\x12;\n" +
@@ -671,21 +663,19 @@ const file_storage_service_v1_file_proto_rawDesc = "" +
 	"\blink_url\x18\v \x01(\tB\x12\xbaG\x0f\x92\x02\f链接地址H\n" +
 	"R\alinkUrl\x88\x01\x01\x12A\n" +
 	"\fcontent_hash\x18\f \x01(\tB\x19\xbaG\x16\x92\x02\x13文件内容hash值H\vR\vcontentHash\x88\x01\x01\x12L\n" +
-	"\ttenant_id\x18( \x01(\rB*\xbaG'\x92\x02$租户ID，0代表系统全局角色H\fR\btenantId\x88\x01\x01\x128\n" +
-	"\vtenant_name\x18) \x01(\tB\x12\xbaG\x0f\x92\x02\f租户名称H\rR\n" +
-	"tenantName\x88\x01\x01\x12;\n" +
+	"\ttenant_id\x18( \x01(\rB*\xbaG'\x92\x02$租户ID，0代表系统全局角色H\fR\btenantId\x88\x01\x01\x12;\n" +
 	"\n" +
-	"created_by\x18d \x01(\rB\x17\xbaG\x14\x92\x02\x11创建者用户IDH\x0eR\tcreatedBy\x88\x01\x01\x12;\n" +
+	"created_by\x18d \x01(\rB\x17\xbaG\x14\x92\x02\x11创建者用户IDH\rR\tcreatedBy\x88\x01\x01\x12;\n" +
 	"\n" +
-	"updated_by\x18e \x01(\rB\x17\xbaG\x14\x92\x02\x11更新者用户IDH\x0fR\tupdatedBy\x88\x01\x01\x12;\n" +
+	"updated_by\x18e \x01(\rB\x17\xbaG\x14\x92\x02\x11更新者用户IDH\x0eR\tupdatedBy\x88\x01\x01\x12;\n" +
 	"\n" +
-	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\x10R\tdeletedBy\x88\x01\x01\x12S\n" +
+	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\x0fR\tdeletedBy\x88\x01\x01\x12S\n" +
 	"\n" +
-	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\x11R\tcreatedAt\x88\x01\x01\x12S\n" +
+	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\x10R\tcreatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\x12R\tupdatedAt\x88\x01\x01\x12S\n" +
+	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\x11R\tupdatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x13R\tdeletedAt\x88\x01\x01B\x05\n" +
+	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x12R\tdeletedAt\x88\x01\x01B\x05\n" +
 	"\x03_idB\v\n" +
 	"\t_providerB\x0e\n" +
 	"\f_bucket_nameB\x11\n" +
@@ -702,8 +692,7 @@ const file_storage_service_v1_file_proto_rawDesc = "" +
 	"\t_link_urlB\x0f\n" +
 	"\r_content_hashB\f\n" +
 	"\n" +
-	"_tenant_idB\x0e\n" +
-	"\f_tenant_nameB\r\n" +
+	"_tenant_idB\r\n" +
 	"\v_created_byB\r\n" +
 	"\v_updated_byB\r\n" +
 	"\v_deleted_byB\r\n" +

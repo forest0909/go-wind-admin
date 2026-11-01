@@ -42,7 +42,6 @@ import (
 	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
 	"go-wind-admin/pkg/utils/converter"
-	crudViewer "go-wind-admin/third_party/go-crud/viewer"
 	"go-wind-admin/third_party/go-utils/authorizer"
 	goconv "go-wind-admin/third_party/go-utils/converter"
 )
@@ -597,19 +596,12 @@ func TestPermissionService_SyncPermissions_InternalMessageSplit(t *testing.T) {
 
 // TestPermissionService_ListAndGetTenantScoping 验证 List/Get 的租户范围限定
 // 与平台侧全量可见 + 组名富集。
-func TestPermissionService_ListAndGetTenantScoping(t *testing.T) {
+func TestPermissionService_ListAndGet(t *testing.T) {
 	svc, _ := newPermissionServiceForTest(t)
 	ctx := enttest.NewSystemContext(context.Background())
 	seedPermissionGroups(t, svc, ctx, 5)
 	svc.init()
 	platformCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{UserId: 7})
-	// 租户操作人：查看器须与令牌租户一致（生产由认证中间件成对注入）
-	tenantCtx := auth.NewContext(
-		crudViewer.WithContext(ctx, crudViewer.NewUserContext(8, 42, 0, "", nil)),
-		&authenticationV1.UserTokenPayload{
-			UserId: 8, TenantId: trans.Ptr(uint32(42)), Roles: []string{"perm_svc_nonexistent_role"},
-		})
-
 	// 平台操作人：全量可见 + 组名富集（组行存在时每条带组引用的权限都回填组名）
 	listResp, err := svc.List(platformCtx, &paginationV1.PagingRequest{})
 	require.NoError(t, err)
@@ -622,33 +614,12 @@ func TestPermissionService_ListAndGetTenantScoping(t *testing.T) {
 	}
 	item := listResp.GetItems()[0]
 
-	// 租户操作人（租户查看器 + 匹配令牌）：无任何可见权限 → 空列表
-	tenantList, err := svc.List(tenantCtx, &paginationV1.PagingRequest{})
-	require.NoError(t, err)
-	require.Zero(t, tenantList.GetTotal(), "租户操作人无可见权限时应返回空列表")
-	require.Empty(t, tenantList.GetItems())
-
-	// 平台查看器 + 租户令牌声明（查看器与令牌租户不一致）：
-	// 按码查角色 ID 的租户闸门按查看器判定，拒绝平台上下文的按码查询
-	mismatchCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{
-		UserId: 8, TenantId: trans.Ptr(uint32(42)), Roles: []string{"perm_svc_nonexistent_role"},
-	})
-	_, err = svc.List(mismatchCtx, &paginationV1.PagingRequest{})
-	require.Error(t, err, "平台查看器下的按码查角色 ID 应被租户闸门拒绝")
-	require.True(t, permissionV1.IsBadRequest(err))
-
-	// Get：平台命中；租户 Forbidden；不存在 ID 报错
+	// Get：命中；不存在 ID 报错
 	got, err := svc.Get(platformCtx, &permissionV1.GetPermissionRequest{
 		QueryBy: &permissionV1.GetPermissionRequest_Id{Id: item.GetId()},
 	})
 	require.NoError(t, err, "平台操作人按已存在 ID 查询应命中")
 	require.NotEmpty(t, got.GetGroupName(), "单条 Get 同样应做组名富集")
-
-	_, err = svc.Get(tenantCtx, &permissionV1.GetPermissionRequest{
-		QueryBy: &permissionV1.GetPermissionRequest_Id{Id: item.GetId()},
-	})
-	require.Error(t, err, "租户操作人访问范围外权限应 Forbidden")
-	require.True(t, adminV1.IsForbidden(err))
 
 	_, err = svc.Get(platformCtx, &permissionV1.GetPermissionRequest{
 		QueryBy: &permissionV1.GetPermissionRequest_Id{Id: 9999999},

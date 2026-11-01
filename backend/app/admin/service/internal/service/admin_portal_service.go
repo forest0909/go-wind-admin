@@ -21,7 +21,6 @@ import (
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
-	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
 )
 
@@ -34,8 +33,6 @@ type AdminPortalService struct {
 	roleRepo       *data.RoleRepo
 	userRepo       data.UserRepo
 	permissionRepo *data.PermissionRepo
-	planModuleRepo *data.PlanModuleRepo
-	tenantRepo     *data.TenantRepo
 }
 
 func NewAdminPortalService(
@@ -44,8 +41,6 @@ func NewAdminPortalService(
 	roleRepo *data.RoleRepo,
 	userRepo data.UserRepo,
 	permissionRepo *data.PermissionRepo,
-	planModuleRepo *data.PlanModuleRepo,
-	tenantRepo *data.TenantRepo,
 ) *AdminPortalService {
 	return &AdminPortalService{
 		log:            ctx.NewLoggerHelper("admin-portal/service/admin-service"),
@@ -53,8 +48,6 @@ func NewAdminPortalService(
 		roleRepo:       roleRepo,
 		userRepo:       userRepo,
 		permissionRepo: permissionRepo,
-		planModuleRepo: planModuleRepo,
-		tenantRepo:     tenantRepo,
 	}
 }
 
@@ -221,13 +214,6 @@ func (s *AdminPortalService) GetNavigation(ctx context.Context, _ *emptypb.Empty
 		func(m *permissionV1.Menu) *[]*permissionV1.Menu { return &m.Children },
 	)
 
-	// 套餐模块白名单过滤：仅对租户用户（tenantId>0）生效。
-	// 平台管理员（tenantId=0）不过滤，看到全部授权菜单。
-	tid := operator.GetTenantId()
-	if tid > 0 {
-		menuList.Items = s.filterMenusByPlanWhitelist(ctx, menuList.Items, tid)
-	}
-
 	return &adminV1.ListRouteResponse{Items: s.fillRouteItem(menuList.Items)}, nil
 }
 
@@ -270,56 +256,4 @@ func navigationMenusWithAncestors(menus []*permissionV1.Menu, granted []uint32) 
 		}
 	}
 	return result
-}
-
-// filterMenusByPlanWhitelist 按当前租户订阅套餐的模块白名单过滤菜单树。
-// 页面按完整路由归属模块（constants.MenuPathToBusinessModule），路由认不出时看菜单自身的 module；
-// 模块不在白名单内的页面剔除，目录只看子项、子项剔光就一并剔除。套餐无白名单则清空。
-func (s *AdminPortalService) filterMenusByPlanWhitelist(ctx context.Context, items []*permissionV1.Menu, tenantId uint32) []*permissionV1.Menu {
-	// 查租户的 plan_id
-	t, err := s.tenantRepo.Get(ctx, &identityV1.GetTenantRequest{
-		QueryBy: &identityV1.GetTenantRequest_Id{
-			Id: tenantId,
-		},
-	})
-	if err != nil || t == nil || t.PlanId == nil || *t.PlanId == 0 {
-		// 无套餐或查询失败 → 清空菜单（租户无任何模块权限）
-		return nil
-	}
-	planId := *t.PlanId
-
-	// 查该套餐的白名单模块集合
-	allowed, err := s.planModuleRepo.ListModulesByPlanId(ctx, planId)
-	if err != nil || len(allowed) == 0 {
-		return nil
-	}
-	return filterMenuTreeByModules(items, "", allowed)
-}
-
-// filterMenuTreeByModules 递归过滤菜单树 / Recursively filter the menu tree by allowed modules.
-func filterMenuTreeByModules(items []*permissionV1.Menu, parentPath string, allowed map[identityV1.Module]bool) []*permissionV1.Menu {
-	filtered := make([]*permissionV1.Menu, 0, len(items))
-	for _, m := range items {
-		fullPath := m.GetPath()
-		if !strings.HasPrefix(fullPath, "/") {
-			fullPath = strings.TrimSuffix(parentPath, "/") + "/" + fullPath
-		}
-		// 目录只看子项：/system 下既有 SYSTEM 的页面也有 DICT/FILE/TASK 的页面
-		if len(m.Children) > 0 {
-			m.Children = filterMenuTreeByModules(m.Children, fullPath, allowed)
-			if len(m.Children) > 0 {
-				filtered = append(filtered, m)
-			}
-			continue
-		}
-		module := constants.MenuPathToBusinessModule(fullPath)
-		if module == identityV1.Module_MODULE_UNSPECIFIED {
-			module = m.GetModule()
-		}
-		if module != identityV1.Module_MODULE_UNSPECIFIED && !allowed[module] {
-			continue
-		}
-		filtered = append(filtered, m)
-	}
-	return filtered
 }

@@ -383,7 +383,7 @@ func (r *UserCredentialRepo) performDummyVerify(plainCredential string) {
 }
 
 // FindUserCredential 在指定租户范围内根据身份类型+标识符查询单条凭证并校验密码。
-// tenantID 由调用方解析确定（登录时按 tenant_code 解析；留空视为平台 tenant 0）。
+// 单租户：登录固定传 tenantID = 0，旧库遗留的 tenant_id>0 凭证不参与匹配。
 // (tenant_id, identity_type, identifier) 在该 tenant 内唯一，无需跨租户消歧。
 // needDecrypt 为 true 时，plainCredential 应为 base64+AES 加密密文，会自动解密。
 // 返回匹配到的用户 ID，调用方可据此通过 ID 查找用户。

@@ -19,7 +19,7 @@ const (
 	// 因此撞 sys_permission_menus_pkey。启动同步之前先对齐，序列被外部回拨后也能自愈。
 	identityTablePermissionMenus = "sys_permission_menus"
 	identityTablePermissionApis  = "sys_permission_apis"
-	// 同步完权限点还会按差异补租户管理员角色的授权（SyncTenantManagerGrants）
+	// 旧库升级时遗留租户配置的清理会删除角色授权行（PurgeLegacyTenantConfig）
 	identityTableRolePermissions = "sys_role_permissions"
 )
 

@@ -3,6 +3,7 @@ package rpc
 import (
 	"crypto/tls"
 	"net/http/pprof"
+	"time"
 
 	"github.com/gorilla/handlers"
 
@@ -30,12 +31,32 @@ func CreateRestServer(cfg *conf.Bootstrap, mds ...middleware.Middleware) (*krato
 	}
 
 	srv := kratosRest.NewServer(options...)
+	applyHttpServerTimeouts(srv)
 
 	if cfg != nil && cfg.Server != nil && cfg.Server.Rest != nil && cfg.Server.Rest.GetEnablePprof() {
 		registerHttpPprof(srv)
 	}
 
 	return srv, nil
+}
+
+// 底层 http.Server 的超时。kratos 的 timeout 配置只是 handler 的 context 超时，
+// 管不到慢速发送请求头/请求体和空闲长连接。
+//   - ReadTimeout 覆盖读完整个请求体，按慢网络上传约 70 MiB 留足时间；
+//   - 不设 WriteTimeout：文件下载、审计导出要长时间写响应（SSE 在单独的端口，不受影响）。
+const (
+	restReadHeaderTimeout = 10 * time.Second
+	restReadTimeout       = 5 * time.Minute
+	restIdleTimeout       = 2 * time.Minute
+)
+
+func applyHttpServerTimeouts(srv *kratosRest.Server) {
+	if srv == nil || srv.Server == nil {
+		return
+	}
+	srv.ReadHeaderTimeout = restReadHeaderTimeout
+	srv.ReadTimeout = restReadTimeout
+	srv.IdleTimeout = restIdleTimeout
 }
 
 // initRestConfig 初始化REST服务配置

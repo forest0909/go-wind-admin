@@ -3,7 +3,10 @@ server:
     addr: ":7788"
     timeout: 10s
     enable_swagger: true
-    enable_pprof: true
+    # pprof 路由（/debug/*）不经过登录鉴权，默认关闭。
+    # 需要排查性能时在 configs/local/server.yaml 里写 server.rest.enable_pprof: true，
+    # 并且只在内网/本机可达的环境打开，用完关掉。
+    enable_pprof: false
     cors:
       # 前端 refresh token 走 HttpOnly Cookie（withCredentials=true），
       # 预检响应必须带 Access-Control-Allow-Credentials: true

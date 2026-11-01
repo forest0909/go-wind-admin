@@ -21,3 +21,5 @@
 
 2026-10-27：`config.NewConfigProvider` 在主配置目录和可选远程源之后，再加载 `<configPath>/local/`（目录存在才加载）。file source 读目录时跳过子目录，所以 `local/` 不会被主源读两遍。合并仍是 Kratos 默认的 mergo 深度合并（`WithOverride`）。`local/` 里显式写出的标量都会覆盖同名键，包括空字符串、false 和 0；没写的键保留前面的值。没有 `config.yaml` 时不走远程源。同日更正：先前把这次合并写成「非空值覆盖」，和 `map[string]any` 上 `WithOverride` 的实际结果不符。`config_test.go` 的 `TestLocalOverride_ExplicitZeroValuesReplaceMain` 覆盖空字符串、false 和 0。
 
+
+2026-11-02：`rpc.CreateRestServer` 给底层 `http.Server` 设 `ReadHeaderTimeout=10s`、`ReadTimeout=5m`、`IdleTimeout=2m`，不设 `WriteTimeout`（文件下载、审计导出要长时间写响应；SSE 在单独端口）。原先四项都是 0，kratos 的 `timeout` 只是 handler context 超时。`rest_test.go` 的 `TestCreateRestServer_SetsSocketTimeouts` 覆盖。

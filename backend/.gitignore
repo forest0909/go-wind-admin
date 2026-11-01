@@ -36,3 +36,5 @@ bin/
 
 # Go workspace file
 go.work
+# docker compose 的口令文件
+.env

@@ -1,3 +1,6 @@
+# 完整模式：PostgreSQL / Redis / MinIO / admin-service 都在 Docker 里。
+# 只对外暴露后端 7788（HTTP）和 7789（SSE）；依赖服务不映射端口，只在 app-tier 网络内可达。
+# 口令从同目录 .env 读取（cp .env.example .env 后修改），缺了 docker compose 直接报错。
 networks:
   app-tier:
     driver: bridge
@@ -6,14 +9,14 @@ services:
   postgres:
     image: docker.io/bitnami/postgresql:latest
     restart: always
-    ports:
-      - "5432:5432"
     networks:
       - app-tier
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=*Abcd123456
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD（参考 .env.example）}
       - POSTGRES_DB=gwa
+    volumes:
+      - postgres-data:/bitnami/postgresql
     ulimits:
       nofile:
         soft: 65535
@@ -52,35 +55,31 @@ services:
   redis:
     image: docker.io/bitnami/redis:latest
     restart: always
-    ports:
-      - "6379:6379"
     networks:
       - app-tier
     environment:
       - ALLOW_EMPTY_PASSWORD=no
-      - REDIS_PASSWORD=*Abcd123456
-      - REDIS_AOF_ENABLED=no
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD（参考 .env.example）}
+      # 任务队列（asynq）也在这个 Redis 里，开 AOF 才能在重启后保住未执行的任务
+      - REDIS_AOF_ENABLED=yes
       - REDIS_IO_THREADS_DO_READS=yes
       - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
-#    volumes:
-#      - /${APP_ROOT:-/root/app}/redis/data:/bitnami/redis/data
+    volumes:
+      - redis-data:/bitnami/redis/data
 
   minio:
     image: docker.io/minio/minio:latest
     restart: always
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     networks:
       - app-tier
     environment:
-      - MINIO_ROOT_USER=root
-      - MINIO_ROOT_PASSWORD=*Abcd123456
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:?请在 .env 中设置 MINIO_ROOT_USER（参考 .env.example）}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:?请在 .env 中设置 MINIO_ROOT_PASSWORD（参考 .env.example）}
       - MINIO_DEFAULT_BUCKETS=images
       - MINIO_FORCE_NEW_KEYS=yes
       - BITNAMI_DEBUG=true
-#    volumes:
-#      - ${APP_ROOT:-/root/app}/minio/data:/data
+    volumes:
+      - minio-data:/data
     command: server /data --console-address ':9001'
 
 #  jaeger:
@@ -116,9 +115,30 @@ services:
       - minio
     environment:
       - TZ=Asia/Shanghai
+      # configs/*.yaml 里的 ${GWA_XXX:默认值} 占位符读这些变量，和上面各服务用同一份口令
+      - GWA_DB_PASSWORD=${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
+      - GWA_REDIS_PASSWORD=${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+      - GWA_MINIO_ACCESS_KEY=${MINIO_ROOT_USER:?请在 .env 中设置 MINIO_ROOT_USER}
+      - GWA_MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:?请在 .env 中设置 MINIO_ROOT_PASSWORD}
+      # 首次启动播种 admin 时使用的密码，完整部署必须提供
+      - GWA_ADMIN_INITIAL_PASSWORD=${GWA_ADMIN_INITIAL_PASSWORD:?请在 .env 中设置 GWA_ADMIN_INITIAL_PASSWORD}
+      # 可选：生产 JWT 私钥（只给私钥时公钥自动派生）、签名图片 URL 的密钥
+      - GWA_AUTH_JWT_PRIVATE_KEY=${GWA_AUTH_JWT_PRIVATE_KEY:-}
+      - GOWIND_CRYPTO_KEY=${GOWIND_CRYPTO_KEY:-}
+      - AUDIT_ARCHIVE_DIR=/app/data/audit-archive
+    volumes:
+      # 审计归档文件
+      - admin-data:/app/data
     build:
       context: ./  # 指定 Dockerfile 所在的上下文路径
       dockerfile: Dockerfile
       args:
         SERVICE_NAME: admin
         APP_VERSION: 1.0.0
+
+# 具名卷：docker compose down / up 之后数据还在（down -v 才会删）
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  admin-data:

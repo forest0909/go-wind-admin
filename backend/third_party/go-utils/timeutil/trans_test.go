@@ -141,7 +141,7 @@ func TestTimeToDateString(t *testing.T) {
 	now := time.Now()
 	result := TimeToDateString(&now)
 	assert.NotNil(t, result)
-	expected := now.Format(DateLayout)
+	expected := now.In(GetDefaultTimeLocation()).Format(DateLayout) // 函数按默认时区格式化，期望值也要按同一时区算，否则 UTC 16-24 点跑会差一天
 	assert.Equal(t, expected, *result)
 
 	// 测试空输入

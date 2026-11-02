@@ -36,3 +36,7 @@
 `captcha.Verify` 改为一次性领取：用 Lua 原子地 GET+DEL 答案（不用 GETDEL，兼容 Redis 6.2 以前），答错也作废。此前答错不删、答对后才非原子 DEL，可对同一 id 穷举 0..81，并发提交同一正确答案能多次通过。`TestVerify_WrongAnswer` 期望随之改为验证码已不存在；新增 miniredis 测试 `captcha_consume_test.go`。
 
 `netutil.SetTrustedProxies` 先把默认初始化标记为已完成：此前启动时调用它之后，首个请求里的 `initTrustedProxies` 仍会用默认网段覆盖配置（默认初始化写全局变量时也没加锁）。测试 `TestSetTrustedProxies_NotOverriddenByLazyDefault`。
+
+`authorizer` 加了 `SetResetWrapper` / `ReloadPolicies`：`ResetPolicies` 设置了包装函数时经它调用实际装载（admin 用它在装载前递增 Redis 版本号、装载后广播，让其他实例重载）；`ReloadPolicies` 只重载本实例。实际装载加了互斥锁，并发装载不会让旧快照覆盖新快照。
+
+`id.GenerateOrderIdWithRandom` 的 4 位随机数改为补零（`%04d`）：原来随机数小于 1000 时订单号少一位，`TestGenerateOrderIdWithRandom` 约 10% 概率失败。

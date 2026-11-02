@@ -37,3 +37,11 @@ func NewTaskRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *TaskRepo {
 
 	return repo
 }
+
+// NewAuditLogArchiveRepoForTest 与生产 NewAuditLogArchiveRepo 逐字段一致（log 换 NopLogger）。
+func NewAuditLogArchiveRepoForTest(entClient *entCrud.EntClient[*ent.Client]) *AuditLogArchiveRepo {
+	return &AuditLogArchiveRepo{
+		log:    bLogger.NewHelper(bLogger.NopLogger()),
+		client: entClient.Client(),
+	}
+}

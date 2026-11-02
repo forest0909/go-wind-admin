@@ -24,6 +24,8 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 	"go-wind-admin/app/admin/service/internal/data/ent/sysconfig"
+
+	"go-wind-admin/pkg/redissync"
 )
 
 // sysConfigCacheMaxEntries 参数缓存条目上限：合法的参数键是管理员配置的有限集合，
@@ -34,8 +36,13 @@ const sysConfigCacheMaxEntries = 4096
 // 所有实例订阅后清除各自进程内缓存——多实例部署下参数变更即时全局生效。
 const configInvalidateChannel = "gowind:config:invalidate"
 
+// sysConfigCacheTTL 缓存条目的最长寿命。失效广播是主路径；广播丢失（订阅断开期间、
+// 订阅建立之前的写入、绕过本 repo 直改表）时，旧值最多再保留这么久。
+const sysConfigCacheTTL = 5 * time.Minute
+
 // sysConfigCacheEntry 参数缓存条目；found=false 表示“库里没有该键”的负缓存。
 type sysConfigCacheEntry struct {
+	loadedAt  time.Time
 	found     bool
 	value     string
 	valueType sysconfig.ValueType
@@ -356,8 +363,8 @@ func (r *ConfigRepo) SeedDefaults(ctx context.Context, defaults []*configV1.Conf
 //
 // 缓存语义：进程内 per-key 懒加载 + 负缓存（键不存在也缓存，防不存在的键反复打库）；
 // Create/Update/Delete 先失效本地缓存、再向 Redis 广播（见 configInvalidateChannel），
-// 其他实例订阅后清各自缓存，多实例部署下参数变更即时全局生效。该链路假设全部写路径都经
-// 本 repo：绕过 repo 直改表的写入不会触发失效。
+// 其他实例订阅后清各自缓存，多实例部署下参数变更即时全局生效。订阅（重新）建立时清空全部缓存，
+// 补上断线期间丢的广播；每个条目最多缓存 sysConfigCacheTTL，兜住绕过 repo 直改表等其余情况。
 
 // invalidateCacheKey 失效单个键的本地缓存并向 Redis 广播（空键 no-op）。
 // 广播为尽力而为：Redis 不可用时仅告警，本地失效不受影响。
@@ -377,20 +384,31 @@ func (r *ConfigRepo) invalidateCacheKey(ctx context.Context, key string) {
 }
 
 // subscribeInvalidations 订阅失效广播，清除本进程内对应缓存条目。
-// 连接断开由 go-redis 自动重连；进程退出时随连接一起消亡。
+// Pub/Sub 不回放断线期间的消息，所以每次订阅（首次和重连）被确认时清空整个本地缓存：
+// 这同时覆盖了"订阅建立之前已经读进缓存"的启动窗口。
 func (r *ConfigRepo) subscribeInvalidations(ctx context.Context) {
 	if r.rdb == nil {
 		return
 	}
-	sub := r.rdb.Subscribe(ctx, configInvalidateChannel)
-	defer sub.Close()
-
-	for msg := range sub.Channel() {
-		r.cacheMu.Lock()
-		delete(r.cache, msg.Payload)
-		r.cacheMu.Unlock()
-	}
+	redissync.Subscribe(ctx, r.rdb, configInvalidateChannel, redissync.Handlers{
+		OnSubscribed: func(context.Context) { r.clearCache() },
+		OnMessage: func(_ context.Context, key string) {
+			r.cacheMu.Lock()
+			delete(r.cache, key)
+			r.cacheMu.Unlock()
+		},
+	}, r.log)
 }
+
+// clearCache 清空本进程的参数缓存。
+func (r *ConfigRepo) clearCache() {
+	r.cacheMu.Lock()
+	r.cache = make(map[string]sysConfigCacheEntry)
+	r.cacheMu.Unlock()
+}
+
+// configNow 测试里替换以推进时钟。
+var configNow = time.Now
 
 // getCachedEntry 取参数条目。第二个返回值表示库里确实存在该键；
 // 缓存命中（含负缓存）不查库，查库异常不写缓存以便下次重试。
@@ -402,11 +420,11 @@ func (r *ConfigRepo) getCachedEntry(ctx context.Context, key string) (sysConfigC
 	r.cacheMu.RLock()
 	e, ok := r.cache[key]
 	r.cacheMu.RUnlock()
-	if ok {
+	if ok && configNow().Sub(e.loadedAt) < sysConfigCacheTTL {
 		return e, e.found
 	}
 
-	e = sysConfigCacheEntry{}
+	e = sysConfigCacheEntry{loadedAt: configNow()}
 	entity, err := r.entClient.Client().SysConfig.Query().
 		Where(sysconfig.KeyEQ(key)).
 		Only(ctx)
@@ -425,7 +443,7 @@ func (r *ConfigRepo) getCachedEntry(ctx context.Context, key string) (sysConfigC
 	}
 
 	r.cacheMu.Lock()
-	if len(r.cache) < sysConfigCacheMaxEntries {
+	if _, exists := r.cache[key]; exists || len(r.cache) < sysConfigCacheMaxEntries {
 		r.cache[key] = e
 	}
 	r.cacheMu.Unlock()

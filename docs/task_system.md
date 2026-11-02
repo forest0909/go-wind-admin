@@ -44,7 +44,7 @@
 | 字段 | 说明 |
 |---|---|
 | `type` | enum：PERIODIC / DELAY / WAIT_RESULT（默认 PERIODIC）——决定 startTask 走 NewPeriodicTask / NewTask / NewWaitResultTask 三条装载路径 |
-| `type_name` | 任务执行类型名——**既是 asynq 的 handler 路由键又是调度项去重键**（全局命名空间，见第 8 节） |
+| `type_name` | 任务执行类型名，即 asynq 的 handler 路由键。系统任务类型（`pkg/task/system.go` 登记）不能用（见第 4 节） |
 | `cron_spec` | cron 表达式（仅 PERIODIC 有意义） |
 | `task_payload` | JSON 字符串载荷，装载时 `json.Unmarshal` 到 handler 注册的载荷结构（nil 兜底为空对象，asynq 拒绝 nil message） |
 | `task_options` | JSON，映射 asynq 选项：`max_retry`→MaxRetry、`timeout`/`deadline`/`process_in`/`process_at`→对应 asynq 同名项、`unique_ttl`→Unique、`retention`→Retention、`group`/`task_id`→Group/TaskID |
@@ -53,6 +53,10 @@
 
 ## 4. 调度生命周期（TaskService）
 
+- **系统任务类型保留**：`broadcast_message`、`audit_log_archive` 等系统类型（`task.IsSystemTaskType`）
+  不能经 TaskService 创建、改成或修改、Start/Stop/Restart，一律 403；`ListTaskTypeName` 不列出它们。
+  这些 handler 信任 payload（广播按 message_id 向全员扇出），不能交给任务管理。旧版本遗留的系统类型行
+  启动时跳过不调度，可以删除。
 - **Create（H8 守卫）**：`type_name` 必须已在调度器注册（`TaskTypeExists`），否则 400
   `task type [xxx] is not registered`（`task_service.go:131-132`，Update 走同一条判定 `:181-182`）
   ——防止无 handler 的幽灵任务（每个 cron tick 报错）。
@@ -60,9 +64,10 @@
 - **Update**：改 `cron_spec`/`payload`/`options` 时先 `stopTask` 再 `startTask`（旧 entry
   注销、新 entry 重建）；`type`/`type_name` 变更需走删除重建。
 - **ControlTask**：按 `type_name` 定位任务，行内 Start / Stop / Restart；未知控制类型显式拒绝。
-- **全局控制**：`StopAllTask` = `RemoveAllPeriodicTask`（**清掉包括系统级在内的全部周期项**）；
-  `StartAllTask`/`RestartAllTask`（先 Remove 再 Start）= 重新装载 sys_tasks + **末尾重注册
-  系统级 cron**——顺序保证重启路径下系统任务必然恢复（见 5 节）。
+- **调度项绑定**：用户任务的周期调度项按**任务行 ID → entryID** 记在 TaskService 里，注销一律
+  `RemovePeriodicTaskByID`；系统调度项按 typeName 单独记录。停止、删除、更新一条用户任务只注销它自己的 entry。
+- **全局控制**：`StopAllTask` 只注销用户任务的调度项，**系统调度项不动**；`RestartAllTask` = 注销用户任务
+  + 重新装载 sys_tasks；`StartAllTask`/`RestartAllTask` 末尾确保系统级 cron 已注册（已注册就跳过，不会叠加）。
 - **startTask**：PERIODIC → `NewPeriodicTask(cron, typeName, payload, opts...)`；
   DELAY → `NewTask`（一次性入队）；WAIT_RESULT → `NewWaitResultTask`。
 - **ListTaskTypeName**：返回调度器当前已注册的处理器类型名（管理页新建对话框的类型下拉源）。
@@ -71,7 +76,9 @@
 
 ### 5.2 审计日志归档（`audit_log_archive`）
 
-cron `30 3 * * *`。不写 sys_tasks——规避 typeName 去重（第 8 节），注册点固定在 `startAllTask` 末尾。把超过保留期的登录日志和操作日志导出 JSONL 归档文件后从库中删除
+cron `30 3 * * *`。不写 sys_tasks，注册点在 `startAllTask` 末尾（`ensureSystemPeriodicTasks`）。
+多副本时每个实例都注册这个 cron：注册时带 `asynq.Unique(1h)`，同一轮只入队一次；handler 再用 Redis 标记
+`gowind:cron-once:audit_log_archive`（1 小时）兜底，同一时间窗内只有一个实例执行，失败时删除标记让重试能跑。把超过保留期的登录日志和操作日志导出 JSONL 归档文件后从库中删除
 （库瘦身 + ≥6 个月留痕的等保平衡）。环境变量：`AUDIT_ARCHIVE_DIR`（默认
 `./data/audit-archive`）、`AUDIT_RETENTION_DAYS`（默认 180）。采集与字段语义见
 [audit-log-producer-design.md](./audit-log-producer-design.md)。
@@ -92,17 +99,18 @@ cron `30 3 * * *`。不写 sys_tasks——规避 typeName 去重（第 8 节）�
 ## 8. 调度器限制
 
 - `StartAllTask` 用 **SystemContext** 装载全部任务（调度装载必须全量）。
-- **typeName 全局命名空间限制**：调度器用 typeName 既做路由又做调度项去重键（`entryIDs[typeName]`
-  单条目）。同名 PERIODIC 任务会互相覆盖产生"无法注销的孤儿 entry"——`startAllTask`
-  按 typeName 去重、**只调度首个**并告警跳过。彻底解决需调度器支持"路由类型/调度键分离"
-  （库层改造，TODO）。实务约束：**任务 typeName 需全局唯一**。
+- 调度项按 entryID 注销（见第 4 节），同名周期任务不再互相覆盖。
+- **多副本**：每个实例都有自己的 asynq scheduler，会各自注册 sys_tasks 里的周期任务；系统任务按上面 5.2
+  的方式去重。当前注册的 handler 类型都是系统类型，用户无法新建任务，所以用户周期任务的多副本重复暂不处理；
+  以后增加用户可用的任务类型时，要为它的副作用做幂等。
 
 ## 9. 运维与排障
 
 | 症状 | 核对顺序 |
 |---|---|
-| 任务没跑 | ① `enable` 位；② typeName 是否在注册面（ListTaskTypeName / 启动日志里的 `…定时任务已注册（cron=…）`）；③ H8 拒绝创建的报错（未注册类型）；④ 调度器是否配置（`server.asynq.uri`，未配置整个子系统静默缺失）；⑤ 同名任务被 startAllTask 去重跳过的告警日志 |
-| StopAllTask 后系统任务还在 | 正常——StartAllTask 末尾自动重注册；要彻底停系统任务只能停服务或改代码 |
+| 任务没跑 | ① `enable` 位；② typeName 是否在注册面（ListTaskTypeName / 启动日志里的 `…定时任务已注册（cron=…）`）；③ H8 拒绝创建的报错（未注册类型）；④ 调度器是否配置（`server.asynq.uri`，未配置整个子系统静默缺失）；⑤ 系统类型的遗留行被 startAllTask 跳过的告警日志 |
+| StopAllTask 后系统任务还在 | 正常——StopAllTask 只停用户任务；要停系统任务只能停服务或改代码 |
+| 多副本里归档只有一个实例在跑 | 正常——见 5.2，另一个实例日志里是 `audit log archive skipped` |
 | 归档目录/保留期 | `AUDIT_ARCHIVE_DIR` / `AUDIT_RETENTION_DAYS`（改后下个 03:30 周期生效） |
 | 改了 cron 没生效 | Update 走 stop→start 重装载；确认后看管理页行内状态与调度器日志 |
 | 验证码邮件或短信发不出去 | 查 `app/admin/service/configs/mail.yaml`。`smtp.host` 为空或 `smtp.port` 为 0、短信 `provider` 为空，请求里直接返回未配置。发送在这次 HTTP 请求里同步完成，不再进 asynq |
@@ -111,7 +119,6 @@ cron `30 3 * * *`。不写 sys_tasks——规避 typeName 去重（第 8 节）�
 
 | 项 | 现状 |
 |---|---|
-| typeName 路由/去重键合一 | 库层限制，同名互斥（第 8 节），库改造 TODO |
 | WAIT_RESULT 型 | 枚举与装载路径在，无内置消费方示范；语义同 asynq wait-result |
 | 系统级任务的可见性 | 不入 sys_tasks，管理页不可见、不可停（现只有审计归档 5.2）——监控只能靠服务日志（"审计日志归档定时任务已注册"等前缀）。曾有的 asynq Inspector 只读视图（任务监控）已随裁剪删除 |
 | **时间窗谓词要看驱动怎么渲染时间** | `created_at` 这类经 `timestamptz`（Postgres）存的列按"瞬间"比较，任何时区渲染都对；但同一句谓词跑在把时间渲染成**带时区文本**的驱动上（本机 sqlite 回归测试即此形）就成了字典序比较。写入侧若把 `timestamppb` 往返渲染成 UTC，而谓词参数 `time.Now()` 带本地时区（+08），字典序会把"一分钟前"判成更早。比较侧应统一 `.UTC()`。审计归档 `CreatedAtLT` 目前只在 Postgres 上实测过 |

@@ -48,6 +48,15 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	}
 	cleanups = append(cleanups, cleanupRedis)
 
+	// 多实例启动互斥：自动迁移、默认数据播种、接口/权限点/菜单同步和首次策略装载都在
+	// 下面的构造过程里同步执行，持锁直到 REST 服务装配完成，并发启动的实例依次进行。
+	releaseStartupLock, err := data.AcquireStartupLock(ctx, redisClient)
+	if err != nil {
+		rollback()
+		return nil, nil, err
+	}
+	cleanups = append(cleanups, releaseStartupLock) // 中途失败时由 rollback 释放；可重复调用
+
 	entClient, cleanupEnt, err := data.NewEntClient(ctx)
 	if err != nil {
 		rollback()
@@ -141,6 +150,8 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		rollback()
 		return nil, nil, fmt.Errorf("authorization engine %q failed to initialize", authzEngineCfg.Type)
 	}
+	// 多实例策略同步：本实例 ResetPolicies 后其他实例重载（必须在首次 ResetPolicies 之前装上）
+	data.NewPolicySync(ctx, redisClient, authz)
 
 	// ═══════════════════════ 四、服务层(internal/service) ═══════════════════════
 
@@ -171,7 +182,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// 文件与任务
 	fileService := service.NewFileService(ctx, fileRepo, minioClient)
 	fileTransferService := service.NewFileTransferService(ctx, minioClient, fileRepo)
-	taskService := service.NewTaskService(ctx, taskRepo, userRepo, auditLogArchiveRepo)
+	taskService := service.NewTaskService(ctx, taskRepo, userRepo, auditLogArchiveRepo, redisClient)
 
 	// 审计日志
 	loginAuditLogService := service.NewLoginAuditLogService(ctx, loginAuditLogRepo)
@@ -214,6 +225,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		rollback()
 		return nil, nil, err
 	}
+	releaseStartupLock()
 
 	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService)
 	if err != nil {
@@ -221,7 +233,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		return nil, nil, err
 	}
 
-	sseServer := server.NewSseServer(ctx, internalMessageService, authenticator)
+	sseServer := server.NewSseServer(ctx, internalMessageService, authenticator, redisClient)
 
 	return newApp(ctx, restServer, asynqServer, sseServer), rollback, nil
 }

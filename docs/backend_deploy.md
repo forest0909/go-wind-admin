@@ -228,6 +228,18 @@ server:
 
 审计归档任务每天把超过保留期的审计日志导出到 `AUDIT_ARCHIVE_DIR`（默认 `./data/audit-archive`）后从库里删除。镜像里预建了 `/app/data` 并交给运行用户 `appuser`；完整 Compose 设置 `AUDIT_ARCHIVE_DIR=/app/data/audit-archive` 并把 `/app/data` 挂到 `admin-data` 卷。某张表查询、写文件或删除失败时，其他表照常处理，任务最后返回错误，asynq 会记为失败并重试。
 
+## 多实例部署
+
+多个 admin 实例共享同一个数据库和同一个 Redis 时，下面这些跨实例协调都经 Redis 完成，不需要额外配置：
+
+| 内容 | 做法 |
+|---|---|
+| 启动 | 自动迁移、默认数据播种、接口/权限点/菜单同步、首次策略装载在 Redis 锁 `gowind:startup:migrate-and-seed` 内执行，并发启动的实例依次进行（最长等 10 分钟，超时启动失败）。Redis 连不上时记 ERROR、不加锁继续启动 |
+| 授权策略 | 任一实例改了角色/权限点/接口后 INCR `gowind:authz:policy_version` 并广播，其他实例重载；订阅断线重连时按版本号对账 |
+| 参数缓存 | 失效广播；订阅重连时清空本地缓存；每个条目最多缓存 5 分钟 |
+| SSE 通知 | 经 Redis 频道转发，各实例投递给自己的连接 |
+| 系统周期任务 | 审计归档同一轮只执行一次（见 [task_system.md](./task_system.md) 5.2） |
+
 ## 备份与恢复
 
 程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练一次恢复。

@@ -29,6 +29,8 @@ import (
 	applogging "go-wind-admin/pkg/middleware/logging"
 	"go-wind-admin/third_party/go-crud/viewer"
 	"go-wind-admin/third_party/go-utils/authorizer"
+	"go-wind-admin/third_party/go-utils/netutil"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 )
 
 // selfServiceOperations 只需登录、不走接口级鉴权（casbin）的操作。
@@ -113,6 +115,8 @@ func NewRestMiddleware(
 			auth.WithInjectMetadata(false),
 			auth.WithInjectEnt(true),
 		),
+		// 紧跟认证：把已验签身份交给外层审计中间件（认证失败的请求按匿名记）
+		applogging.CaptureVerifiedIdentity(),
 		selector.Server(authz.Server(authorizer.Engine())).
 			Match(newAuthzRequiredMatcher()).
 			Build(),
@@ -172,6 +176,8 @@ func NewRestServer(
 	if cfg == nil || cfg.Server == nil || cfg.Server.Rest == nil {
 		return nil, nil
 	}
+
+	applyTrustedProxies(cfg.Server.Rest)
 
 	srv, err := rpc.CreateRestServer(cfg,
 		middlewares...,
@@ -257,4 +263,14 @@ func NewRestServer(
 type userServiceServerAdapter struct {
 	adminV1.UnsafeUserServiceServer
 	adminV1.UserServiceHTTPServer
+}
+
+// applyTrustedProxies 按 server.rest.trusted_proxies 设置可信反向代理。
+// 不配置时保持 netutil 的默认网段（私网 + 回环），不改变现有部署行为。
+func applyTrustedProxies(rest *conf.Server_REST) {
+	tp := rest.GetTrustedProxies()
+	if tp == nil {
+		return
+	}
+	netutil.SetTrustedProxies(tp.GetCidrs())
 }

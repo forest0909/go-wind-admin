@@ -425,16 +425,6 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 	// 剥离 CR/LF，防止含换行的用户名注入文本日志行（伪造条目/行内注入）。
 	username := strings.NewReplacer("\r", "", "\n", "").Replace(req.GetUsername())
 
-	// ===== H5 闸门 1：登录限流预检（按 IP + 用户名双维度）=====
-	if s.rateLimiter != nil {
-		if locked, lerr := s.rateLimiter.IsLocked(ctx, clientIP, username); lerr != nil {
-			s.log.Errorf(ctx, "login rate limiter pre-check failed: %s", lerr.Error())
-		} else if locked {
-			s.log.Warnf(ctx, "login blocked by rate limiter: ip=%s, username=%s", clientIP, username)
-			return nil, authenticationV1.ErrorTooManyRequests("too many login failures, please try again later")
-		}
-	}
-
 	// ===== H5 闸门 2：强制验证码（始终启用；通过 HTTP Header 传递，避免改动 proto/前端生成代码）=====
 	if !s.verifyLoginCaptcha(ctx) {
 		return nil, authenticationV1.ErrorInvalidCaptcha("invalid or missing captcha")
@@ -450,6 +440,17 @@ func (s *AuthenticationService) doGrantTypePassword(ctx context.Context, req *au
 		return nil, rerr
 	} else if resolved != username {
 		username = resolved
+	}
+
+	// ===== H5 闸门 1：登录限流预检（按 IP + 解析后的用户名双维度）=====
+	// 必须用解析后的 username：失败计数按它累计，用 email/手机号登录不能绕过账号锁定。
+	if s.rateLimiter != nil {
+		if locked, lerr := s.rateLimiter.IsLocked(ctx, clientIP, username); lerr != nil {
+			s.log.Errorf(ctx, "login rate limiter pre-check failed: %s", lerr.Error())
+		} else if locked {
+			s.log.Warnf(ctx, "login blocked by rate limiter: ip=%s, username=%s", clientIP, username)
+			return nil, authenticationV1.ErrorTooManyRequests("too many login failures, please try again later")
+		}
 	}
 
 	// ===== 凭证校验：在租户 0 范围内查单条凭证并校验密码 =====
@@ -602,7 +603,7 @@ func (s *AuthenticationService) doGrantTypeRefreshToken(ctx context.Context, req
 	// 不再依赖 access token 提供的身份信息。旧 jti 用于继承会话元数据的登录时间。
 	// grace=true 表示 RT 处于宽限窗口（刚被并发刷新对撞方轮换掉），本次兑换
 	// 一个独立新会话，不做旧会话元数据继承。
-	userId, oldJti, grace, err := s.authenticator.VerifyRefreshToken(ctx, req.GetClientType(), refreshToken)
+	userId, oldJti, grace, writeGuard, err := s.authenticator.VerifyRefreshToken(ctx, req.GetClientType(), refreshToken)
 	if err != nil {
 		s.log.Errorf(ctx, "verify refresh token failed: [%s]", err)
 		return nil, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
@@ -639,8 +640,8 @@ func (s *AuthenticationService) doGrantTypeRefreshToken(ctx context.Context, req
 		return nil, err
 	}
 
-	// 生成令牌
-	accessToken, newRefreshToken, err := s.authenticator.CreateUserToken(ctx, req.GetClientType(), tokenPayload)
+	// 生成令牌。writeGuard：验证旧 RT 之后若发生全量吊销或踢下线，新令牌不会写入。
+	accessToken, newRefreshToken, err := s.authenticator.CreateUserTokenGuarded(ctx, req.GetClientType(), tokenPayload, writeGuard)
 	if err != nil {
 		return nil, err
 	}

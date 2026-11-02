@@ -14,6 +14,7 @@ import (
 	"go-wind-admin/app/admin/service/internal/data"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
+	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
@@ -40,6 +41,8 @@ type RoleService struct {
 // roleHolderLister 列出角色持有人。生产实现是 *data.UserRoleRepo。
 type roleHolderLister interface {
 	ListUserIDsByRoleIDs(ctx context.Context, roleIDs []uint32, excludeExpired bool) ([]uint32, error)
+	// ListRoleIDs 列出某个用户持有的角色，授权上限用来算操作人自己的权限集。
+	ListRoleIDs(ctx context.Context, userID uint32, excludeExpired bool) ([]uint32, error)
 }
 
 func NewRoleService(
@@ -111,6 +114,10 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 
 	req.Data.CreatedBy = trans.Ptr(operator.UserId)
 
+	if err = s.ensureRoleGrantWithinOperator(ctx, operator, req.Data.GetCode(), req.Data.GetPermissions()); err != nil {
+		return nil, err
+	}
+
 	if err = s.roleRepo.Create(ctx, req); err != nil {
 		return nil, err
 	}
@@ -120,6 +127,26 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// ensureRoleGrantWithinOperator 非超级管理员建角色、改角色时：
+// 勾的权限点必须是自己拥有的；角色码不能是超级管理员角色码（特权来自角色码，不来自权限点）。
+func (s *RoleService) ensureRoleGrantWithinOperator(ctx context.Context, operator *authenticationV1.UserTokenPayload, code string, permissionIDs []uint32) error {
+	if operator.GetIsPlatformAdmin() {
+		return nil
+	}
+	if code == constants.PlatformAdminRoleCode {
+		s.log.Errorf(ctx, "operator [%d] tried to use super admin role code", operator.GetUserId())
+		return adminV1.ErrorForbidden("only super admin can use the super admin role code")
+	}
+	listRoles := func(ctx context.Context, userID uint32) ([]uint32, error) {
+		return s.userRoleRepo.ListRoleIDs(ctx, userID, false)
+	}
+	if err := ensurePermissionsWithinOperator(ctx, s.roleRepo, listRoles, operator, permissionIDs); err != nil {
+		s.log.Errorf(ctx, "operator [%d] grant permissions %v rejected: %v", operator.GetUserId(), permissionIDs, err)
+		return err
+	}
+	return nil
 }
 
 func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRequest) (*emptypb.Empty, error) {
@@ -172,6 +199,19 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 			req.Data.Status = nil
 			req.Data.Code = nil
 		}
+	}
+
+	// 授权上限：只校验这次新加的权限点；改角色码时不能改成超级管理员角色码。
+	var addedPerms []uint32
+	if rolePermissionsWouldChange(r, req.Data, req.GetUpdateMask()) {
+		addedPerms = newlyAdded(req.Data.GetPermissions(), r.GetPermissions())
+	}
+	var newCode string
+	if roleCodeWouldChange(r, req.Data, req.GetUpdateMask()) {
+		newCode = req.Data.GetCode()
+	}
+	if err = s.ensureRoleGrantWithinOperator(ctx, operator, newCode, addedPerms); err != nil {
+		return nil, err
 	}
 
 	// 在 roleRepo.Update 改写 mask 之前，按仓库实际会写入的值比较。

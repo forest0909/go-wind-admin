@@ -93,6 +93,8 @@ type authSvcUserRepoStub struct {
 	roleIDsByUser     map[uint32][]uint32
 	updates           []*identityV1.UpdateUserRequest
 	findIdentifierErr error
+	// aliases：email / 手机号 → username，模拟 identifier 反查；未登记的原样透传
+	aliases map[string]string
 }
 
 func (s *authSvcUserRepoStub) Get(_ context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
@@ -109,6 +111,9 @@ func (s *authSvcUserRepoStub) ListRoleIDsByUserID(_ context.Context, userID uint
 func (s *authSvcUserRepoStub) FindUsernameByIdentifier(_ context.Context, _ uint32, identifier string) (string, uint32, error) {
 	if s.findIdentifierErr != nil {
 		return "", 0, s.findIdentifierErr
+	}
+	if u, ok := s.aliases[identifier]; ok {
+		return u, 0, nil
 	}
 	return identifier, 0, nil
 }
@@ -590,6 +595,34 @@ func TestAuthSvcSqlite_LoginRateLimiterLockout(t *testing.T) {
 	require.True(t, authenticationV1.IsTooManyRequests(err), "锁定窗口内应 429 TOO_MANY_REQUESTS")
 	require.Contains(t, err.Error(), "too many login failures")
 	require.Nil(t, resp)
+}
+
+// 用户名维度已锁定后，换 email 登录也要在预检被 429（预检按解析后的用户名查）。
+// 修复前预检用原始输入（email），锁定可被绕过。
+func TestAuthSvcSqlite_LoginRateLimiterAliasCannotBypass(t *testing.T) {
+	e := newAuthenticationServiceForTest(t)
+	base := context.Background()
+
+	permID := e.seedBackendAccessPermission(t)
+	roleID := e.seedRole(t, nil, permissionV1.Role_SYSTEM, constants.PlatformAdminRoleCode, []uint32{permID}, nil, nil)
+	e.seedCredential(t, nil, authSvcTestUserID, authSvcTestUsername, authenticationV1.UserCredential_ENABLED)
+	e.seedStubUser(authSvcTestUserID, nil, authSvcTestUsername, identityV1.User_NORMAL, []uint32{roleID})
+	const email = "alias@example.com"
+	e.stub.aliases = map[string]string{email: authSvcTestUsername}
+
+	for i := 0; i < 5; i++ {
+		ctx, req := e.loginHappyReq(t, base, email, "WrongP@ss9999")
+		_, err := e.svc.Login(ctx, req)
+		require.True(t, authenticationV1.IsInvalidPassword(err), "第 %d 次: %v", i+1, err)
+	}
+	usrCnt, _ := e.mr.Get("gowind:login:fail:user:" + authSvcTestUsername)
+	require.Equal(t, "5", usrCnt, "失败计数按解析后的用户名累计")
+
+	for _, input := range []string{email, authSvcTestUsername} {
+		ctx, req := e.loginHappyReq(t, base, input, constants.DefaultUserPassword)
+		_, err := e.svc.Login(ctx, req)
+		require.True(t, authenticationV1.IsTooManyRequests(err), "输入 %s 应被锁定: %v", input, err)
+	}
 }
 
 // TestAuthSvcSqlite_RoleScopeLoginChain 验证普通角色的登录链路与令牌聚合：

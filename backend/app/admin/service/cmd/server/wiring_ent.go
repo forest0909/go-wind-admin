@@ -221,7 +221,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		return nil, nil, err
 	}
 
-	sseServer := server.NewSseServer(ctx, internalMessageService)
+	sseServer := server.NewSseServer(ctx, internalMessageService, authenticator)
 
 	return newApp(ctx, restServer, asynqServer, sseServer), rollback, nil
 }

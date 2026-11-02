@@ -4,6 +4,7 @@
   "username": "Username",
   "usernamePlaceholder": "Enter username",
   "requiredUsername": "Please enter username",
+  "requiredPassword": "Please enter password",
   "password": "Password",
   "passwordPlaceholder": "Enter password",
   "nickname": "Nickname",

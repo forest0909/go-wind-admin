@@ -44,6 +44,9 @@ func Server(opts ...Option) middleware.Middleware {
 		return func(ctx context.Context, req interface{}) (reply interface{}, err error) {
 			startTime := time.Now()
 
+			var slot *identitySlot
+			ctx, slot = withIdentitySlot(ctx)
+
 			reply, err = handler(ctx, req)
 
 			latencyMs := time.Since(startTime).Milliseconds()
@@ -51,8 +54,8 @@ func Server(opts ...Option) middleware.Middleware {
 			if tr, ok := transport.FromServerContext(ctx); ok {
 				var htr *http.Transport
 				if htr, ok = tr.(*http.Transport); ok {
-					loginAuditLogMiddleware.Handle(ctx, htr, err)
-					operationAuditLogMiddleware.Handle(ctx, htr, err, latencyMs)
+					loginAuditLogMiddleware.Handle(ctx, htr, slot.payload, err)
+					operationAuditLogMiddleware.Handle(ctx, htr, slot.payload, err, latencyMs)
 				}
 			}
 

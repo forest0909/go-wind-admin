@@ -275,17 +275,18 @@ func (x *Server) GetMachinery() *Server_Machinery {
 
 // REST
 type Server_REST struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Network       string                 `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`                                    // 网络
-	Addr          string                 `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`                                          // 服务监听地址
-	Timeout       *durationpb.Duration   `protobuf:"bytes,3,opt,name=timeout,proto3" json:"timeout,omitempty"`                                    // 超时时间
-	Cors          *Server_REST_CORS      `protobuf:"bytes,10,opt,name=cors,proto3" json:"cors,omitempty"`                                         // 服务监听地址
-	Middleware    *Middleware            `protobuf:"bytes,11,opt,name=middleware,proto3" json:"middleware,omitempty"`                             // 中间件
-	Tls           *TLS                   `protobuf:"bytes,12,opt,name=tls,proto3" json:"tls,omitempty"`                                           // TLS配置
-	EnableSwagger bool                   `protobuf:"varint,20,opt,name=enable_swagger,json=enableSwagger,proto3" json:"enable_swagger,omitempty"` // 启用SwaggerUI
-	EnablePprof   bool                   `protobuf:"varint,21,opt,name=enable_pprof,json=enablePprof,proto3" json:"enable_pprof,omitempty"`       // 启用pprof
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState      `protogen:"open.v1"`
+	Network        string                      `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`                                      // 网络
+	Addr           string                      `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`                                            // 服务监听地址
+	Timeout        *durationpb.Duration        `protobuf:"bytes,3,opt,name=timeout,proto3" json:"timeout,omitempty"`                                      // 超时时间
+	Cors           *Server_REST_CORS           `protobuf:"bytes,10,opt,name=cors,proto3" json:"cors,omitempty"`                                           // 服务监听地址
+	Middleware     *Middleware                 `protobuf:"bytes,11,opt,name=middleware,proto3" json:"middleware,omitempty"`                               // 中间件
+	Tls            *TLS                        `protobuf:"bytes,12,opt,name=tls,proto3" json:"tls,omitempty"`                                             // TLS配置
+	EnableSwagger  bool                        `protobuf:"varint,20,opt,name=enable_swagger,json=enableSwagger,proto3" json:"enable_swagger,omitempty"`   // 启用SwaggerUI
+	EnablePprof    bool                        `protobuf:"varint,21,opt,name=enable_pprof,json=enablePprof,proto3" json:"enable_pprof,omitempty"`         // 启用pprof
+	TrustedProxies *Server_REST_TrustedProxies `protobuf:"bytes,22,opt,name=trusted_proxies,json=trustedProxies,proto3" json:"trusted_proxies,omitempty"` // 可信反向代理
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Server_REST) Reset() {
@@ -372,6 +373,13 @@ func (x *Server_REST) GetEnablePprof() bool {
 		return x.EnablePprof
 	}
 	return false
+}
+
+func (x *Server_REST) GetTrustedProxies() *Server_REST_TrustedProxies {
+	if x != nil {
+		return x.TrustedProxies
+	}
+	return nil
 }
 
 // gPRC
@@ -2772,6 +2780,53 @@ func (x *Server_REST_CORS) GetAllowCredentials() bool {
 	return false
 }
 
+// 可信反向代理：只有直连对端属于这些网段时才采信 X-Forwarded-For / X-Real-IP。
+// 不配置时保持默认（RFC1918 私网 + 回环），docker 网络和常见反向代理依赖这一默认；
+// 配置了但 cidrs 为空表示不信任任何代理，始终用 TCP 对端地址。
+type Server_REST_TrustedProxies struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cidrs         []string               `protobuf:"bytes,1,rep,name=cidrs,proto3" json:"cidrs,omitempty"` // CIDR 或单个 IP
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Server_REST_TrustedProxies) Reset() {
+	*x = Server_REST_TrustedProxies{}
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Server_REST_TrustedProxies) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Server_REST_TrustedProxies) ProtoMessage() {}
+
+func (x *Server_REST_TrustedProxies) ProtoReflect() protoreflect.Message {
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Server_REST_TrustedProxies.ProtoReflect.Descriptor instead.
+func (*Server_REST_TrustedProxies) Descriptor() ([]byte, []int) {
+	return file_conf_v1_kratos_conf_server_proto_rawDescGZIP(), []int{0, 0, 1}
+}
+
+func (x *Server_REST_TrustedProxies) GetCidrs() []string {
+	if x != nil {
+		return x.Cidrs
+	}
+	return nil
+}
+
 type Server_Kafka_PlainMechanism struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"` // 用户名
@@ -2782,7 +2837,7 @@ type Server_Kafka_PlainMechanism struct {
 
 func (x *Server_Kafka_PlainMechanism) Reset() {
 	*x = Server_Kafka_PlainMechanism{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[23]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2794,7 +2849,7 @@ func (x *Server_Kafka_PlainMechanism) String() string {
 func (*Server_Kafka_PlainMechanism) ProtoMessage() {}
 
 func (x *Server_Kafka_PlainMechanism) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[23]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2835,7 +2890,7 @@ type Server_Kafka_ScramMechanism struct {
 
 func (x *Server_Kafka_ScramMechanism) Reset() {
 	*x = Server_Kafka_ScramMechanism{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[24]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2847,7 +2902,7 @@ func (x *Server_Kafka_ScramMechanism) String() string {
 func (*Server_Kafka_ScramMechanism) ProtoMessage() {}
 
 func (x *Server_Kafka_ScramMechanism) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[24]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2898,7 +2953,7 @@ type Server_Asynq_RedisClientOpt struct {
 
 func (x *Server_Asynq_RedisClientOpt) Reset() {
 	*x = Server_Asynq_RedisClientOpt{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[25]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2910,7 +2965,7 @@ func (x *Server_Asynq_RedisClientOpt) String() string {
 func (*Server_Asynq_RedisClientOpt) ProtoMessage() {}
 
 func (x *Server_Asynq_RedisClientOpt) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[25]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2980,7 +3035,7 @@ type Server_Asynq_RedisClusterClientOpt struct {
 
 func (x *Server_Asynq_RedisClusterClientOpt) Reset() {
 	*x = Server_Asynq_RedisClusterClientOpt{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[26]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2992,7 +3047,7 @@ func (x *Server_Asynq_RedisClusterClientOpt) String() string {
 func (*Server_Asynq_RedisClusterClientOpt) ProtoMessage() {}
 
 func (x *Server_Asynq_RedisClusterClientOpt) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[26]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3051,7 +3106,7 @@ type Server_Asynq_RedisFailoverClientOpt struct {
 
 func (x *Server_Asynq_RedisFailoverClientOpt) Reset() {
 	*x = Server_Asynq_RedisFailoverClientOpt{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[27]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3063,7 +3118,7 @@ func (x *Server_Asynq_RedisFailoverClientOpt) String() string {
 func (*Server_Asynq_RedisFailoverClientOpt) ProtoMessage() {}
 
 func (x *Server_Asynq_RedisFailoverClientOpt) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[27]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3147,7 +3202,7 @@ type Server_Machinery_Redis struct {
 
 func (x *Server_Machinery_Redis) Reset() {
 	*x = Server_Machinery_Redis{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[29]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3159,7 +3214,7 @@ func (x *Server_Machinery_Redis) String() string {
 func (*Server_Machinery_Redis) ProtoMessage() {}
 
 func (x *Server_Machinery_Redis) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[29]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3268,7 +3323,7 @@ type Server_Machinery_AMQP struct {
 
 func (x *Server_Machinery_AMQP) Reset() {
 	*x = Server_Machinery_AMQP{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[30]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3280,7 +3335,7 @@ func (x *Server_Machinery_AMQP) String() string {
 func (*Server_Machinery_AMQP) ProtoMessage() {}
 
 func (x *Server_Machinery_AMQP) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[30]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3362,7 +3417,7 @@ type Server_Machinery_SQS struct {
 
 func (x *Server_Machinery_SQS) Reset() {
 	*x = Server_Machinery_SQS{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[31]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3374,7 +3429,7 @@ func (x *Server_Machinery_SQS) String() string {
 func (*Server_Machinery_SQS) ProtoMessage() {}
 
 func (x *Server_Machinery_SQS) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[31]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3413,7 +3468,7 @@ type Server_Machinery_GCP struct {
 
 func (x *Server_Machinery_GCP) Reset() {
 	*x = Server_Machinery_GCP{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[32]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3425,7 +3480,7 @@ func (x *Server_Machinery_GCP) String() string {
 func (*Server_Machinery_GCP) ProtoMessage() {}
 
 func (x *Server_Machinery_GCP) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[32]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3457,7 +3512,7 @@ type Server_Machinery_MongoDB struct {
 
 func (x *Server_Machinery_MongoDB) Reset() {
 	*x = Server_Machinery_MongoDB{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[33]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3469,7 +3524,7 @@ func (x *Server_Machinery_MongoDB) String() string {
 func (*Server_Machinery_MongoDB) ProtoMessage() {}
 
 func (x *Server_Machinery_MongoDB) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[33]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3502,7 +3557,7 @@ type Server_Machinery_DynamoDB struct {
 
 func (x *Server_Machinery_DynamoDB) Reset() {
 	*x = Server_Machinery_DynamoDB{}
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[34]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3514,7 +3569,7 @@ func (x *Server_Machinery_DynamoDB) String() string {
 func (*Server_Machinery_DynamoDB) ProtoMessage() {}
 
 func (x *Server_Machinery_DynamoDB) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[34]
+	mi := &file_conf_v1_kratos_conf_server_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3548,7 +3603,7 @@ var File_conf_v1_kratos_conf_server_proto protoreflect.FileDescriptor
 
 const file_conf_v1_kratos_conf_server_proto_rawDesc = "" +
 	"\n" +
-	" conf/v1/kratos_conf_server.proto\x12\x04conf\x1a\x1egoogle/protobuf/duration.proto\x1a$conf/v1/kratos_conf_middleware.proto\x1a\x1dconf/v1/kratos_conf_tls.proto\"\xdec\n" +
+	" conf/v1/kratos_conf_server.proto\x12\x04conf\x1a\x1egoogle/protobuf/duration.proto\x1a$conf/v1/kratos_conf_middleware.proto\x1a\x1dconf/v1/kratos_conf_tls.proto\"\xd1d\n" +
 	"\x06Server\x12*\n" +
 	"\x04rest\x18\x01 \x01(\v2\x11.conf.Server.RESTH\x00R\x04rest\x88\x01\x01\x12*\n" +
 	"\x04grpc\x18\x02 \x01(\v2\x11.conf.Server.GRPCH\x01R\x04grpc\x88\x01\x01\x123\n" +
@@ -3572,7 +3627,7 @@ const file_conf_v1_kratos_conf_server_proto_rawDesc = "" +
 	"\asignalr\x18\x17 \x01(\v2\x14.conf.Server.SignalRH\x11R\asignalr\x88\x01\x01\x12'\n" +
 	"\x03mcp\x18\x18 \x01(\v2\x10.conf.Server.MCPH\x12R\x03mcp\x88\x01\x01\x12-\n" +
 	"\x05asynq\x18\x1e \x01(\v2\x12.conf.Server.AsynqH\x13R\x05asynq\x88\x01\x01\x129\n" +
-	"\tmachinery\x18\x1f \x01(\v2\x16.conf.Server.MachineryH\x14R\tmachinery\x88\x01\x01\x1a\xb2\x03\n" +
+	"\tmachinery\x18\x1f \x01(\v2\x16.conf.Server.MachineryH\x14R\tmachinery\x88\x01\x01\x1a\xa5\x04\n" +
 	"\x04REST\x12\x18\n" +
 	"\anetwork\x18\x01 \x01(\tR\anetwork\x12\x12\n" +
 	"\x04addr\x18\x02 \x01(\tR\x04addr\x123\n" +
@@ -3584,12 +3639,15 @@ const file_conf_v1_kratos_conf_server_proto_rawDesc = "" +
 	"middleware\x12\x1b\n" +
 	"\x03tls\x18\f \x01(\v2\t.conf.TLSR\x03tls\x12%\n" +
 	"\x0eenable_swagger\x18\x14 \x01(\bR\renableSwagger\x12!\n" +
-	"\fenable_pprof\x18\x15 \x01(\bR\venablePprof\x1a\x81\x01\n" +
+	"\fenable_pprof\x18\x15 \x01(\bR\venablePprof\x12I\n" +
+	"\x0ftrusted_proxies\x18\x16 \x01(\v2 .conf.Server.REST.TrustedProxiesR\x0etrustedProxies\x1a\x81\x01\n" +
 	"\x04CORS\x12\x18\n" +
 	"\aheaders\x18\x01 \x03(\tR\aheaders\x12\x18\n" +
 	"\amethods\x18\x02 \x03(\tR\amethods\x12\x18\n" +
 	"\aorigins\x18\x03 \x03(\tR\aorigins\x12+\n" +
-	"\x11allow_credentials\x18\x04 \x01(\bR\x10allowCredentials\x1a\xa1\a\n" +
+	"\x11allow_credentials\x18\x04 \x01(\bR\x10allowCredentials\x1a&\n" +
+	"\x0eTrustedProxies\x12\x14\n" +
+	"\x05cidrs\x18\x01 \x03(\tR\x05cidrs\x1a\xa1\a\n" +
 	"\x04GRPC\x12\x18\n" +
 	"\anetwork\x18\x01 \x01(\tR\anetwork\x12\x12\n" +
 	"\x04addr\x18\x02 \x01(\tR\x04addr\x123\n" +
@@ -3994,7 +4052,7 @@ func file_conf_v1_kratos_conf_server_proto_rawDescGZIP() []byte {
 }
 
 var file_conf_v1_kratos_conf_server_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_conf_v1_kratos_conf_server_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_conf_v1_kratos_conf_server_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_conf_v1_kratos_conf_server_proto_goTypes = []any{
 	(Server_Kafka_ScramMechanism_Algorithm)(0), // 0: conf.Server.Kafka.ScramMechanism.Algorithm
 	(*Server)(nil),                              // 1: conf.Server
@@ -4020,24 +4078,25 @@ var file_conf_v1_kratos_conf_server_proto_goTypes = []any{
 	(*Server_Thrift)(nil),                       // 21: conf.Server.Thrift
 	(*Server_KeepAlive)(nil),                    // 22: conf.Server.KeepAlive
 	(*Server_REST_CORS)(nil),                    // 23: conf.Server.REST.CORS
-	(*Server_Kafka_PlainMechanism)(nil),         // 24: conf.Server.Kafka.PlainMechanism
-	(*Server_Kafka_ScramMechanism)(nil),         // 25: conf.Server.Kafka.ScramMechanism
-	(*Server_Asynq_RedisClientOpt)(nil),         // 26: conf.Server.Asynq.RedisClientOpt
-	(*Server_Asynq_RedisClusterClientOpt)(nil),  // 27: conf.Server.Asynq.RedisClusterClientOpt
-	(*Server_Asynq_RedisFailoverClientOpt)(nil), // 28: conf.Server.Asynq.RedisFailoverClientOpt
-	nil,                               // 29: conf.Server.Asynq.QueuesEntry
-	(*Server_Machinery_Redis)(nil),    // 30: conf.Server.Machinery.Redis
-	(*Server_Machinery_AMQP)(nil),     // 31: conf.Server.Machinery.AMQP
-	(*Server_Machinery_SQS)(nil),      // 32: conf.Server.Machinery.SQS
-	(*Server_Machinery_GCP)(nil),      // 33: conf.Server.Machinery.GCP
-	(*Server_Machinery_MongoDB)(nil),  // 34: conf.Server.Machinery.MongoDB
-	(*Server_Machinery_DynamoDB)(nil), // 35: conf.Server.Machinery.DynamoDB
-	nil,                               // 36: conf.Server.Machinery.AMQP.QueueDeclareArgsEntry
-	nil,                               // 37: conf.Server.Machinery.AMQP.QueueBindingArgsEntry
-	nil,                               // 38: conf.Server.SSE.HeadersEntry
-	(*durationpb.Duration)(nil),       // 39: google.protobuf.Duration
-	(*Middleware)(nil),                // 40: conf.Middleware
-	(*TLS)(nil),                       // 41: conf.TLS
+	(*Server_REST_TrustedProxies)(nil),          // 24: conf.Server.REST.TrustedProxies
+	(*Server_Kafka_PlainMechanism)(nil),         // 25: conf.Server.Kafka.PlainMechanism
+	(*Server_Kafka_ScramMechanism)(nil),         // 26: conf.Server.Kafka.ScramMechanism
+	(*Server_Asynq_RedisClientOpt)(nil),         // 27: conf.Server.Asynq.RedisClientOpt
+	(*Server_Asynq_RedisClusterClientOpt)(nil),  // 28: conf.Server.Asynq.RedisClusterClientOpt
+	(*Server_Asynq_RedisFailoverClientOpt)(nil), // 29: conf.Server.Asynq.RedisFailoverClientOpt
+	nil,                               // 30: conf.Server.Asynq.QueuesEntry
+	(*Server_Machinery_Redis)(nil),    // 31: conf.Server.Machinery.Redis
+	(*Server_Machinery_AMQP)(nil),     // 32: conf.Server.Machinery.AMQP
+	(*Server_Machinery_SQS)(nil),      // 33: conf.Server.Machinery.SQS
+	(*Server_Machinery_GCP)(nil),      // 34: conf.Server.Machinery.GCP
+	(*Server_Machinery_MongoDB)(nil),  // 35: conf.Server.Machinery.MongoDB
+	(*Server_Machinery_DynamoDB)(nil), // 36: conf.Server.Machinery.DynamoDB
+	nil,                               // 37: conf.Server.Machinery.AMQP.QueueDeclareArgsEntry
+	nil,                               // 38: conf.Server.Machinery.AMQP.QueueBindingArgsEntry
+	nil,                               // 39: conf.Server.SSE.HeadersEntry
+	(*durationpb.Duration)(nil),       // 40: google.protobuf.Duration
+	(*Middleware)(nil),                // 41: conf.Middleware
+	(*TLS)(nil),                       // 42: conf.TLS
 }
 var file_conf_v1_kratos_conf_server_proto_depIdxs = []int32{
 	2,  // 0: conf.Server.rest:type_name -> conf.Server.REST
@@ -4061,82 +4120,83 @@ var file_conf_v1_kratos_conf_server_proto_depIdxs = []int32{
 	19, // 18: conf.Server.mcp:type_name -> conf.Server.MCP
 	14, // 19: conf.Server.asynq:type_name -> conf.Server.Asynq
 	15, // 20: conf.Server.machinery:type_name -> conf.Server.Machinery
-	39, // 21: conf.Server.REST.timeout:type_name -> google.protobuf.Duration
+	40, // 21: conf.Server.REST.timeout:type_name -> google.protobuf.Duration
 	23, // 22: conf.Server.REST.cors:type_name -> conf.Server.REST.CORS
-	40, // 23: conf.Server.REST.middleware:type_name -> conf.Middleware
-	41, // 24: conf.Server.REST.tls:type_name -> conf.TLS
-	39, // 25: conf.Server.GRPC.timeout:type_name -> google.protobuf.Duration
-	40, // 26: conf.Server.GRPC.middleware:type_name -> conf.Middleware
-	41, // 27: conf.Server.GRPC.tls:type_name -> conf.TLS
-	39, // 28: conf.Server.GRPC.connection_timeout:type_name -> google.protobuf.Duration
-	39, // 29: conf.Server.GRPC.max_connection_idle:type_name -> google.protobuf.Duration
-	39, // 30: conf.Server.GRPC.max_connection_age:type_name -> google.protobuf.Duration
-	39, // 31: conf.Server.GRPC.max_connection_age_grace:type_name -> google.protobuf.Duration
-	39, // 32: conf.Server.GRPC.keepalive_time:type_name -> google.protobuf.Duration
-	39, // 33: conf.Server.GRPC.keepalive_timeout:type_name -> google.protobuf.Duration
-	39, // 34: conf.Server.Websocket.timeout:type_name -> google.protobuf.Duration
-	41, // 35: conf.Server.Websocket.tls:type_name -> conf.TLS
-	41, // 36: conf.Server.Mqtt.tls:type_name -> conf.TLS
-	39, // 37: conf.Server.Mqtt.keep_alive:type_name -> google.protobuf.Duration
-	39, // 38: conf.Server.Mqtt.max_reconnect_interval:type_name -> google.protobuf.Duration
-	39, // 39: conf.Server.Mqtt.connect_retry_interval:type_name -> google.protobuf.Duration
-	39, // 40: conf.Server.Mqtt.write_timeout:type_name -> google.protobuf.Duration
-	41, // 41: conf.Server.Kafka.tls:type_name -> conf.TLS
-	39, // 42: conf.Server.Kafka.batch_timeout:type_name -> google.protobuf.Duration
-	39, // 43: conf.Server.Kafka.read_timeout:type_name -> google.protobuf.Duration
-	39, // 44: conf.Server.Kafka.write_timeout:type_name -> google.protobuf.Duration
-	24, // 45: conf.Server.Kafka.plain:type_name -> conf.Server.Kafka.PlainMechanism
-	25, // 46: conf.Server.Kafka.scram:type_name -> conf.Server.Kafka.ScramMechanism
-	41, // 47: conf.Server.RabbitMQ.tls:type_name -> conf.TLS
-	41, // 48: conf.Server.ActiveMQ.tls:type_name -> conf.TLS
-	41, // 49: conf.Server.NATS.tls:type_name -> conf.TLS
-	41, // 50: conf.Server.NSQ.tls:type_name -> conf.TLS
-	41, // 51: conf.Server.Pulsar.tls:type_name -> conf.TLS
-	41, // 52: conf.Server.Redis.tls:type_name -> conf.TLS
-	41, // 53: conf.Server.RocketMQ.tls:type_name -> conf.TLS
-	26, // 54: conf.Server.Asynq.redis_opt:type_name -> conf.Server.Asynq.RedisClientOpt
-	27, // 55: conf.Server.Asynq.redis_cluster_opt:type_name -> conf.Server.Asynq.RedisClusterClientOpt
-	28, // 56: conf.Server.Asynq.redis_failover_opt:type_name -> conf.Server.Asynq.RedisFailoverClientOpt
-	41, // 57: conf.Server.Asynq.tls:type_name -> conf.TLS
-	39, // 58: conf.Server.Asynq.dial_timeout:type_name -> google.protobuf.Duration
-	39, // 59: conf.Server.Asynq.read_timeout:type_name -> google.protobuf.Duration
-	39, // 60: conf.Server.Asynq.write_timeout:type_name -> google.protobuf.Duration
-	29, // 61: conf.Server.Asynq.queues:type_name -> conf.Server.Asynq.QueuesEntry
-	39, // 62: conf.Server.Asynq.shutdown_timeout:type_name -> google.protobuf.Duration
-	39, // 63: conf.Server.Asynq.task_check_interval:type_name -> google.protobuf.Duration
-	39, // 64: conf.Server.Asynq.health_check_interval:type_name -> google.protobuf.Duration
-	39, // 65: conf.Server.Asynq.delayed_task_check_interval:type_name -> google.protobuf.Duration
-	39, // 66: conf.Server.Asynq.group_grace_period:type_name -> google.protobuf.Duration
-	39, // 67: conf.Server.Asynq.group_max_delay:type_name -> google.protobuf.Duration
-	39, // 68: conf.Server.Asynq.janitor_interval:type_name -> google.protobuf.Duration
-	41, // 69: conf.Server.Machinery.tls:type_name -> conf.TLS
-	30, // 70: conf.Server.Machinery.redis:type_name -> conf.Server.Machinery.Redis
-	31, // 71: conf.Server.Machinery.amqp:type_name -> conf.Server.Machinery.AMQP
-	32, // 72: conf.Server.Machinery.sqs:type_name -> conf.Server.Machinery.SQS
-	33, // 73: conf.Server.Machinery.gcp:type_name -> conf.Server.Machinery.GCP
-	34, // 74: conf.Server.Machinery.mongodb:type_name -> conf.Server.Machinery.MongoDB
-	35, // 75: conf.Server.Machinery.dynamodb:type_name -> conf.Server.Machinery.DynamoDB
-	41, // 76: conf.Server.SSE.tls:type_name -> conf.TLS
-	39, // 77: conf.Server.SSE.timeout:type_name -> google.protobuf.Duration
-	39, // 78: conf.Server.SSE.event_ttl:type_name -> google.protobuf.Duration
-	38, // 79: conf.Server.SSE.headers:type_name -> conf.Server.SSE.HeadersEntry
-	41, // 80: conf.Server.SocketIO.tls:type_name -> conf.TLS
-	41, // 81: conf.Server.SignalR.tls:type_name -> conf.TLS
-	39, // 82: conf.Server.SignalR.keep_alive_interval:type_name -> google.protobuf.Duration
-	39, // 83: conf.Server.SignalR.chan_receive_timeout:type_name -> google.protobuf.Duration
-	41, // 84: conf.Server.MCP.tls:type_name -> conf.TLS
-	39, // 85: conf.Server.GraphQL.timeout:type_name -> google.protobuf.Duration
-	41, // 86: conf.Server.GraphQL.tls:type_name -> conf.TLS
-	41, // 87: conf.Server.Thrift.tls:type_name -> conf.TLS
-	41, // 88: conf.Server.KeepAlive.tls:type_name -> conf.TLS
-	36, // 89: conf.Server.Machinery.AMQP.queue_declare_args:type_name -> conf.Server.Machinery.AMQP.QueueDeclareArgsEntry
-	37, // 90: conf.Server.Machinery.AMQP.queue_binding_args:type_name -> conf.Server.Machinery.AMQP.QueueBindingArgsEntry
-	39, // 91: conf.Server.Machinery.GCP.max_extension:type_name -> google.protobuf.Duration
-	92, // [92:92] is the sub-list for method output_type
-	92, // [92:92] is the sub-list for method input_type
-	92, // [92:92] is the sub-list for extension type_name
-	92, // [92:92] is the sub-list for extension extendee
-	0,  // [0:92] is the sub-list for field type_name
+	41, // 23: conf.Server.REST.middleware:type_name -> conf.Middleware
+	42, // 24: conf.Server.REST.tls:type_name -> conf.TLS
+	24, // 25: conf.Server.REST.trusted_proxies:type_name -> conf.Server.REST.TrustedProxies
+	40, // 26: conf.Server.GRPC.timeout:type_name -> google.protobuf.Duration
+	41, // 27: conf.Server.GRPC.middleware:type_name -> conf.Middleware
+	42, // 28: conf.Server.GRPC.tls:type_name -> conf.TLS
+	40, // 29: conf.Server.GRPC.connection_timeout:type_name -> google.protobuf.Duration
+	40, // 30: conf.Server.GRPC.max_connection_idle:type_name -> google.protobuf.Duration
+	40, // 31: conf.Server.GRPC.max_connection_age:type_name -> google.protobuf.Duration
+	40, // 32: conf.Server.GRPC.max_connection_age_grace:type_name -> google.protobuf.Duration
+	40, // 33: conf.Server.GRPC.keepalive_time:type_name -> google.protobuf.Duration
+	40, // 34: conf.Server.GRPC.keepalive_timeout:type_name -> google.protobuf.Duration
+	40, // 35: conf.Server.Websocket.timeout:type_name -> google.protobuf.Duration
+	42, // 36: conf.Server.Websocket.tls:type_name -> conf.TLS
+	42, // 37: conf.Server.Mqtt.tls:type_name -> conf.TLS
+	40, // 38: conf.Server.Mqtt.keep_alive:type_name -> google.protobuf.Duration
+	40, // 39: conf.Server.Mqtt.max_reconnect_interval:type_name -> google.protobuf.Duration
+	40, // 40: conf.Server.Mqtt.connect_retry_interval:type_name -> google.protobuf.Duration
+	40, // 41: conf.Server.Mqtt.write_timeout:type_name -> google.protobuf.Duration
+	42, // 42: conf.Server.Kafka.tls:type_name -> conf.TLS
+	40, // 43: conf.Server.Kafka.batch_timeout:type_name -> google.protobuf.Duration
+	40, // 44: conf.Server.Kafka.read_timeout:type_name -> google.protobuf.Duration
+	40, // 45: conf.Server.Kafka.write_timeout:type_name -> google.protobuf.Duration
+	25, // 46: conf.Server.Kafka.plain:type_name -> conf.Server.Kafka.PlainMechanism
+	26, // 47: conf.Server.Kafka.scram:type_name -> conf.Server.Kafka.ScramMechanism
+	42, // 48: conf.Server.RabbitMQ.tls:type_name -> conf.TLS
+	42, // 49: conf.Server.ActiveMQ.tls:type_name -> conf.TLS
+	42, // 50: conf.Server.NATS.tls:type_name -> conf.TLS
+	42, // 51: conf.Server.NSQ.tls:type_name -> conf.TLS
+	42, // 52: conf.Server.Pulsar.tls:type_name -> conf.TLS
+	42, // 53: conf.Server.Redis.tls:type_name -> conf.TLS
+	42, // 54: conf.Server.RocketMQ.tls:type_name -> conf.TLS
+	27, // 55: conf.Server.Asynq.redis_opt:type_name -> conf.Server.Asynq.RedisClientOpt
+	28, // 56: conf.Server.Asynq.redis_cluster_opt:type_name -> conf.Server.Asynq.RedisClusterClientOpt
+	29, // 57: conf.Server.Asynq.redis_failover_opt:type_name -> conf.Server.Asynq.RedisFailoverClientOpt
+	42, // 58: conf.Server.Asynq.tls:type_name -> conf.TLS
+	40, // 59: conf.Server.Asynq.dial_timeout:type_name -> google.protobuf.Duration
+	40, // 60: conf.Server.Asynq.read_timeout:type_name -> google.protobuf.Duration
+	40, // 61: conf.Server.Asynq.write_timeout:type_name -> google.protobuf.Duration
+	30, // 62: conf.Server.Asynq.queues:type_name -> conf.Server.Asynq.QueuesEntry
+	40, // 63: conf.Server.Asynq.shutdown_timeout:type_name -> google.protobuf.Duration
+	40, // 64: conf.Server.Asynq.task_check_interval:type_name -> google.protobuf.Duration
+	40, // 65: conf.Server.Asynq.health_check_interval:type_name -> google.protobuf.Duration
+	40, // 66: conf.Server.Asynq.delayed_task_check_interval:type_name -> google.protobuf.Duration
+	40, // 67: conf.Server.Asynq.group_grace_period:type_name -> google.protobuf.Duration
+	40, // 68: conf.Server.Asynq.group_max_delay:type_name -> google.protobuf.Duration
+	40, // 69: conf.Server.Asynq.janitor_interval:type_name -> google.protobuf.Duration
+	42, // 70: conf.Server.Machinery.tls:type_name -> conf.TLS
+	31, // 71: conf.Server.Machinery.redis:type_name -> conf.Server.Machinery.Redis
+	32, // 72: conf.Server.Machinery.amqp:type_name -> conf.Server.Machinery.AMQP
+	33, // 73: conf.Server.Machinery.sqs:type_name -> conf.Server.Machinery.SQS
+	34, // 74: conf.Server.Machinery.gcp:type_name -> conf.Server.Machinery.GCP
+	35, // 75: conf.Server.Machinery.mongodb:type_name -> conf.Server.Machinery.MongoDB
+	36, // 76: conf.Server.Machinery.dynamodb:type_name -> conf.Server.Machinery.DynamoDB
+	42, // 77: conf.Server.SSE.tls:type_name -> conf.TLS
+	40, // 78: conf.Server.SSE.timeout:type_name -> google.protobuf.Duration
+	40, // 79: conf.Server.SSE.event_ttl:type_name -> google.protobuf.Duration
+	39, // 80: conf.Server.SSE.headers:type_name -> conf.Server.SSE.HeadersEntry
+	42, // 81: conf.Server.SocketIO.tls:type_name -> conf.TLS
+	42, // 82: conf.Server.SignalR.tls:type_name -> conf.TLS
+	40, // 83: conf.Server.SignalR.keep_alive_interval:type_name -> google.protobuf.Duration
+	40, // 84: conf.Server.SignalR.chan_receive_timeout:type_name -> google.protobuf.Duration
+	42, // 85: conf.Server.MCP.tls:type_name -> conf.TLS
+	40, // 86: conf.Server.GraphQL.timeout:type_name -> google.protobuf.Duration
+	42, // 87: conf.Server.GraphQL.tls:type_name -> conf.TLS
+	42, // 88: conf.Server.Thrift.tls:type_name -> conf.TLS
+	42, // 89: conf.Server.KeepAlive.tls:type_name -> conf.TLS
+	37, // 90: conf.Server.Machinery.AMQP.queue_declare_args:type_name -> conf.Server.Machinery.AMQP.QueueDeclareArgsEntry
+	38, // 91: conf.Server.Machinery.AMQP.queue_binding_args:type_name -> conf.Server.Machinery.AMQP.QueueBindingArgsEntry
+	40, // 92: conf.Server.Machinery.GCP.max_extension:type_name -> google.protobuf.Duration
+	93, // [93:93] is the sub-list for method output_type
+	93, // [93:93] is the sub-list for method input_type
+	93, // [93:93] is the sub-list for extension type_name
+	93, // [93:93] is the sub-list for extension extendee
+	0,  // [0:93] is the sub-list for field type_name
 }
 
 func init() { file_conf_v1_kratos_conf_server_proto_init() }
@@ -4159,15 +4219,15 @@ func file_conf_v1_kratos_conf_server_proto_init() {
 		(*Server_Asynq_Uri)(nil),
 	}
 	file_conf_v1_kratos_conf_server_proto_msgTypes[15].OneofWrappers = []any{}
-	file_conf_v1_kratos_conf_server_proto_msgTypes[26].OneofWrappers = []any{}
-	file_conf_v1_kratos_conf_server_proto_msgTypes[31].OneofWrappers = []any{}
+	file_conf_v1_kratos_conf_server_proto_msgTypes[27].OneofWrappers = []any{}
+	file_conf_v1_kratos_conf_server_proto_msgTypes[32].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_conf_v1_kratos_conf_server_proto_rawDesc), len(file_conf_v1_kratos_conf_server_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   38,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

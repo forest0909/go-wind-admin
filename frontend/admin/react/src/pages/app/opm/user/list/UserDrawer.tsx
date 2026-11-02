@@ -226,6 +226,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         name="password"
         label={t('password')}
         placeholder={t('passwordPlaceholder')}
+        rules={mode === 'create' ? [{ required: true, message: t('requiredPassword') }] : undefined}
         fieldProps={{ allowClear: true }}
       />
 

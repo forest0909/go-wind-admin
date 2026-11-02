@@ -126,6 +126,7 @@ func (s *Stream) addSubscriber(eventId string, req *http.Request) *Subscriber {
 	sub := &Subscriber{
 		eventId:    eventId,
 		quit:       s.deregister,
+		streamQuit: s.quit,
 		connection: make(chan *Event, 64),
 		URL:        requestURL,
 		Header:     header,
@@ -135,7 +136,13 @@ func (s *Stream) addSubscriber(eventId string, req *http.Request) *Subscriber {
 		sub.removed = make(chan struct{}, 1)
 	}
 
-	s.register <- sub
+	// 流可能刚被 CloseStream 关掉：事件循环已退出，不能再阻塞在 register 上。
+	select {
+	case s.register <- sub:
+	case <-s.quit:
+		atomic.AddInt32(&s.subscriberCount, -1)
+		return nil
+	}
 
 	if s.onSubscribe != nil {
 		go s.onSubscribe(s.id, sub)

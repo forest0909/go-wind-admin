@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
@@ -81,6 +82,30 @@ type Authenticator struct {
 	jwtCfg *conf.Authentication_Jwt
 
 	userTokenCache *UserTokenCache
+
+	// revokeHooksMu / revokeHooks 用户全部令牌被吊销后的回调（如断开该用户的 SSE 连接）。
+	revokeHooksMu sync.RWMutex
+	revokeHooks   []func(ctx context.Context, userId uint32)
+}
+
+// OnUserTokensRevoked 注册「用户某客户端类型的全部令牌被吊销」后的回调。
+// 登出、改密、重置密码、停用、删除、角色变更都经 RevokeUserToken，回调随之触发。
+func (a *Authenticator) OnUserTokensRevoked(fn func(ctx context.Context, userId uint32)) {
+	if fn == nil {
+		return
+	}
+	a.revokeHooksMu.Lock()
+	defer a.revokeHooksMu.Unlock()
+	a.revokeHooks = append(a.revokeHooks, fn)
+}
+
+func (a *Authenticator) fireRevokeHooks(ctx context.Context, userId uint32) {
+	a.revokeHooksMu.RLock()
+	hooks := append([]func(context.Context, uint32){}, a.revokeHooks...)
+	a.revokeHooksMu.RUnlock()
+	for _, fn := range hooks {
+		fn(ctx, userId)
+	}
 }
 
 func NewAuthenticator(
@@ -395,6 +420,17 @@ func (a *Authenticator) CreateUserToken(
 	clientType authenticationV1.ClientType,
 	tokenPayload *authenticationV1.UserTokenPayload,
 ) (accessToken, refreshToken string, err error) {
+	return a.CreateUserTokenGuarded(ctx, clientType, tokenPayload, nil)
+}
+
+// CreateUserTokenGuarded 同 CreateUserToken；guard 非空时（刷新路径）只有会话在此期间
+// 没被全量吊销、父会话没被踢才写入，否则返回 401，不留下有效令牌。
+func (a *Authenticator) CreateUserTokenGuarded(
+	ctx context.Context,
+	clientType authenticationV1.ClientType,
+	tokenPayload *authenticationV1.UserTokenPayload,
+	guard *TokenWriteGuard,
+) (accessToken, refreshToken string, err error) {
 	if tokenPayload == nil {
 		return "", "", authenticationV1.ErrorBadRequest("token payload is nil")
 	}
@@ -417,6 +453,26 @@ func (a *Authenticator) CreateUserToken(
 	}
 
 	// Store tokens in cache
+	if guard != nil {
+		if err = a.userTokenCache.AddTokenPairGuarded(
+			ctx,
+			clientType,
+			tokenPayload.GetUserId(),
+			jti,
+			accessToken,
+			refreshToken,
+			a.GetAccessTokenExpires(clientType),
+			a.GetRefreshTokenExpires(clientType),
+			*guard,
+		); err != nil {
+			if errors.Is(err, ErrSessionRevoked) {
+				a.log.Warnf(ctx, "session of user [%d] revoked during refresh, new token discarded", tokenPayload.GetUserId())
+				return "", "", authenticationV1.ErrorIncorrectRefreshToken("session revoked")
+			}
+			return "", "", err
+		}
+		return
+	}
 	if err = a.userTokenCache.AddTokenPair(
 		ctx,
 		clientType,
@@ -463,7 +519,10 @@ func (a *Authenticator) RevokeUserToken(ctx context.Context, clientType authenti
 		return err
 	}
 
-	if err := a.userTokenCache.RevokeToken(ctx, clientType, userId); err != nil {
+	err := a.userTokenCache.RevokeToken(ctx, clientType, userId)
+	// 即便部分删除失败也要断开已建立的长连接：连接只在建立时校验过令牌。
+	a.fireRevokeHooks(ctx, userId)
+	if err != nil {
 		a.log.Errorf(ctx, "revoke user token failed: %v", err)
 		return err
 	}
@@ -495,53 +554,55 @@ func (a *Authenticator) VerifyRefreshToken(
 	ctx context.Context,
 	clientType authenticationV1.ClientType,
 	refreshToken string,
-) (userId uint32, jti string, grace bool, err error) {
+) (userId uint32, jti string, grace bool, guard *TokenWriteGuard, err error) {
 	if a.userTokenCache == nil {
 		a.log.Error(ctx, "userTokenCache is nil")
-		return 0, "", false, authenticationV1.ErrorServiceUnavailable("token cache unavailable")
+		return 0, "", false, nil, authenticationV1.ErrorServiceUnavailable("token cache unavailable")
 	}
 	if refreshToken == "" {
-		return 0, "", false, authenticationV1.ErrorBadRequest("refresh token is empty")
+		return 0, "", false, nil, authenticationV1.ErrorBadRequest("refresh token is empty")
 	}
 
 	authenticator, err := a.getAuthenticator(clientType)
 	if err != nil {
-		return 0, "", false, err
+		return 0, "", false, nil, err
 	}
 
 	// 验签 refresh token JWT，提取 uid/jti
 	claims, authErr := authenticator.AuthenticateToken(refreshToken)
 	if authErr != nil {
 		a.log.Errorf(ctx, "authenticate refresh token failed: [%s]", authErr)
-		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
+		return 0, "", false, nil, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
 	}
 	if jwt.IsTokenExpired(claims) {
-		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("refresh token is expired")
+		return 0, "", false, nil, authenticationV1.ErrorIncorrectRefreshToken("refresh token is expired")
 	}
 	userId, jti, err = jwt.ParseRefreshTokenClaims(claims)
 	if err != nil {
 		a.log.Errorf(ctx, "parse refresh token claims failed: [%s]", err)
-		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
+		return 0, "", false, nil, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
 	}
 
 	// 原子验证并轮换旧令牌对（Lua 脚本保证原子性）
 	var valid bool
-	if valid, err = a.userTokenCache.VerifyAndRevokeTokenPair(ctx, clientType, userId, jti, refreshToken); err != nil {
+	var revokeVersion int64
+	if valid, revokeVersion, err = a.userTokenCache.VerifyAndRevokeTokenPairVersioned(ctx, clientType, userId, jti, refreshToken); err != nil {
 		a.log.Errorf(ctx, "verify refresh token failed for user [%d]: [%s]", userId, err)
-		return 0, "", false, authenticationV1.ErrorServiceUnavailable("verify refresh token failed")
+		return 0, "", false, nil, authenticationV1.ErrorServiceUnavailable("verify refresh token failed")
 	}
 	if !valid {
 		// 宽限窗口：RT 刚被并发刷新对撞的另一方轮换掉。放行为其兑换独立
 		// 新会话，而不是报 INCORRECT_REFRESH_TOKEN 逼前端强制登出。
-		if a.userTokenCache.IsGraceRefreshToken(ctx, clientType, userId, refreshToken) {
+		// 宽限 RT 所在会话被踢过（kj 标记）时不再接受。
+		if ok, graceVersion := a.userTokenCache.CheckGraceRefreshToken(ctx, clientType, userId, jti, refreshToken); ok {
 			a.log.Warnf(ctx, "refresh token for user [%d] accepted in grace window (concurrent refresh race)", userId)
-			return userId, jti, true, nil
+			return userId, jti, true, &TokenWriteGuard{RevokeVersion: graceVersion, ParentJti: jti}, nil
 		}
 		a.log.Errorf(ctx, "invalid refresh token for user [%d]", userId)
-		return 0, "", false, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
+		return 0, "", false, nil, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
 	}
 
-	return userId, jti, false, nil
+	return userId, jti, false, &TokenWriteGuard{RevokeVersion: revokeVersion, ParentJti: jti}, nil
 }
 
 // GetAccessTokens 获取用户的所有访问令牌

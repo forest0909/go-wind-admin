@@ -4,6 +4,7 @@
   "username": "用户名",
   "usernamePlaceholder": "请输入用户名",
   "requiredUsername": "请输入用户名",
+  "requiredPassword": "请输入密码",
   "password": "密码",
   "passwordPlaceholder": "请输入密码",
   "nickname": "昵称",

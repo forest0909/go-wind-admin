@@ -32,3 +32,7 @@
 未收编 OPA 引擎和 zanzibar。`authorizer.newEngine` 删掉这两个分支；未知类型和空类型不再退回 noop，记错误并返回 nil。显式 `noop` 仍可用。
 
 `converter.ApiPermissionConverter` 加了 `WithResourceAliases`：按路径前缀（整段、最长优先）指定资源名或完整编码，给接口挂在模块前缀下（如 `internal-message/...`）的情况用。不设别名时行为不变。
+
+`captcha.Verify` 改为一次性领取：用 Lua 原子地 GET+DEL 答案（不用 GETDEL，兼容 Redis 6.2 以前），答错也作废。此前答错不删、答对后才非原子 DEL，可对同一 id 穷举 0..81，并发提交同一正确答案能多次通过。`TestVerify_WrongAnswer` 期望随之改为验证码已不存在；新增 miniredis 测试 `captcha_consume_test.go`。
+
+`netutil.SetTrustedProxies` 先把默认初始化标记为已完成：此前启动时调用它之后，首个请求里的 `initTrustedProxies` 仍会用默认网段覆盖配置（默认初始化写全局变量时也没加锁）。测试 `TestSetTrustedProxies_NotOverriddenByLazyDefault`。

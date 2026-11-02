@@ -256,6 +256,7 @@ const RoleDrawer: React.FC<RoleDrawerProps> = ({ open, mode, data, onClose, onSu
         options={getDataScopeOptions(t)}
         rules={[{ required: true, message: t('requiredDataScope') }]}
         fieldProps={{ allowClear: false }}
+        extra={t('dataScopeHint')}
       />
 
       <ProFormDependency name={['dataScope']}>

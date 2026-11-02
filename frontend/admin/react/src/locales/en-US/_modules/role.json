@@ -33,6 +33,7 @@
     "OFF": "Inactive"
   },
   "dataScope": "Data Scope",
+  "dataScopeHint": "Limits which rows of users, org units, login logs, operation logs and positions are visible (takes effect after re-login). Department, Department and Subordinates, and Custom match users by their org units; Self Only shows only yourself and your own logs, and positions you created. Users without an org unit are visible only with All.",
   "dataScopePlaceholder": "Select data scope",
   "requiredDataScope": "Please select data scope",
   "orgUnits": "Authorized Org Units",

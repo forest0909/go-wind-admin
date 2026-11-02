@@ -228,6 +228,22 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 	if err = s.ensureRoleGrantWithinOperator(ctx, operator, newCode, addedPerms, newScope); err != nil {
 		return nil, err
 	}
+	// 范围枚举不变、只改 org_units 同样会扩大数据范围：按更新后的有效范围整体判断，
+	// SELECTED_UNITS 新增的单元必须在操作人可授出的单元里。
+	effectiveScope := r.GetDataScope()
+	if roleDataScopeWouldChange(r, req.Data, req.GetUpdateMask()) {
+		effectiveScope = req.Data.GetDataScope()
+	}
+	if effectiveScope == identityV1.DataScope_SELECTED_UNITS && roleOrgUnitsWouldChange(r, req.Data, req.GetUpdateMask()) {
+		addedUnits := newlyAdded(req.Data.GetOrgUnits(), r.GetOrgUnits())
+		listRoles := func(ctx context.Context, userID uint32) ([]uint32, error) {
+			return s.userRoleRepo.ListRoleIDs(ctx, userID, false)
+		}
+		if err = ensureSelectedUnitsWithinOperator(ctx, s.roleRepo, listRoles, operator, addedUnits); err != nil {
+			s.log.Errorf(ctx, "operator [%d] grant org units %v rejected: %v", operator.GetUserId(), addedUnits, err)
+			return nil, err
+		}
+	}
 
 	// 在 roleRepo.Update 改写 mask 之前，按仓库实际会写入的值比较。
 	// 页面保存会带上未改动的权限和数据范围，值相同则不吊销。

@@ -185,6 +185,8 @@ func NewRestServer(
 	if err != nil {
 		return nil, err
 	}
+	// 请求体上限装在最外层，早于 CORS、路由、Bind 和鉴权中间件。
+	installRequestBodyLimit(srv)
 
 	apiService.RegisterRouteWalker(srv)
 

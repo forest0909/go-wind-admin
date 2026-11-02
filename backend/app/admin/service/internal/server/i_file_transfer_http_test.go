@@ -37,6 +37,7 @@ func newUploadTestServer() *kratosHttp.Server {
 	srv := kratosHttp.NewServer()
 	// svc 传 nil：超限请求必须在进入业务逻辑之前就被拒绝。
 	registerFileTransferServiceHandler(srv, nil)
+	installRequestBodyLimit(srv)
 	return srv
 }
 
@@ -103,4 +104,3 @@ func TestUploadRejectsOversizedChunkedMultipart(t *testing.T) {
 		t.Fatalf("want 413, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
-

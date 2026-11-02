@@ -221,7 +221,7 @@ server:
 
 ## 上传限制与超时
 
-- 上传接口在解析请求体之前就限长：`Content-Length` 超过约 70.7 MiB（50 MiB 文件经 base64 膨胀后再加 4 MiB 余量）直接返回 413；没有 `Content-Length` 的分块请求读到上限即中止。前置反向代理的 body 上限不要低于这个值。
+- REST 服务最外层（早于 CORS、路由、JSON 解码和鉴权）统一限制请求体大小：文件上传 `/admin/v1/file/upload` 约 70.7 MiB（50 MiB 文件经 base64 膨胀后再加 4 MiB 余量），其他接口约 7.7 MiB（按头像上限 5 MiB 的 base64 再加 1 MiB）。`Content-Length` 超限时一个字节都不读直接返回 413；没有 `Content-Length` 的分块请求最多读到上限加 1 字节就返回 413。前置反向代理的 body 上限不要低于上传接口的值。
 - REST 端口（7788）底层设了 `ReadHeaderTimeout=10s`、`ReadTimeout=5m`、`IdleTimeout=2m`，不设写超时，大文件下载和审计导出不受影响。SSE 在 7789，是单独的服务，不受这些超时影响。
 
 ## 审计归档目录

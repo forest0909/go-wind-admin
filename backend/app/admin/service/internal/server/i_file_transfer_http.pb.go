@@ -3,15 +3,12 @@ package server
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
-	nethttp "net/http"
 	"strconv"
 	"strings"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/transport/http"
-	"go-wind-admin/third_party/go-utils/ossutil"
 	"go-wind-admin/third_party/go-utils/trans"
 
 	"github.com/go-kratos/kratos/v2/encoding"
@@ -23,30 +20,6 @@ import (
 )
 
 var codec = encoding.GetCodec("json")
-
-// maxUploadRequestBytes 上传请求体上限：单文件上限 50 MiB，前端走 JSON + base64（膨胀 4/3），
-// 再留 4 MiB 给 multipart 边界和其他字段。
-const maxUploadRequestBytes = ossutil.MaxUploadSize*4/3 + 4<<20
-
-// limitUploadBody 在解析请求体之前限制大小：Content-Length 超限直接拒绝，
-// 其余情况（含 chunked）用 MaxBytesReader 兜住，读到上限就报错，不会先把整个请求体读进内存或临时文件。
-func limitUploadBody(ctx http.Context) error {
-	r := ctx.Request()
-	if r.ContentLength > maxUploadRequestBytes {
-		return uploadTooLargeError()
-	}
-	r.Body = nethttp.MaxBytesReader(ctx.Response(), r.Body, maxUploadRequestBytes)
-	return nil
-}
-
-func isBodyTooLarge(err error) bool {
-	if err == nil {
-		return false
-	}
-	var maxErr *nethttp.MaxBytesError
-	// Kratos 的 JSON 解码把原始错误转成了字符串，只能按文案判断。
-	return errors.As(err, &maxErr) || strings.Contains(err.Error(), "http: request body too large")
-}
 
 func uploadTooLargeError() error {
 	return storageV1.ErrorFileTooLarge("request body exceeds %d bytes", maxUploadRequestBytes)
@@ -79,10 +52,6 @@ func _FileTransferService_PostUploadFile_HTTP_Handler(svc *service.FileTransferS
 
 		var in storageV1.UploadFileRequest
 		var err error
-
-		if err = limitUploadBody(ctx); err != nil {
-			return err
-		}
 
 		file, header, err := ctx.Request().FormFile("file")
 		if isBodyTooLarge(err) {
@@ -177,10 +146,6 @@ func _FileTransferService_PutUploadFile_HTTP_Handler(svc *service.FileTransferSe
 
 		var in storageV1.UploadFileRequest
 		var err error
-
-		if err = limitUploadBody(ctx); err != nil {
-			return err
-		}
 
 		file, header, err := ctx.Request().FormFile("file")
 		if isBodyTooLarge(err) {

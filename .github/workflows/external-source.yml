@@ -1,0 +1,81 @@
+name: external-source
+
+# 外部数据源三方言真跑：起 PostgreSQL、MySQL 8、SQL Server，对 pkg/extdb 和外部数据示例仓储跑集成测试
+# （建表 → CRUD → 分页/过滤/排序/contains → 只读拒绝 → 超时）。
+# 本地没设 EXT_TEST_*_DSN 时这些测试 t.Skip，go test ./... 不受影响。
+
+on:
+  push:
+    paths:
+      - 'backend/pkg/extdb/**'
+      - 'backend/app/admin/service/internal/data/external_*'
+      - 'backend/sql/external_demo/**'
+      - 'backend/go.mod'
+      - '.github/workflows/external-source.yml'
+  pull_request:
+    paths:
+      - 'backend/pkg/extdb/**'
+      - 'backend/app/admin/service/internal/data/external_*'
+      - 'backend/sql/external_demo/**'
+      - 'backend/go.mod'
+      - '.github/workflows/external-source.yml'
+
+env:
+  MSSQL_SA_PASSWORD: Ext_test_Pa55word
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: exttest
+          POSTGRES_DB: exttest
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: exttest
+          MYSQL_DATABASE: exttest
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pexttest"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: 'Y'
+          MSSQL_SA_PASSWORD: Ext_test_Pa55word
+        ports: ['1433:1433']
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P Ext_test_Pa55word -Q 'SELECT 1' || exit 1"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Create SQL Server database
+        run: >-
+          docker exec ${{ job.services.mssql.id }}
+          /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD"
+          -Q "IF DB_ID('exttest') IS NULL CREATE DATABASE exttest"
+      - name: Integration tests
+        env:
+          EXT_TEST_POSTGRES_DSN: postgres://postgres:exttest@127.0.0.1:5432/exttest?sslmode=disable
+          EXT_TEST_MYSQL_DSN: root:exttest@tcp(127.0.0.1:3306)/exttest
+          EXT_TEST_SQLSERVER_DSN: sqlserver://sa:Ext_test_Pa55word@127.0.0.1:1433?database=exttest
+        run: |
+          set -o pipefail
+          go test -count=1 -p 1 -v -run 'Integration' ./pkg/extdb/ ./app/admin/service/internal/data/ | tee test.log
+          # DSN 都设了，任何一个子测试被跳过都算失败
+          if grep -- '--- SKIP' test.log; then echo "integration tests were skipped"; exit 1; fi
+          grep -c -- '--- PASS: Test.*Integration.*/' test.log

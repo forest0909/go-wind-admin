@@ -57,6 +57,18 @@ func NewEntClient(ctx *bootstrap.Context) (*entCrud.EntClient[*ent.Client], func
 		panic("[ENT] failed creating ent client")
 	}
 
+	// 版本化升级步骤：Schema.Create 之后、默认数据播种之前，在启动锁内执行（见 schema_upgrade.go）。
+	// migrate 关闭时表结构由运维手工管理，升级步骤同样不执行。
+	if cfg.Data.Database.GetMigrate() {
+		if err = RunSchemaUpgrades(ctx.Context(), cli.Driver(), l); err != nil {
+			l.Errorf(context.Background(), "[UPGRADE] schema upgrade failed: %v", err)
+			if cleanErr := cli.Close(); cleanErr != nil {
+				l.Errorf(context.Background(), "[ENT] failed closing ent client: %v", cleanErr)
+			}
+			return nil, nil, fmt.Errorf("schema upgrade: %w", err)
+		}
+	}
+
 	return cli, func() {
 		if cleanErr := cli.Close(); cleanErr != nil {
 			l.Errorf(context.Background(), "[ENT] failed closing ent client: %v", cleanErr)

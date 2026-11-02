@@ -96,17 +96,16 @@ func sortedIDs(ids []uint32) []uint32 {
 	return out
 }
 
-// TestPurgeLegacyTenantConfigSqlite 旧库升级后启动：租户 / 套餐菜单（含子树）、权限点及其关联、
+// TestPurgeLegacyTenantConfigSqlite 旧库升级（升级步骤 v1）：租户 / 套餐菜单（含子树）、权限点及其关联、
 // 模板角色、租户权限组被删掉，正常配置和 tenant_id>0 的业务数据保留；再跑一次什么都不删。
 func TestPurgeLegacyTenantConfigSqlite(t *testing.T) {
 	entClient := enttest.NewEntClientForTest(t)
 	client := entClient.Client()
 	ctx := enttest.NewSystemContext(context.Background())
-	repo := NewPermissionRepoForTest(entClient)
 
 	db := seedLegacyTenantDB(t, client, ctx)
 
-	res, err := repo.PurgeLegacyTenantConfig(ctx)
+	res, err := purgeLegacyTenantConfig(ctx, client)
 	require.NoError(t, err)
 	require.Equal(t, len(db.tenantMenuIDs), res.Menus, "租户菜单整棵子树与 app/tenant/ 组件页面应全部删除")
 	require.Equal(t, len(db.tenantPermIDs), res.Permissions, "租户 / 套餐权限点应全部删除")
@@ -141,7 +140,7 @@ func TestPurgeLegacyTenantConfigSqlite(t *testing.T) {
 	require.Equal(t, []uint32{db.keepGroupID}, groupIDs)
 
 	// 幂等：再跑一次不报错、不删任何东西
-	res, err = repo.PurgeLegacyTenantConfig(ctx)
+	res, err = purgeLegacyTenantConfig(ctx, client)
 	require.NoError(t, err)
 	require.True(t, res.Empty(), "第二次运行不应再清理任何行: %+v", res)
 	require.Len(t, client.Menu.Query().IDsX(ctx), 2)
@@ -153,13 +152,12 @@ func TestPurgeLegacyTenantConfigSqlite_KeepsNonEmptyGroup(t *testing.T) {
 	entClient := enttest.NewEntClientForTest(t)
 	client := entClient.Client()
 	ctx := enttest.NewSystemContext(context.Background())
-	repo := NewPermissionRepoForTest(entClient)
 
 	g := client.PermissionGroup.Create().SetName("租户管理").SetModule("sys").SaveX(ctx)
 	client.Permission.Create().SetName("tenant").SetCode("sys:tenant_manager").SetGroupID(g.ID).SaveX(ctx)
 	client.Permission.Create().SetName("custom").SetCode("report:view").SetGroupID(g.ID).SaveX(ctx)
 
-	res, err := repo.PurgeLegacyTenantConfig(ctx)
+	res, err := purgeLegacyTenantConfig(ctx, client)
 	require.NoError(t, err)
 	require.Equal(t, 1, res.Permissions)
 	require.Zero(t, res.PermissionGroups)

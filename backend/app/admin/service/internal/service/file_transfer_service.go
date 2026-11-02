@@ -146,7 +146,8 @@ func (s *FileTransferService) recordFile(
 // directUploadFile 直接上传文件
 func (s *FileTransferService) directUploadFile(ctx context.Context, req *storageV1.UploadFileRequest) (*storageV1.UploadFileResponse, error) {
 	if req.StorageObject == nil {
-		return nil, storageV1.ErrorUploadFailed("unknown storageObject")
+		// 客户端只能给 fileDirectory，不传 storageObject 就放在根目录。
+		req.StorageObject = &storageV1.StorageObject{}
 	}
 
 	if req.GetFile() == nil {
@@ -186,21 +187,18 @@ func (s *FileTransferService) directUploadFile(ctx context.Context, req *storage
 		return nil, err
 	}
 
-	if req.StorageObject.BucketName == nil {
-		req.StorageObject.BucketName = trans.Ptr(ossutil.ContentTypeToBucketName(req.GetMime()))
-	}
-
-	if req.StorageObject.ObjectName == nil {
-		req.StorageObject.ObjectName = trans.Ptr(
-			ossutil.EnsureObjectName(
-				req.GetStorageObject().GetFileDirectory(),
-				req.GetSourceFileName(),
-				req.GetMime(),
-				req.GetFile(),
-				ossutil.GenerateFileNameTypeUUID,
-			),
-		)
-	}
+	// 桶和对象名一律由服务端决定，忽略客户端传来的值：
+	// 否则知道别人对象 key 的人可以直接覆盖它，或者顺手建出任意桶。
+	req.StorageObject.BucketName = trans.Ptr(ossutil.ContentTypeToBucketName(req.GetMime()))
+	req.StorageObject.ObjectName = trans.Ptr(
+		ossutil.EnsureObjectName(
+			req.GetStorageObject().GetFileDirectory(),
+			req.GetSourceFileName(),
+			req.GetMime(),
+			req.GetFile(),
+			ossutil.GenerateFileNameTypeUUID,
+		),
+	)
 
 	info, storagePath, downloadUrl, err := s.mc.UploadFile(
 		ctx,
@@ -443,7 +441,8 @@ func (s *FileTransferService) DownloadFile(ctx context.Context, req *storageV1.D
 		return s.mc.DownloadFile(ctx, req)
 
 	case *storageV1.DownloadFileRequest_StorageObject:
-		return s.mc.DownloadFile(ctx, req)
+		// 直接按 bucket/objectName 下载会绕过文件表的归属检查，只允许按 fileId 下载。
+		return nil, storageV1.ErrorBadRequest("download by storageObject is not allowed, use fileId")
 
 	case *storageV1.DownloadFileRequest_DownloadUrl:
 		return s.downloadFileFromURL(ctx, req.GetDownloadUrl())

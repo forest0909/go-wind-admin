@@ -37,11 +37,18 @@ func applyJwtKeyOverrides(logHelper *bLogger.Helper, jwtCfg *conf.Authentication
 	if jwtCfg == nil {
 		return jwtCfg
 	}
-	if v := os.Getenv("GWA_AUTH_JWT_PRIVATE_KEY"); v != "" {
-		jwtCfg.PrivateKey = trans.Ptr(v)
+	envPriv := os.Getenv("GWA_AUTH_JWT_PRIVATE_KEY")
+	envPub := os.Getenv("GWA_AUTH_JWT_PUBLIC_KEY")
+	if envPriv != "" {
+		jwtCfg.PrivateKey = trans.Ptr(envPriv)
+		if envPub == "" {
+			// 只换了私钥：yaml 里的旧公钥和新私钥不配对，清掉它，
+			// 让 newAdminAuthenticator 走"从私钥派生公钥"的分支。
+			jwtCfg.PublicKey = nil
+		}
 	}
-	if v := os.Getenv("GWA_AUTH_JWT_PUBLIC_KEY"); v != "" {
-		jwtCfg.PublicKey = trans.Ptr(v)
+	if envPub != "" {
+		jwtCfg.PublicKey = trans.Ptr(envPub)
 	}
 	if v := os.Getenv("GWA_AUTH_JWT_KEY"); v != "" {
 		jwtCfg.Key = v
@@ -162,7 +169,35 @@ func newAdminAuthenticator(jwtCfg *conf.Authentication_Jwt) (authnEngine.Authent
 		opts = append(opts, authnJwt.WithKey([]byte(jwtCfg.GetKey())))
 	}
 
-	return authnJwt.NewAuthenticator(opts...)
+	auth, err := authnJwt.NewAuthenticator(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// 能签发时做一次自签自验：公私钥不配对（例如只换了一半）就在启动时失败，
+	// 而不是上线后所有令牌验签失败。只有公钥时无法签发，跳过。
+	if !isAsymmetricMethod(method) || jwtCfg.GetPrivateKey() != "" {
+		if err = selfCheckSignVerify(auth); err != nil {
+			return nil, err
+		}
+	}
+
+	return auth, nil
+}
+
+// selfCheckSignVerify 签一个探针令牌再验证，确认签名密钥和校验密钥配对。
+func selfCheckSignVerify(auth authnEngine.Authenticator) error {
+	token, err := auth.CreateIdentity(authnEngine.AuthClaims{
+		"sub": "jwt-key-self-check",
+		"exp": time.Now().Add(time.Minute).Unix(),
+	})
+	if err != nil {
+		return fmt.Errorf("jwt key self-check: sign failed: %w", err)
+	}
+	if _, err = auth.AuthenticateToken(token); err != nil {
+		return fmt.Errorf("jwt key self-check: verify failed (private/public key mismatch?): %w", err)
+	}
+	return nil
 }
 
 // isAsymmetricMethod 判断给定的签名算法是否为非对称（基于公钥/私钥对）算法。

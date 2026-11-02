@@ -3,8 +3,10 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-kratos/kratos/v2/config"
+	envKratos "github.com/go-kratos/kratos/v2/config/env"
 	fileKratos "github.com/go-kratos/kratos/v2/config/file"
 	"github.com/go-kratos/kratos/v2/log"
 
@@ -44,8 +46,35 @@ func NewConfigProvider(configPath string) (config.Config, error) {
 		log.Error("appendLocalOverrideSource: ", err.Error())
 		return nil, err
 	}
+	// GWA_ 开头的环境变量作为顶层键加入，供 YAML 里的 ${GWA_XXX:默认值} 占位符引用
+	// （Kratos 默认 resolver 在合并后的配置里查占位符）。键名不和 YAML 键重叠，不影响合并。
+	sources = append(sources, &envPlaceholderSource{})
 
 	return config.New(config.WithSource(sources...)), nil
+}
+
+// envPlaceholderPrefix 只有这个前缀的环境变量会进配置，避免把整个进程环境灌进去。
+const envPlaceholderPrefix = "GWA_"
+
+// envPlaceholderSource 把 GWA_ 开头的环境变量按原名（不去前缀）作为配置键加载。
+// Kratos 自带的 env source 会去掉前缀，占位符得写成去前缀后的名字，容易写错。
+type envPlaceholderSource struct{}
+
+func (e *envPlaceholderSource) Load() ([]*config.KeyValue, error) {
+	var kvs []*config.KeyValue
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		if !strings.HasPrefix(k, envPlaceholderPrefix) || k == envPlaceholderPrefix {
+			continue
+		}
+		kvs = append(kvs, &config.KeyValue{Key: k, Value: []byte(v)})
+	}
+	return kvs, nil
+}
+
+func (e *envPlaceholderSource) Watch() (config.Watcher, error) {
+	// 环境变量进程内不变，复用 Kratos env watcher（只阻塞到 Stop）。
+	return envKratos.NewWatcher()
 }
 
 // localOverrideDir 是主配置目录下的可选覆盖层，只在目录存在时加载。

@@ -1,7 +1,9 @@
+# ${GWA_XXX:默认值}：设置了环境变量 GWA_XXX 就用它（Compose 部署由 .env 注入），否则用默认值。
+# 密码请只用字母和数字，避免破坏 DSN / URI 格式。
 data:
   database:
     driver: "postgres"
-    source: "host=postgres port=5432 user=postgres password=*Abcd123456 dbname=gwa sslmode=disable"
+    source: "host=postgres port=5432 user=postgres password=${GWA_DB_PASSWORD:*Abcd123456} dbname=gwa sslmode=disable"
 #    driver: "mysql"
 #    source: "root:*Abcd123456@tcp(localhost:3306)/gwa?parseTime=true&charset=utf8mb4&loc=Asia%2FShanghai"
     migrate: true
@@ -14,7 +16,7 @@ data:
 
   redis:
     addr: "redis:6379"
-    password: "*Abcd123456"
+    password: "${GWA_REDIS_PASSWORD:*Abcd123456}"
     dial_timeout: 10s
     read_timeout: 0.4s
     write_timeout: 0.6s

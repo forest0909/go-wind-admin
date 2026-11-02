@@ -238,3 +238,32 @@ data:
 		t.Fatalf("data.redis.addr = %q, want main-redis", got)
 	}
 }
+
+// YAML 里的 ${GWA_XXX:默认值} 占位符：设置了环境变量就用它，没设置用默认值。
+func TestEnvPlaceholder_ResolvesFromGWAEnv(t *testing.T) {
+	dir := t.TempDir()
+	writeConfigFile(t, filepath.Join(dir, "data.yaml"), `
+data:
+  database:
+    source: "host=postgres password=${GWA_TEST_DB_PASSWORD:devpass} dbname=gwa"
+  redis:
+    password: "${GWA_TEST_REDIS_PASSWORD:devredis}"
+`)
+	t.Setenv("GWA_TEST_DB_PASSWORD", "s3cret")
+
+	cfg := loadProvider(t, dir)
+	if got := configString(t, cfg, "data.database.source"); got != "host=postgres password=s3cret dbname=gwa" {
+		t.Fatalf("env placeholder not resolved: %q", got)
+	}
+	if got := configString(t, cfg, "data.redis.password"); got != "devredis" {
+		t.Fatalf("default value not used: %q", got)
+	}
+
+	var bc conf.Bootstrap
+	if err := cfg.Scan(&bc); err != nil {
+		t.Fatalf("scan with extra env keys: %v", err)
+	}
+	if bc.GetData().GetRedis().GetPassword() != "devredis" {
+		t.Fatalf("scan result: %q", bc.GetData().GetRedis().GetPassword())
+	}
+}

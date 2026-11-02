@@ -7,19 +7,19 @@ import { RequestClient } from '@/core';
 // ==============================
 
 /**
- * 从MinIO下载文件
- * @param bucketName 文件桶名称
- * @param objectName 对象名称
+ * 按文件记录 ID 下载文件（后端不再接受直接给 bucket/objectName）
+ * @param fileId 文件记录 ID
+ * @param fileName 保存到本地时的文件名
  * @param preferPresignedUrl 是否优先使用预签名URL下载
  */
 async function downloadFile(
-  bucketName: string,
-  objectName: string,
+  fileId: number,
+  fileName: string,
   preferPresignedUrl: boolean,
 ) {
   if (preferPresignedUrl) {
     const resp = await apiClient.fileTransferService.DownloadFile({
-      storageObject: { bucketName, objectName },
+      fileId,
       preferPresignedUrl,
     });
 
@@ -31,7 +31,7 @@ async function downloadFile(
     const a = document.createElement('a');
     a.href = url;
     a.target = '_blank';
-    a.download = objectName || 'download';
+    a.download = fileName || 'download';
     document.body.append(a);
     a.click();
     a.remove();
@@ -39,7 +39,7 @@ async function downloadFile(
   }
 
   const resp = await apiClient.fileTransferService.DownloadFile({
-    storageObject: { bucketName, objectName },
+    fileId,
     preferPresignedUrl,
   });
 
@@ -90,7 +90,7 @@ async function downloadFile(
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = objectUrl;
-  a.download = objectName || 'download';
+  a.download = fileName || 'download';
   document.body.append(a);
   a.click();
   a.remove();
@@ -98,15 +98,13 @@ async function downloadFile(
 }
 
 /**
- * 上传文件到MinIO
- * @param bucketName 文件桶名称
+ * 上传文件到MinIO（桶和对象名由后端决定）
  * @param fileDirectory 远端存储文件目录
  * @param fileData 文件数据
  * @param method 上传方法，支持 'post' 和 'put'
  * @param onUploadProgress 上传进度回调函数
  */
 export async function uploadFile(
-  bucketName: string,
   fileDirectory: string,
   fileData: File,
   method: 'post' | 'put' = 'post',
@@ -123,7 +121,7 @@ export async function uploadFile(
     mime: fileData.type,
     size: fileData.size,
     sourceFileName: fileData.name,
-    storageObject: { bucketName, fileDirectory },
+    storageObject: { fileDirectory },
   };
   return await RequestClient.getInstance().request('admin/v1/file/upload', {
     method: method === 'put' ? 'PUT' : 'POST',
@@ -153,15 +151,15 @@ export function useDownloadFile(
     void,
     Error,
     {
-      bucketName: string;
-      objectName: string;
+      fileId: number;
+      fileName: string;
       preferPresignedUrl?: boolean;
     }
   >,
 ) {
   return useMutation({
-    mutationFn: async ({ bucketName, objectName, preferPresignedUrl = false }) => {
-      return downloadFile(bucketName, objectName, preferPresignedUrl);
+    mutationFn: async ({ fileId, fileName, preferPresignedUrl = false }) => {
+      return downloadFile(fileId, fileName, preferPresignedUrl);
     },
     ...options,
   });
@@ -175,7 +173,6 @@ export function useUploadFile(
     void,
     Error,
     {
-      bucketName: string;
       fileDirectory: string;
       file: File;
       method?: 'post' | 'put';
@@ -184,8 +181,8 @@ export function useUploadFile(
   >,
 ) {
   return useMutation({
-    mutationFn: async ({ bucketName, fileDirectory, file, method = 'post', onUploadProgress }) => {
-      await uploadFile(bucketName, fileDirectory, file, method, onUploadProgress);
+    mutationFn: async ({ fileDirectory, file, method = 'post', onUploadProgress }) => {
+      await uploadFile(fileDirectory, file, method, onUploadProgress);
     },
     ...options,
   });

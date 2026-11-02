@@ -6,7 +6,7 @@ import { uploadFile } from '@/api/hooks/file-transfer';
  * GOWIND_CRYPTO_KEY 未配置时 publicUrl 为空，返回空串由调用方提示失败。
  */
 export async function defaultImageUpload(file: File): Promise<string> {
-  const resp = (await uploadFile('', '', file)) as any;
+  const resp = (await uploadFile('', file)) as any;
   return resp?.publicUrl || '';
 }
 

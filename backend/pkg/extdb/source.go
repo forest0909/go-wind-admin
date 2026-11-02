@@ -9,6 +9,7 @@ package extdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -180,10 +181,11 @@ func (s *Source) Tx(ctx context.Context, fn func(tx *Tx) error) (err error) {
 	if err := s.checkWritable(ctx); err != nil {
 		return err
 	}
-	sqlTx, err := s.db.BeginTx(ctx, nil)
+	sqlTx, cancelTx, err := s.beginTx(ctx)
 	if err != nil {
-		return s.wrap(ctx, "begin", true, err)
+		return err
 	}
+	defer cancelTx()
 	defer func() {
 		if p := recover(); p != nil {
 			if rbErr := sqlTx.Rollback(); rbErr != nil {
@@ -202,6 +204,34 @@ func (s *Source) Tx(ctx context.Context, fn func(tx *Tx) error) (err error) {
 		return s.wrap(ctx, "commit", true, err)
 	}
 	return nil
+}
+
+// beginTx 开事务：取连接和 BEGIN 这一段也受 query_timeout 约束（池满时不会无限等），超时返回
+// EXTERNAL_SOURCE_TIMEOUT。BeginTx 的 ctx 管着整个事务（ctx 结束 database/sql 就回滚），
+// 所以不能用带期限的 ctx：用可取消的 ctx 加定时器，BEGIN 成功后停掉定时器，事务结束时再 cancel。
+// 之后每条语句的超时由 Tx.Query / Tx.Exec 各自套。
+func (s *Source) beginTx(ctx context.Context) (*sql.Tx, context.CancelFunc, error) {
+	txCtx, cancel := context.WithCancel(ctx)
+	timer := time.AfterFunc(s.timeout, cancel)
+	sqlTx, err := s.db.BeginTx(txCtx, nil)
+	if !timer.Stop() {
+		// 定时器已经触发：BEGIN 超时，或者刚成功就被取消（事务已随 ctx 回滚）。
+		if err == nil {
+			if rbErr := sqlTx.Rollback(); rbErr != nil && !errors.Is(rbErr, sql.ErrTxDone) {
+				s.log.Errorf(ctx, "external source %s: rollback after begin timeout failed: %v", s.name, rbErr)
+			}
+		} else {
+			s.log.Errorf(ctx, "external source %s: begin failed: %v", s.name, err)
+		}
+		cancel()
+		s.log.Errorf(ctx, "external source %s: begin transaction timed out after %s", s.name, s.timeout)
+		return nil, nil, ErrTimeout(s.name)
+	}
+	if err != nil {
+		cancel()
+		return nil, nil, s.wrap(txCtx, "begin", true, err)
+	}
+	return sqlTx, cancel, nil
 }
 
 // Tx 数据源内的事务句柄 / A transaction on one source.
@@ -233,15 +263,16 @@ func (t *Tx) Exec(ctx context.Context, b Builder) (int64, error) {
 	return n, t.src.wrap(cctx, "exec", true, err)
 }
 
-// TimeToDB 把时间换成写进无时区列的值：按数据源时区取墙上时间，标成 UTC 交给驱动
-// （三种驱动对 UTC 时间都原样写墙上时间）。带时区的列（timestamptz、datetimeoffset）直接传原值，不要调它。
+// TimeToDB 把时间换成写进无时区列（TypeTime）的值：按数据源时区取墙上时间，标成 UTC 交给驱动
+// （三种驱动对 UTC 时间都原样写墙上时间）。带时区的列（TypeTimeTZ：timestamptz、datetimeoffset）直接传原值，不要调它。
 // TimeToDB converts t for a naive (zone-less) column: wall clock in the source zone, labelled UTC.
 func (s *Source) TimeToDB(t time.Time) time.Time {
 	w := t.In(s.loc)
 	return time.Date(w.Year(), w.Month(), w.Day(), w.Hour(), w.Minute(), w.Second(), w.Nanosecond(), time.UTC)
 }
 
-// TimeFromDB 把从无时区列读出的值（驱动标成 UTC 的墙上时间）按数据源时区解释。
+// TimeFromDB 把从无时区列（TypeTime）读出的值（驱动标成 UTC 的墙上时间）按数据源时区解释。
+// 带时区的列（TypeTimeTZ）读出来就是正确的瞬间，不要调它。
 // TimeFromDB interprets a naive column value (wall clock labelled UTC by the driver) in the source zone.
 func (s *Source) TimeFromDB(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), s.loc)

@@ -151,3 +151,34 @@ func TestSource_OtherErrorsAreInternal(t *testing.T) {
 	require.True(t, externalV1.IsInternalServerError(err), "got %v", err)
 	require.NotContains(t, err.Error(), "nope", "driver error text stays in the log")
 }
+
+// 连接池被占满时，Tx 取连接 / BEGIN 也受 query_timeout 约束，按超时返回，不会无限等。
+func TestSource_TxBeginTimesOutWhenPoolExhausted(t *testing.T) {
+	s := openSQLite(t, Options{QueryTimeout: 100 * time.Millisecond}) // 池只有 1 个连接
+	held, err := s.db.Conn(context.Background())
+	require.NoError(t, err)
+	defer func() { _ = held.Close() }()
+
+	done := make(chan error, 1)
+	called := false
+	start := time.Now()
+	go func() {
+		done <- s.Tx(context.Background(), func(tx *Tx) error { called = true; return nil })
+	}()
+	select {
+	case err := <-done:
+		require.True(t, externalV1.IsExternalSourceTimeout(err), "got %v", err)
+		require.Less(t, time.Since(start), 2*time.Second)
+		require.False(t, called)
+	case <-time.After(3 * time.Second):
+		t.Fatal("Tx blocked on a full pool past query_timeout")
+	}
+
+	// 连接还回去以后照常可用，超时那次没留下坏状态
+	require.NoError(t, held.Close())
+	require.NoError(t, s.Tx(context.Background(), func(tx *Tx) error {
+		_, err := tx.Exec(context.Background(), s.Insert("kv").Rows(goqu.Record{"k": "z", "v": "z"}))
+		return err
+	}))
+	require.Equal(t, 4, countKV(t, s))
+}

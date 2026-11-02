@@ -1,0 +1,20 @@
+name: error-reason-i18n
+
+on:
+  push:
+    paths:
+      - 'backend/api/protos/**'
+      - 'frontend/admin/react/src/locales/**'
+      - 'scripts/check-error-reason-i18n.mjs'
+  pull_request:
+    paths:
+      - 'backend/api/protos/**'
+      - 'frontend/admin/react/src/locales/**'
+      - 'scripts/check-error-reason-i18n.mjs'
+
+jobs:
+  error-reason-i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/check-error-reason-i18n.mjs

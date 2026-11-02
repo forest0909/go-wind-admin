@@ -1,11 +1,15 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
+
+	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
 
@@ -65,44 +69,63 @@ func (s *AuditExportService) ServeExport(w http.ResponseWriter, r *http.Request)
 	}
 
 	var (
-		fileName string
-		sheet    string
-		headers  []string
-		rows     [][]string
+		fileName  string
+		sheet     string
+		headers   []string
+		rows      [][]string
+		truncated bool
+		err       error
 	)
 
 	switch logType {
 	case "login":
-		resp, listErr := s.loginRepo.List(ctx, req)
-		if listErr != nil {
-			s.log.Errorf(ctx, "audit export [%s] query failed: %s", logType, listErr.Error())
-			http.Error(w, "query failed", http.StatusInternalServerError)
-			return nil
-		}
+		var items []*auditV1.LoginAuditLog
+		items, truncated, err = collectExportRows(ctx, req,
+			func(ctx context.Context, r *paginationV1.PagingRequest) ([]*auditV1.LoginAuditLog, error) {
+				resp, lerr := s.loginRepo.List(ctx, r)
+				return resp.GetItems(), lerr
+			},
+			func(row *auditV1.LoginAuditLog) uint32 { return row.GetId() },
+		)
 		fileName, sheet = "login-audit-logs", "login"
 		cols := loginExportColumns()
 		headers = colHeaders(cols)
-		for _, row := range resp.GetItems() {
+		for _, row := range items {
 			rows = append(rows, colValues(cols, row))
 		}
 	case "operation":
-		resp, listErr := s.operationRepo.List(ctx, req)
-		if listErr != nil {
-			s.log.Errorf(ctx, "audit export [%s] query failed: %s", logType, listErr.Error())
-			http.Error(w, "query failed", http.StatusInternalServerError)
-			return nil
-		}
+		var items []*auditV1.OperationAuditLog
+		items, truncated, err = collectExportRows(ctx, req,
+			func(ctx context.Context, r *paginationV1.PagingRequest) ([]*auditV1.OperationAuditLog, error) {
+				resp, lerr := s.operationRepo.List(ctx, r)
+				return resp.GetItems(), lerr
+			},
+			func(row *auditV1.OperationAuditLog) uint32 { return row.GetId() },
+		)
 		fileName, sheet = "operation-audit-logs", "operation"
 		cols := operationExportColumns()
 		headers = colHeaders(cols)
-		for _, row := range resp.GetItems() {
+		for _, row := range items {
 			rows = append(rows, colValues(cols, row))
 		}
 	default:
 		http.Error(w, "type must be one of login/operation", http.StatusBadRequest)
 		return nil
 	}
+	if err != nil {
+		s.log.Errorf(ctx, "audit export [%s] query failed: %s", logType, err.Error())
+		if errors.Is(err, errExportBadQuery) {
+			http.Error(w, "invalid query", http.StatusBadRequest)
+			return nil
+		}
+		http.Error(w, "query failed", http.StatusInternalServerError)
+		return nil
+	}
+	if truncated {
+		s.log.Warnf(ctx, "audit export [%s] truncated at %d rows", logType, req.GetLimit())
+	}
 
+	setExportTruncationHeaders(w, truncated, int(req.GetLimit()))
 	emitExportFile(w, s.log, ctx, "audit:"+logType, fileName, sheet, headers, rows, format)
 	return nil
 }

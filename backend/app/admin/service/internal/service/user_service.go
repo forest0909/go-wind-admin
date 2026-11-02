@@ -284,7 +284,10 @@ func (s *UserService) List(ctx context.Context, req *paginationV1.PagingRequest)
 		return nil, err
 	}
 
-	_ = s.enrichRelations(ctx, resp.Items)
+	// 回填角色/组织/岗位名称是展示增强，失败不阻断列表，但要留日志
+	if err = s.enrichRelations(ctx, resp.Items); err != nil {
+		s.log.Errorf(ctx, "enrich user relations failed: %v", err)
+	}
 
 	return resp, nil
 }
@@ -307,7 +310,9 @@ func (s *UserService) Get(ctx context.Context, req *identityV1.GetUserRequest) (
 	}
 
 	fakeItems := []*identityV1.User{resp}
-	_ = s.enrichRelations(ctx, fakeItems)
+	if err = s.enrichRelations(ctx, fakeItems); err != nil {
+		s.log.Errorf(ctx, "enrich user relations failed: %v", err)
+	}
 
 	return resp, nil
 }

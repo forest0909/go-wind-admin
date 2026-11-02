@@ -357,12 +357,8 @@ const MenuManagement = () => {
             columns={columns}
             request={async (params) => {
               // 标题走前端过滤（见 filterMenusByTitle），服务端只收 status；
-              // pageSize 拉满确保全量行都在前端过滤范围内
+              // 不传 paging 即 noPaging 拉全量：页长超过 100 会被后端静默截断，菜单多于 100 条时会丢行
               const query = new PaginationQuery({
-                paging: {
-                  page: 1,
-                  pageSize: 1000,
-                },
                 formValues: {
                   status: params.status,
                 },

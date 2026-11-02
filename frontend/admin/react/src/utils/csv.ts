@@ -24,7 +24,9 @@ export interface ExportAuditOptions {
 
 export type AuditExportFormat = 'csv' | 'xlsx';
 
-const PAGE_SIZE = 1000;
+// 必须等于后端 go-crud 的 paginator.MaxLimit（100）。写更大的值会被后端静默截成 100，
+// 而这里按 (page-1)*PAGE_SIZE < total 判断还有没有下一页：以前写 1000，total=5000 时只拉 5 页×100 行就停了。
+const PAGE_SIZE = 100;
 const DEFAULT_MAX_ROWS = 10_000;
 
 function escapeCsvCell(value: unknown): string {
@@ -81,7 +83,7 @@ function withExtension(filename: string, format: AuditExportFormat): string {
 }
 
 /** 分页聚合拉取（受 maxRows 上限约束），CSV 与 XLSX 共用。 */
-async function fetchAllRows(options: ExportAuditOptions): Promise<Record<string, unknown>[]> {
+export async function fetchAllRows(options: ExportAuditOptions): Promise<Record<string, unknown>[]> {
   const { fetcher, columns, params = {}, maxRows = DEFAULT_MAX_ROWS } = options;
   if (columns.length === 0) return [];
 

@@ -460,7 +460,19 @@ func (r *PermissionRepo) Update(ctx context.Context, req *permissionV1.UpdatePer
 		})
 	}
 
-	builder := r.entClient.Client().Permission.UpdateOneID(req.GetId())
+	// 权限行、接口绑定、菜单绑定在同一个事务里：以前三段各自提交，绑定写失败时
+	// 权限行已经改了、接口绑定也可能已经换了，留下半更新状态。
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
+		return permissionV1.ErrorInternalServerError("start transaction failed")
+	}
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
+
+	builder := tx.Permission.UpdateOneID(req.GetId())
 	perm, err := r.repository.UpdateOne(ctx, builder, req.Data, req.GetUpdateMask(),
 		func(dto *permissionV1.Permission) {
 			builder.
@@ -481,17 +493,21 @@ func (r *PermissionRepo) Update(ctx context.Context, req *permissionV1.UpdatePer
 	}
 
 	if updateApis {
-		if err = r.permissionApiRepo.AssignApis(ctx, perm.GetId(), wantApiIds); err != nil {
+		if err = r.permissionApiRepo.ReplaceApisWithTx(ctx, tx, perm.GetId(), wantApiIds); err != nil {
 			return err
 		}
 	}
 
 	if updateMenus {
-		if err = r.permissionMenuRepo.AssignMenus(ctx, perm.GetId(), wantMenuIds); err != nil {
+		if err = r.permissionMenuRepo.ReplaceMenusWithTx(ctx, tx, perm.GetId(), wantMenuIds); err != nil {
 			return err
 		}
 	}
 
+	if err = commitEntTx(tx, &txCommitted); err != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", err.Error())
+		return permissionV1.ErrorInternalServerError("transaction commit failed")
+	}
 	return nil
 }
 

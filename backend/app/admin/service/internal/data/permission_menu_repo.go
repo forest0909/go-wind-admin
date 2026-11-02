@@ -90,6 +90,15 @@ func (r *PermissionMenuRepo) AssignMenus(ctx context.Context, permissionID uint3
 	return nil
 }
 
+// ReplaceMenusWithTx 在调用方的事务里把权限的菜单绑定整体替换成 menuIDs（含清空）。
+// 清理失败直接返回，理由同 PermissionApiRepo.ReplaceApisWithTx。
+func (r *PermissionMenuRepo) ReplaceMenusWithTx(ctx context.Context, tx *ent.Tx, permissionID uint32, menuIDs []uint32) error {
+	if err := r.CleanNotExistMenus(ctx, tx, permissionID, menuIDs); err != nil {
+		return err
+	}
+	return r.AssignMenusWithTx(ctx, tx, permissionID, menuIDs)
+}
+
 // AssignMenusWithTx 给权限分配菜单
 func (r *PermissionMenuRepo) AssignMenusWithTx(ctx context.Context, tx *ent.Tx, permissionID uint32, menuIDs []uint32) error {
 	if len(menuIDs) == 0 {

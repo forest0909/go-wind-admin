@@ -95,6 +95,16 @@ func (r *PermissionApiRepo) AssignApis(
 	return nil
 }
 
+// ReplaceApisWithTx 在调用方的事务里把权限的接口绑定整体替换成 apiIDs（含清空）。
+// 与 AssignApis 不同，清理失败直接返回：同一事务里失败的语句会让 PG 事务进入 aborted 状态，
+// 继续写入没有意义，而且留下的旧绑定就是错误数据，应由调用方整体回滚。
+func (r *PermissionApiRepo) ReplaceApisWithTx(ctx context.Context, tx *ent.Tx, permissionID uint32, apiIDs []uint32) error {
+	if err := r.CleanNotExistApis(ctx, tx, permissionID, apiIDs); err != nil {
+		return err
+	}
+	return r.AssignApisWithTx(ctx, tx, permissionID, apiIDs)
+}
+
 // AssignApisWithTx 给权限分配API资源
 func (r *PermissionApiRepo) AssignApisWithTx(
 	ctx context.Context,

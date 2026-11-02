@@ -111,7 +111,8 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           password: undefined,
           nickname: data.nickname || '',
           realname: data.realname || '',
-          email: data.email || '',
+          // 没邮箱时保持 undefined：回填成 '' 会被提交回去，后端以前存成空串，撞 (tenant_id,email) 唯一索引
+          email: data.email || undefined,
           mobile: data.mobile || '',
           gender: data.gender || 'SECRET',
           status: data.status || 'NORMAL',

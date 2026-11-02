@@ -42,9 +42,11 @@ const (
 	// 脱离请求的 HTTP ctx 后由该超时兜底，避免广播 goroutine 因个别慢操作无限期挂起。
 	defaultBroadcastTimeout = 5 * time.Minute
 
-	// broadcastUserPageSize 全员广播时按页拉取用户的页大小。
+	// broadcastUserPageSize 全员广播时按 id 游标每批拉取的用户数。
 	// 不用 NoPaging 全量拉取，避免用户量大时把全表用户一次性读进内存。
-	broadcastUserPageSize uint32 = 1000
+	// 不能超过 go-crud 的 paginator.MaxLimit（100）：超出会被静默截成 100。
+	// 以前写 1000、又用"本页不足 1000 行"当终止条件，第一页只回 100 行就停了，全员广播只发到前 100 人。
+	broadcastUserPageSize uint32 = 100
 )
 
 type InternalMessagePublisher interface {
@@ -456,11 +458,9 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 	now := time.Now()
 
 	var total int
+	var lastUserID uint32
 	for page := uint32(1); ; page++ {
-		users, err := s.userRepo.List(ctx, &paginationV1.PagingRequest{
-			Page:     trans.Ptr(page),
-			PageSize: trans.Ptr(broadcastUserPageSize),
-		})
+		users, err := s.userRepo.List(ctx, broadcastUserBatchRequest(lastUserID))
 		if err != nil {
 			s.log.Errorf(ctx, "broadcast message [%d]: list users (page %d) failed: %s", messageId, page, err)
 			break
@@ -468,6 +468,13 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 		if len(users.GetItems()) == 0 {
 			break
 		}
+		// 游标必须前进，否则仓储不按 id 过滤/排序时会原地打转。
+		nextUserID := users.GetItems()[len(users.GetItems())-1].GetId()
+		if nextUserID <= lastUserID {
+			s.log.Errorf(ctx, "broadcast message [%d]: user cursor did not advance (last %d, got %d), stop", messageId, lastUserID, nextUserID)
+			break
+		}
+		lastUserID = nextUserID
 
 		recipients := make([]*internalMessageV1.InternalMessageRecipient, 0, len(users.GetItems()))
 		for _, user := range users.GetItems() {
@@ -495,13 +502,27 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 			recipient.Id = trans.Ptr(recipientIds[recipient.GetRecipientUserId()])
 			s.publishNotification(ctx, recipient)
 		}
-
-		if len(users.GetItems()) < int(broadcastUserPageSize) {
-			break
-		}
 	}
 
 	s.log.Infof(ctx, "broadcast message [%d] to %d recipients done", messageId, total)
+}
+
+// broadcastUserBatchRequest 取 id > afterID 的下一批用户，按 id 升序。
+// 用 id 游标而不是页码：广播过程中有用户增删时，offset 翻页会跳行或重复。
+func broadcastUserBatchRequest(afterID uint32) *paginationV1.PagingRequest {
+	return &paginationV1.PagingRequest{
+		Page:     trans.Ptr(uint32(1)),
+		PageSize: trans.Ptr(broadcastUserPageSize),
+		Sorting:  []*paginationV1.Sorting{{Field: "id", Direction: paginationV1.Sorting_ASC}},
+		FilteringType: &paginationV1.PagingRequest_FilterExpr{FilterExpr: &paginationV1.FilterExpr{
+			Type: paginationV1.ExprType_AND,
+			Conditions: []*paginationV1.FilterCondition{{
+				Field:      "id",
+				Op:         paginationV1.Operator_GT,
+				ValueOneof: &paginationV1.FilterCondition_Value{Value: strconv.FormatUint(uint64(afterID), 10)},
+			}},
+		}},
+	}
 }
 
 // fanoutBroadcastGoroutine 是 asynq 未配置时的回退路径：

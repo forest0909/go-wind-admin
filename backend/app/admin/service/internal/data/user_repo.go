@@ -417,20 +417,55 @@ func (r *userRepo) List(ctx context.Context, req *paginationV1.PagingRequest) (*
 		Items: ret.Items,
 	}
 
-	for _, item := range resp.Items {
-		roleIDs, positionIDs, orgUnitIDs, err = r.ListUserRelationIDs(ctx, item.GetId())
-		if err != nil {
-			r.log.Errorf(ctx, "list user relation ids failed: %s", err.Error())
-			continue
-		}
-		item.RoleIds = roleIDs
-		item.PositionIds = positionIDs
-		item.OrgUnitIds = orgUnitIDs
-
-		//r.log.Debugf(ctx, "user id=%d role_ids=%v position_ids=%v org_unit_ids=%v", item.GetId(), roleIDs, positionIDs, orgUnitIDs)
+	if err = r.fillRelationIDs(ctx, resp.Items); err != nil {
+		return nil, err
 	}
 
 	return resp, nil
+}
+
+// fillRelationIDs 给一页用户回填角色、岗位、组织单元 ID。
+// 一对一模式下每种关联按 user_id IN (...) 各查一次；以前逐个用户查三次，一页 100 人是 300 次查询。
+// 一对多（Membership）模式不是默认配置，仍逐个用户查。
+func (r *userRepo) fillRelationIDs(ctx context.Context, users []*identityV1.User) error {
+	if len(users) == 0 {
+		return nil
+	}
+
+	if constants.DefaultUserTenantRelationType == constants.UserTenantRelationOneToMany {
+		for _, item := range users {
+			roleIDs, positionIDs, orgUnitIDs, err := r.ListUserRelationIDs(ctx, item.GetId())
+			if err != nil {
+				r.log.Errorf(ctx, "list user relation ids failed: %s", err.Error())
+				return err
+			}
+			item.RoleIds, item.PositionIds, item.OrgUnitIds = roleIDs, positionIDs, orgUnitIDs
+		}
+		return nil
+	}
+
+	userIDs := make([]uint32, 0, len(users))
+	for _, item := range users {
+		userIDs = append(userIDs, item.GetId())
+	}
+	roleIDs, err := r.userRoleRepo.ListRoleIDsByUserIDs(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+	positionIDs, err := r.userPositionRepo.ListPositionIDsByUserIDs(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+	orgUnitIDs, err := r.userOrgUnitRepo.ListOrgUnitIDsByUserIDs(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+	for _, item := range users {
+		item.RoleIds = roleIDs[item.GetId()]
+		item.PositionIds = positionIDs[item.GetId()]
+		item.OrgUnitIds = orgUnitIDs[item.GetId()]
+	}
+	return nil
 }
 
 // Get 获取用户
@@ -517,6 +552,7 @@ func (r *userRepo) CreateWithTx(ctx context.Context, tx *ent.Tx, data *identityV
 	if data == nil {
 		return nil, identityV1.ErrorBadRequest("invalid parameter")
 	}
+	normalizeUserUniqueFields(data)
 
 	builder := tx.User.Create().
 		SetNillableTenantID(data.TenantId).
@@ -546,8 +582,7 @@ func (r *userRepo) CreateWithTx(ctx context.Context, tx *ent.Tx, data *identityV
 
 	var entity *ent.User
 	if entity, err = builder.Save(ctx); err != nil {
-		r.log.Errorf(ctx, "insert user failed: %s", err.Error())
-		return nil, identityV1.ErrorInternalServerError("insert user failed")
+		return nil, mapUserWriteError(r.log, ctx, "insert user", err)
 	}
 
 	if data.GetRoleId() > 0 {
@@ -628,6 +663,8 @@ func (r *userRepo) Update(ctx context.Context, req *identityV1.UpdateUserRequest
 	// 本类关联参与本次更新（与下方收集逻辑一致：RoleIds + RoleId 都会被收集）。
 	// nil mask 守卫：无 mask = 全量更新语义，但后续 FilterBlacklist 需要
 	// 非 nil mask 做赋值/剔除，故此处初始化空 mask（panic 修复，e2e 揪出）。
+	normalizeUserUniqueFields(req.Data)
+
 	if req.GetUpdateMask() == nil {
 		req.UpdateMask = &fieldmaskpb.FieldMask{}
 	}
@@ -729,6 +766,11 @@ func (r *userRepo) Update(ctx context.Context, req *identityV1.UpdateUserRequest
 			s.Where(sql.EQ(user.FieldID, req.GetId()))
 		},
 	)
+	// 用户行没更新成功就不能再动关联：以前这里不查 err，紧接着被 assignUserRelations 的结果覆盖，
+	// 用户不存在 / 唯一冲突时照样按 tenant_id=0 重写关联并提交，接口回 200。
+	if err != nil {
+		return mapUserWriteError(r.log, ctx, "update user", err)
+	}
 
 	switch constants.DefaultUserTenantRelationType {
 	case constants.UserTenantRelationNone, constants.UserTenantRelationOneToOne:
@@ -751,14 +793,41 @@ func (r *userRepo) Update(ctx context.Context, req *identityV1.UpdateUserRequest
 		}
 	}
 
-	if err != nil {
-		return err
-	}
 	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
 		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
 		return identityV1.ErrorInternalServerError("transaction commit failed")
 	}
 	return nil
+}
+
+// normalizeUserUniqueFields 把参与唯一索引的可选字段里的空串归一成 NULL。
+//
+// email 在 (tenant_id, email) 上有唯一索引，NULL 不参与唯一判定，空串参与：
+// 两个都没填邮箱的用户一旦都存成 ""，第二个就写不进去。编辑表单清空邮箱、
+// 或者 updateMask 里带 email 而值为空时，email 置 nil，mask 里的 email 会让仓储把列写成 NULL。
+// username 有 NotEmpty 校验；mobile 只有普通索引，不受影响。
+func normalizeUserUniqueFields(data *identityV1.User) {
+	if data == nil {
+		return
+	}
+	if data.Email != nil && strings.TrimSpace(*data.Email) == "" {
+		data.Email = nil
+	}
+}
+
+// mapUserWriteError 把用户行写入失败映射成调用方能处理的错误：
+// 行不存在 → 404，唯一索引冲突（tenant_id+username / tenant_id+email）→ 409，其余 → 500。原始错误写日志。
+func mapUserWriteError(log *bLogger.Helper, ctx context.Context, op string, err error) error {
+	switch {
+	case ent.IsNotFound(err):
+		log.Warnf(ctx, "%s: user not found: %s", op, err.Error())
+		return identityV1.ErrorNotFound("user not found")
+	case ent.IsConstraintError(err):
+		log.Warnf(ctx, "%s: unique constraint violated: %s", op, err.Error())
+		return identityV1.ErrorConflict("username or email already in use")
+	}
+	log.Errorf(ctx, "%s failed: %s", op, err.Error())
+	return identityV1.ErrorInternalServerError("%s failed", op)
 }
 
 // Delete 删除用户
@@ -832,18 +901,22 @@ func (r *userRepo) Delete(ctx context.Context, req *identityV1.DeleteUserRequest
 }
 
 // removeUserRelations 移除用户关联关系
-func (r *userRepo) removeUserRelations(ctx context.Context, tx *ent.Tx, userID uint32) (err error) {
-	if err = r.userRoleRepo.CleanRelationsByUserID(ctx, tx, userID); err != nil {
+// 任何一步失败立即返回，由调用方回滚整个删除事务。
+// 以前三步的 err 互相覆盖，只回最后一步的结果：前面失败、最后成功时照样提交，留下孤儿关联。
+func (r *userRepo) removeUserRelations(ctx context.Context, tx *ent.Tx, userID uint32) error {
+	if err := r.userRoleRepo.CleanRelationsByUserID(ctx, tx, userID); err != nil {
 		r.log.Errorf(ctx, "clean user role relations failed: %s", err.Error())
+		return err
 	}
-	if err = r.userOrgUnitRepo.CleanRelationsByUserID(ctx, tx, userID); err != nil {
+	if err := r.userOrgUnitRepo.CleanRelationsByUserID(ctx, tx, userID); err != nil {
 		r.log.Errorf(ctx, "clean user org unit relations failed: %s", err.Error())
+		return err
 	}
-	if err = r.userPositionRepo.CleanRelationsByUserID(ctx, tx, userID); err != nil {
+	if err := r.userPositionRepo.CleanRelationsByUserID(ctx, tx, userID); err != nil {
 		r.log.Errorf(ctx, "clean user position relations failed: %s", err.Error())
+		return err
 	}
-
-	return
+	return nil
 }
 
 // removeMembershipRelations 移除用户关联关系（通过 Membership 关联）

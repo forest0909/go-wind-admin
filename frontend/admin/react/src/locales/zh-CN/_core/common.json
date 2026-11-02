@@ -178,7 +178,7 @@
       "NOT_ACCEPTABLE": "不可接受的请求",
       "PROXY_AUTHENTICATION_REQUIRED": "需要代理认证",
       "REQUEST_TIMEOUT": "请求超时",
-      "CONFLICT": "请求冲突",
+      "CONFLICT": "与已有数据冲突（例如用户名、邮箱或编码已被占用）",
       "GONE": "资源已删除",
       "LENGTH_REQUIRED": "需要Content-Length",
       "PRECONDITION_FAILED": " precondition失败",

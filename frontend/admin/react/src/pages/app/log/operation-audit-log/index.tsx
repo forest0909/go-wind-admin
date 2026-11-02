@@ -214,7 +214,7 @@ const OperationAuditLogPage = () => {
   // 突破客户端聚合导出的 1 万行上限
   const handleServerExport = async () => {
     try {
-      await exportAuditLogsServer(
+      const result = await exportAuditLogsServer(
         'operation',
         // 与列表请求同构的搜索条件（剔除 ProTable params 里的分页键：后端
         // repo 对非表列字段直接报错），经 PaginationQuery 同源序列化
@@ -227,7 +227,11 @@ const OperationAuditLogPage = () => {
           ),
         }),
       );
-      message.success(t('exportServerSuccess'));
+      if (result.truncated) {
+        message.warning(t('exportServerTruncated', { limit: result.rowLimit }));
+      } else {
+        message.success(t('exportServerSuccess'));
+      }
     } catch (error: any) {
       console.error('server-side audit export failed', error);
       message.error(error?.message || t('exportServerFailed'));

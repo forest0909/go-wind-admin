@@ -58,9 +58,6 @@ func TestParseExportRequest(t *testing.T) {
 		if req.GetLimit() != 500000 {
 			t.Fatalf("limit = %d, want 500000", req.GetLimit())
 		}
-		if !req.GetNoPaging() {
-			t.Fatal("NoPaging must be true for export")
-		}
 	})
 	t.Run("bad format rejected", func(t *testing.T) {
 		w := httptest.NewRecorder()

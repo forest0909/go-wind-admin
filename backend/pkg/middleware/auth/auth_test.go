@@ -253,7 +253,7 @@ type tenantCarrier struct {
 func TestServer_TenantIdInjection(t *testing.T) {
 	payload := &authenticationV1.UserTokenPayload{
 		UserId:   2,
-		TenantId: trans.Ptr(uint32(3)),
+		TenantId: trans.Ptr(uint32(0)), // 单租户：非 0 租户的令牌会被拒绝
 	}
 	req := &tenantCarrier{}
 	reached, _, err := runAuthMiddleware(
@@ -264,7 +264,7 @@ func TestServer_TenantIdInjection(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, reached)
 	require.NotNil(t, req.TenantId, "TenantId 应回填为令牌租户ID")
-	require.Equal(t, uint32(3), *req.TenantId)
+	require.Equal(t, uint32(0), *req.TenantId)
 }
 
 // TestSetRequestIds_NilAndNoMatch 直接单元测试回填函数：

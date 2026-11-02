@@ -59,6 +59,13 @@ func Server(opts ...Option) middleware.Middleware {
 				op.log.Errorf(ctx, "auth middleware: invalid access token")
 				return nil, ErrAccessTokenExpired
 			}
+			// 单租户：只接受 tid=0 的令牌。令牌校验实现（Authenticator）已拒绝，这里再挡一次，
+			// 防止换了校验实现后旧租户会话带着非零租户进入 viewer。
+			if tokenPayload.GetTenantId() != 0 {
+				op.log.Errorf(ctx, "auth middleware: reject token of legacy tenant [%d] for user [%d]",
+					tokenPayload.GetTenantId(), tokenPayload.GetUserId())
+				return nil, ErrLegacyTenantToken
+			}
 
 			ctx = NewContext(ctx, tokenPayload)
 

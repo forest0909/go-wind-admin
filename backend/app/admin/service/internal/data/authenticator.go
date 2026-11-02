@@ -346,6 +346,14 @@ func (a *Authenticator) Authenticate(ctx context.Context, req *authenticationV1.
 			}, err
 		}
 
+		// 单租户：tid 非 0 的令牌是升级前旧租户签发的会话，统一拒绝
+		// （REST 中间件、导出路由、SSE 握手都经过这里）。不改写成 0，那会把旧租户身份变成平台视图。
+		if payload.GetTenantId() != 0 {
+			return &authenticationV1.ValidateTokenResponse{
+				IsValid: false,
+			}, authenticationV1.ErrorUnauthorized("token of a removed tenant is no longer accepted")
+		}
+
 		// Check token validity in cache
 		if !req.GetSkipRedis() {
 			var valid bool

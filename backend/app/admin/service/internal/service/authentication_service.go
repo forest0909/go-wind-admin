@@ -624,6 +624,12 @@ func (s *AuthenticationService) doGrantTypeRefreshToken(ctx context.Context, req
 	if err != nil {
 		return nil, err
 	}
+	// 单租户：旧租户（tenant_id>0）的用户不能再用升级前的 refresh token 续期。
+	// 旧 RT 已在 VerifyRefreshToken 里原子轮换掉，这里拒绝后会话随之结束。
+	if user.GetTenantId() != 0 {
+		s.log.Errorf(ctx, "refresh rejected: user [%d] belongs to removed tenant [%d]", user.GetId(), user.GetTenantId())
+		return nil, authenticationV1.ErrorIncorrectRefreshToken("invalid refresh token")
+	}
 
 	tokenPayload := &authenticationV1.UserTokenPayload{
 		UserId:   user.GetId(),

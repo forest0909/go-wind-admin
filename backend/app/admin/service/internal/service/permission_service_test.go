@@ -29,6 +29,7 @@ import (
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
@@ -54,7 +55,11 @@ import (
 func newPermissionServiceForTest(t *testing.T) (*PermissionService, *ent.Client) {
 	t.Helper()
 	entClient := enttest.NewEntClientForTest(t)
-	svc := &PermissionService{
+	return newPermissionServiceWithEntClient(entClient), entClient.Client()
+}
+
+func newPermissionServiceWithEntClient(entClient *entCrud.EntClient[*ent.Client]) *PermissionService {
+	return &PermissionService{
 		log:                     bLogger.NewHelper(bLogger.NopLogger()),
 		permissionRepo:          data.NewPermissionRepoForTest(entClient),
 		permissionGroupRepo:     data.NewPermissionGroupRepoForTest(entClient),
@@ -65,7 +70,6 @@ func newPermissionServiceForTest(t *testing.T) (*PermissionService, *ent.Client)
 		menuPermissionConverter: converter.NewMenuPermissionConverter(),
 		apiPermissionConverter:  goconv.NewApiPermissionConverter().WithResourceAliases(apiResourceAliases),
 	}
-	return svc, entClient.Client()
 }
 
 // seedPermissionGroups 落 count 条占位权限组（自动 ID 从 1 顺次递增）。

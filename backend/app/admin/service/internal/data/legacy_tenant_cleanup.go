@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
@@ -17,11 +18,8 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/roleorgunit"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolepermission"
 	"go-wind-admin/app/admin/service/internal/data/ent/userrole"
-	"go-wind-admin/third_party/go-crud/viewer"
 
 	"go-wind-admin/pkg/constants"
-
-	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 )
 
 // 多租户（租户 / 套餐 / 配额）已移除。旧库里这几类配置行不会被现有同步删除：
@@ -85,48 +83,28 @@ func (r LegacyTenantCleanupResult) Empty() bool {
 	return r.Menus == 0 && r.Permissions == 0 && r.Roles == 0 && r.PermissionGroups == 0
 }
 
-// PurgeLegacyTenantConfig 删除旧库遗留的租户 / 套餐菜单、权限点、模板角色和权限组，以及它们的关联行。
-// 幂等：没有遗留时只有查询。须在权限点同步之前调用，否则同步会从遗留菜单再派生出权限点。
-func (r *PermissionRepo) PurgeLegacyTenantConfig(ctx context.Context) (result LegacyTenantCleanupResult, err error) {
-	ctx = viewer.WithSystemContext(ctx)
-
-	tx, err := r.entClient.Client().Tx(ctx)
-	if err != nil {
-		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
-		return result, permissionV1.ErrorInternalServerError("start transaction failed")
+// purgeLegacyTenantConfig 删除旧库遗留的租户 / 套餐菜单、权限点、模板角色和权限组，以及它们的关联行。
+// 由升级步骤 v1 调用（schema_upgrade.go），client 绑定在该步的事务上。
+// 幂等：没有遗留时只有查询。须在权限点同步之前执行，否则同步会从遗留菜单再派生出权限点。
+func purgeLegacyTenantConfig(ctx context.Context, client *ent.Client) (result LegacyTenantCleanupResult, err error) {
+	if result.Menus, err = purgeLegacyTenantMenus(ctx, client); err != nil {
+		return result, fmt.Errorf("purge legacy tenant menus: %w", err)
 	}
-	var txCommitted bool
-	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
-		r.log.Errorf(context.Background(), "transaction rollback failed: %s", rollbackErr.Error())
-	})
-
-	if result.Menus, err = purgeLegacyTenantMenus(ctx, tx); err != nil {
-		r.log.Errorf(ctx, "purge legacy tenant menus failed: %s", err.Error())
-		return result, permissionV1.ErrorInternalServerError("purge legacy tenant menus failed")
+	if result.Permissions, err = purgeLegacyTenantPermissions(ctx, client); err != nil {
+		return result, fmt.Errorf("purge legacy tenant permissions: %w", err)
 	}
-	if result.Permissions, err = purgeLegacyTenantPermissions(ctx, tx); err != nil {
-		r.log.Errorf(ctx, "purge legacy tenant permissions failed: %s", err.Error())
-		return result, permissionV1.ErrorInternalServerError("purge legacy tenant permissions failed")
+	if result.Roles, err = purgeLegacyTenantRoles(ctx, client); err != nil {
+		return result, fmt.Errorf("purge legacy tenant roles: %w", err)
 	}
-	if result.Roles, err = purgeLegacyTenantRoles(ctx, tx); err != nil {
-		r.log.Errorf(ctx, "purge legacy tenant roles failed: %s", err.Error())
-		return result, permissionV1.ErrorInternalServerError("purge legacy tenant roles failed")
-	}
-	if result.PermissionGroups, err = purgeLegacyTenantPermissionGroups(ctx, tx); err != nil {
-		r.log.Errorf(ctx, "purge legacy tenant permission groups failed: %s", err.Error())
-		return result, permissionV1.ErrorInternalServerError("purge legacy tenant permission groups failed")
-	}
-
-	if err = commitEntTx(tx, &txCommitted); err != nil {
-		r.log.Errorf(ctx, "transaction commit failed: %s", err.Error())
-		return result, permissionV1.ErrorInternalServerError("transaction commit failed")
+	if result.PermissionGroups, err = purgeLegacyTenantPermissionGroups(ctx, client); err != nil {
+		return result, fmt.Errorf("purge legacy tenant permission groups: %w", err)
 	}
 	return result, nil
 }
 
 // purgeLegacyTenantMenus 删除「租户管理」目录及其整棵子树，以及组件在 app/tenant/ 下的页面。
-func purgeLegacyTenantMenus(ctx context.Context, tx *ent.Tx) (int, error) {
-	roots, err := tx.Menu.Query().
+func purgeLegacyTenantMenus(ctx context.Context, client *ent.Client) (int, error) {
+	roots, err := client.Menu.Query().
 		Where(menu.Or(
 			menu.And(menu.PathEQ(legacyTenantMenuRootPath), menu.ParentIDIsNil()),
 			menu.ComponentHasPrefix(legacyTenantMenuComponentPrefix),
@@ -146,7 +124,7 @@ func purgeLegacyTenantMenus(ctx context.Context, tx *ent.Tx) (int, error) {
 		seen[id] = true
 	}
 	for frontier := roots; len(frontier) > 0; {
-		children, cerr := tx.Menu.Query().Where(menu.ParentIDIn(frontier...)).IDs(ctx)
+		children, cerr := client.Menu.Query().Where(menu.ParentIDIn(frontier...)).IDs(ctx)
 		if cerr != nil {
 			return 0, cerr
 		}
@@ -167,12 +145,12 @@ func purgeLegacyTenantMenus(ctx context.Context, tx *ent.Tx) (int, error) {
 	for id := range seen {
 		all = append(all, id)
 	}
-	if _, err = tx.PermissionMenu.Delete().Where(permissionmenu.MenuIDIn(all...)).Exec(ctx); err != nil {
+	if _, err = client.PermissionMenu.Delete().Where(permissionmenu.MenuIDIn(all...)).Exec(ctx); err != nil {
 		return 0, err
 	}
 	total := 0
 	for i := len(levels) - 1; i >= 0; i-- {
-		n, derr := tx.Menu.Delete().Where(menu.IDIn(levels[i]...)).Exec(ctx)
+		n, derr := client.Menu.Delete().Where(menu.IDIn(levels[i]...)).Exec(ctx)
 		if derr != nil {
 			return total, derr
 		}
@@ -182,8 +160,8 @@ func purgeLegacyTenantMenus(ctx context.Context, tx *ent.Tx) (int, error) {
 }
 
 // purgeLegacyTenantPermissions 删除租户 / 套餐权限点及其角色授权、接口和菜单关联。
-func purgeLegacyTenantPermissions(ctx context.Context, tx *ent.Tx) (int, error) {
-	perms, err := tx.Permission.Query().
+func purgeLegacyTenantPermissions(ctx context.Context, client *ent.Client) (int, error) {
+	perms, err := client.Permission.Query().
 		Select(permission.FieldID, permission.FieldCode).
 		All(ctx)
 	if err != nil {
@@ -199,21 +177,21 @@ func purgeLegacyTenantPermissions(ctx context.Context, tx *ent.Tx) (int, error) 
 		return 0, nil
 	}
 
-	if _, err = tx.RolePermission.Delete().Where(rolepermission.PermissionIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.RolePermission.Delete().Where(rolepermission.PermissionIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	if _, err = tx.PermissionApi.Delete().Where(permissionapi.PermissionIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.PermissionApi.Delete().Where(permissionapi.PermissionIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	if _, err = tx.PermissionMenu.Delete().Where(permissionmenu.PermissionIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.PermissionMenu.Delete().Where(permissionmenu.PermissionIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	return tx.Permission.Delete().Where(permission.IDIn(ids...)).Exec(ctx)
+	return client.Permission.Delete().Where(permission.IDIn(ids...)).Exec(ctx)
 }
 
 // purgeLegacyTenantRoles 删除租户管理员模板角色及其关联行。
-func purgeLegacyTenantRoles(ctx context.Context, tx *ent.Tx) (int, error) {
-	ids, err := tx.Role.Query().
+func purgeLegacyTenantRoles(ctx context.Context, client *ent.Client) (int, error) {
+	ids, err := client.Role.Query().
 		Where(role.CodeIn(legacyTenantRoleCodes...)).
 		IDs(ctx)
 	if err != nil {
@@ -223,30 +201,30 @@ func purgeLegacyTenantRoles(ctx context.Context, tx *ent.Tx) (int, error) {
 		return 0, nil
 	}
 
-	if _, err = tx.RolePermission.Delete().Where(rolepermission.RoleIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.RolePermission.Delete().Where(rolepermission.RoleIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	if _, err = tx.RoleMetadata.Delete().Where(rolemetadata.RoleIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.RoleMetadata.Delete().Where(rolemetadata.RoleIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	if _, err = tx.RoleOrgUnit.Delete().Where(roleorgunit.RoleIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.RoleOrgUnit.Delete().Where(roleorgunit.RoleIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	if _, err = tx.RoleFieldPermission.Delete().Where(rolefieldpermission.RoleIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.RoleFieldPermission.Delete().Where(rolefieldpermission.RoleIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	if _, err = tx.UserRole.Delete().Where(userrole.RoleIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.UserRole.Delete().Where(userrole.RoleIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	if _, err = tx.MembershipRole.Delete().Where(membershiprole.RoleIDIn(ids...)).Exec(ctx); err != nil {
+	if _, err = client.MembershipRole.Delete().Where(membershiprole.RoleIDIn(ids...)).Exec(ctx); err != nil {
 		return 0, err
 	}
-	return tx.Role.Delete().Where(role.IDIn(ids...)).Exec(ctx)
+	return client.Role.Delete().Where(role.IDIn(ids...)).Exec(ctx)
 }
 
 // purgeLegacyTenantPermissionGroups 删除「租户管理」权限组。组下还挂着别的权限点（管理员手工挪进来的）时保留。
-func purgeLegacyTenantPermissionGroups(ctx context.Context, tx *ent.Tx) (int, error) {
-	ids, err := tx.PermissionGroup.Query().
+func purgeLegacyTenantPermissionGroups(ctx context.Context, client *ent.Client) (int, error) {
+	ids, err := client.PermissionGroup.Query().
 		Where(permissiongroup.Or(
 			permissiongroup.ModuleEQ(legacyTenantPermissionGroupModule),
 			permissiongroup.And(
@@ -264,7 +242,7 @@ func purgeLegacyTenantPermissionGroups(ctx context.Context, tx *ent.Tx) (int, er
 
 	var empty []uint32
 	for _, id := range ids {
-		n, cerr := tx.Permission.Query().Where(permission.GroupIDEQ(id)).Count(ctx)
+		n, cerr := client.Permission.Query().Where(permission.GroupIDEQ(id)).Count(ctx)
 		if cerr != nil {
 			return 0, cerr
 		}
@@ -275,11 +253,11 @@ func purgeLegacyTenantPermissionGroups(ctx context.Context, tx *ent.Tx) (int, er
 	if len(empty) == 0 {
 		return 0, nil
 	}
-	if _, err = tx.PermissionGroup.Update().
+	if _, err = client.PermissionGroup.Update().
 		Where(permissiongroup.ParentIDIn(empty...)).
 		ClearParentID().
 		Save(ctx); err != nil {
 		return 0, err
 	}
-	return tx.PermissionGroup.Delete().Where(permissiongroup.IDIn(empty...)).Exec(ctx)
+	return client.PermissionGroup.Delete().Where(permissiongroup.IDIn(empty...)).Exec(ctx)
 }

@@ -49,7 +49,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	}
 	cleanups = append(cleanups, cleanupRedis)
 
-	// 多实例启动互斥：自动迁移、默认数据播种、接口/权限点/菜单同步和首次策略装载都在
+	// 多实例启动互斥：自动迁移、版本化升级步骤、默认数据播种、接口/权限点/菜单同步和首次策略装载都在
 	// 下面的构造过程里同步执行，持锁直到 REST 服务装配完成，并发启动的实例依次进行。
 	releaseStartupLock, err := data.AcquireStartupLock(ctx, redisClient)
 	if err != nil {

@@ -125,6 +125,8 @@ services:
       # 可选：生产 JWT 私钥（只给私钥时公钥自动派生）、签名图片 URL 的密钥
       - GWA_AUTH_JWT_PRIVATE_KEY=${GWA_AUTH_JWT_PRIVATE_KEY:-}
       - GOWIND_CRYPTO_KEY=${GOWIND_CRYPTO_KEY:-}
+      # 可选：外部数据源连接串，每个源一行，和 configs/data.yaml 的 ${GWA_EXT_<NAME>_DSN} 对应
+      # - GWA_EXT_DEMO_DSN=${GWA_EXT_DEMO_DSN:-}
       - AUDIT_ARCHIVE_DIR=/app/data/audit-archive
     volumes:
       # 审计归档文件

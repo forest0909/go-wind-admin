@@ -2,6 +2,7 @@
 
 > **定位**：本目录是「新增完整 CRUD 业务模块」的参考层手册：执行顺序与通用陷阱在本页；
 > 后端全流程与样例镜像索引在 [backend.md](./backend.md)，React 页面实现在 [react.md](./react.md)。
+> 数据在客户已有的业务库（外部数据源：PostgreSQL / MySQL / SQL Server，不走 ent）时，按 [external.md](./external.md) 写。
 > 范围划界：给**已有**资源加字段走 [field_change_guide.md](../field_change_guide.md)；修 bug、重构、
 > 改既有模块逻辑不在本手册范围。教程层[第 4 章](../tutorial/04-first-crud-module.md)是本手册的路线图视角。
 > 正文为英文原稿，保留原文以避免转译失真。
@@ -106,4 +107,5 @@ Before declaring done, verify cross-cutting concerns:
 |---|---|
 | Any backend work | `backend.md` |
 | Frontend pages | `react.md` |
+| Data lives in a customer-owned database (external source, not ent) | `external.md` |
 | Tree / master-detail shape | The base chapter, plus inspect a real sample of that shape (e.g. `system/dict/` for master-detail, menu module for tree) |

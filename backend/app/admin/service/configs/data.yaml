@@ -20,3 +20,18 @@ data:
     dial_timeout: 10s
     read_timeout: 0.4s
     write_timeout: 0.6s
+
+  # 外部数据源（客户已有的业务库，可读可写，默认只读）。键是数据源名，代码里按名字取；
+  # 外部数据示例页用的名字固定为 demo。时长用秒写（1800s），不支持 30m 这种写法。
+  # 说明见 docs/crud_module_guide/external.md。
+#  external_sources:
+#    demo:
+#      driver: "sqlserver"          # postgres | mysql | sqlserver
+#      dsn: "${GWA_EXT_DEMO_DSN:}"  # 连接串放 .env，不写进仓库
+#      read_only: true              # 不写默认 true；true 时写操作直接拒绝
+#      max_open_conns: 10
+#      max_idle_conns: 2
+#      conn_max_lifetime: 1800s
+#      query_timeout: 5s
+#      required: false              # true 才进入 /readyz；false 时连不上只记日志
+#      timezone: "Asia/Shanghai"    # 外部库无时区时间字段按此时区解释

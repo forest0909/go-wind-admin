@@ -111,7 +111,8 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案。
   protobuf Duration 串，未配置用代码默认；
 - **生产密钥注入**：环境变量 `GWA_AUTH_JWT_PRIVATE_KEY` / `GWA_AUTH_JWT_PUBLIC_KEY` /
   `GWA_AUTH_JWT_KEY` 优先于 yaml（yaml 内置开发示例密钥，`authenticator.go`
-  `applyJwtKeyOverrides` 应用覆盖并告警）；轮换命令见 [backend_deploy.md](./backend_deploy.md)；
+  `applyJwtKeyOverrides` 应用覆盖；只从 yaml 读到示例私钥时告警，经 `GWA_AUTH_JWT_PRIVATE_KEY`
+  注入的就是示例私钥时拒绝启动）；轮换命令见 [backend_deploy.md](./backend_deploy.md)；
 - **引擎只装配了 admin 一套**（`Authenticator.AdminAuthenticator`，`authenticator.go:71` / 构造于 `:110`）。
   `getAuthenticator`（`:662-673`）里 `case ClientType_app:` 是**空分支**：不报错、也不赋引擎，返回
   `(nil, nil)`——而调用方一律只判 `err`（如 `:252-255`、`:486-492`），拿到 nil 引擎后直接调方法即

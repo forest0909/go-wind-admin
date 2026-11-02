@@ -34,13 +34,19 @@ import (
 const devSamplePrivateKeyFingerprint = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCL8EdeTLDTf8AY"
 
 // applyJwtKeyOverrides 环境变量密钥覆盖 + 开发示例密钥安全检查（见调用处注释）。
-func applyJwtKeyOverrides(logHelper *bLogger.Helper, jwtCfg *conf.Authentication_Jwt) *conf.Authentication_Jwt {
+func applyJwtKeyOverrides(logHelper *bLogger.Helper, jwtCfg *conf.Authentication_Jwt) (*conf.Authentication_Jwt, error) {
 	if jwtCfg == nil {
-		return jwtCfg
+		return jwtCfg, nil
 	}
 	envPriv := os.Getenv("GWA_AUTH_JWT_PRIVATE_KEY")
 	envPub := os.Getenv("GWA_AUTH_JWT_PUBLIC_KEY")
 	if envPriv != "" {
+		// 显式用环境变量注入密钥的是部署环境；注入的却是仓库公开的示例私钥（比如照抄了 auth.yaml），
+		// 等于所有部署共用一把公开私钥，直接拒绝启动。去掉空白再比，换行宽度不同也能认出来。
+		if strings.Contains(strings.Join(strings.Fields(envPriv), ""), devSamplePrivateKeyFingerprint) {
+			return nil, errors.New("GWA_AUTH_JWT_PRIVATE_KEY is the public sample key from configs/auth.yaml; " +
+				"generate a private key for this deployment: openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048")
+		}
 		jwtCfg.PrivateKey = trans.Ptr(envPriv)
 		if envPub == "" {
 			// 只换了私钥：yaml 里的旧公钥和新私钥不配对，清掉它，
@@ -62,7 +68,7 @@ func applyJwtKeyOverrides(logHelper *bLogger.Helper, jwtCfg *conf.Authentication
 			"通过环境变量 GWA_AUTH_JWT_PRIVATE_KEY / GWA_AUTH_JWT_PUBLIC_KEY 注入，"+
 			"或修改 yaml（生成命令见 auth.yaml 内注释）。")
 	}
-	return jwtCfg
+	return jwtCfg, nil
 }
 
 const (
@@ -126,7 +132,11 @@ func NewAuthenticator(
 	//    GWA_AUTH_JWT_PUBLIC_KEY（非对称）或 GWA_AUTH_JWT_KEY（对称）注入密钥，
 	//    避免 yaml 中的开发示例密钥被带入生产。
 	// 2) 检测到开发示例私钥仍生效时打醒目告警（不阻断启动，避免断开发/测试链路）。
-	jwtCfg = applyJwtKeyOverrides(logHelper, jwtCfg)
+	//    但通过 GWA_AUTH_JWT_PRIVATE_KEY 显式注入示例私钥时拒绝启动。
+	jwtCfg, err := applyJwtKeyOverrides(logHelper, jwtCfg)
+	if err != nil {
+		panic(fmt.Sprintf("init admin authenticator failed: %v", err))
+	}
 
 	a := Authenticator{
 		log:            logHelper,

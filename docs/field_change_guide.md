@@ -5,7 +5,7 @@
 > 只读表格即可开工；每格后面的代码位置是判据，冲突时以代码为准。
 > 本页写法：逐个 `file:行号` 读回原文 + 读 `go.mod` 钉住的依赖源码，**未起后端打真实请求**——未验证项在 §6 末尾明确列出。
 
-样例模块全篇统一用 **字典类型**（`sys_dict_types` / 三端的 dict 页面）——它是最标准的纯标量 CRUD，没有边、没有枚举，加字段的动作最干净。
+样例模块全篇统一用 **字典类型**（`sys_dict_types` / React 的字典页面）——它是最标准的纯标量 CRUD，没有边、没有枚举，加字段的动作最干净。
 
 **路径基准**：后端代码位置一律相对 `backend/app/admin/service/`（跑命令时在 `backend/`），前端相对各端根目录。
 
@@ -20,7 +20,7 @@
 grep -n "json_name" api/protos/dict/service/v1/dict_type.proto
 ```
 
-| 档 | 判据 | 后端命令 | 后端手写文件 | 前端文件（你那一端） |
+| 档 | 判据 | 后端命令 | 后端手写文件 | 前端文件（React） |
 |---|---|---|---|---|
 | **A** | 字段已在 proto 里，只是页面没显示/没录入 | **0 条** | 0 | 3 个（见 §3） |
 | **B** | 新字段，标量（字符串/数字/布尔/时间） | 4 条（§2.1） | 3 个 / 4 处（§2.2） | 3 个 + 生成的 `index.ts` |
@@ -91,24 +91,20 @@ Create/Update 两处**仍然是 `SetNillable<字段>(…)`，只是实参要过�
 
 ---
 
-## 3. 前端：你那一端要碰的三个文件
+## 3. 前端（React）要碰的三个文件
 
 | | 列表（加一列） | 抽屉/弹窗表单（加一项） | 词条 |
 |---|---|---|---|
 | **react** | `src/pages/app/system/dict/DictTypeList.tsx:50` `columns` 数组 | 同目录 `DictTypeDrawer.tsx`：表单项 `:126+`、编辑回填 `:45-48`、新建默认值 `:109` | `src/locales/{zh-CN,en-US}/_modules/dict-type.json` |
-| **vue-element** | `src/pages/app/system/dict/dict-type-list.vue`：`table.columns:85`（`prop` camelCase）、需要可搜时 `search.fields:49` | 同目录 `dict-type-drawer.vue`：`ElFormItem` 区 `:17-52`、新建默认值 `defaults:88-93`、**编辑回填 `:113-116`（逐字段手写）**、校验 `formRules:99-106` | `src/locales/{zh-CN,en-US}/pages/dict.json` |
-| **vue-vben** | `src/views/app/system/dict/dict-type-list.vue:73` `columns`（`field` camelCase） | 同目录 `dict-type-drawer.vue:33` `useVbenForm` 的 `schema` | `src/locales/langs/{zh-CN,en-US}/page.json` |
 
-四处容易漏的：
+三处容易漏的：
 
-- **编辑回填在 react / element 两端都是逐字段手写的**：react `DictTypeDrawer.tsx:45-48` 的
-  `setFieldsValue({...})`、element `dict-type-drawer.vue:113-116` 的 `drawer.formData.xxx = row.xxx ?? …`。
-  漏了这一处，新建正常、**一编辑该字段就空**（vben 是整行 `baseFormApi.setValues(row)`，`:130`，不用逐字段加）。
-- **hooks / composables 不用碰。** `react/src/api/hooks/dict.ts`、`vue-*/src/api/composables/dict.ts` 里没有任何字段名，字段跟着生成的类型走。
-- **词条文件布局三端不同**，且 vben 是**共用一个大 `page.json`**：两种语言都要加，只加 `zh-CN` 会在英文界面露出 key。react 用扁平 camelCase 键（`typeName` / `typeNamePlaceholder` / `requiredTypeName` 一族）。
-- **表单校验另写一处**：element 的 `formRules:99` 与 `defaults:88` 是分开的两个对象，只加 `ElFormItem` 会得到一个能留空的必填字段。
+- **编辑回填是逐字段手写的**：`DictTypeDrawer.tsx:45-48` 的 `setFieldsValue({...})`。
+  漏了这一处，新建正常、**一编辑该字段就空**。
+- **hooks 不用碰。** `src/api/hooks/dict.ts` 里没有任何字段名，字段跟着生成的类型走。
+- **词条两种语言都要加**：只加 `zh-CN` 会在英文界面露出 key。用扁平 camelCase 键（`typeName` / `typeNamePlaceholder` / `requiredTypeName` 一族）。
 
-改完跑你那一端的门禁（三端表见根 [AGENTS.md](../AGENTS.md)）：react `npm run typecheck`；vue-element `npx vue-tsc --noEmit`；vue-vben `pnpm run typecheck`。
+改完跑前端门禁（见根 [AGENTS.md](../AGENTS.md)）：`npm run typecheck`、`npm run lint`。
 
 ---
 
@@ -140,7 +136,7 @@ Create/Update 两处**仍然是 `SetNillable<字段>(…)`，只是实参要过�
 
    还有一条同族的静默坑：后缀写成驼峰（`field__notEqual`）时，前端守卫认不出、给它追加 `__contains`，
    后端三段解析把中间段整段丢掉 ⇒ 查询变成 `field CONTAINS value`，"排除"反转成"命中"。
-   所以**搜索键后缀一律写表里的规范 snake_case 拼写**。`orderBy` 建议一并写蛇形：三端序列化器发的 JSON 数组形
+   所以**搜索键后缀一律写表里的规范 snake_case 拼写**。`orderBy` 建议一并写蛇形：前端序列化器发的 JSON 数组形
    会把驼峰归一，但 AIP 裸串形既不归一、也不支持 `-field` 降序——两形的差别与实测见
    [list_query_rule.md](./list_query_rule.md) 的「坏列名与坏后缀是两种失败」。
 
@@ -159,8 +155,8 @@ Create/Update 两处**仍然是 `SetNillable<字段>(…)`，只是实参要过�
 - [ ] 库里出现新列（`psql`/客户端看 `sys_dict_types`），且**旧行取的是默认值而非报错**；
 - [ ] <http://localhost:7788/docs> 里该资源的 schema 出现这个字段，`json_name` 与你前端写的键一致；
 - [ ] 建一条带新字段的记录 → 列表能看到 → **编辑时只改另一个字段** → 回来看新字段没被清零（这一条专杀 §5.1）；
-- [ ] 你那一端门禁 0 错误；
-- [ ] `git status`：生成物齐——`*.pb.go`、`ent/**`（含 `migrate/schema.go`）、`openapi.yaml`、你这一端的 `src/api/generated/`。若你维护的是本仓上游（三端都在），`make ts` 会把另两端的 `index.ts` 一起改到，**跟着提交**；只采用一端的话，另一端本就不在你树上。
+- [ ] 前端门禁 0 新增错误；后端 `go test ./...` 通过（`TestRepoUpdateRoundTrip` 会自动覆盖新标量字段：Update 回调漏接时报"返回成功但没写入"）；
+- [ ] `git status`：生成物齐——`*.pb.go`、`ent/**`（含 `migrate/schema.go`）、`openapi.yaml`、React 的 `src/api/generated/`。
 
 **本篇未做的验证**：所有 `file:行号` 都逐个读回过原文；§5 的两条 go-crud 分支（缺 mask ⇒ 全字段直写、未知列 ⇒ 静默丢条件）是**读 `go.mod` 钉住的那个版本的依赖源码**得出的，另加一个本地探针确认 ent 的 `Selector.C("typeName")` 自身不做归一（归一发生在上游 go-crud）。**没有**在跑起来的后端上打真实请求复核（写这页时 `:7788` 无进程）。要较真的话，§5.2 值得起库测一次：拼错列名应返回全量而非 4xx。
 
@@ -172,5 +168,4 @@ Create/Update 两处**仍然是 `SetNillable<字段>(…)`，只是实参要过�
 - [03 章 代码生成链路](./tutorial/03-codegen-chain.md) —— 哪些文件是生成的、谁生成
 - [list_query_rule.md](./list_query_rule.md) —— 操作符全表、字段掩码
 - [frontend_authority.md](./frontend_authority.md) —— 真要把字段设成"某些角色不可见"时
-- [adopt-one-frontend.md](./adopt-one-frontend.md) —— 只维护一端时的裁剪与 `make ts` 回流
-- 各端约定权威：`frontend/admin/{react,vue-element,vue-vben}/AGENTS.md`
+- 前端约定权威：`frontend/admin/react/AGENTS.md`

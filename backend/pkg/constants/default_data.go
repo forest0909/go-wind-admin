@@ -651,8 +651,8 @@ var DefaultMenus = []*permissionV1.Menu{
 			Authority: []string{"sys:platform_admin"},
 		},
 	},
+	// 外部数据示例：外部数据源模块的范例页（数据在外部数据源 demo，见 docs/crud_module_guide/external.md）
 	{
-		// 外部数据示例：外部数据源模块的范例页（数据在外部数据源 demo，见 docs/crud_module_guide/external.md）
 		Id:        trans.Ptr(uint32(71)),
 		ParentId:  trans.Ptr(uint32(60)),
 		Type:      permissionV1.Menu_MENU.Enum(),

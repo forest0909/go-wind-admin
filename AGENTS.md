@@ -16,7 +16,7 @@ docs/                       文档（总入口 docs/README.md）
 
 ## 门禁
 
-在声称完成之前跑完。前端 lint 不能比 `docs/plans/react-lint-baseline.tsv` 多（当前基线 909 条：659 error，250 warning）。
+在声称完成之前跑完。前端 lint 不能比 `docs/plans/react-lint-baseline.tsv` 多（当前基线 876 条：628 error，248 warning；`node scripts/check-lint-baseline.mjs` 在 `frontend/admin/react` 下比对总数，CI 同款）。
 
 | 范围 | 命令 | 在哪执行 |
 |---|---|---|

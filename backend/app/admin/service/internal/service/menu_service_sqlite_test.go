@@ -185,13 +185,9 @@ func TestMenuServiceSqlite_Update(t *testing.T) {
 	require.Equal(t, "/svc-menu-update", *after.Path, "掩码外字段 path 应保持原值")
 }
 
-// TestMenuServiceSqlite_Delete_ParentRowOnlyUnderSqlite 验证服务层按主键删除菜单。
-// 注：子树级联删除依赖 MenuRepo.Delete 内 QueryAllChildrenIds 的递归 CTE，而
-// go-crud entgo v0.0.55 的该 CTE 只实现了 MySQL/Postgres 方言，SQLite 方言下查询
-// 串为空、返回空子节点集——因此 SQLite 测试库上仅目标行本身被删除、子行保留
-// （生产 MySQL/PG 上行为是整棵子树级联）。本用例按 SQLite 实际行为断言：
-// 父行被删、子行保留。
-func TestMenuServiceSqlite_Delete_ParentRowOnlyUnderSqlite(t *testing.T) {
+// TestMenuServiceSqlite_Delete_CascadesSubtree 验证服务层删除菜单时整棵子树级联删除。
+// QueryAllChildrenIds 的递归 CTE 已补 SQLite 分支，SQLite 与生产 MySQL/PG 行为一致。
+func TestMenuServiceSqlite_Delete_CascadesSubtree(t *testing.T) {
 	entClient := enttest.NewEntClientForTest(t)
 	svc := newMenuServiceForTest(t, entClient)
 	ctx := enttest.NewSystemContext(context.Background())
@@ -230,8 +226,7 @@ func TestMenuServiceSqlite_Delete_ParentRowOnlyUnderSqlite(t *testing.T) {
 
 	remaining, err := entClient.Client().Menu.Query().All(ctx)
 	require.NoError(t, err)
-	require.Len(t, remaining, 1, "SQLite 方言下级联 CTE 无实现，仅目标行被删除")
-	require.Equal(t, "待删除子菜单", *remaining[0].Name, "剩余行应为未被级联的子菜单（生产 MySQL/PG 上无此残留）")
+	require.Empty(t, remaining, "父菜单删除后子菜单随子树级联删除")
 }
 
 // TestMenuServiceSqlite_SyncMenus_MergeInsertsTree 验证服务层 SyncMenus 的

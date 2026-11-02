@@ -17,6 +17,7 @@ import (
 // 这几张表不挂 ent 隐私策略：登录、站内信广播、组织子树维护、关联名称回填等内部流程
 // 要读全量。所以只在对外接口的入口用 WithDataScope 标记 ctx，被标记的仓储读方法
 // （List/Count/Get）才注入过滤谓词。按 id 改删先用标记过的 ctx 做一次 Get，越界即 404。
+// service 读操作人本身用的是未标记的 ctx，不受范围限制。
 
 type dataScopeEnforcedKey struct{}
 
@@ -81,13 +82,20 @@ func usersInUnits(units []uint32) *sql.Selector {
 		Where(sql.In(t.C(userorgunit.FieldOrgUnitID), args...))
 }
 
-// visibleUserColumn 生成"列值属于可见用户"的谓词：本人总是可见，
-// 另加 UNIT 类目标集内任一单元的成员。SELF 档只剩本人。
+// visibleUserColumn 生成"列值属于可见用户"的谓词：SELF 档为本人，
+// UNIT 类为目标集内任一单元的成员，两者取并集；都没有时一条都不匹配。
 func (rs *resolvedDataScope) visibleUserColumn(column string) func(*sql.Selector) {
 	return func(s *sql.Selector) {
-		preds := []*sql.Predicate{sql.EQ(s.C(column), rs.uid)}
+		var preds []*sql.Predicate
+		if rs.self {
+			preds = append(preds, sql.EQ(s.C(column), rs.uid))
+		}
 		if len(rs.units) > 0 {
 			preds = append(preds, sql.In(s.C(column), usersInUnits(rs.units)))
+		}
+		if len(preds) == 0 {
+			s.Where(sql.False())
+			return
 		}
 		s.Where(sql.Or(preds...))
 	}

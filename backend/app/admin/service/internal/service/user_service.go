@@ -486,10 +486,8 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		return nil, err
 	}
 
-	// 数据范围外的用户按不存在处理（404）
-	if _, err = s.userRepo.Get(data.WithDataScope(ctx), &identityV1.GetUserRequest{
-		QueryBy: &identityV1.GetUserRequest_Id{Id: req.GetId()},
-	}); err != nil {
+	// 数据范围外的用户按不存在处理（404）。allow_missing 且目标确实不存在时照旧进入仓储创建。
+	if err = s.requireUserInScopeForUpdate(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -684,6 +682,27 @@ func sameUint32Set(a, b []uint32) bool {
 		seen[id] = n - 1
 	}
 	return true
+}
+
+// requireUserInScopeForUpdate Update 的范围检查：已存在但越界回 404；
+// allow_missing 且目标不存在（未过滤的存在性）时放行，由仓储创建。
+func (s *UserService) requireUserInScopeForUpdate(ctx context.Context, req *identityV1.UpdateUserRequest) error {
+	if req.GetAllowMissing() {
+		exist, err := s.userRepo.UserExists(ctx, &identityV1.UserExistsRequest{
+			QueryBy: &identityV1.UserExistsRequest_Id{Id: req.GetId()},
+		})
+		if err != nil {
+			s.log.Errorf(ctx, "check user exists failed: %v", err)
+			return err
+		}
+		if !exist.GetExist() {
+			return nil
+		}
+	}
+	_, err := s.userRepo.Get(data.WithDataScope(ctx), &identityV1.GetUserRequest{
+		QueryBy: &identityV1.GetUserRequest_Id{Id: req.GetId()},
+	})
+	return err
 }
 
 func (s *UserService) Delete(ctx context.Context, req *identityV1.DeleteUserRequest) (*emptypb.Empty, error) {

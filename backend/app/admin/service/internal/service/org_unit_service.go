@@ -194,9 +194,20 @@ func (s *OrgUnitService) Update(ctx context.Context, req *identityV1.UpdateOrgUn
 		return nil, err
 	}
 
-	// 数据范围外的单元按不存在处理（404）
-	if err = s.requireOrgUnitInScope(ctx, req.GetId()); err != nil {
-		return nil, err
+	// 数据范围外的单元按不存在处理（404）。allow_missing 且目标确实不存在时照旧进入仓储创建。
+	createMissing := false
+	if req.GetAllowMissing() {
+		exist, eerr := s.orgUnitRepo.IsExist(ctx, req.GetId())
+		if eerr != nil {
+			s.log.Errorf(ctx, "check org unit exists failed: %v", eerr)
+			return nil, eerr
+		}
+		createMissing = !exist
+	}
+	if !createMissing {
+		if err = s.requireOrgUnitInScope(ctx, req.GetId()); err != nil {
+			return nil, err
+		}
 	}
 
 	req.Data.Id = trans.Ptr(req.GetId())
@@ -225,7 +236,8 @@ func (s *OrgUnitService) Delete(ctx context.Context, req *identityV1.DeleteOrgUn
 	if err := s.requireOrgUnitInScope(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
-	if err := s.orgUnitRepo.Delete(ctx, req); err != nil {
+	// 带范围删除：子树含范围外后代时仓储整体拒绝（403）
+	if err := s.orgUnitRepo.Delete(data.WithDataScope(ctx), req); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

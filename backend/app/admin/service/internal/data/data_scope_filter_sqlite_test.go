@@ -108,7 +108,7 @@ func (f *dataScopeFixture) visibleUsers(t *testing.T, ctx context.Context) []uin
 	return out
 }
 
-// TestUserDataScopeGuard 用户表：UNIT 类按 user↔单元关系，SELF 只有本人，本人总可见，
+// TestUserDataScopeGuard 用户表：UNIT 类按 user↔单元关系，SELF 只有本人，UNIT 类不附带本人，
 // 无单元的用户只有 ALL 看得到；越界 Get 回 404。
 func TestUserDataScopeGuard(t *testing.T) {
 	f := newDataScopeFixture(t)
@@ -124,10 +124,11 @@ func TestUserDataScopeGuard(t *testing.T) {
 		{"未标记的 ctx 不过滤（内部查询）", crudViewer.WithContext(context.Background(), crudViewer.NewUserContext(11, 0, 0, "", []crudViewer.DataScope{selfScope})), all},
 		{"UNIT_ONLY[1] 本人 10", scopedAs(10, unitScope(1)), []uint32{10}},
 		{"UNIT_AND_CHILD[1,2] 本人 10", scopedAs(10, unitScope(1, 2)), []uint32{10, 11, 14}},
-		{"SELECTED[3] 本人 10 不在 3 里仍可见自己；created_by=10 不放行", scopedAs(10, unitScope(3)), []uint32{10, 12, 14}},
+		{"SELECTED[3] 本人 10 不在 3 里：看不到自己；created_by=10 不放行", scopedAs(10, unitScope(3)), []uint32{12, 14}},
+		{"UNIT 目标集为空且无 SELF：一条都不匹配", scopedAs(10, unitScope()), []uint32{}},
 		{"SELF 本人 11", scopedAs(11, selfScope), []uint32{11}},
 		{"UNIT[3] ∪ SELF 本人 11", scopedAs(11, unitScope(3), selfScope), []uint32{11, 12, 14}},
-		{"无单元用户 13 带 UNIT[1] 只看到 10 和自己", scopedAs(13, unitScope(1)), []uint32{10, 13}},
+		{"无单元用户 13 带 UNIT[1] 只看到 10", scopedAs(13, unitScope(1)), []uint32{10}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -136,7 +137,7 @@ func TestUserDataScopeGuard(t *testing.T) {
 	}
 
 	for name, ctx := range map[string]context.Context{
-		"NONE":   scopedAs(10, noneScope),
+		"NONE":    scopedAs(10, noneScope),
 		"无 scope": scopedAs(10),
 	} {
 		_, err := f.users.List(ctx, &paginationV1.PagingRequest{})
@@ -153,6 +154,8 @@ func TestUserDataScopeGuard(t *testing.T) {
 	require.True(t, kerrors.IsNotFound(err), "越界 Get 应 404，得到 %v", err)
 	err = get(scopedAs(10, unitScope(1, 2)), 13)
 	require.True(t, kerrors.IsNotFound(err), "无单元用户对 UNIT 档越界，得到 %v", err)
+	err = get(scopedAs(10, unitScope(3)), 10)
+	require.True(t, kerrors.IsNotFound(err), "UNIT 类不附带本人，得到 %v", err)
 	require.NoError(t, get(scopedAs(13, selfScope), 13))
 }
 
@@ -245,7 +248,7 @@ func TestAuditLogDataScopeGuard(t *testing.T) {
 		want []uint32
 	}{
 		{"ALL", scopedAs(10, allScope), []uint32{10, 11, 12, 13, 14}},
-		{"UNIT[2] 本人 10", scopedAs(10, unitScope(2)), []uint32{10, 11, 14}},
+		{"UNIT[2] 本人 10 不在 2 里：看不到自己的日志", scopedAs(10, unitScope(2)), []uint32{11, 14}},
 		{"SELF 本人 12", scopedAs(12, selfScope), []uint32{12}},
 		{"UNIT[3] ∪ SELF 本人 13", scopedAs(13, unitScope(3), selfScope), []uint32{12, 13, 14}},
 	}

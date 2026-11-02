@@ -194,8 +194,7 @@ func TestOrgUnitRepoSqlite_Update(t *testing.T) {
 }
 
 // TestOrgUnitRepoSqlite_Delete 验证 OrgUnitRepo.Delete 删除记录后表内计数归零。
-// Delete 的子树收集依赖按方言生成的递归 CTE（仅 MySQL/PG 有分支），SQLite 下查询串为空、
-// 返回 0 行，随后按 [自身ID] 执行删除——即 SQLite 集成测试实际走的是"无子节点单删"路径。
+// 本用例走"无子节点单删"路径；子树级联见 data_scope_filter_sqlite_test.go。
 func TestOrgUnitRepoSqlite_Delete(t *testing.T) {
 	repo := newOrgUnitRepoSqlite(t)
 	ctx := enttest.NewSystemContext(context.Background())

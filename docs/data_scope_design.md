@@ -81,11 +81,19 @@ UNIT 类目标集（本部门 / 及以下 / 自定义，及以下在登录时已
 
 细节：
 
-- **本人总是可见**。用户表和日志表的谓词恒带 `id/user_id = 本人`，所以"自定义"的单元集
-  不含自己的单元时，操作人仍能读到自己（用户修改/删除接口要先读操作人本身）。
-- **没有组织单元的用户只有 ALL 看得到**（他自己除外）。
+- **UNIT 类不附带本人**。只有 SELF 档才加 `id/user_id = 本人`。"自定义"的单元集不含自己的
+  单元时，在用户列表里看不到自己，也看不到自己的日志。service 读操作人本身（修改/删除接口的
+  前置检查）用的是未标记的 ctx，不受这条影响。
+- UNIT 类目标集为空且没有 SELF：一条都不匹配（空列表，不报错）。
+- **没有组织单元的用户只有 ALL 看得到**；SELF 档下本人能看到自己。
 - **越界按 id 访问回 404**，不区分"不存在"和"看不见"。修改、删除、重置密码在写之前
   先用带范围的 ctx 读一次目标，越界即 404，什么都不写。
+- **`allow_missing`**：Update 带 `allow_missing` 且目标确实不存在（按未过滤的存在性判断）时，
+  照旧走仓储的创建分支；目标已存在但越界时仍是 404，不能借它改越界资源。
+- **删除组织单元按整棵子树判定**：删除会级联整棵子树（及其用户绑定）。带范围删除时，
+  先取未过滤的待删子树 ID 集合，与调用者可见集合比对，只要有一个后代不可见就整体返回
+  **403**，不删单元、不清绑定。目标本身不可见仍是 404。用 403 而不是 404，是因为目标本身
+  可见，问题出在看不见的后代上。
 - 组织树：可见单元的父节点不可见时，该单元作为根返回（`parent_id` 原值保留），
   不会被当成孤儿丢掉。
 - 缺 viewer、无档位（含 `[UNSPECIFIED]` 剔空）、显式 NONE：403 拒绝（fail-closed）。
@@ -100,15 +108,17 @@ UNIT 类目标集（本部门 / 及以下 / 自定义，及以下在登录时已
 
 - service 在对外接口入口用 `data.WithDataScope(ctx)` 包一层 ctx，只包传给仓储读方法的那次调用；
 - 被标记的 `List / Count / Get` 注入子查询谓词：
-  - 用户：`id = uid OR id IN (SELECT user_id FROM sys_user_org_units WHERE org_unit_id IN 单元集)`；
+  - 用户：`id = uid`（仅 SELF）`OR id IN (SELECT user_id FROM sys_user_org_units WHERE org_unit_id IN 单元集)`；
   - 组织单元：`id IN 单元集 OR id IN (SELECT org_unit_id FROM sys_user_org_units WHERE user_id = uid)`（后者仅 SELF）；
-  - 日志：`user_id = uid OR user_id IN (SELECT user_id FROM sys_user_org_units WHERE org_unit_id IN 单元集)`；
+  - 日志：`user_id = uid`（仅 SELF）`OR user_id IN (SELECT user_id FROM sys_user_org_units WHERE org_unit_id IN 单元集)`；
+  - 三者都没有候选谓词时注入恒假条件；
 - 没标记的 ctx、系统上下文、ALL 都不加谓词。
 
 子查询走既有索引 `idx_uou_org_unit_id` / `idx_uou_user_id`，日志表 `user_id` 也有索引，没有改表结构。
 
 测试：`data/data_scope_filter_sqlite_test.go`（单元 × 用户 × 创建人矩阵，三张表），
-`service/data_scope_byid_sqlite_test.go`（用户、组织单元按 id 越界 404，日志接口过滤）。
+`service/data_scope_byid_sqlite_test.go`（用户、组织单元按 id 越界 404，子树含越界后代删除 403，
+`allow_missing` 创建与越界 404，日志接口过滤）。
 
 ### 4.3 业务表：ent 查询策略（逐表 opt-in）
 

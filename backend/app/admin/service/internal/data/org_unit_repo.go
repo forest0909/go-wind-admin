@@ -512,6 +512,11 @@ func (r *OrgUnitRepo) Delete(ctx context.Context, req *identityV1.DeleteOrgUnitR
 	}
 	childrenIds = append(childrenIds, req.GetId())
 
+	// 带数据范围时，待删子树必须整棵可见：含范围外的后代就整体拒绝（403），不做任何写入
+	if err = r.requireAllInScope(ctx, childrenIds); err != nil {
+		return err
+	}
+
 	//r.log.Info(ctx, "orgunits childrenIds to delete: ", childrenIds)
 
 	// 岗位硬性挂在单元上（org_unit_id NOT NULL，且无 DB 外键兜底）：子树内
@@ -562,6 +567,30 @@ func (r *OrgUnitRepo) Delete(ctx context.Context, req *identityV1.DeleteOrgUnitR
 	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
 		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
 		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
+}
+
+// requireAllInScope ctx 带数据范围时，ids 中只要有一个单元不可见就返回 403。
+func (r *OrgUnitRepo) requireAllInScope(ctx context.Context, ids []uint32) error {
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return err
+	}
+	if scopeSel == nil {
+		return nil
+	}
+	visible, err := r.entClient.Client().OrgUnit.Query().
+		Where(orgunit.IDIn(ids...), predicate.OrgUnit(scopeSel)).
+		Count(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "count visible org units failed: %v", err)
+		return identityV1.ErrorInternalServerError("count visible org units failed")
+	}
+	if visible != len(ids) {
+		r.log.Errorf(ctx, "org unit subtree has %d units outside data scope", len(ids)-visible)
+		return identityV1.ErrorForbidden("org unit subtree contains units outside your data scope")
 	}
 	return nil
 }

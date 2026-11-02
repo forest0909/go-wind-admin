@@ -221,6 +221,36 @@ server:
 
 重启后生效。只在内网或本机可达的环境打开，用完删掉这段再重启。
 
+## 监控
+
+### 指标（Prometheus）
+
+`configs/server.yaml` 里 `server.rest.enable_metrics` 默认 `false`，此时 `/metrics` 返回 404，不多开端口、不多采集。打开方式同 pprof，在 `configs/local/server.yaml` 里写 `server.rest.enable_metrics: true` 后重启。
+
+`GET /metrics` 注册在 7788 上，和 `/healthz` 一样不经过认证、授权、访问日志和审计，**没有任何鉴权**，只应在内网可达：不要通过公网反向代理转发它，Prometheus 直接抓内网地址即可。
+
+关键指标：
+
+- `server_requests_code_total{kind,operation,code,reason}`：请求数。`operation` 是接口的 proto 名（如 `/admin.service.v1.UserService/List`），不是原始 URL，不会因 ID 不同产生新序列。
+- `server_requests_seconds_bucket|sum|count{kind,operation}`：请求耗时（秒）。
+- `go_*`、`process_*`：Go runtime 和进程默认指标（协程数、GC、内存、CPU、文件描述符）。
+
+`/healthz`、`/readyz`、`/metrics` 本身不计入请求指标。
+
+### 链路追踪（OTLP）
+
+追踪中间件由 `server.rest.middleware.enable_tracing` 控制，默认已开，但没有配置 exporter 时是空操作。要上报，在 `configs/local` 的任一配置文件里加 `trace` 段，例如上报到 Jaeger 或 Tempo 的 OTLP 端口：
+
+```yaml
+trace:
+  exporter: otlp-grpc        # 或 otlp-http；zipkin、stdout 也可用
+  endpoint: "jaeger:4317"    # otlp-http 默认端口 4318
+  insecure: true             # 内网明文；上云用 TLS 时去掉
+  sampler: 0.1               # 采样率，不写按 1.0
+```
+
+配置后每个请求产生 span，访问日志会带 `trace_id`、`span_id`，可凭它到 Jaeger/Tempo 查链路。不写 `trace` 段或不写 `endpoint` 时不上报，也不会报错。
+
 ## 上传限制与超时
 
 - REST 服务最外层（早于 CORS、路由、JSON 解码和鉴权）统一限制请求体大小：文件上传 `/admin/v1/file/upload` 约 70.7 MiB（50 MiB 文件经 base64 膨胀后再加 4 MiB 余量），其他接口约 7.7 MiB（按头像上限 5 MiB 的 base64 再加 1 MiB）。`Content-Length` 超限时一个字节都不读直接返回 413；没有 `Content-Length` 的分块请求最多读到上限加 1 字节就返回 413。前置反向代理的 body 上限不要低于上传接口的值。

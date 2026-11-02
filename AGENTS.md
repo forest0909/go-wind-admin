@@ -24,6 +24,7 @@ docs/                       文档（总入口 docs/README.md）
 | 生成链 | `make api && make openapi && make ts && make ent`，之后生成目录不应再有未解释的 diff | `backend/` |
 | 前端 | `npm run typecheck`、`npm run build`、`npm run lint` | `frontend/admin/react` |
 | 上游依赖回流 | `bash scripts/check-no-upstream-deps.sh` | 仓库根 |
+| 错误 reason 译文 | `node scripts/check-error-reason-i18n.mjs` | 仓库根 |
 
 **门禁出现任何新报错，一律当作自己引入的 bug 修复。**
 

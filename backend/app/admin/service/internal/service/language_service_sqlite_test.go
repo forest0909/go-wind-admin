@@ -214,3 +214,35 @@ func TestLanguageServiceSqlite_Delete(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, len(constants.DefaultLanguages)-1, cnt, "删除一条后计数应减一")
 }
+
+// TestLanguageServiceSqlite_BatchCreate 批量创建落库并注入 createdBy；
+// 批内有重复 language_code 时整批回滚（此前该方法未实现，调用即 nil panic）。
+func TestLanguageServiceSqlite_BatchCreate(t *testing.T) {
+	entClient := enttest.NewEntClientForTest(t)
+	svc := newLanguageServiceForTest(t, entClient)
+	ctx := auth.NewContext(enttest.NewSystemContext(context.Background()), &authenticationV1.UserTokenPayload{UserId: 5})
+
+	_, err := svc.BatchCreate(ctx, &dictV1.BatchCreateLanguagesRequest{Items: []*dictV1.Language{
+		{LanguageCode: trans.Ptr("xx-AA"), LanguageName: trans.Ptr("A"), NativeName: trans.Ptr("A")},
+		{LanguageCode: trans.Ptr("xx-BB"), LanguageName: trans.Ptr("B"), NativeName: trans.Ptr("B")},
+	}})
+	require.NoError(t, err)
+	rows, err := entClient.Client().Language.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, rows, 2)
+	for _, row := range rows {
+		require.Equal(t, uint32(5), *row.CreatedBy, "createdBy 应取操作人")
+	}
+
+	_, err = svc.BatchCreate(ctx, &dictV1.BatchCreateLanguagesRequest{Items: []*dictV1.Language{
+		{LanguageCode: trans.Ptr("xx-CC"), LanguageName: trans.Ptr("C"), NativeName: trans.Ptr("C")},
+		{LanguageCode: trans.Ptr("xx-AA"), LanguageName: trans.Ptr("dup"), NativeName: trans.Ptr("dup")},
+	}})
+	require.Error(t, err, "重复编码应失败")
+	cnt, err := entClient.Client().Language.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, cnt, "失败时整批回滚，xx-CC 不应落库")
+
+	_, err = svc.BatchCreate(ctx, &dictV1.BatchCreateLanguagesRequest{})
+	require.Error(t, err, "空列表应报参数错误")
+}

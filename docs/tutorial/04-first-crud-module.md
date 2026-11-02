@@ -5,18 +5,17 @@
 
 本章是**路线图**，每步的逐条约定、样例文件索引、边界情形在仓库的 CRUD 手册里：
 [crud_module_guide/backend.md](../crud_module_guide/backend.md)
-与同目录的 `react.md` / `vue-element.md` / `vue-vben.md`。写代码前先读对应章节。
+与同目录的 `react.md`。写代码前先读对应章节。
 
-> **先确认你需不需要本章。** 本章是"从零加一个资源"。如果你只是给**已有**资源加一个字段、而且只动自己那一端，
+> **先确认你需不需要本章。** 本章是"从零加一个资源"。如果你只是给**已有**资源加一个字段，
 > 命令数与文件清单都在 [改一个字段速查](../field_change_guide.md) 里（四档判定，A 档一条命令都不用跑）。
 
-## 0. 动手前先回答五个问题
+## 0. 动手前先回答四个问题
 
 1. 实体名三形：PascalCase / snake_case / 中文标签；
 2. 业务字段清单（审计字段 mixin 自动加，不列）；
 3. 归属 domain：已有（`dict`/`permission`/`identity`/…）还是全新（全新要多动一处 buf 配置）；
-4. 哪些前端：react / vue-element / vue-vben（后端必然包含）；
-5. 模块形态：普通 CRUD / 树（parent_id）/ 主从（如 dict_type+dict_entry）。
+4. 模块形态：普通 CRUD / 树（parent_id）/ 主从（如 dict_type+dict_entry）。
 
 ## 后端十步
 
@@ -113,41 +112,36 @@ cd backend/app/admin/service && make build
 
 起来后 <http://localhost:7788/docs> 应出现新资源与路由；用前端或 curl 打一轮 List/Create/Update/Delete。
 
-## 前端（每端读各自的框架手册）
+## 前端（React，读 react.md）
 
-三端机制差异很大，**不可互相照抄**：
+列表用 ProTable，表单用 DrawerForm + formRef，变更后 `queryClient.invalidateQueries({ queryKey: ['listXxx'] })` 刷新。
 
-| | 列表 | 表单 | 刷新 |
-|---|---|---|---|
-| react | ProTable | DrawerForm + formRef | `queryClient.invalidateQueries({ queryKey: ['listXxx'] })` |
-| vue-element | ProPage（配置驱动） | ProModal + ElForm `:rules` | `pageRef.value?.refresh()`（invalidate 在此端无效） |
-| vue-vben | VxeGrid + proxyConfig | useVbenDrawer + useVbenForm | `gridApi.reload()`（挂在 drawer 的 onOpenChange） |
-
-两条跨端铁律：
+两条铁律：
 
 - **Update 必须带 updateMask，且用生成的 `useUpdateXxx`**（内部 `makeUpdateMask(Object.keys(values))`）。
   后端 `FilterByFieldMask` 对漏 mask 的 DTO 是**全字段直写**——手拼 mask 或不带 mask 的旧表单
   round-trip 会静默污染未触碰的列；
 - **`PaginationQuery` 必须 `new` 实例化**（`.toRawParams()` 依赖实例 getter），对象字面量直接崩。
 
-i18n：页面文案全部走 `$t`/`t` + locale JSON（`import.meta.glob` 自动注册，别手动注册）；
-菜单标题在单独的 `routes.json`（react/vue-element）/ `menu.json`（vben），路由 `meta.title`
-指过去。三端的已知坑（搜索表单布局、窄栏定式、EP Splitter、IAB 截图假回归等）见各端
-`frontend/admin/*/AGENTS.md`——那是各端工程约定的权威文档。
+i18n：页面文案全部走 `t` + locale JSON（`import.meta.glob` 自动注册，别手动注册）；
+菜单标题在单独的 `_core/routes.json`，路由 `meta.title: 'routes:xxx'` 指过去。已知坑见
+`frontend/admin/react/AGENTS.md`——那是前端工程约定的权威文档。
 
 ## 部署侧收尾（新手最常漏的一步）
 
 - **全新库**：首启自动播种一切（含 Api 表行、菜单），无需动作；
-- **已部署实例**：新端点**不会**自动进 Api 表——必须在管理页「接口管理 → 接口同步」全量重建，
-  否则新端点没有权限点，非平台管理员角色调用 403；新菜单走「菜单管理」
-  页面加（改 `pkg/constants/default_data.go` 只影响全新库）；
+- **已部署实例**：新端点在重启时自动进 Api 表、同步权限点（前提是先 `make openapi` 再构建，
+  比对的是打进二进制的 `openapi.yaml`）；侧栏菜单来自后端菜单表，新页面要在「菜单管理 → 同步菜单」
+  把 React 路由合并进去，或手工加一行（改 `pkg/constants/default_data.go` 只影响全新库）；
+- **`go test ./...`**：`TestEveryOpenAPIOperationHasRoute` / `TestRestServicesImplementAllMethods` 查漏注册、
+  漏实现方法；给新 repo 在 `TestRepoUpdateRoundTrip` 加一个用例，查 Update 漏接字段；
 - 把整个链路跑通后，对照手册的 completion checklist 逐项勾。
 
 ## 深读
 
 - [crud_module_guide/backend.md](../crud_module_guide/backend.md)
   —— 后端十步完整手册（样例索引、关联表模式、陷阱清单）
-- 同目录 `react.md` / `vue-element.md` / `vue-vben.md` —— 三端各自的页面实现手册
+- 同目录 `react.md` —— React 页面实现手册
 - [field_change_guide.md](../field_change_guide.md) —— **只给已有资源加一个字段**时的速查（本章是新增整个资源）
 - [list_query_rule.md](../list_query_rule.md) —— List 请求的过滤/排序/字段掩码协议
 - [backend_project_struct.md](../backend_project_struct.md) —— 目录职责

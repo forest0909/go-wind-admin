@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
@@ -249,6 +250,13 @@ func NewRestServer(
 			swaggerUI.WithTitle("GoWind Admin"),
 			swaggerUI.WithMemoryData(assets.OpenApiData, "yaml"),
 		)
+	}
+
+	if missing, checkErr := openAPIOperationsWithoutRoute(srv, assets.OpenApiData); checkErr != nil {
+		log.Errorf("route check against embedded openapi failed: %v", checkErr)
+	} else if len(missing) > 0 {
+		log.Errorf("%d operations in embedded openapi have no registered route (missing Register*HTTPServer call in rest_server.go?): %s",
+			len(missing), strings.Join(missing, ", "))
 	}
 
 	if authorizer != nil {

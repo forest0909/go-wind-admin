@@ -1,0 +1,30 @@
+name: backend
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - 'frontend/admin/react/src/**' # TestPermissionCodeConsistency 读 React 源码里的按钮编码
+      - '.github/workflows/backend.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/admin/react/src/**'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: go build ./...
+      - run: go vet ./...
+      # 测试全部跑 SQLite / miniredis，不依赖外部服务（PG 守卫测试只在设置 GUARD_TEST_PG_DSN 时加跑）
+      - run: go test ./...

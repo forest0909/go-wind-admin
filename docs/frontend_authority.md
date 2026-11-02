@@ -1,5 +1,11 @@
 # 前端权限
 
+> **注意：本仓只剩 React 前端**（`frontend/admin/react`）。下文大量示例（`src/router/access.ts`、`#/api`、
+> `@vben/access`、`VITE_ROUTER_ACCESS_MODE`、vue-element 的指令等）来自已删除的 vue-vben / vue-element，
+> 只作历史参考，不要照抄路径。React 的实际位置：路由双模式在 `src/core/router/generators/generate-routes-{frontend,backend}.ts`，
+> 模式取 `preferences.app.accessMode`（默认 `backend`，菜单来自后端菜单表，失败即空菜单、不降级）；
+> 按钮级权限在 `src/core/access/`（`access-control.tsx`、`use-access.ts`）。各端差异以文末对比表的 react 列为准。
+
 前端的权限主要分为两个部分：
 
 1. 路由的访问权限；

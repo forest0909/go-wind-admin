@@ -240,7 +240,7 @@ func (r *FileRepo) Update(ctx context.Context, req *storageV1.UpdateFileRequest)
 				SetNillableSizeFormat(req.Data.SizeFormat).
 				SetNillableLinkURL(req.Data.LinkUrl).
 				SetNillableContentHash(req.Data.ContentHash).
-				SetNillableCreatedBy(req.Data.UpdatedBy).
+				SetNillableUpdatedBy(req.Data.UpdatedBy).
 				SetUpdatedAt(time.Now())
 		},
 		func(s *sql.Selector) {

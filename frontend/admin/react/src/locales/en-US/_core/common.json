@@ -215,7 +215,18 @@
       "USER_LOCKED": "User has been locked",
       "DUPLICATE_ENTRY": "Data already exists",
       "VALIDATION_FAILED": "Validation failed",
-      "INTERNAL_ERROR": "Internal server error"
+      "INTERNAL_ERROR": "Internal server error",
+      "ACCESS_TOKEN_NOT_FOUND": "Access token not found, please sign in again",
+      "REFRESH_TOKEN_NOT_FOUND": "Refresh token not found, please sign in again",
+      "DELETE_FAILED": "Delete failed, please try again later",
+      "DOWNLOAD_FAILED": "Download failed, please try again later",
+      "UPLOAD_FAILED": "Upload failed, please try again later",
+      "FILE_NOT_FOUND": "File not found",
+      "FILE_TOO_LARGE": "File too large: exceeds the upload size or storage limit",
+      "DEPARTMENT_NOT_FOUND": "Department not found",
+      "ORGANIZATION_NOT_FOUND": "Organization not found",
+      "POSITION_NOT_FOUND": "Position not found",
+      "ROLE_NOT_FOUND": "Role not found"
     },
     "status": {
       "400": "Bad request",

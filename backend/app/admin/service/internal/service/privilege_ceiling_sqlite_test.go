@@ -137,3 +137,86 @@ func TestRoleServiceSqlite_PrivilegeCeilingOnPermissions(t *testing.T) {
 	_, err = e.svc.Create(opCtx(e.sys, roleGrantHolderID, 0, true), mk("CEIL_SUPER", []uint32{99}))
 	require.NoError(t, err)
 }
+
+// review-a2 R1：数据范围也受授权上限约束。
+func TestRoleServiceSqlite_PrivilegeCeilingOnDataScope(t *testing.T) {
+	e := newRoleGrantEnv(t)
+	own := e.createFullRole(t, &permissionV1.Role{
+		Name: trans.Ptr("本部门及下级"), Code: trans.Ptr("SCOPE_OWN"),
+		Status: permissionV1.Role_ON.Enum(), Type: permissionV1.Role_SYSTEM.Enum(),
+		DataScope: identityV1.DataScope_UNIT_AND_CHILD.Enum(), Permissions: []uint32{11}, TenantId: trans.Ptr(uint32(0)),
+	})
+	e.bindHolder(t, own)
+	op := opCtx(e.sys, roleGrantHolderID, 0, false)
+	mask := func(p ...string) *fieldmaskpb.FieldMask { return &fieldmaskpb.FieldMask{Paths: p} }
+
+	// 只改 data_scope 把自己的角色抬到 ALL：拒绝，库里不变
+	_, err := e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: own, Data: &permissionV1.Role{DataScope: identityV1.DataScope_ALL.Enum()}, UpdateMask: mask("data_scope"),
+	})
+	require.True(t, adminV1.IsForbidden(err), "got %v", err)
+	require.Equal(t, identityV1.DataScope_UNIT_AND_CHILD, e.mustGetRole(t, own).GetDataScope())
+
+	// 自定义单元集无法比较宽窄：操作人不是 ALL 就拒绝
+	_, err = e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: own, Data: &permissionV1.Role{DataScope: identityV1.DataScope_SELECTED_UNITS.Enum()}, UpdateMask: mask("data_scope"),
+	})
+	require.True(t, adminV1.IsForbidden(err), "got %v", err)
+
+	// 收窄可以
+	_, err = e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: own, Data: &permissionV1.Role{DataScope: identityV1.DataScope_UNIT_ONLY.Enum()}, UpdateMask: mask("data_scope"),
+	})
+	require.NoError(t, err)
+	require.Equal(t, identityV1.DataScope_UNIT_ONLY, e.mustGetRole(t, own).GetDataScope())
+
+	// 新建角色：显式 ALL 拒绝；不写范围时落 SELF，不是列默认的 ALL
+	_, err = e.svc.Create(op, &permissionV1.CreateRoleRequest{Data: &permissionV1.Role{
+		Name: trans.Ptr("all"), Code: trans.Ptr("SCOPE_NEW_ALL"), Status: permissionV1.Role_ON.Enum(),
+		Type: permissionV1.Role_SYSTEM.Enum(), DataScope: identityV1.DataScope_ALL.Enum(),
+	}})
+	require.True(t, adminV1.IsForbidden(err), "got %v", err)
+	_, err = e.svc.Create(op, &permissionV1.CreateRoleRequest{Data: &permissionV1.Role{
+		Name: trans.Ptr("default"), Code: trans.Ptr("SCOPE_NEW_DEFAULT"), Status: permissionV1.Role_ON.Enum(),
+		Type: permissionV1.Role_SYSTEM.Enum(),
+	}})
+	require.NoError(t, err)
+	resp, err := e.svc.List(e.sys, &paginationV1.PagingRequest{NoPaging: trans.Ptr(true)})
+	require.NoError(t, err)
+	var found bool
+	for _, it := range resp.GetItems() {
+		if it.GetCode() == "SCOPE_NEW_DEFAULT" {
+			found = true
+			require.Equal(t, identityV1.DataScope_SELF, it.GetDataScope())
+		}
+	}
+	require.True(t, found)
+
+	// 超级管理员不受限
+	_, err = e.svc.Update(opCtx(e.sys, roleGrantHolderID, 0, true), &permissionV1.UpdateRoleRequest{
+		Id: own, Data: &permissionV1.Role{DataScope: identityV1.DataScope_ALL.Enum()}, UpdateMask: mask("data_scope"),
+	})
+	require.NoError(t, err)
+}
+
+// review-a2 R1：给用户分配权限点相同、但数据范围更宽的角色同样拒绝。
+func TestUserServiceSqlite_PrivilegeCeilingOnAssignedRoleDataScope(t *testing.T) {
+	e := newUserServiceForTest(t)
+	selfRole := e.seedRoleWithPerms(t, "SCOPE_SELF", []uint32{11})
+	require.NoError(t, e.svc.roleRepo.Update(e.ctx, &permissionV1.UpdateRoleRequest{
+		Id: selfRole, Data: &permissionV1.Role{Id: trans.Ptr(selfRole), DataScope: identityV1.DataScope_SELF.Enum()},
+		UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"data_scope"}},
+	}))
+	allRole := e.seedRoleWithPerms(t, "SCOPE_ALL", []uint32{11}) // 列默认 ALL
+
+	const op = uint32(9201)
+	e.registerOperator(op)
+	e.stub.roleIDsByUser = map[uint32][]uint32{op: {selfRole}}
+	ctx := opCtx(e.ctx, op, 0, false)
+	pw := trans.Ptr(encryptLoginPassword(t, constants.DefaultUserPassword))
+
+	_, err := e.svc.Create(ctx, &identityV1.CreateUserRequest{Data: &identityV1.User{Username: trans.Ptr("scope-a"), RoleIds: []uint32{allRole}}, Password: pw})
+	require.True(t, adminV1.IsForbidden(err), "got %v", err)
+	_, err = e.svc.Create(ctx, &identityV1.CreateUserRequest{Data: &identityV1.User{Username: trans.Ptr("scope-b"), RoleIds: []uint32{selfRole}}, Password: pw})
+	require.NoError(t, err)
+}

@@ -2,6 +2,8 @@ package data
 
 import (
 	"context"
+	"net"
+	"sync"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -162,4 +164,89 @@ func TestAuthenticator_RevokeAllFiresHooks(t *testing.T) {
 	for _, uid := range fired {
 		require.Equal(t, raceTestUID, uid)
 	}
+}
+
+// pauseAfterIncr 在 INCR 成功返回后、RevokeToken 后续清理执行前暂停（review-a2 R2 的交错）。
+type pauseAfterIncr struct {
+	once           sync.Once
+	bumped, resume chan struct{}
+}
+
+func (h *pauseAfterIncr) DialHook(next redis.DialHook) redis.DialHook {
+	return func(c context.Context, n, a string) (net.Conn, error) { return next(c, n, a) }
+}
+func (h *pauseAfterIncr) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
+func (h *pauseAfterIncr) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		err := next(ctx, cmd)
+		if err == nil && cmd.Name() == "incr" {
+			h.once.Do(func() { close(h.bumped); <-h.resume })
+		}
+		return err
+	}
+}
+
+// review-a2 R2：吊销已 INCR、旧 RT 还没删时发起刷新。修复前刷新读到新版本、
+// 吊销完成后写回有效令牌；现在 INCR 那一刻旧 RT 就不可消费。
+func TestRefresh_RefreshAfterVersionBumpCannotSurviveRevoke(t *testing.T) {
+	a, c := newRaceAuthenticator(t)
+	ctx := context.Background()
+	ct := authenticationV1.ClientType_admin
+	_, rt, _ := raceLogin(t, a)
+
+	hook := &pauseAfterIncr{bumped: make(chan struct{}), resume: make(chan struct{})}
+	c.rdb.AddHook(hook)
+	done := make(chan error, 1)
+	go func() { done <- a.RevokeUserToken(ctx, ct, raceTestUID) }()
+	<-hook.bumped
+
+	_, _, _, _, err := a.VerifyRefreshToken(ctx, ct, rt)
+	close(hook.resume)
+	require.NoError(t, <-done)
+	require.Error(t, err, "版本已抬升后，旧 RT 不能再被消费")
+	require.True(t, authenticationV1.IsIncorrectRefreshToken(err), "got %v", err)
+	require.Empty(t, a.GetAccessTokens(ctx, ct, raceTestUID))
+}
+
+// 同一窗口里用宽限 RT 兑换也不行：宽限成员带写入时的版本。
+func TestRefresh_GraceAfterVersionBumpCannotSurviveRevoke(t *testing.T) {
+	a, c := newRaceAuthenticator(t)
+	ctx := context.Background()
+	ct := authenticationV1.ClientType_admin
+	_, rt0, _ := raceLogin(t, a)
+
+	uid, _, _, guard, err := a.VerifyRefreshToken(ctx, ct, rt0) // RT0 进入宽限
+	require.NoError(t, err)
+	_, _, err = a.CreateUserTokenGuarded(ctx, ct, &authenticationV1.UserTokenPayload{UserId: uid}, guard)
+	require.NoError(t, err)
+
+	hook := &pauseAfterIncr{bumped: make(chan struct{}), resume: make(chan struct{})}
+	c.rdb.AddHook(hook)
+	done := make(chan error, 1)
+	go func() { done <- a.RevokeUserToken(ctx, ct, raceTestUID) }()
+	<-hook.bumped
+
+	_, _, _, _, err = a.VerifyRefreshToken(ctx, ct, rt0)
+	close(hook.resume)
+	require.NoError(t, <-done)
+	require.Error(t, err, "版本已抬升后，宽限 RT 不能再兑换")
+	require.Empty(t, a.GetAccessTokens(ctx, ct, raceTestUID))
+}
+
+// 吊销之后的新登录照常可刷新（新 RT 的写入版本就是新版本）。
+func TestRefresh_LoginAfterRevokeStillRefreshes(t *testing.T) {
+	a, _ := newRaceAuthenticator(t)
+	ctx := context.Background()
+	ct := authenticationV1.ClientType_admin
+	raceLogin(t, a)
+	require.NoError(t, a.RevokeUserToken(ctx, ct, raceTestUID))
+
+	_, rt, _ := raceLogin(t, a)
+	uid, _, _, guard, err := a.VerifyRefreshToken(ctx, ct, rt)
+	require.NoError(t, err)
+	at2, _, err := a.CreateUserTokenGuarded(ctx, ct, &authenticationV1.UserTokenPayload{UserId: uid}, guard)
+	require.NoError(t, err)
+	require.True(t, accessValid(t, a, at2))
 }

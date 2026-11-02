@@ -33,7 +33,8 @@ const (
 	TypeBool                      // 布尔（SQL Server bit、MySQL tinyint(1)）
 	TypeInt                       // 整数
 	TypeDecimal                   // 定点数：值保持十进制字符串，不转 float
-	TypeTime                      // 无时区时间：按数据源时区解释
+	TypeTime                      // 无时区时间（PG TIMESTAMP、MySQL DATETIME、SQL Server DATETIME2）：存的是数据源时区的墙上时间
+	TypeTimeTZ                    // 带时区时间（PG TIMESTAMPTZ、SQL Server DATETIMEOFFSET）：存的是瞬间，不做时区换算
 )
 
 // Column 白名单里的一列 / One whitelisted column.
@@ -304,6 +305,19 @@ var decimalRe = regexp.MustCompile(`^-?\d+(\.\d+)?$`)
 // timeLayouts 过滤值接受的时间格式；不带时区的按数据源时区解释。
 var timeLayouts = []string{"2006-01-02 15:04:05", "2006-01-02T15:04:05", "2006-01-02"}
 
+// parseTime 解析过滤里的时间：RFC3339 带偏移的按偏移；不带时区的按数据源时区解释。
+func (s *Source) parseTime(raw string) (time.Time, bool) {
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, true
+	}
+	for _, layout := range timeLayouts {
+		if t, err := time.ParseInLocation(layout, raw, s.loc); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
 // convertValue 把过滤值按列类型转换成驱动参数，格式不对返回 400。
 func (s *Source) convertValue(field string, col Column, raw string) (any, error) {
 	switch col.Type {
@@ -324,16 +338,15 @@ func (s *Source) convertValue(field string, col Column, raw string) (any, error)
 			return nil, ErrBadRequest("field %q: %q is not a decimal", field, raw)
 		}
 		return raw, nil
-	case TypeTime:
-		if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
-			return s.TimeToDB(t), nil
+	case TypeTime, TypeTimeTZ:
+		t, ok := s.parseTime(raw)
+		if !ok {
+			return nil, ErrBadRequest("field %q: %q is not a time", field, raw)
 		}
-		for _, layout := range timeLayouts {
-			if t, err := time.ParseInLocation(layout, raw, s.loc); err == nil {
-				return s.TimeToDB(t), nil
-			}
+		if col.Type == TypeTimeTZ {
+			return t.UTC(), nil // 瞬间原样交给驱动
 		}
-		return nil, ErrBadRequest("field %q: %q is not a time", field, raw)
+		return s.TimeToDB(t), nil
 	default:
 		return raw, nil
 	}

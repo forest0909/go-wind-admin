@@ -162,7 +162,7 @@ Demo 用的数据源名固定是 `demo`。没配 `demo` 时页面的每个接口
 - 过滤条件来自 `query`（前端默认用它，如 `{"name__contains":"张"}`）、`filter`（AIP）或 `filterExpr`，字段名统一转 snake_case 后查白名单。
 - 支持的操作符：`eq`/`exact`、`not`、`gt`/`gte`/`lt`/`lte`、`in`/`not_in`、`range`/`between`、`isnull`/`not_isnull`、`contains`/`icontains`、`startswith`/`istartswith`、`endswith`/`iendswith`、`iexact`。其他操作符（regex、json、日期部件……）返回 400。
 - **contains 一律不区分大小写**：PG 用 `ILIKE`；MySQL、SQL Server 用 `LIKE`，大小写跟列的排序规则（常见的 `_ci` 不区分）。用户输入里的 `%`、`_` 按字面匹配：PG / MySQL 用反斜杠转义，SQL Server 用方括号。contains 只能用在字符串列上；搜索词为空时不加条件。
-- 值按列类型转换，格式不对返回 400：布尔接受 `true/false/1/0`；整数；decimal 必须是十进制字符串（不接受科学计数法）；时间接受 RFC3339，或 `2006-01-02 15:04:05` / `2006-01-02`（按数据源时区）。
+- 值按列类型转换，格式不对返回 400：布尔接受 `true/false/1/0`；整数；decimal 必须是十进制字符串（不接受科学计数法）；时间接受 RFC3339（带偏移），或 `2006-01-02 15:04:05` / `2006-01-02`（按数据源时区解释）；解析出的瞬间对 `TypeTime` 列换成数据源时区的墙上时间，对 `TypeTimeTZ` 列原样传给驱动（见下节）。
 - 排序字段同样过白名单；**分页总有确定的排序**：没给排序按主键升序，给了但没含主键时末尾追加主键。
 - 页大小默认 10，上限 100（超了截断）；`no_paging=true` 最多返回 1000 行。SQL Server 分页是 `OFFSET … FETCH`。
 
@@ -173,14 +173,19 @@ Demo 用的数据源名固定是 `demo`。没配 `demo` 时页面的每个接口
 | 主键 | `string` | `string` | 整数主键也转成 string 给前端 |
 | `DECIMAL` / `NUMERIC` | `sql.NullString` | `string` | 不转 float |
 | `BOOLEAN` / `BIT` / `TINYINT(1)` | `bool` | `bool` | 过滤值用 `true`/`false` |
-| 无时区时间：PG `TIMESTAMP`、MySQL `DATETIME`、SQL Server `DATETIME2` | `sql.NullTime` → `src.TimeFromDB` | `Timestamp` | 写入前 `src.TimeToDB` |
-| 带时区时间：PG `TIMESTAMPTZ`、SQL Server `DATETIMEOFFSET` | `sql.NullTime` | `Timestamp` | 不调 `TimeToDB` / `TimeFromDB`，原值读写 |
+| 无时区时间：PG `TIMESTAMP`、MySQL `DATETIME`、SQL Server `DATETIME2` | `sql.NullTime` → `src.TimeFromDB` | `Timestamp` | 白名单类型 `extdb.TypeTime`；写入前 `src.TimeToDB` |
+| 带时区时间：PG `TIMESTAMPTZ`、SQL Server `DATETIMEOFFSET` | `sql.NullTime` | `Timestamp` | 白名单类型 `extdb.TypeTimeTZ`；不调 `TimeToDB` / `TimeFromDB`，原值读写 |
 
-无时区时间列里存的是 `timezone` 时区的墙上时间。`TimeToDB` 把时间换算到该时区再交给驱动，`TimeFromDB` 把读到的墙上时间按该时区解释。MySQL 的 `TIMESTAMP` 列会按会话时区换算，接这种列时让客户确认会话时区。
+两种时间列不能混用，白名单里的类型要和列的真实类型对上，读、写、过滤三处都按它区分：
+
+- `TypeTime`（无时区）：列里存的是 `timezone` 时区的墙上时间。读出来用 `TimeFromDB` 按该时区解释，写入和过滤值都用 `TimeToDB` 换算（过滤由 `Page` 自动做）。
+- `TypeTimeTZ`（带时区）：列里存的是瞬间，驱动读写都带偏移。读写不调换算函数，`Page` 的过滤值也原样传。把带时区的列登记成 `TypeTime` 会让过滤和写入平移一个时区差（上海是 8 小时）。
+
+MySQL 的 `TIMESTAMP` 列会按会话时区换算，接这种列时让客户确认会话时区。
 
 ## 事务边界
 
-- 同一外部源内：`src.Tx(ctx, func(tx *extdb.Tx) error {...})`，返回 nil 提交，返回错误或 panic 回滚。只读源上 `Tx` 直接拒绝。事务里的每条语句各自套 `query_timeout`。
+- 同一外部源内：`src.Tx(ctx, func(tx *extdb.Tx) error {...})`，返回 nil 提交，返回错误或 panic 回滚。只读源上 `Tx` 直接拒绝。开事务（从池里取连接加 BEGIN）也受 `query_timeout` 约束，池满时按 504 `EXTERNAL_SOURCE_TIMEOUT` 返回，不会无限等；之后事务里的每条语句各自套 `query_timeout`。
 - **不支持跨库事务**：主库和外部库、两个外部库之间都不在一个事务里。要先写主库再写外部库（或反过来）时，自己设计补偿或幂等重试，不要假设能一起回滚。
 
 ## 客户改表结构时

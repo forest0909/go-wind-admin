@@ -188,3 +188,39 @@ func TestNewSource_RejectsUnknownDriver(t *testing.T) {
 func pagingQuery(q string) *paginationV1.PagingRequest {
 	return &paginationV1.PagingRequest{FilteringType: &paginationV1.PagingRequest_Query{Query: q}}
 }
+
+// 无时区列（TypeTime）按数据源时区换成墙上时间；带时区列（TypeTimeTZ）是瞬间，不做换算。
+func TestPage_TimeFilterNaiveVsTZ(t *testing.T) {
+	tbl := &Table{Name: "t", PK: "id", Columns: map[string]Column{
+		"id":         {Name: "id", Type: TypeString},
+		"naive_at":   {Name: "naive_at", Type: TypeTime},
+		"instant_at": {Name: "instant_at", Type: TypeTimeTZ},
+	}}
+	instant := time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC) // 上海 08:00
+	cases := map[string]string{
+		"rfc3339 with offset":  "2026-01-02T08:00:00+08:00",
+		"naive in source zone": "2026-01-02 08:00:00",
+	}
+	for _, driver := range []string{DriverPostgres, DriverSQLServer} {
+		s := dialectSource(t, driver) // 时区 Asia/Shanghai
+		for name, raw := range cases {
+			t.Run(driver+"/"+name, func(t *testing.T) {
+				arg := func(field string) time.Time {
+					_, count, err := s.Page(s.From("t"), tbl, pagingQuery(`{"`+field+`__gte":"`+raw+`"}`))
+					require.NoError(t, err)
+					_, args, err := count.ToSQL() // 计数查询没有分页参数，第一个参数就是时间
+					require.NoError(t, err)
+					v, ok := args[0].(time.Time)
+					require.True(t, ok, "first arg is the time value: %#v", args)
+					return v
+				}
+				naive := arg("naive_at")
+				require.Equal(t, time.Date(2026, 1, 2, 8, 0, 0, 0, time.UTC), naive, "naive column gets the Shanghai wall clock")
+
+				tz := arg("instant_at")
+				require.True(t, tz.Equal(instant), "tz column gets the instant unshifted, got %v", tz)
+				require.Equal(t, time.UTC, tz.Location())
+			})
+		}
+	}
+}

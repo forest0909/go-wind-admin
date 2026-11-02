@@ -192,3 +192,28 @@ func TestGetNavigation(t *testing.T) {
 		})
 	}
 }
+
+// TestGetInitialContext 与 GetNavigation + GetMyPermissionCode 分别调用的结果一致
+// （此前该方法未实现，调用即 nil panic）。
+func TestGetInitialContext(t *testing.T) {
+	ec := enttest.NewEntClientForTest(t)
+	client := ec.Client()
+	ctx := enttest.NewSystemContext(context.Background())
+	_, err := client.Menu.Create().SetName("root").SetPath("/root").SetType(entMenu.TypeMenu).SetStatus(entMenu.StatusOn).Save(ctx)
+	require.NoError(t, err)
+	_, err = client.Permission.Create().SetName("view").SetCode("root:view").SetStatus(entPermission.StatusOn).Save(ctx)
+	require.NoError(t, err)
+	svc := &AdminPortalService{
+		log:            bLogger.NewHelper(bLogger.NopLogger()),
+		menuRepo:       data.NewMenuRepoForTest(ec),
+		roleRepo:       data.NewRoleRepoForTest(ec),
+		permissionRepo: data.NewPermissionRepoForTest(ec),
+	}
+	opCtx := auth.NewContext(ctx, &authenticationV1.UserTokenPayload{UserId: 1, IsPlatformAdmin: trans.Ptr(true), HiddenFields: []string{"User.email"}})
+	resp, err := svc.GetInitialContext(opCtx, &emptypb.Empty{})
+	require.NoError(t, err)
+	require.Len(t, resp.Menus, 1)
+	require.Equal(t, "root", resp.Menus[0].GetName())
+	require.Equal(t, []string{"root:view"}, resp.Permissions)
+	require.Equal(t, []string{"User.email"}, resp.HiddenFields)
+}

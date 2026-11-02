@@ -171,6 +171,24 @@ func (s *AdminPortalService) fillRouteItem(menus []*permissionV1.Menu) []*permis
 	return routers
 }
 
+// GetInitialContext 进入后台时一次取回菜单树、权限码和隐藏字段，内容与
+// GetNavigation + GetMyPermissionCode 分别调用完全一致。
+func (s *AdminPortalService) GetInitialContext(ctx context.Context, _ *emptypb.Empty) (*adminV1.InitialContextResponse, error) {
+	nav, err := s.GetNavigation(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	codes, err := s.GetMyPermissionCode(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, err
+	}
+	return &adminV1.InitialContextResponse{
+		Menus:        nav.GetItems(),
+		Permissions:  codes.GetCodes(),
+		HiddenFields: codes.GetHiddenFields(),
+	}, nil
+}
+
 func (s *AdminPortalService) GetNavigation(ctx context.Context, _ *emptypb.Empty) (*adminV1.ListRouteResponse, error) {
 	// 获取操作人信息
 	operator, err := auth.FromContext(ctx)

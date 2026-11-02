@@ -211,8 +211,11 @@ func (s *Server) init(opts ...ServerOption) {
 	}
 
 	s.router.StrictSlash(s.strictSlash)
-	s.router.NotFoundHandler = http.DefaultServeMux
-	s.router.MethodNotAllowedHandler = http.DefaultServeMux
+	// 不回退到 http.DefaultServeMux：net/http/pprof 等包会在初始化时往里注册免鉴权路由。
+	s.router.NotFoundHandler = http.NotFoundHandler()
+	s.router.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	})
 
 	s.Server = &http.Server{
 		Handler:   s.router,

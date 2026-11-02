@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"crypto/tls"
+	"net/http"
 	"net/http/pprof"
 	"time"
 
@@ -29,6 +30,14 @@ func CreateRestServer(cfg *conf.Bootstrap, mds ...middleware.Middleware) (*krato
 	if err != nil {
 		return nil, err
 	}
+
+	// 未匹配路由和方法不匹配一律给明确的 404/405。Kratos 默认回退到 http.DefaultServeMux，
+	// 而 net/http/pprof 在包初始化时就把 /debug/pprof/* 注册到 DefaultServeMux，
+	// 不改的话 enable_pprof=false 时这些路由照样免登录可访问。
+	options = append(options,
+		kratosRest.NotFoundHandler(http.NotFoundHandler()),
+		kratosRest.MethodNotAllowedHandler(MethodNotAllowedHandler()),
+	)
 
 	srv := kratosRest.NewServer(options...)
 	applyHttpServerTimeouts(srv)
@@ -136,8 +145,23 @@ func initRestConfig(cfg *conf.Bootstrap, mds ...middleware.Middleware) ([]kratos
 	return options, nil
 }
 
-// registerHttpPprof 注册pprof路由
+// MethodNotAllowedHandler 返回固定 405 的 handler，供 REST 和 SSE 路由共用。
+func MethodNotAllowedHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	})
+}
+
+// registerHttpPprof 在本服务自己的路由上显式注册 pprof，不依赖 DefaultServeMux。
 func registerHttpPprof(s *kratosRest.Server) {
+	// 标准路径：/debug/pprof/ 下的具名 profile（heap、goroutine 等）由 pprof.Index 按名字分发。
+	s.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	s.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	s.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	s.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	s.HandlePrefix("/debug/pprof/", http.HandlerFunc(pprof.Index))
+
+	// 历史别名
 	s.HandleFunc("/debug/pprof", pprof.Index)
 
 	s.HandleFunc("/debug/cmdline", pprof.Cmdline)

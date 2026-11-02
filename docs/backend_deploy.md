@@ -207,7 +207,9 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 
 ## pprof
 
-`configs/server.yaml` 里 `server.rest.enable_pprof` 默认是 `false`。pprof 路由（`/debug/pprof`、`/debug/heap`、`/debug/profile` 等）不经过登录鉴权，任何能访问 7788 的人都能读到内存、协程和命令行信息，还能触发 CPU profiling。
+`configs/server.yaml` 里 `server.rest.enable_pprof` 默认是 `false`。pprof 路由不经过登录鉴权，任何能访问 7788 的人都能读到内存、协程和命令行信息，还能触发 CPU profiling。
+
+关闭时 7788 和 7789 上的 `/debug/*` 都返回 404。REST 和 SSE 的未匹配路由都是明确的 404/405，不会回退到 Go 的全局 `http.DefaultServeMux`（`net/http/pprof` 会在那里自动注册 `/debug/pprof/*`）。打开后路由注册在 7788 的服务路由上：标准路径 `/debug/pprof/`（`heap`、`goroutine`、`allocs` 等按名字访问）、`/debug/pprof/cmdline`、`/debug/pprof/profile`、`/debug/pprof/symbol`、`/debug/pprof/trace`，可以直接用 `go tool pprof http://<host>:7788/debug/pprof/heap`；原来的 `/debug/heap` 等别名也还在。SSE 端口不提供 pprof。
 
 需要排查时，在 `configs/local/server.yaml` 里写：
 

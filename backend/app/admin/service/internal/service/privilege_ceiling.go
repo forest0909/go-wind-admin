@@ -5,6 +5,7 @@ import (
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
+	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/pkg/constants"
@@ -79,7 +80,100 @@ func ensureRolesWithinOperator(ctx context.Context, roleRepo *data.RoleRepo, lis
 	if err != nil {
 		return err
 	}
-	return ensurePermissionsWithinOperator(ctx, roleRepo, listRoles, operator, permIDs)
+	if err = ensurePermissionsWithinOperator(ctx, roleRepo, listRoles, operator, permIDs); err != nil {
+		return err
+	}
+
+	// 数据范围同样不能超出操作人：权限点相同、范围更大的角色也是抬权。
+	roles, err := roleRepo.ListRolesByRoleIds(ctx, roleIDs)
+	if err != nil {
+		return err
+	}
+	scopes := make([]identityV1.DataScope, 0, len(roles))
+	for _, role := range roles {
+		scopes = append(scopes, role.GetDataScope())
+	}
+	return ensureDataScopesWithinOperator(ctx, roleRepo, listRoles, operator, scopes...)
+}
+
+// dataScopeRank 数据范围宽度：SELF < UNIT_ONLY < UNIT_AND_CHILD < ALL。
+// SELECTED_UNITS（自定义单元集）和未知值无法与上面这条序列比较，返回 -1，按最保守处理。
+func dataScopeRank(scope identityV1.DataScope) int {
+	switch scope {
+	case identityV1.DataScope_SELF:
+		return 1
+	case identityV1.DataScope_UNIT_ONLY:
+		return 2
+	case identityV1.DataScope_UNIT_AND_CHILD:
+		return 3
+	case identityV1.DataScope_ALL:
+		return 4
+	default:
+		return -1
+	}
+}
+
+// operatorMaxDataScopeRank 操作人当前启用角色里最宽的数据范围。
+func operatorMaxDataScopeRank(ctx context.Context, roleRepo *data.RoleRepo, listRoles operatorRoleIDsFunc, userID uint32) (int, error) {
+	roleIDs, err := listRoles(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	roleIDs, err = roleRepo.EnabledRoleIDs(ctx, roleIDs)
+	if err != nil {
+		return 0, err
+	}
+	if len(roleIDs) == 0 {
+		return 0, nil
+	}
+	roles, err := roleRepo.ListRolesByRoleIds(ctx, roleIDs)
+	if err != nil {
+		return 0, err
+	}
+	maxRank := 0
+	for _, role := range roles {
+		if r := dataScopeRank(role.GetDataScope()); r > maxRank {
+			maxRank = r
+		}
+	}
+	return maxRank, nil
+}
+
+// ensureDataScopesWithinOperator 要求每个数据范围都不宽于操作人自己的最宽范围。
+// SELECTED_UNITS / 未知值只有操作人本身是 ALL 才能授出；UNSPECIFIED 不授出任何范围、SELF 只含本人，放行。
+func ensureDataScopesWithinOperator(ctx context.Context, roleRepo *data.RoleRepo, listRoles operatorRoleIDsFunc,
+	operator *authenticationV1.UserTokenPayload, scopes ...identityV1.DataScope) error {
+	if operator.GetIsPlatformAdmin() {
+		return nil
+	}
+	var want []identityV1.DataScope
+	for _, sc := range scopes {
+		// SELF 是最窄的范围，只看本人数据，不构成抬权，总是可以授出。
+		if sc != identityV1.DataScope_DATA_SCOPE_UNSPECIFIED && sc != identityV1.DataScope_SELF {
+			want = append(want, sc)
+		}
+	}
+	if len(want) == 0 {
+		return nil
+	}
+	maxRank, err := operatorMaxDataScopeRank(ctx, roleRepo, listRoles, operator.GetUserId())
+	if err != nil {
+		return err
+	}
+	allRank := dataScopeRank(identityV1.DataScope_ALL)
+	for _, sc := range want {
+		r := dataScopeRank(sc)
+		if r < 0 {
+			if maxRank < allRank {
+				return adminV1.ErrorForbidden("cannot grant a data scope broader than your own")
+			}
+			continue
+		}
+		if r > maxRank {
+			return adminV1.ErrorForbidden("cannot grant a data scope broader than your own")
+		}
+	}
+	return nil
 }
 
 // newlyAdded 返回 want 里不在 have 中的元素。

@@ -114,7 +114,12 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 
 	req.Data.CreatedBy = trans.Ptr(operator.UserId)
 
-	if err = s.ensureRoleGrantWithinOperator(ctx, operator, req.Data.GetCode(), req.Data.GetPermissions()); err != nil {
+	// 非超级管理员建角色不写数据范围时，仓储列默认是 ALL：改成最窄的 SELF，不能靠省略字段拿到全量。
+	if !operator.GetIsPlatformAdmin() &&
+		(req.Data.DataScope == nil || req.Data.GetDataScope() == identityV1.DataScope_DATA_SCOPE_UNSPECIFIED) {
+		req.Data.DataScope = trans.Ptr(identityV1.DataScope_SELF)
+	}
+	if err = s.ensureRoleGrantWithinOperator(ctx, operator, req.Data.GetCode(), req.Data.GetPermissions(), req.Data.GetDataScope()); err != nil {
 		return nil, err
 	}
 
@@ -131,7 +136,8 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 
 // ensureRoleGrantWithinOperator 非超级管理员建角色、改角色时：
 // 勾的权限点必须是自己拥有的；角色码不能是超级管理员角色码（特权来自角色码，不来自权限点）。
-func (s *RoleService) ensureRoleGrantWithinOperator(ctx context.Context, operator *authenticationV1.UserTokenPayload, code string, permissionIDs []uint32) error {
+// dataScope 为 UNSPECIFIED 表示本次不授出数据范围（Update 未改范围）。
+func (s *RoleService) ensureRoleGrantWithinOperator(ctx context.Context, operator *authenticationV1.UserTokenPayload, code string, permissionIDs []uint32, dataScope identityV1.DataScope) error {
 	if operator.GetIsPlatformAdmin() {
 		return nil
 	}
@@ -144,6 +150,10 @@ func (s *RoleService) ensureRoleGrantWithinOperator(ctx context.Context, operato
 	}
 	if err := ensurePermissionsWithinOperator(ctx, s.roleRepo, listRoles, operator, permissionIDs); err != nil {
 		s.log.Errorf(ctx, "operator [%d] grant permissions %v rejected: %v", operator.GetUserId(), permissionIDs, err)
+		return err
+	}
+	if err := ensureDataScopesWithinOperator(ctx, s.roleRepo, listRoles, operator, dataScope); err != nil {
+		s.log.Errorf(ctx, "operator [%d] grant data scope %v rejected: %v", operator.GetUserId(), dataScope, err)
 		return err
 	}
 	return nil
@@ -210,7 +220,12 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 	if roleCodeWouldChange(r, req.Data, req.GetUpdateMask()) {
 		newCode = req.Data.GetCode()
 	}
-	if err = s.ensureRoleGrantWithinOperator(ctx, operator, newCode, addedPerms); err != nil {
+	// 只改 data_scope 也会抬权：范围要变时校验新值。
+	newScope := identityV1.DataScope_DATA_SCOPE_UNSPECIFIED
+	if roleDataScopeWouldChange(r, req.Data, req.GetUpdateMask()) {
+		newScope = req.Data.GetDataScope()
+	}
+	if err = s.ensureRoleGrantWithinOperator(ctx, operator, newCode, addedPerms, newScope); err != nil {
 		return nil, err
 	}
 

@@ -3,7 +3,7 @@
 > **执行目录约定**：本文所有相对路径命令（`./scripts/...`、`make ...`、`docker compose ...`）
 > 一律在 **`backend/` 目录**下执行——仓库根目录没有 Makefile，脚本也不在根目录。
 
-- 所有的Docker配置文件都在`backend`目录下。
+- Docker Compose 文件和后端 Dockerfile 在`backend`目录下，前端 Dockerfile 和 nginx 配置在`frontend/admin/react/scripts/deploy/`。
 - 所有的部署脚本都在`backend/scripts`目录下。
 
 > 详细的脚本使用说明请参考：[scripts/README.md](../backend/scripts/README.md)
@@ -46,62 +46,158 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 > `powershell -ExecutionPolicy Bypass -File backend\scripts\env\install_windows_dev.ps1`
 > （[windows-startup-guide.md](./windows-startup-guide.md) 的方式）都成立。
 
-## Docker 两种部署模式
+## Docker Compose 部署
 
-部署项目有两种方法：
+每个客户一套独立环境，一条 `docker compose up` 拉起：
 
-1. **完整模式**：三方中间件和微服务都运行在Docker之下；
-2. **依赖模式（推荐开发）**：三方中间件运行在Docker下，微服务在本地IDE运行调试。
+| 服务 | 镜像 | 说明 |
+|---|---|---|
+| `postgres` | `postgres:17.6-alpine` | 数据库 `gwa` |
+| `redis` | `redis:7.4.5-alpine` | 缓存和 asynq 任务队列，开了 AOF |
+| `minio` | `minio/minio:RELEASE.2025-09-07T16-13-09Z` | 文件管理、头像、富文本图片。桶由后端第一次上传时自动创建 |
+| `admin-service` | 本地构建（`backend/Dockerfile`） | REST `:7788`、SSE `:7789`，只在容器网络内可达 |
+| `frontend` | 本地构建（`frontend/admin/react/scripts/deploy/Dockerfile`） | nginx 托管页面，并把 `/admin/` 反代到 7788、`/events` 反代到 7789。对外只开这一个端口 |
 
-### 口令与 `.env`（两种模式都需要）
+浏览器只访问 `frontend` 一个源，页面、接口、SSE 同源，不需要 CORS。依赖镜像都固定了版本号，不用 `latest`。
 
-Compose 文件里不再写死口令，统一从 `backend/.env` 读取。先复制模板再填：
+启动顺序靠健康检查串起来：postgres（`pg_isready`）、redis（`redis-cli ping`）、minio（`mc ready local`）都健康后才启动后端；后端 `/readyz` 返回 200 后才启动前端。
+
+### 前置条件
+
+- Docker Engine 和 Docker Compose v2（`docker compose version` 能出版本号）。
+- 一台机器、80 端口空着（或在 `.env` 里换 `HTTP_PORT`）。
+- 构建后端镜像要下载 Go 依赖，Dockerfile 用的是 `GOPROXY=https://goproxy.cn,direct`。
+- 首次构建要几分钟（Go 编译和前端打包都在镜像里做），宿主机建议至少 4 GB 内存。
+
+### 准备 `.env`
 
 ```bash
 cd backend
 cp .env.example .env   # 然后编辑 .env
 ```
 
-| 变量 | 用途 | 完整模式 | 依赖模式 |
-|---|---|---|---|
-| `POSTGRES_PASSWORD` | PostgreSQL `postgres` 用户口令 | 必填 | 必填 |
-| `REDIS_PASSWORD` | Redis 口令（缓存和 asynq 任务队列共用） | 必填 | 必填 |
-| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | MinIO 账号（密码至少 8 位） | 必填 | 必填 |
-| `GWA_ADMIN_INITIAL_PASSWORD` | 空库首次启动时播种的 admin 密码 | 必填 | 不用 |
-| `GWA_AUTH_JWT_PRIVATE_KEY` | 生产 JWT 私钥，见下文「生产环境密钥配置」 | 可选 | 不用 |
-| `GOWIND_CRYPTO_KEY` | 签名图片 URL 的 HMAC 密钥 | 可选 | 不用 |
+| 变量 | 必填 | 用途 |
+|---|---|---|
+| `POSTGRES_PASSWORD` | 是 | PostgreSQL `postgres` 用户口令 |
+| `REDIS_PASSWORD` | 是 | Redis 口令（缓存和 asynq 任务队列共用） |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | 是 | MinIO 账号（密码至少 8 位） |
+| `GWA_ADMIN_INITIAL_PASSWORD` | 是 | 空库首次启动时播种的 `admin` 密码，须满足口令复杂度 |
+| `GWA_AUTH_JWT_PRIVATE_KEY` | 生产要填 | JWT 私钥，不填就用仓库里公开的示例密钥，见下文「生产环境密钥配置」 |
+| `GOWIND_CRYPTO_KEY` | 否 | 签名图片 URL 的 HMAC 密钥，不填则富文本图片无法内嵌预览 |
+| `HTTP_PORT` | 否 | 前端 nginx 映射到宿主机的端口，默认 `80` |
 
-- 必填项缺失时 `docker compose` 直接报错退出（`${VAR:?...}`），`full_deploy.sh` 也会先检查一遍。
+- 每个客户的口令都要单独生成，不要复用示例或别的客户的值。可以用 `openssl rand -hex 16`。
 - 口令只用字母和数字：它们会被拼进数据库 DSN 和 `redis://` URI。
-- `.env` 已在 `backend/.gitignore` 和 `.dockerignore` 里，不会进 Git 和镜像。
-- 完整模式下后端容器拿到的是同一份口令：Compose 把它们以 `GWA_DB_PASSWORD`、`GWA_REDIS_PASSWORD`、`GWA_MINIO_ACCESS_KEY`、`GWA_MINIO_SECRET_KEY` 传进容器，`configs/data.yaml`、`server.yaml`、`oss.yaml` 里的 `${GWA_XXX:默认值}` 占位符读取它们（见下文「配置里的环境变量占位符」）。
+- 必填项缺失时 `docker compose` 直接报错退出（`${VAR:?...}`）。
+- `.env` 已在 `backend/.dockerignore` 里，不会进镜像。
+- 后端容器拿到的是同一份口令：Compose 把它们以 `GWA_DB_PASSWORD`、`GWA_REDIS_PASSWORD`、`GWA_MINIO_ACCESS_KEY`、`GWA_MINIO_SECRET_KEY` 传进容器，`configs/data.yaml`、`server.yaml`、`oss.yaml` 里的 `${GWA_XXX:默认值}` 占位符读取它们（见下文「配置里的环境变量占位符」）。
 
-### 数据持久化与端口
-
-- PostgreSQL、Redis、MinIO 和后端的审计归档目录（`/app/data`）都挂在 Compose **具名卷**上（`postgres-data`、`redis-data`、`minio-data`、`admin-data`）。`docker compose down` 再 `up -d` 数据还在；`docker compose down -v` 会连卷一起删掉，**不要在生产上用**。Redis 开了 AOF，重启后未执行的任务还在。
-- 完整模式只对外暴露后端 `7788`（HTTP）和 `7789`（SSE）。数据库、Redis、MinIO 不映射宿主机端口，只在 Compose 网络内可达。需要临时连库时用 `docker compose exec postgres psql -U postgres gwa`。
-- 依赖模式（`docker-compose.libs.yaml`）为了让本机后端连得上，把 5432 / 6379 / 9000 / 9001 映射出来，但只绑 `127.0.0.1`。
-- 旧版本 Compose 没有挂卷，升级前若有要保留的数据，先用 `pg_dump` 等工具导出，换新 Compose 后再导入。
-
-### 1. 完整模式（三方中间件 + 微服务都在 Docker 下）
-
-先按上一节准备好 `.env`。
-
-**Linux / macOS：**
+### 启动
 
 ```bash
-./scripts/docker/full_deploy.sh
+cd backend
+docker compose up -d --build --wait
 ```
 
-**Windows (PowerShell)：**
+`--wait` 等到所有服务都健康才返回。首次启动后端要建表、播种默认数据、同步接口和权限点，健康检查给了 180 秒的启动宽限。然后浏览器打开 `http://<服务器地址>/`。
 
-```powershell
-.\scripts\docker\full_deploy.ps1
+`./scripts/docker/full_deploy.sh` 也能启动，它会先检查 `.env` 必填项，但不会重新构建已有镜像；改过代码后用上面的命令。
+
+### 首次登录
+
+用户名 `admin`，密码是 `.env` 里的 `GWA_ADMIN_INITIAL_PASSWORD`。**登录后立即在个人中心改密码。** 这个变量只在空库首次播种时生效，之后再改 `.env` 不会改 admin 的密码。
+
+### 配置覆盖
+
+镜像里带着 `backend/app/admin/service/configs/` 的默认配置，大部分不用改。要改的东西按下面的方式覆盖：
+
+- 口令和密钥：走 `.env`（上表）。
+- 其他配置项：在宿主机建一个目录，放同名 yaml，只写要改的键，挂到容器的 `/app/configs/local`。例如在 `docker-compose.yaml` 的 `admin-service` 下加：
+
+  ```yaml
+      volumes:
+        - admin-data:/app/data
+        - ./deploy-local:/app/configs/local:ro
+  ```
+
+  合并规则见下文「本地覆盖配置」。常见的有：SMTP/短信（`mail.yaml`）、收窄可信代理（`server.yaml`）。
+
+### 反向代理、客户端 IP 与 HTTPS
+
+`frontend` 的 nginx 配置在 `frontend/admin/react/scripts/deploy/nginx.conf`：
+
+- 找不到的路径回退到 `index.html`，由前端路由处理；`/assets/` 下带哈希的文件长期缓存，`index.html` 不缓存。
+- `/admin/` 反代到 REST，读写超时 300 秒，上传请求体上限 80 MB（后端上传接口约 70.7 MiB）。
+- `/events` 反代到 SSE，关闭缓冲和压缩，超时 24 小时。
+- 转发 `X-Forwarded-For`（追加对端地址）、`X-Real-IP`、`X-Forwarded-Proto`。前面已有一层代理传了 `X-Forwarded-Proto` 就原样转给后端，后端据此给 refresh token cookie 加 `Secure`。
+
+后端只在容器网络内可达，nginx 和同机的外层代理都落在默认的可信网段（私网和回环）里，所以不用改 `trusted_proxies` 就能拿到真实客户端 IP。外层代理在别的机器、用的是公网地址时，要把它的地址写进 `trusted_proxies`（见下文「可信反向代理」），否则后端把它当成客户端。
+
+**HTTPS**：这套 Compose 本身只提供 HTTP。在前面再挂一层终止 TLS 的反代，把流量转给 `HTTP_PORT`。以宿主机上的 nginx 为例（`.env` 里设 `HTTP_PORT=8080`，并把 compose 里的端口映射改成 `"127.0.0.1:${HTTP_PORT:-80}:8080"`，只让本机代理访问）：
+
+```nginx
+server {
+  listen 443 ssl;
+  server_name admin.example.com;
+  ssl_certificate     /etc/ssl/admin.example.com.pem;
+  ssl_certificate_key /etc/ssl/admin.example.com.key;
+  client_max_body_size 80m;
+
+  location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host              $host;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    # SSE（/events）要求不缓冲、长超时
+    proxy_buffering off;
+    proxy_read_timeout 86400s;
+  }
+}
 ```
 
-> Windows 脚本没有做 `.env` 预检，缺必填项时由 `docker compose` 报错。
+也可以直接改 `frontend` 的 nginx 配置监听 443、把证书挂进容器，二选一。
 
-### 2. 依赖模式（仅启动三方中间件，微服务本地运行）
+### 升级
+
+```bash
+cd backend
+git pull
+docker compose up -d --build --wait
+```
+
+镜像在本机构建，不从仓库拉。数据库结构由后端启动时自动迁移，接口表、权限点在启动时自动同步，不用手工执行 SQL。升级前先按下一节备份。
+
+升级依赖镜像（postgres、redis、minio）时改 compose 里的版本号。PostgreSQL 跨大版本（比如 17 → 18）不能直接换镜像，要先 `pg_dump` 导出，换版本后用空卷导入。
+
+### 备份与恢复
+
+数据在 Compose 具名卷里：`postgres-data`、`redis-data`、`minio-data`、`admin-data`（审计归档）。`docker compose down` 再 `up` 数据还在；**`docker compose down -v` 会删掉所有卷，生产上不要用。**
+
+数据库备份（在 `backend/` 下执行）：
+
+```bash
+docker compose exec -T postgres pg_dump -U postgres -Fc gwa > gwa-$(date +%F).dump
+```
+
+恢复到同版本的空库：
+
+```bash
+docker compose exec -T postgres pg_restore -U postgres -d gwa --clean --if-exists < gwa-2026-01-01.dump
+```
+
+上传的文件在 MinIO 的 `minio-data` 卷里，要和数据库一起备份（例如停服后打包卷目录，或用 `mc mirror`）。
+
+需要临时连库时用 `docker compose exec postgres psql -U postgres gwa`。
+
+### 从旧版 Compose 迁移
+
+旧版用的是 Bitnami 镜像，数据卷目录结构和官方镜像不同，新版不能直接接着用旧卷。旧环境里有要保留的数据时，先用旧版 Compose 起着 `pg_dump` 导出，然后 `docker compose down -v` 删掉旧卷，换新版启动，再按上面的方法导入。
+
+## Docker 依赖模式（本地开发）
+
+只起 PostgreSQL、Redis、MinIO，后端在本机 IDE 里跑。用 `backend/docker-compose.libs.yaml`，镜像和版本与完整部署相同，端口 5432 / 6379 / 9000 / 9001 只绑 `127.0.0.1`。
 
 同样需要 `.env` 里的四个依赖口令。本机后端要用同一份口令：在 `configs/local/` 里写，或者在启动后端的 shell 里导出 `GWA_DB_PASSWORD` 等同名变量。
 
@@ -123,13 +219,15 @@ cp .env.example .env   # 然后编辑 .env
 make -C app/admin/service run
 ```
 
-### 3. PM2 进程管理（生产环境物理机部署）
+## PM2 进程管理（生产环境物理机部署）
 
 ```bash
 ./scripts/deploy/pm2_service.sh
 ```
 
 ## SSE 反向代理网关（可选）
+
+> Docker Compose 部署不需要这一节：`frontend` 的 nginx 已经把 `/events` 反代到后端。下面的独立网关只用于前端和 SSE 分开部署的拓扑。
 
 SSE 推送链路在生产拓扑中由一个独立的 nginx 反向代理网关承载，把 `/events` 透传至后端 admin-service 的 SSE transport（默认 `7789`）。该网关不随 docker-compose 启动，需单独构建与运行。
 
@@ -244,7 +342,7 @@ server:
 
 ## 备份与恢复
 
-程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练一次恢复。
+程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练一次恢复。Docker Compose 部署的备份命令见上文「Docker Compose 部署 / 备份与恢复」。
 
 ## 本地覆盖配置
 

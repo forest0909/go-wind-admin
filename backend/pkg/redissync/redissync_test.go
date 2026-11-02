@@ -103,7 +103,7 @@ func TestLock_MutualExclusionAndRenewal(t *testing.T) {
 			// 每个实例一个独立客户端，模拟不同进程
 			rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 			defer rdb.Close()
-			unlock, err := Lock(context.Background(), rdb, "startup", ttl, 10*time.Second, testLogger{t})
+			unlock, err := Lock(context.Background(), rdb, "startup", ttl, 10*time.Second, testLogger{t}, nil)
 			if err != nil {
 				t.Error(err)
 				return
@@ -137,7 +137,7 @@ func TestLock_MutualExclusionAndRenewal(t *testing.T) {
 // 锁过期被别人拿走后，原持有者的 unlock 不能删掉别人的锁。
 func TestLock_UnlockDoesNotDeleteOthersLock(t *testing.T) {
 	mr, rdb := newRedis(t)
-	unlock, err := Lock(context.Background(), rdb, "k", time.Hour, time.Second, testLogger{t})
+	unlock, err := Lock(context.Background(), rdb, "k", time.Hour, time.Second, testLogger{t}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestLock_UnlockDoesNotDeleteOthersLock(t *testing.T) {
 func TestLock_WaitTimeout(t *testing.T) {
 	mr, rdb := newRedis(t)
 	mr.Set("k", "held")
-	if _, err := Lock(context.Background(), rdb, "k", time.Second, 50*time.Millisecond, testLogger{t}); !errors.Is(err, ErrLockTimeout) {
+	if _, err := Lock(context.Background(), rdb, "k", time.Second, 50*time.Millisecond, testLogger{t}, nil); !errors.Is(err, ErrLockTimeout) {
 		t.Fatalf("expected ErrLockTimeout while lock is held, got %v", err)
 	}
 }
@@ -196,5 +196,60 @@ func TestRunOncePerWindow(t *testing.T) {
 	}
 	if mr.Exists("fail") {
 		t.Fatal("claim not released after failure, retry would be skipped")
+	}
+}
+
+// 续期时发现 key 已被别人拿走：必须通知持有者（修复前只记日志，旧持有者继续执行临界区）。
+func TestLock_LostLeaseNotifiesHolder(t *testing.T) {
+	mr, rdb := newRedis(t)
+	lostCh := make(chan struct{}, 1)
+	unlock, err := Lock(context.Background(), rdb, "k", 60*time.Millisecond, time.Second, testLogger{t},
+		func() { lostCh <- struct{}{} })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	mr.Set("k", "someone-else") // Redis 重启丢 key 后被另一个实例拿到
+	select {
+	case <-lostCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("onLost not called after the lease was taken over")
+	}
+}
+
+// Redis 一直连不上、续期失败超过租期：别人可能已经拿到锁，同样要通知。
+func TestLock_RenewalFailingBeyondTTLNotifiesHolder(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr(), MaxRetries: -1})
+	t.Cleanup(func() { _ = rdb.Close() })
+	lostCh := make(chan struct{}, 1)
+	unlock, err := Lock(context.Background(), rdb, "k", 60*time.Millisecond, time.Second, testLogger{t},
+		func() { lostCh <- struct{}{} })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	mr.Close()
+	select {
+	case <-lostCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("onLost not called while renewals kept failing")
+	}
+}
+
+// 正常释放之后不能误报丢锁。
+func TestLock_NoLostAfterUnlock(t *testing.T) {
+	_, rdb := newRedis(t)
+	var lost atomic.Int32
+	unlock, err := Lock(context.Background(), rdb, "k", 30*time.Millisecond, time.Second, testLogger{t},
+		func() { lost.Add(1) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	unlock()
+	time.Sleep(100 * time.Millisecond)
+	if lost.Load() != 0 {
+		t.Fatal("onLost fired for a lock that was held and released normally")
 	}
 }

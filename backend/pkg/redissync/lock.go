@@ -36,7 +36,10 @@ var lockPollInterval = 200 * time.Millisecond
 //
 // 锁的租期是 ttl，持有期间后台每 ttl/3 续期一次，所以临界区可以比 ttl 长；
 // 持有者进程崩溃时最多 ttl 后自动释放。返回的 unlock 可重复调用。
-func Lock(ctx context.Context, rdb redis.UniversalClient, key string, ttl, wait time.Duration, log Logger) (unlock func(), err error) {
+//
+// onLost 在释放之前发现租约已丢失时调用一次（key 已过期或被别人拿走，或者连续续期失败超过 ttl，
+// 此时别人可能已经拿到锁）。调用方必须停止临界区里的操作；可以为 nil。
+func Lock(ctx context.Context, rdb redis.UniversalClient, key string, ttl, wait time.Duration, log Logger, onLost func()) (unlock func(), err error) {
 	token, err := newToken()
 	if err != nil {
 		return nil, err
@@ -67,17 +70,31 @@ func Lock(ctx context.Context, rdb redis.UniversalClient, key string, ttl, wait 
 		defer close(renewDone)
 		ticker := time.NewTicker(ttl / 3)
 		defer ticker.Stop()
+		lastRenewed := time.Now()
+		lost := func(reason string) {
+			log.Errorf(ctx, "lock %q lost before release: %s", key, reason)
+			if onLost != nil {
+				onLost()
+			}
+		}
 		for {
 			select {
 			case <-stopRenew:
 				return
 			case <-ticker.C:
 				n, err := renewScript.Run(context.Background(), rdb, []string{key}, token, ttl.Milliseconds()).Int()
-				if err != nil {
+				switch {
+				case err != nil:
 					log.Errorf(ctx, "renew lock %q failed: %v", key, err)
-				} else if n == 0 {
-					log.Errorf(ctx, "lock %q lost before release (expired or taken over)", key)
+					if time.Since(lastRenewed) >= ttl {
+						lost("renewal failing for longer than the lease " + ttl.String())
+						return
+					}
+				case n == 0:
+					lost("expired or taken over")
 					return
+				default:
+					lastRenewed = time.Now()
 				}
 			}
 		}

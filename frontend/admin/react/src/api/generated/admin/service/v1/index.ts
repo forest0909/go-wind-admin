@@ -1744,6 +1744,234 @@ export type dictservicev1_DeleteDictTypeRequest = {
   ids: number[] | undefined;
 };
 
+// 外部数据示例管理服务（数据源 demo）
+export interface ExternalDemoContactService {
+  // 分页查询联系人列表
+  List(
+    request: pagination_PagingRequest,
+  ): Promise<externalservicev1_ListDemoContactResponse>;
+  // 查询联系人详情
+  Get(
+    request: externalservicev1_GetDemoContactRequest,
+  ): Promise<externalservicev1_DemoContact>;
+  // 创建联系人
+  Create(
+    request: externalservicev1_CreateDemoContactRequest,
+  ): Promise<wellKnownEmpty>;
+  // 更新联系人
+  Update(
+    request: externalservicev1_UpdateDemoContactRequest,
+  ): Promise<wellKnownEmpty>;
+  // 删除联系人
+  Delete(
+    request: externalservicev1_DeleteDemoContactRequest,
+  ): Promise<wellKnownEmpty>;
+}
+
+export function createExternalDemoContactServiceClient(
+  transport: ClientTransport,
+): ExternalDemoContactService {
+  return {
+    List(request) {
+      const path = `admin/v1/external-demo-contacts`;
+      const body = null;
+      const queryParams: string[] = [];
+      if (request.page) {
+        queryParams.push(
+          `page=${encodeURIComponent(request.page.toString())}`,
+        );
+      }
+      if (request.pageSize) {
+        queryParams.push(
+          `pageSize=${encodeURIComponent(request.pageSize.toString())}`,
+        );
+      }
+      if (request.offset) {
+        queryParams.push(
+          `offset=${encodeURIComponent(request.offset.toString())}`,
+        );
+      }
+      if (request.limit) {
+        queryParams.push(
+          `limit=${encodeURIComponent(request.limit.toString())}`,
+        );
+      }
+      if (request.token) {
+        queryParams.push(
+          `token=${encodeURIComponent(request.token.toString())}`,
+        );
+      }
+      if (request.noPaging) {
+        queryParams.push(
+          `noPaging=${encodeURIComponent(request.noPaging.toString())}`,
+        );
+      }
+      if (request.query) {
+        queryParams.push(
+          `query=${encodeURIComponent(request.query.toString())}`,
+        );
+      }
+      if (request.filter) {
+        queryParams.push(
+          `filter=${encodeURIComponent(request.filter.toString())}`,
+        );
+      }
+      if (request.filterExpr?.type) {
+        queryParams.push(
+          `filterExpr.type=${encodeURIComponent(request.filterExpr.type.toString())}`,
+        );
+      }
+      if (request.filterExpr?.conditions?.field) {
+        queryParams.push(
+          `filterExpr.conditions.field=${encodeURIComponent(request.filterExpr.conditions.field.toString())}`,
+        );
+      }
+      if (request.filterExpr?.conditions?.op) {
+        queryParams.push(
+          `filterExpr.conditions.op=${encodeURIComponent(request.filterExpr.conditions.op.toString())}`,
+        );
+      }
+      if (request.filterExpr?.conditions?.value) {
+        queryParams.push(
+          `filterExpr.conditions.value=${encodeURIComponent(request.filterExpr.conditions.value.toString())}`,
+        );
+      }
+      if (request.filterExpr?.conditions?.jsonValue) {
+        queryParams.push(
+          `filterExpr.conditions.jsonValue=${encodeURIComponent(request.filterExpr.conditions.jsonValue.toString())}`,
+        );
+      }
+      if (request.filterExpr?.conditions?.values) {
+        request.filterExpr.conditions.values.forEach((x) => {
+          queryParams.push(
+            `filterExpr.conditions.values=${encodeURIComponent(x.toString())}`,
+          );
+        });
+      }
+      if (request.filterExpr?.conditions?.datePart) {
+        queryParams.push(
+          `filterExpr.conditions.datePart=${encodeURIComponent(request.filterExpr.conditions.datePart.toString())}`,
+        );
+      }
+      if (request.filterExpr?.conditions?.jsonPath) {
+        queryParams.push(
+          `filterExpr.conditions.jsonPath=${encodeURIComponent(request.filterExpr.conditions.jsonPath.toString())}`,
+        );
+      }
+      if (request.orderBy) {
+        queryParams.push(
+          `orderBy=${encodeURIComponent(request.orderBy.toString())}`,
+        );
+      }
+      if (request.sorting?.field) {
+        queryParams.push(
+          `sorting.field=${encodeURIComponent(request.sorting.field.toString())}`,
+        );
+      }
+      if (request.sorting?.direction) {
+        queryParams.push(
+          `sorting.direction=${encodeURIComponent(request.sorting.direction.toString())}`,
+        );
+      }
+      if (request.fieldMask) {
+        queryParams.push(
+          `fieldMask=${encodeURIComponent(request.fieldMask.toString())}`,
+        );
+      }
+      let uri = path;
+      if (queryParams.length > 0) {
+        uri += `?${queryParams.join('&')}`;
+      }
+      return transport.unary(uri, 'GET', body, {
+        service: 'ExternalDemoContactService',
+        method: 'List',
+      }) as Promise<externalservicev1_ListDemoContactResponse>;
+    },
+    Get(request) {
+      if (request.id === undefined || request.id === null) {
+        throw new Error('missing required field request.id');
+      }
+      const path = `admin/v1/external-demo-contacts/${request.id}`;
+      const body = null;
+      return transport.unary(path, 'GET', body, {
+        service: 'ExternalDemoContactService',
+        method: 'Get',
+      }) as Promise<externalservicev1_DemoContact>;
+    },
+    Create(request) {
+      const path = `admin/v1/external-demo-contacts`;
+      const body = JSON.stringify(request);
+      return transport.unary(path, 'POST', body, {
+        service: 'ExternalDemoContactService',
+        method: 'Create',
+      }) as Promise<wellKnownEmpty>;
+    },
+    Update(request) {
+      if (request.id === undefined || request.id === null) {
+        throw new Error('missing required field request.id');
+      }
+      const path = `admin/v1/external-demo-contacts/${request.id}`;
+      const body = JSON.stringify(request);
+      return transport.unary(path, 'PUT', body, {
+        service: 'ExternalDemoContactService',
+        method: 'Update',
+      }) as Promise<wellKnownEmpty>;
+    },
+    Delete(request) {
+      if (request.id === undefined || request.id === null) {
+        throw new Error('missing required field request.id');
+      }
+      const path = `admin/v1/external-demo-contacts/${request.id}`;
+      const body = null;
+      return transport.unary(path, 'DELETE', body, {
+        service: 'ExternalDemoContactService',
+        method: 'Delete',
+      }) as Promise<wellKnownEmpty>;
+    },
+  };
+}
+// 查询联系人列表 - 回应
+export type externalservicev1_ListDemoContactResponse = {
+  items: externalservicev1_DemoContact[] | undefined;
+  total: number | undefined;
+};
+
+// 联系人
+// 外部资源的 id 一律用 string：外部表的主键类型由客户决定（整数、UUID、编码……）。
+// 金额用 string 承载 decimal，不转 float，避免精度丢失。
+export type externalservicev1_DemoContact = {
+  amount?: string;
+  code?: string;
+  createdAt?: wellKnownTimestamp;
+  id?: string;
+  isActive?: boolean;
+  name?: string;
+  remark?: string;
+  updatedAt?: wellKnownTimestamp;
+};
+
+// 查询联系人详情 - 请求
+export type externalservicev1_GetDemoContactRequest = {
+  id?: string;
+};
+
+// 创建联系人 - 请求
+export type externalservicev1_CreateDemoContactRequest = {
+  data: externalservicev1_DemoContact | undefined;
+};
+
+// 更新联系人 - 请求
+export type externalservicev1_UpdateDemoContactRequest = {
+  data: externalservicev1_DemoContact | undefined;
+  id: string | undefined;
+  updateMask: undefined | wellKnownFieldMask;
+};
+
+// 删除联系人 - 请求
+export type externalservicev1_DeleteDemoContactRequest = {
+  id: string | undefined;
+};
+
 // 文件管理服务
 export interface FileService {
   // 查询文件列表
@@ -6394,6 +6622,7 @@ export class ApiClient {
   private _dashboardService?: DashboardService;
   private _dictEntryService?: DictEntryService;
   private _dictTypeService?: DictTypeService;
+  private _externalDemoContactService?: ExternalDemoContactService;
   private _fileService?: FileService;
   private _fileTransferService?: FileTransferService;
   private _internalMessageCategoryService?: InternalMessageCategoryService;
@@ -6444,6 +6673,10 @@ export class ApiClient {
 
   get dictTypeService(): DictTypeService {
     return this._dictTypeService ??= createDictTypeServiceClient(this._transport);
+  }
+
+  get externalDemoContactService(): ExternalDemoContactService {
+    return this._externalDemoContactService ??= createExternalDemoContactServiceClient(this._transport);
   }
 
   get fileService(): FileService {

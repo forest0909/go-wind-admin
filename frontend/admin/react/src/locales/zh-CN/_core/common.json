@@ -226,7 +226,11 @@
       "DEPARTMENT_NOT_FOUND": "部门不存在",
       "ORGANIZATION_NOT_FOUND": "组织不存在",
       "POSITION_NOT_FOUND": "岗位不存在",
-      "ROLE_NOT_FOUND": "角色不存在"
+      "ROLE_NOT_FOUND": "角色不存在",
+      "EXTERNAL_SOURCE_NOT_CONFIGURED": "外部数据源未配置，请联系管理员",
+      "EXTERNAL_SOURCE_READ_ONLY": "外部数据源为只读，不能修改数据",
+      "EXTERNAL_SOURCE_UNAVAILABLE": "外部数据源连接失败，请稍后重试",
+      "EXTERNAL_SOURCE_TIMEOUT": "外部数据源查询超时，请缩小查询范围后重试"
     },
     "status": {
       "400": "请求参数错误",

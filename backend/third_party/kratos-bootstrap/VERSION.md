@@ -27,3 +27,5 @@
 2026-11-02：`config.NewConfigProvider` 最后追加一个环境变量源，把 `GWA_` 开头的环境变量按原名（不去前缀）作为顶层键加入配置，供 yaml 里的 `${GWA_XXX:默认值}` 占位符引用（Kratos 默认 resolver）。Kratos 自带的 env source 会去掉前缀，占位符得写去前缀后的名字，所以没用它。`config_test.go` 的 `TestEnvPlaceholder_ResolvesFromGWAEnv` 覆盖。
 
 2026-11-02：`rpc.CreateRestServer` 总是传入 `NotFoundHandler(http.NotFoundHandler())` 和 `MethodNotAllowedHandler`（固定 405），不再用 Kratos 默认的 `http.DefaultServeMux` 回退。`net/http/pprof` 包初始化时会把 `/debug/pprof/*` 注册到 DefaultServeMux，原来 `enable_pprof=false` 时这些路径照样能免登录访问。`registerHttpPprof` 改成在本服务路由上显式注册标准路径 `/debug/pprof/`（Index 按名字分发 heap、goroutine 等）、`cmdline`、`profile`、`symbol`、`trace`，保留原来的 `/debug/heap` 等别名。新增导出函数 `MethodNotAllowedHandler()`。`rest_test.go` 的 `TestCreateRestServer_PprofDisabledNotReachable`、`TestCreateRestServer_PprofEnabledReachable`、`TestCreateRestServer_MethodNotAllowed` 覆盖。
+
+2026-11-02：`conf/v1/kratos_conf_data.proto` 的 `Data` 增加 `map<string, ExternalSource> external_sources = 20`（外部数据源：driver、dsn、read_only、连接池、query_timeout、required、timezone），重新 `make api` 生成 `kratos_conf_data.pb.go`。用法见 `docs/crud_module_guide/external.md`。

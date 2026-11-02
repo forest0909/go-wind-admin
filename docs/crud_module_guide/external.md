@@ -42,7 +42,7 @@
 
 ### 4. 页面顶部的说明
 
-在 `ContentContainer` 里、`ListTable` 上方放一行 `<Alert type="info" showIcon title={t('notice')} />`，写清楚数据来自哪个外部数据源。只写一句。
+在 `ContentContainer` 里、`ListTable` 上方放一行 `<Alert style={{ marginBottom: 16 }} type="info" showIcon title={t('notice')} />`，写清楚数据来自哪个外部数据源。只写一句。
 
 ### 5. 菜单、权限和检查脚本
 

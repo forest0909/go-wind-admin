@@ -82,7 +82,7 @@ const ExternalDemoContactManagement = () => {
       // 金额是 decimal 字符串，原样展示，不经过 Number/toFixed
       title: t('amount'),
       dataIndex: 'amount',
-      width: 140,
+      width: 200,
       align: 'right',
       hideInSearch: true,
     },
@@ -140,7 +140,7 @@ const ExternalDemoContactManagement = () => {
   return (
     <>
       <ContentContainer heightMode="fixed" padding="16px" bottomMargin={0}>
-        <Alert className="mb-3" type="info" showIcon title={t('notice')} />
+        <Alert style={{ marginBottom: 16 }} type="info" showIcon title={t('notice')} />
         <ListTable<DemoContact>
           actionRef={actionRef}
           columns={columns}
@@ -165,7 +165,7 @@ const ExternalDemoContactManagement = () => {
               };
             } catch (error) {
               // 只接住「未配置」：它不是故障，而是部署缺配置，空状态里告诉管理员去配。
-              // 其余错误（不可用/超时等）照常抛给 ListTable 显示错误态 + 重试。
+              // 其余错误（不可用、超时等）照常抛给 ListTable 显示错误态 + 重试。
               if (getErrorReason(error) === EXTERNAL_SOURCE_REASON.NOT_CONFIGURED) {
                 console.warn('[ExternalDemoContact] 外部数据源 demo 未配置', error);
                 setNotConfigured(true);

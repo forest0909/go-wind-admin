@@ -1,0 +1,33 @@
+{
+  "notice": "外部数据源示例：本页数据来自配置的外部库（数据源 demo），不在系统主库中。",
+  "notConfiguredTitle": "外部数据源未配置",
+  "notConfiguredDesc": "请管理员在配置文件中添加 data.external_sources.demo 后重启服务。",
+  "name": "名称",
+  "namePlaceholder": "请输入名称",
+  "requiredName": "请输入名称",
+  "code": "编码",
+  "codePlaceholder": "请输入编码",
+  "isActive": "状态",
+  "amount": "金额",
+  "amountPlaceholder": "如 1234.50",
+  "amountInvalid": "请输入合法金额，最多两位小数",
+  "remark": "备注",
+  "remarkPlaceholder": "请输入备注",
+  "createdAt": "创建时间",
+  "updatedAt": "更新时间",
+  "action": "操作",
+  "create": "新建联系人",
+  "edit": "编辑联系人",
+  "deleteConfirmTitle": "确认删除",
+  "deleteConfirmDesc": "确定要删除联系人「{{name}}」吗？",
+  "createSuccess": "创建成功",
+  "createFailed": "创建失败",
+  "updateSuccess": "更新成功",
+  "updateFailed": "更新失败",
+  "deleteSuccess": "删除成功",
+  "deleteFailed": "删除失败",
+  "statusMap": {
+    "active": "启用",
+    "inactive": "停用"
+  }
+}

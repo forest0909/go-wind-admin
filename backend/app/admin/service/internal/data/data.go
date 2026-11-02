@@ -14,8 +14,10 @@ import (
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 
+	"go-wind-admin/pkg/extdb"
 	"go-wind-admin/pkg/oss"
 	"go-wind-admin/pkg/serviceid"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 )
 
 func NewClientType() authenticationV1.ClientType {
@@ -59,4 +61,13 @@ func NewCaptcha(rdb *redis.Client) *captcha.Captcha {
 		captcha.WithKeyPrefix(serviceid.ProjectName+":captcha"),
 	)
 	return captchaInstance
+}
+
+// NewExternalSources 按 data.external_sources 配置建外部数据源注册表
+func NewExternalSources(ctx *bootstrap.Context) (*extdb.Registry, func(), error) {
+	var cfgs map[string]*conf.Data_ExternalSource
+	if cfg := ctx.GetConfig(); cfg != nil {
+		cfgs = cfg.GetData().GetExternalSources()
+	}
+	return extdb.NewRegistry(ctx.Context(), ctx.NewLoggerHelper("external-source/data/admin-service"), cfgs)
 }

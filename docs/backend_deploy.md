@@ -484,6 +484,7 @@ trace:
 | `GWA_DB_PASSWORD` | `data.yaml` 的 `data.database.source` |
 | `GWA_REDIS_PASSWORD` | `data.yaml` 的 `data.redis.password`、`server.yaml` 的 `server.asynq.uri` |
 | `GWA_MINIO_ACCESS_KEY` / `GWA_MINIO_SECRET_KEY` | `oss.yaml` |
+| `GWA_EXT_<NAME>_DSN` | `data.yaml` 的 `data.external_sources.<name>.dsn`（外部数据源，见下文） |
 
 默认值和原来写死的开发口令一致，本地开发不设变量时行为不变。`configs/local/` 里写死的值同样会覆盖占位符。本地把主机名改成 `localhost` 的例子见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步。
 
@@ -524,11 +525,21 @@ trace:
 或者限制访问。此期间新建过的用户，建议改一次密码。根因和修法见
 `docs/plans/trim-and-own-deps.md` 的「字段隐藏、访问日志与创建用户口令」。
 
+## 外部数据源
+
+接客户已有的业务库（PostgreSQL / MySQL / SQL Server）时，在 `configs/data.yaml` 的 `data.external_sources` 下登记，写法和各项含义见 [crud_module_guide/external.md](./crud_module_guide/external.md)。部署时注意：
+
+- **网络可达**：后端所在主机（Docker 部署时是 admin-service 容器）要能连到客户库的地址和端口，防火墙、白名单要提前开。
+- **账号**：向客户要最小权限账号。只读模块用只读账号（只授 `SELECT`）；SQL Server 没有只读事务，只读完全靠账号权限，必须是只读账号。可写模块只授对应表的增删改查。
+- **连接串放 `.env`**：每个源一个变量 `GWA_EXT_<NAME>_DSN`，`data.yaml` 里写 `dsn: "${GWA_EXT_<NAME>_DSN:}"`。Compose 部署还要在 `docker-compose.yaml` 的 `admin-service.environment` 里加一行 `- GWA_EXT_<NAME>_DSN=${GWA_EXT_<NAME>_DSN:-}`，变量才进得了容器（文件里有注释示例）。
+- 连不上不影响启动，只记错误日志；`required: true` 的源参与 `/readyz`。
+- 系统不会在外部库建表或改表，外部数据示例的表要用 `backend/sql/external_demo/` 里对应的脚本手动建。
+
 ## 健康检查
 
 REST 服务（默认 `:7788`）提供两个免认证端点，供负载均衡、容器编排或监控探针使用：
 
 - `GET /healthz`：存活探针，进程能响应就返回 200，不检查任何依赖。
-- `GET /readyz`：就绪探针，依次 Ping 数据库和 Redis（各 2 秒超时）。全部通过返回 200；任一失败返回 503，响应体只写失败的依赖名（`database unavailable` / `redis unavailable`），原始错误只记在服务端日志里，不返回连接信息。
+- `GET /readyz`：就绪探针，依次 Ping 数据库、Redis 和 `required: true` 的外部数据源（各 2 秒超时；外部源失败时名字是 `external:<数据源名>`）。全部通过返回 200；任一失败返回 503，响应体只写失败的依赖名（`database unavailable` / `redis unavailable`），原始错误只记在服务端日志里，不返回连接信息。
 
 两个端点手工注册在路由上，不经过认证、Casbin 鉴权、访问日志和审计日志中间件，高频探测不会写满日志。

@@ -90,6 +90,8 @@ services:
       - GWA_AUTH_JWT_PRIVATE_KEY=${GWA_AUTH_JWT_PRIVATE_KEY:?请在 .env 中设置 GWA_AUTH_JWT_PRIVATE_KEY（生成方法见 .env.example）}
       # 可选：签名图片 URL 的密钥
       - GOWIND_CRYPTO_KEY=${GOWIND_CRYPTO_KEY:-}
+      # 可选：外部数据源连接串，每个源一行，和 configs/data.yaml 的 ${GWA_EXT_<NAME>_DSN} 对应
+      # - GWA_EXT_DEMO_DSN=${GWA_EXT_DEMO_DSN:-}
       - AUDIT_ARCHIVE_DIR=/app/data/audit-archive
     volumes:
       # 审计归档文件

@@ -967,6 +967,154 @@ paths:
                 "200":
                     description: OK
                     content: {}
+    /admin/v1/external-demo-contacts:
+        get:
+            tags:
+                - ExternalDemoContactService
+            description: 分页查询联系人列表
+            operationId: ExternalDemoContactService_List
+            parameters:
+                - name: page
+                  in: query
+                  description: 当前页码（从1开始，默认1）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: pageSize
+                  in: query
+                  description: 每页条数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: offset
+                  in: query
+                  description: 跳过的记录数（从0开始，默认0）
+                  schema:
+                    type: string
+                - name: limit
+                  in: query
+                  description: 最多返回的记录数（默认10，建议设置上限如100）
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: token
+                  in: query
+                  description: 上一页最后一条记录的游标（如ID/时间戳+ID，首次请求为空）
+                  schema:
+                    type: string
+                - name: noPaging
+                  in: query
+                  description: 是否不分页，如果为true，则page和pageSize参数无效。
+                  schema:
+                    type: boolean
+                - name: query
+                  in: query
+                  description: JSON字符串过滤条件，基础语法：{"field1":"val1", "field2___icontains":"val2"}，具体请参见：https://github.com/tx7do/go-crud/tree/main/pagination/filter/README.md
+                  schema:
+                    type: string
+                - name: filter
+                  in: query
+                  description: Google AIP规范字符串过滤条件
+                  schema:
+                    type: string
+                - name: filterExpr.type
+                  in: query
+                  description: 过滤表达式类型
+                  schema:
+                    enum:
+                        - EXPR_TYPE_UNSPECIFIED
+                        - AND
+                        - OR
+                    type: string
+                    format: enum
+                - name: orderBy
+                  in: query
+                  description: 排序条件
+                  schema:
+                    type: string
+                - name: fieldMask
+                  in: query
+                  description: 字段掩码，其作用为SELECT中的字段，其语法为使用逗号分隔字段名，例如：id,realName,userName。如果为空则选中所有字段，即SELECT *。
+                  schema:
+                    type: string
+                    format: field-mask
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListDemoContactResponse'
+        post:
+            tags:
+                - ExternalDemoContactService
+            description: 创建联系人
+            operationId: ExternalDemoContactService_Create
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateDemoContactRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /admin/v1/external-demo-contacts/{id}:
+        get:
+            tags:
+                - ExternalDemoContactService
+            description: 查询联系人详情
+            operationId: ExternalDemoContactService_Get
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DemoContact'
+        put:
+            tags:
+                - ExternalDemoContactService
+            description: 更新联系人
+            operationId: ExternalDemoContactService_Update
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateDemoContactRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+        delete:
+            tags:
+                - ExternalDemoContactService
+            description: 删除联系人
+            operationId: ExternalDemoContactService_Delete
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
     /admin/v1/file/download:
         get:
             tags:
@@ -3883,6 +4031,12 @@ components:
                 data:
                     $ref: '#/components/schemas/Config'
             description: 创建系统参数 - 请求
+        CreateDemoContactRequest:
+            type: object
+            properties:
+                data:
+                    $ref: '#/components/schemas/DemoContact'
+            description: 创建联系人 - 请求
         CreateDictEntryRequest:
             type: object
             properties:
@@ -3994,6 +4148,39 @@ components:
                         type: integer
                         format: uint32
                     description: 收件箱记录ID列表，为空表示清空收件箱
+        DemoContact:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: 联系人ID（UUID，创建时由服务端生成）
+                name:
+                    type: string
+                    description: 名称
+                code:
+                    type: string
+                    description: 编码
+                isActive:
+                    type: boolean
+                    description: 是否启用
+                amount:
+                    type: string
+                    description: 金额，十进制字符串，最多两位小数，如 "1234.50"
+                remark:
+                    type: string
+                    description: 备注
+                createdAt:
+                    type: string
+                    description: 创建时间
+                    format: date-time
+                updatedAt:
+                    type: string
+                    description: 更新时间
+                    format: date-time
+            description: |-
+                联系人
+                 外部资源的 id 一律用 string：外部表的主键类型由客户决定（整数、UUID、编码……）。
+                 金额用 string 承载 decimal，不转 float，避免精度丢失。
         DeviceInfo:
             type: object
             properties:
@@ -4711,6 +4898,16 @@ components:
                 total:
                     type: string
             description: 查询系统参数列表 - 回应
+        ListDemoContactResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/DemoContact'
+                total:
+                    type: string
+            description: 查询联系人列表 - 回应
         ListDictEntryByTypeCodeResponse:
             type: object
             properties:
@@ -6270,6 +6467,19 @@ components:
                     type: boolean
                     description: 如果设置为true的时候，资源不存在则会新增(插入)，并且在这种情况下`updateMask`字段将会被忽略。
             description: 更新系统参数 - 请求
+        UpdateDemoContactRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/DemoContact'
+                updateMask:
+                    example: name,amount
+                    type: string
+                    description: 要更新的字段列表
+                    format: field-mask
+            description: 更新联系人 - 请求
         UpdateDictEntryRequest:
             type: object
             properties:
@@ -6781,6 +6991,8 @@ tags:
       description: 数据字典条目管理服务
     - name: DictTypeService
       description: 数据字典分类管理服务
+    - name: ExternalDemoContactService
+      description: 外部数据示例管理服务（数据源 demo）
     - name: FileService
       description: 文件管理服务
     - name: FileTransferService

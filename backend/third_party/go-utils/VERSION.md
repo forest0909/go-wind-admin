@@ -42,3 +42,5 @@
 `id.GenerateOrderIdWithRandom` 的 4 位随机数改为补零（`%04d`）：原来随机数小于 1000 时订单号少一位，`TestGenerateOrderIdWithRandom` 约 10% 概率失败。
 
 `timeutil` 的 `TestUnixMilliToStringPtr` / `TestTimeToTimeString` 期望值改为按 `GetDefaultTimeLocation()` 格式化：被测函数固定转到默认时区，测试原来用机器本地时区，在 UTC 的 CI 上必然失败。
+
+`timeutil` 的 `TestTimeToDateString` 同样改为按 `GetDefaultTimeLocation()` 算期望日期：原来只在 UTC 16:00–24:00（默认时区已是次日）跑时失败，上一笔漏了这一个。

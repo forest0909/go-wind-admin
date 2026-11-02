@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package admin.service.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+import "pagination/v1/pagination.proto";
+import "external/service/v1/demo_contact.proto";
+
+// 外部数据示例管理服务（数据源 demo）
+service ExternalDemoContactService {
+  // 分页查询联系人列表
+  rpc List (pagination.PagingRequest) returns (external.service.v1.ListDemoContactResponse) {
+    option (google.api.http) = {
+      get: "/admin/v1/external-demo-contacts"
+    };
+  }
+
+  // 查询联系人详情
+  rpc Get (external.service.v1.GetDemoContactRequest) returns (external.service.v1.DemoContact) {
+    option (google.api.http) = {
+      get: "/admin/v1/external-demo-contacts/{id}"
+    };
+  }
+
+  // 创建联系人
+  rpc Create (external.service.v1.CreateDemoContactRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/admin/v1/external-demo-contacts"
+      body: "*"
+    };
+  }
+
+  // 更新联系人
+  rpc Update (external.service.v1.UpdateDemoContactRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/admin/v1/external-demo-contacts/{id}"
+      body: "*"
+    };
+  }
+
+  // 删除联系人
+  rpc Delete (external.service.v1.DeleteDemoContactRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/admin/v1/external-demo-contacts/{id}"
+    };
+  }
+}

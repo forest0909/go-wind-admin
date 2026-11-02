@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package external.service.v1;
+
+import "errors/errors.proto";
+
+// 外部数据源错误定义
+// reason 在前端按名字翻译（request.reason.<REASON>），所以外部源专属的 reason 都带 EXTERNAL_SOURCE_ 前缀，
+// 不和其他模块撞名。响应 message 里只放数据源名，不放连接串和驱动原始错误。
+enum ExternalErrorReason {
+    option (errors.default_code) = 500;
+
+    // 400：过滤/排序字段不在白名单、操作符不支持、值格式不对
+    BAD_REQUEST = 0 [(errors.code) = 400];
+
+    // 403：数据源配置为只读，拒绝写操作
+    EXTERNAL_SOURCE_READ_ONLY = 300 [(errors.code) = 403];
+
+    // 404：外部库里找不到这条记录
+    NOT_FOUND = 400 [(errors.code) = 404];
+
+    // 500：外部库返回的其他错误（约束冲突、列类型不符等），详情只进服务端日志
+    INTERNAL_SERVER_ERROR = 2000 [(errors.code) = 500];
+
+    // 503：配置里没有这个数据源
+    EXTERNAL_SOURCE_NOT_CONFIGURED = 2300 [(errors.code) = 503];
+    // 503：外部库连不上
+    EXTERNAL_SOURCE_UNAVAILABLE = 2301 [(errors.code) = 503];
+
+    // 504：外部库查询超时（超过 query_timeout）
+    EXTERNAL_SOURCE_TIMEOUT = 2400 [(errors.code) = 504];
+}

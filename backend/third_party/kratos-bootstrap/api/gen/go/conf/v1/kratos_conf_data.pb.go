@@ -24,28 +24,29 @@ const (
 
 // 数据
 type Data struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Database      *Data_Database         `protobuf:"bytes,1,opt,name=database,proto3,oneof" json:"database,omitempty"`            // 数据库DSN
-	Redis         *Data_Redis            `protobuf:"bytes,10,opt,name=redis,proto3,oneof" json:"redis,omitempty"`                 // Redis
-	Mongodb       *Data_MongoDB          `protobuf:"bytes,11,opt,name=mongodb,proto3,oneof" json:"mongodb,omitempty"`             // MongoDB数据库
-	Elasticsearch *Data_ElasticSearch    `protobuf:"bytes,12,opt,name=elasticsearch,proto3,oneof" json:"elasticsearch,omitempty"` // ElasticSearch数据库
-	Cassandra     *Data_Cassandra        `protobuf:"bytes,13,opt,name=cassandra,proto3,oneof" json:"cassandra,omitempty"`         // Cassandra数据库
-	Clickhouse    *Data_ClickHouse       `protobuf:"bytes,14,opt,name=clickhouse,proto3,oneof" json:"clickhouse,omitempty"`       // ClickHouse数据库
-	Influxdb      *Data_InfluxDB         `protobuf:"bytes,15,opt,name=influxdb,proto3,oneof" json:"influxdb,omitempty"`           // InfluxDB数据库
-	Doris         *Data_Doris            `protobuf:"bytes,16,opt,name=doris,proto3,oneof" json:"doris,omitempty"`                 // Doris数据库
-	Snowflake     *Data_Snowflake        `protobuf:"bytes,17,opt,name=snowflake,proto3,oneof" json:"snowflake,omitempty"`         // Snowflake数据库
-	Duckdb        *Data_DuckDB           `protobuf:"bytes,18,opt,name=duckdb,proto3,oneof" json:"duckdb,omitempty"`               // DuckDB数据库
-	Opensearch    *Data_OpenSearch       `protobuf:"bytes,19,opt,name=opensearch,proto3,oneof" json:"opensearch,omitempty"`       // OpenSearch数据库
-	Kafka         *Data_Kafka            `protobuf:"bytes,30,opt,name=kafka,proto3,oneof" json:"kafka,omitempty"`                 // Kafka服务
-	Rabbitmq      *Data_RabbitMQ         `protobuf:"bytes,31,opt,name=rabbitmq,proto3,oneof" json:"rabbitmq,omitempty"`           // RabbitMQ服务
-	Mqtt          *Data_Mqtt             `protobuf:"bytes,32,opt,name=mqtt,proto3,oneof" json:"mqtt,omitempty"`                   // MQTT服务
-	Activemq      *Data_ActiveMQ         `protobuf:"bytes,33,opt,name=activemq,proto3,oneof" json:"activemq,omitempty"`           // ActiveMQ
-	Nats          *Data_NATS             `protobuf:"bytes,34,opt,name=nats,proto3,oneof" json:"nats,omitempty"`                   // NATS
-	Nsq           *Data_NSQ              `protobuf:"bytes,35,opt,name=nsq,proto3,oneof" json:"nsq,omitempty"`                     // NATS
-	Pulsar        *Data_Pulsar           `protobuf:"bytes,36,opt,name=pulsar,proto3,oneof" json:"pulsar,omitempty"`               // Pulsar
-	Rocketmq      *Data_RocketMQ         `protobuf:"bytes,38,opt,name=rocketmq,proto3,oneof" json:"rocketmq,omitempty"`           // RocketMQ
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState          `protogen:"open.v1"`
+	Database        *Data_Database                  `protobuf:"bytes,1,opt,name=database,proto3,oneof" json:"database,omitempty"`                                                                                                           // 数据库DSN
+	Redis           *Data_Redis                     `protobuf:"bytes,10,opt,name=redis,proto3,oneof" json:"redis,omitempty"`                                                                                                                // Redis
+	Mongodb         *Data_MongoDB                   `protobuf:"bytes,11,opt,name=mongodb,proto3,oneof" json:"mongodb,omitempty"`                                                                                                            // MongoDB数据库
+	Elasticsearch   *Data_ElasticSearch             `protobuf:"bytes,12,opt,name=elasticsearch,proto3,oneof" json:"elasticsearch,omitempty"`                                                                                                // ElasticSearch数据库
+	Cassandra       *Data_Cassandra                 `protobuf:"bytes,13,opt,name=cassandra,proto3,oneof" json:"cassandra,omitempty"`                                                                                                        // Cassandra数据库
+	Clickhouse      *Data_ClickHouse                `protobuf:"bytes,14,opt,name=clickhouse,proto3,oneof" json:"clickhouse,omitempty"`                                                                                                      // ClickHouse数据库
+	Influxdb        *Data_InfluxDB                  `protobuf:"bytes,15,opt,name=influxdb,proto3,oneof" json:"influxdb,omitempty"`                                                                                                          // InfluxDB数据库
+	Doris           *Data_Doris                     `protobuf:"bytes,16,opt,name=doris,proto3,oneof" json:"doris,omitempty"`                                                                                                                // Doris数据库
+	Snowflake       *Data_Snowflake                 `protobuf:"bytes,17,opt,name=snowflake,proto3,oneof" json:"snowflake,omitempty"`                                                                                                        // Snowflake数据库
+	Duckdb          *Data_DuckDB                    `protobuf:"bytes,18,opt,name=duckdb,proto3,oneof" json:"duckdb,omitempty"`                                                                                                              // DuckDB数据库
+	Opensearch      *Data_OpenSearch                `protobuf:"bytes,19,opt,name=opensearch,proto3,oneof" json:"opensearch,omitempty"`                                                                                                      // OpenSearch数据库
+	ExternalSources map[string]*Data_ExternalSource `protobuf:"bytes,20,rep,name=external_sources,json=externalSources,proto3" json:"external_sources,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 外部数据源，键为数据源名
+	Kafka           *Data_Kafka                     `protobuf:"bytes,30,opt,name=kafka,proto3,oneof" json:"kafka,omitempty"`                                                                                                                // Kafka服务
+	Rabbitmq        *Data_RabbitMQ                  `protobuf:"bytes,31,opt,name=rabbitmq,proto3,oneof" json:"rabbitmq,omitempty"`                                                                                                          // RabbitMQ服务
+	Mqtt            *Data_Mqtt                      `protobuf:"bytes,32,opt,name=mqtt,proto3,oneof" json:"mqtt,omitempty"`                                                                                                                  // MQTT服务
+	Activemq        *Data_ActiveMQ                  `protobuf:"bytes,33,opt,name=activemq,proto3,oneof" json:"activemq,omitempty"`                                                                                                          // ActiveMQ
+	Nats            *Data_NATS                      `protobuf:"bytes,34,opt,name=nats,proto3,oneof" json:"nats,omitempty"`                                                                                                                  // NATS
+	Nsq             *Data_NSQ                       `protobuf:"bytes,35,opt,name=nsq,proto3,oneof" json:"nsq,omitempty"`                                                                                                                    // NATS
+	Pulsar          *Data_Pulsar                    `protobuf:"bytes,36,opt,name=pulsar,proto3,oneof" json:"pulsar,omitempty"`                                                                                                              // Pulsar
+	Rocketmq        *Data_RocketMQ                  `protobuf:"bytes,38,opt,name=rocketmq,proto3,oneof" json:"rocketmq,omitempty"`                                                                                                          // RocketMQ
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Data) Reset() {
@@ -151,6 +152,13 @@ func (x *Data) GetDuckdb() *Data_DuckDB {
 func (x *Data) GetOpensearch() *Data_OpenSearch {
 	if x != nil {
 		return x.Opensearch
+	}
+	return nil
+}
+
+func (x *Data) GetExternalSources() map[string]*Data_ExternalSource {
+	if x != nil {
+		return x.ExternalSources
 	}
 	return nil
 }
@@ -2330,6 +2338,115 @@ func (x *Data_RocketMQ) GetGroupName() string {
 	return ""
 }
 
+// 外部数据源：客户已有的业务库，不走 ent，系统绝不对它建表或改表。
+type Data_ExternalSource struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Driver          string                 `protobuf:"bytes,1,opt,name=driver,proto3" json:"driver,omitempty"`                                             // 驱动：postgres、mysql、sqlserver
+	Dsn             string                 `protobuf:"bytes,2,opt,name=dsn,proto3" json:"dsn,omitempty"`                                                   // 连接串，建议用 ${GWA_EXT_<NAME>_DSN} 从环境变量注入
+	ReadOnly        *bool                  `protobuf:"varint,3,opt,name=read_only,json=readOnly,proto3,oneof" json:"read_only,omitempty"`                  // 只读，不写默认 true；为 true 时写操作直接拒绝
+	MaxOpenConns    int32                  `protobuf:"varint,10,opt,name=max_open_conns,json=maxOpenConns,proto3" json:"max_open_conns,omitempty"`         // 连接池最大打开连接数，0 取默认 10
+	MaxIdleConns    int32                  `protobuf:"varint,11,opt,name=max_idle_conns,json=maxIdleConns,proto3" json:"max_idle_conns,omitempty"`         // 连接池最大空闲连接数，0 取默认 2
+	ConnMaxLifetime *durationpb.Duration   `protobuf:"bytes,12,opt,name=conn_max_lifetime,json=connMaxLifetime,proto3" json:"conn_max_lifetime,omitempty"` // 连接可重用的最大时长，不写取默认 1800s
+	QueryTimeout    *durationpb.Duration   `protobuf:"bytes,13,opt,name=query_timeout,json=queryTimeout,proto3" json:"query_timeout,omitempty"`            // 单次查询/执行超时，不写取默认 5s
+	Required        bool                   `protobuf:"varint,20,opt,name=required,proto3" json:"required,omitempty"`                                       // true 才进入 /readyz；false 时连不上只记日志，不影响启动
+	Timezone        string                 `protobuf:"bytes,21,opt,name=timezone,proto3" json:"timezone,omitempty"`                                        // 外部库无时区时间字段按此时区解释，不写为 UTC
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *Data_ExternalSource) Reset() {
+	*x = Data_ExternalSource{}
+	mi := &file_conf_v1_kratos_conf_data_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Data_ExternalSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Data_ExternalSource) ProtoMessage() {}
+
+func (x *Data_ExternalSource) ProtoReflect() protoreflect.Message {
+	mi := &file_conf_v1_kratos_conf_data_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Data_ExternalSource.ProtoReflect.Descriptor instead.
+func (*Data_ExternalSource) Descriptor() ([]byte, []int) {
+	return file_conf_v1_kratos_conf_data_proto_rawDescGZIP(), []int{0, 19}
+}
+
+func (x *Data_ExternalSource) GetDriver() string {
+	if x != nil {
+		return x.Driver
+	}
+	return ""
+}
+
+func (x *Data_ExternalSource) GetDsn() string {
+	if x != nil {
+		return x.Dsn
+	}
+	return ""
+}
+
+func (x *Data_ExternalSource) GetReadOnly() bool {
+	if x != nil && x.ReadOnly != nil {
+		return *x.ReadOnly
+	}
+	return false
+}
+
+func (x *Data_ExternalSource) GetMaxOpenConns() int32 {
+	if x != nil {
+		return x.MaxOpenConns
+	}
+	return 0
+}
+
+func (x *Data_ExternalSource) GetMaxIdleConns() int32 {
+	if x != nil {
+		return x.MaxIdleConns
+	}
+	return 0
+}
+
+func (x *Data_ExternalSource) GetConnMaxLifetime() *durationpb.Duration {
+	if x != nil {
+		return x.ConnMaxLifetime
+	}
+	return nil
+}
+
+func (x *Data_ExternalSource) GetQueryTimeout() *durationpb.Duration {
+	if x != nil {
+		return x.QueryTimeout
+	}
+	return nil
+}
+
+func (x *Data_ExternalSource) GetRequired() bool {
+	if x != nil {
+		return x.Required
+	}
+	return false
+}
+
+func (x *Data_ExternalSource) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
 type Data_Doris_StreamLoad struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Endpoint      string                 `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`       // Stream Load接口地址，例如 "http://localhost:8030/api/{db}/{table}/_stream_load"
@@ -2343,7 +2460,7 @@ type Data_Doris_StreamLoad struct {
 
 func (x *Data_Doris_StreamLoad) Reset() {
 	*x = Data_Doris_StreamLoad{}
-	mi := &file_conf_v1_kratos_conf_data_proto_msgTypes[21]
+	mi := &file_conf_v1_kratos_conf_data_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2355,7 +2472,7 @@ func (x *Data_Doris_StreamLoad) String() string {
 func (*Data_Doris_StreamLoad) ProtoMessage() {}
 
 func (x *Data_Doris_StreamLoad) ProtoReflect() protoreflect.Message {
-	mi := &file_conf_v1_kratos_conf_data_proto_msgTypes[21]
+	mi := &file_conf_v1_kratos_conf_data_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2410,7 +2527,7 @@ var File_conf_v1_kratos_conf_data_proto protoreflect.FileDescriptor
 
 const file_conf_v1_kratos_conf_data_proto_rawDesc = "" +
 	"\n" +
-	"\x1econf/v1/kratos_conf_data.proto\x12\x04conf\x1a\x1dconf/v1/kratos_conf_tls.proto\x1a\x1egoogle/protobuf/duration.proto\"\xf3Z\n" +
+	"\x1econf/v1/kratos_conf_data.proto\x12\x04conf\x1a\x1dconf/v1/kratos_conf_tls.proto\x1a\x1egoogle/protobuf/duration.proto\"\x96_\n" +
 	"\x04Data\x124\n" +
 	"\bdatabase\x18\x01 \x01(\v2\x13.conf.Data.DatabaseH\x00R\bdatabase\x88\x01\x01\x12+\n" +
 	"\x05redis\x18\n" +
@@ -2428,7 +2545,8 @@ const file_conf_v1_kratos_conf_data_proto_rawDesc = "" +
 	"\n" +
 	"opensearch\x18\x13 \x01(\v2\x15.conf.Data.OpenSearchH\n" +
 	"R\n" +
-	"opensearch\x88\x01\x01\x12+\n" +
+	"opensearch\x88\x01\x01\x12J\n" +
+	"\x10external_sources\x18\x14 \x03(\v2\x1f.conf.Data.ExternalSourcesEntryR\x0fexternalSources\x12+\n" +
 	"\x05kafka\x18\x1e \x01(\v2\x10.conf.Data.KafkaH\vR\x05kafka\x88\x01\x01\x124\n" +
 	"\brabbitmq\x18\x1f \x01(\v2\x13.conf.Data.RabbitMQH\fR\brabbitmq\x88\x01\x01\x12(\n" +
 	"\x04mqtt\x18  \x01(\v2\x0f.conf.Data.MqttH\rR\x04mqtt\x88\x01\x01\x124\n" +
@@ -2798,7 +2916,23 @@ const file_conf_v1_kratos_conf_data_proto_rawDesc = "" +
 	"\rinstance_name\x18\n" +
 	" \x01(\tR\finstanceName\x12\x1d\n" +
 	"\n" +
-	"group_name\x18\v \x01(\tR\tgroupNameB\v\n" +
+	"group_name\x18\v \x01(\tR\tgroupName\x1a\xf5\x02\n" +
+	"\x0eExternalSource\x12\x16\n" +
+	"\x06driver\x18\x01 \x01(\tR\x06driver\x12\x10\n" +
+	"\x03dsn\x18\x02 \x01(\tR\x03dsn\x12 \n" +
+	"\tread_only\x18\x03 \x01(\bH\x00R\breadOnly\x88\x01\x01\x12$\n" +
+	"\x0emax_open_conns\x18\n" +
+	" \x01(\x05R\fmaxOpenConns\x12$\n" +
+	"\x0emax_idle_conns\x18\v \x01(\x05R\fmaxIdleConns\x12E\n" +
+	"\x11conn_max_lifetime\x18\f \x01(\v2\x19.google.protobuf.DurationR\x0fconnMaxLifetime\x12>\n" +
+	"\rquery_timeout\x18\r \x01(\v2\x19.google.protobuf.DurationR\fqueryTimeout\x12\x1a\n" +
+	"\brequired\x18\x14 \x01(\bR\brequired\x12\x1a\n" +
+	"\btimezone\x18\x15 \x01(\tR\btimezoneB\f\n" +
+	"\n" +
+	"_read_only\x1a]\n" +
+	"\x14ExternalSourcesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12/\n" +
+	"\x05value\x18\x02 \x01(\v2\x19.conf.Data.ExternalSourceR\x05value:\x028\x01B\v\n" +
 	"\t_databaseB\b\n" +
 	"\x06_redisB\n" +
 	"\n" +
@@ -2835,7 +2969,7 @@ func file_conf_v1_kratos_conf_data_proto_rawDescGZIP() []byte {
 	return file_conf_v1_kratos_conf_data_proto_rawDescData
 }
 
-var file_conf_v1_kratos_conf_data_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_conf_v1_kratos_conf_data_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_conf_v1_kratos_conf_data_proto_goTypes = []any{
 	(*Data)(nil),                  // 0: conf.Data
 	(*Data_Database)(nil),         // 1: conf.Data.Database
@@ -2857,10 +2991,12 @@ var file_conf_v1_kratos_conf_data_proto_goTypes = []any{
 	(*Data_NSQ)(nil),              // 17: conf.Data.NSQ
 	(*Data_Pulsar)(nil),           // 18: conf.Data.Pulsar
 	(*Data_RocketMQ)(nil),         // 19: conf.Data.RocketMQ
-	nil,                           // 20: conf.Data.MongoDB.AuthMechanismPropertiesEntry
-	(*Data_Doris_StreamLoad)(nil), // 21: conf.Data.Doris.StreamLoad
-	(*durationpb.Duration)(nil),   // 22: google.protobuf.Duration
-	(*TLS)(nil),                   // 23: conf.TLS
+	(*Data_ExternalSource)(nil),   // 20: conf.Data.ExternalSource
+	nil,                           // 21: conf.Data.ExternalSourcesEntry
+	nil,                           // 22: conf.Data.MongoDB.AuthMechanismPropertiesEntry
+	(*Data_Doris_StreamLoad)(nil), // 23: conf.Data.Doris.StreamLoad
+	(*durationpb.Duration)(nil),   // 24: google.protobuf.Duration
+	(*TLS)(nil),                   // 25: conf.TLS
 }
 var file_conf_v1_kratos_conf_data_proto_depIdxs = []int32{
 	1,  // 0: conf.Data.database:type_name -> conf.Data.Database
@@ -2874,64 +3010,68 @@ var file_conf_v1_kratos_conf_data_proto_depIdxs = []int32{
 	10, // 8: conf.Data.snowflake:type_name -> conf.Data.Snowflake
 	11, // 9: conf.Data.duckdb:type_name -> conf.Data.DuckDB
 	8,  // 10: conf.Data.opensearch:type_name -> conf.Data.OpenSearch
-	12, // 11: conf.Data.kafka:type_name -> conf.Data.Kafka
-	13, // 12: conf.Data.rabbitmq:type_name -> conf.Data.RabbitMQ
-	14, // 13: conf.Data.mqtt:type_name -> conf.Data.Mqtt
-	15, // 14: conf.Data.activemq:type_name -> conf.Data.ActiveMQ
-	16, // 15: conf.Data.nats:type_name -> conf.Data.NATS
-	17, // 16: conf.Data.nsq:type_name -> conf.Data.NSQ
-	18, // 17: conf.Data.pulsar:type_name -> conf.Data.Pulsar
-	19, // 18: conf.Data.rocketmq:type_name -> conf.Data.RocketMQ
-	22, // 19: conf.Data.Database.connection_max_lifetime:type_name -> google.protobuf.Duration
-	23, // 20: conf.Data.Redis.tls:type_name -> conf.TLS
-	22, // 21: conf.Data.Redis.dial_timeout:type_name -> google.protobuf.Duration
-	22, // 22: conf.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
-	22, // 23: conf.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
-	22, // 24: conf.Data.Redis.pool_timeout:type_name -> google.protobuf.Duration
-	22, // 25: conf.Data.Redis.conn_max_idle_time:type_name -> google.protobuf.Duration
-	22, // 26: conf.Data.Redis.conn_max_lifetime:type_name -> google.protobuf.Duration
-	22, // 27: conf.Data.Redis.min_retry_backoff:type_name -> google.protobuf.Duration
-	22, // 28: conf.Data.Redis.max_retry_backoff:type_name -> google.protobuf.Duration
-	20, // 29: conf.Data.MongoDB.auth_mechanism_properties:type_name -> conf.Data.MongoDB.AuthMechanismPropertiesEntry
-	22, // 30: conf.Data.MongoDB.connect_timeout:type_name -> google.protobuf.Duration
-	22, // 31: conf.Data.MongoDB.heartbeat_interval:type_name -> google.protobuf.Duration
-	22, // 32: conf.Data.MongoDB.local_threshold:type_name -> google.protobuf.Duration
-	22, // 33: conf.Data.MongoDB.max_conn_idle_time:type_name -> google.protobuf.Duration
-	22, // 34: conf.Data.MongoDB.max_staleness:type_name -> google.protobuf.Duration
-	22, // 35: conf.Data.MongoDB.server_selection_timeout:type_name -> google.protobuf.Duration
-	22, // 36: conf.Data.MongoDB.socket_timeout:type_name -> google.protobuf.Duration
-	22, // 37: conf.Data.MongoDB.timeout:type_name -> google.protobuf.Duration
-	23, // 38: conf.Data.MongoDB.tls:type_name -> conf.TLS
-	23, // 39: conf.Data.ClickHouse.tls:type_name -> conf.TLS
-	22, // 40: conf.Data.ClickHouse.dial_timeout:type_name -> google.protobuf.Duration
-	22, // 41: conf.Data.ClickHouse.read_timeout:type_name -> google.protobuf.Duration
-	22, // 42: conf.Data.ClickHouse.conn_max_lifetime:type_name -> google.protobuf.Duration
-	22, // 43: conf.Data.InfluxDB.write_timeout:type_name -> google.protobuf.Duration
-	22, // 44: conf.Data.InfluxDB.query_timeout:type_name -> google.protobuf.Duration
-	22, // 45: conf.Data.InfluxDB.idle_connection_timeout:type_name -> google.protobuf.Duration
-	23, // 46: conf.Data.InfluxDB.tls:type_name -> conf.TLS
-	22, // 47: conf.Data.Doris.connection_max_lifetime:type_name -> google.protobuf.Duration
-	21, // 48: conf.Data.Doris.stream_load:type_name -> conf.Data.Doris.StreamLoad
-	23, // 49: conf.Data.Doris.tls:type_name -> conf.TLS
-	22, // 50: conf.Data.ElasticSearch.discover_nodes_interval:type_name -> google.protobuf.Duration
-	23, // 51: conf.Data.ElasticSearch.tls:type_name -> conf.TLS
-	22, // 52: conf.Data.OpenSearch.discover_nodes_interval:type_name -> google.protobuf.Duration
-	23, // 53: conf.Data.OpenSearch.tls:type_name -> conf.TLS
-	22, // 54: conf.Data.Cassandra.connect_timeout:type_name -> google.protobuf.Duration
-	22, // 55: conf.Data.Cassandra.timeout:type_name -> google.protobuf.Duration
-	23, // 56: conf.Data.Cassandra.tls:type_name -> conf.TLS
-	23, // 57: conf.Data.Snowflake.tls:type_name -> conf.TLS
-	22, // 58: conf.Data.DuckDB.connection_max_lifetime:type_name -> google.protobuf.Duration
-	23, // 59: conf.Data.DuckDB.tls:type_name -> conf.TLS
-	22, // 60: conf.Data.Kafka.batch_timeout:type_name -> google.protobuf.Duration
-	22, // 61: conf.Data.Kafka.read_timeout:type_name -> google.protobuf.Duration
-	22, // 62: conf.Data.Kafka.write_timeout:type_name -> google.protobuf.Duration
-	22, // 63: conf.Data.Doris.StreamLoad.timeout:type_name -> google.protobuf.Duration
-	64, // [64:64] is the sub-list for method output_type
-	64, // [64:64] is the sub-list for method input_type
-	64, // [64:64] is the sub-list for extension type_name
-	64, // [64:64] is the sub-list for extension extendee
-	0,  // [0:64] is the sub-list for field type_name
+	21, // 11: conf.Data.external_sources:type_name -> conf.Data.ExternalSourcesEntry
+	12, // 12: conf.Data.kafka:type_name -> conf.Data.Kafka
+	13, // 13: conf.Data.rabbitmq:type_name -> conf.Data.RabbitMQ
+	14, // 14: conf.Data.mqtt:type_name -> conf.Data.Mqtt
+	15, // 15: conf.Data.activemq:type_name -> conf.Data.ActiveMQ
+	16, // 16: conf.Data.nats:type_name -> conf.Data.NATS
+	17, // 17: conf.Data.nsq:type_name -> conf.Data.NSQ
+	18, // 18: conf.Data.pulsar:type_name -> conf.Data.Pulsar
+	19, // 19: conf.Data.rocketmq:type_name -> conf.Data.RocketMQ
+	24, // 20: conf.Data.Database.connection_max_lifetime:type_name -> google.protobuf.Duration
+	25, // 21: conf.Data.Redis.tls:type_name -> conf.TLS
+	24, // 22: conf.Data.Redis.dial_timeout:type_name -> google.protobuf.Duration
+	24, // 23: conf.Data.Redis.read_timeout:type_name -> google.protobuf.Duration
+	24, // 24: conf.Data.Redis.write_timeout:type_name -> google.protobuf.Duration
+	24, // 25: conf.Data.Redis.pool_timeout:type_name -> google.protobuf.Duration
+	24, // 26: conf.Data.Redis.conn_max_idle_time:type_name -> google.protobuf.Duration
+	24, // 27: conf.Data.Redis.conn_max_lifetime:type_name -> google.protobuf.Duration
+	24, // 28: conf.Data.Redis.min_retry_backoff:type_name -> google.protobuf.Duration
+	24, // 29: conf.Data.Redis.max_retry_backoff:type_name -> google.protobuf.Duration
+	22, // 30: conf.Data.MongoDB.auth_mechanism_properties:type_name -> conf.Data.MongoDB.AuthMechanismPropertiesEntry
+	24, // 31: conf.Data.MongoDB.connect_timeout:type_name -> google.protobuf.Duration
+	24, // 32: conf.Data.MongoDB.heartbeat_interval:type_name -> google.protobuf.Duration
+	24, // 33: conf.Data.MongoDB.local_threshold:type_name -> google.protobuf.Duration
+	24, // 34: conf.Data.MongoDB.max_conn_idle_time:type_name -> google.protobuf.Duration
+	24, // 35: conf.Data.MongoDB.max_staleness:type_name -> google.protobuf.Duration
+	24, // 36: conf.Data.MongoDB.server_selection_timeout:type_name -> google.protobuf.Duration
+	24, // 37: conf.Data.MongoDB.socket_timeout:type_name -> google.protobuf.Duration
+	24, // 38: conf.Data.MongoDB.timeout:type_name -> google.protobuf.Duration
+	25, // 39: conf.Data.MongoDB.tls:type_name -> conf.TLS
+	25, // 40: conf.Data.ClickHouse.tls:type_name -> conf.TLS
+	24, // 41: conf.Data.ClickHouse.dial_timeout:type_name -> google.protobuf.Duration
+	24, // 42: conf.Data.ClickHouse.read_timeout:type_name -> google.protobuf.Duration
+	24, // 43: conf.Data.ClickHouse.conn_max_lifetime:type_name -> google.protobuf.Duration
+	24, // 44: conf.Data.InfluxDB.write_timeout:type_name -> google.protobuf.Duration
+	24, // 45: conf.Data.InfluxDB.query_timeout:type_name -> google.protobuf.Duration
+	24, // 46: conf.Data.InfluxDB.idle_connection_timeout:type_name -> google.protobuf.Duration
+	25, // 47: conf.Data.InfluxDB.tls:type_name -> conf.TLS
+	24, // 48: conf.Data.Doris.connection_max_lifetime:type_name -> google.protobuf.Duration
+	23, // 49: conf.Data.Doris.stream_load:type_name -> conf.Data.Doris.StreamLoad
+	25, // 50: conf.Data.Doris.tls:type_name -> conf.TLS
+	24, // 51: conf.Data.ElasticSearch.discover_nodes_interval:type_name -> google.protobuf.Duration
+	25, // 52: conf.Data.ElasticSearch.tls:type_name -> conf.TLS
+	24, // 53: conf.Data.OpenSearch.discover_nodes_interval:type_name -> google.protobuf.Duration
+	25, // 54: conf.Data.OpenSearch.tls:type_name -> conf.TLS
+	24, // 55: conf.Data.Cassandra.connect_timeout:type_name -> google.protobuf.Duration
+	24, // 56: conf.Data.Cassandra.timeout:type_name -> google.protobuf.Duration
+	25, // 57: conf.Data.Cassandra.tls:type_name -> conf.TLS
+	25, // 58: conf.Data.Snowflake.tls:type_name -> conf.TLS
+	24, // 59: conf.Data.DuckDB.connection_max_lifetime:type_name -> google.protobuf.Duration
+	25, // 60: conf.Data.DuckDB.tls:type_name -> conf.TLS
+	24, // 61: conf.Data.Kafka.batch_timeout:type_name -> google.protobuf.Duration
+	24, // 62: conf.Data.Kafka.read_timeout:type_name -> google.protobuf.Duration
+	24, // 63: conf.Data.Kafka.write_timeout:type_name -> google.protobuf.Duration
+	24, // 64: conf.Data.ExternalSource.conn_max_lifetime:type_name -> google.protobuf.Duration
+	24, // 65: conf.Data.ExternalSource.query_timeout:type_name -> google.protobuf.Duration
+	20, // 66: conf.Data.ExternalSourcesEntry.value:type_name -> conf.Data.ExternalSource
+	24, // 67: conf.Data.Doris.StreamLoad.timeout:type_name -> google.protobuf.Duration
+	68, // [68:68] is the sub-list for method output_type
+	68, // [68:68] is the sub-list for method input_type
+	68, // [68:68] is the sub-list for extension type_name
+	68, // [68:68] is the sub-list for extension extendee
+	0,  // [0:68] is the sub-list for field type_name
 }
 
 func init() { file_conf_v1_kratos_conf_data_proto_init() }
@@ -2952,14 +3092,15 @@ func file_conf_v1_kratos_conf_data_proto_init() {
 	file_conf_v1_kratos_conf_data_proto_msgTypes[9].OneofWrappers = []any{}
 	file_conf_v1_kratos_conf_data_proto_msgTypes[10].OneofWrappers = []any{}
 	file_conf_v1_kratos_conf_data_proto_msgTypes[11].OneofWrappers = []any{}
-	file_conf_v1_kratos_conf_data_proto_msgTypes[21].OneofWrappers = []any{}
+	file_conf_v1_kratos_conf_data_proto_msgTypes[20].OneofWrappers = []any{}
+	file_conf_v1_kratos_conf_data_proto_msgTypes[23].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_conf_v1_kratos_conf_data_proto_rawDesc), len(file_conf_v1_kratos_conf_data_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

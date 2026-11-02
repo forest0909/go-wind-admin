@@ -321,6 +321,19 @@ message Data {
     string group_name = 11; // 生产者分组名称，针对使用阿里云RocketMQ的场景
   }
 
+  // 外部数据源：客户已有的业务库，不走 ent，系统绝不对它建表或改表。
+  message ExternalSource {
+    string driver = 1; // 驱动：postgres、mysql、sqlserver
+    string dsn = 2; // 连接串，建议用 ${GWA_EXT_<NAME>_DSN} 从环境变量注入
+    optional bool read_only = 3; // 只读，不写默认 true；为 true 时写操作直接拒绝
+    int32 max_open_conns = 10; // 连接池最大打开连接数，0 取默认 10
+    int32 max_idle_conns = 11; // 连接池最大空闲连接数，0 取默认 2
+    google.protobuf.Duration conn_max_lifetime = 12; // 连接可重用的最大时长，不写取默认 1800s
+    google.protobuf.Duration query_timeout = 13; // 单次查询/执行超时，不写取默认 5s
+    bool required = 20; // true 才进入 /readyz；false 时连不上只记日志，不影响启动
+    string timezone = 21; // 外部库无时区时间字段按此时区解释，不写为 UTC
+  }
+
   optional Database database = 1; // 数据库DSN
 
   optional Redis redis = 10; // Redis
@@ -333,6 +346,8 @@ message Data {
   optional Snowflake snowflake = 17; // Snowflake数据库
   optional DuckDB duckdb = 18; // DuckDB数据库
   optional OpenSearch opensearch = 19; // OpenSearch数据库
+
+  map<string, ExternalSource> external_sources = 20; // 外部数据源，键为数据源名
 
   // Message Queue
 

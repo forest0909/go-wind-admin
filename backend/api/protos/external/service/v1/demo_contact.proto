@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package external.service.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
+
+import "pagination/v1/pagination.proto";
+
+// 外部数据示例：联系人（数据在外部数据源 demo 的 ext_demo_contacts 表）
+// 外部数据模块的范例，写法见 docs/crud_module_guide/external.md。
+service DemoContactService {
+  // 分页查询联系人列表
+  rpc List (pagination.PagingRequest) returns (ListDemoContactResponse) {}
+
+  // 查询联系人详情
+  rpc Get (GetDemoContactRequest) returns (DemoContact) {}
+
+  // 创建联系人
+  rpc Create (CreateDemoContactRequest) returns (google.protobuf.Empty) {}
+
+  // 更新联系人
+  rpc Update (UpdateDemoContactRequest) returns (google.protobuf.Empty) {}
+
+  // 删除联系人
+  rpc Delete (DeleteDemoContactRequest) returns (google.protobuf.Empty) {}
+}
+
+// 联系人
+// 外部资源的 id 一律用 string：外部表的主键类型由客户决定（整数、UUID、编码……）。
+// 金额用 string 承载 decimal，不转 float，避免精度丢失。
+message DemoContact {
+  optional string id = 1 [
+    json_name = "id",
+    (gnostic.openapi.v3.property) = {description: "联系人ID（UUID，创建时由服务端生成）"}
+  ]; // 联系人ID
+
+  optional string name = 2 [
+    json_name = "name",
+    (gnostic.openapi.v3.property) = {description: "名称"}
+  ]; // 名称
+
+  optional string code = 3 [
+    json_name = "code",
+    (gnostic.openapi.v3.property) = {description: "编码"}
+  ]; // 编码
+
+  optional bool is_active = 4 [
+    json_name = "isActive",
+    (gnostic.openapi.v3.property) = {description: "是否启用"}
+  ]; // 是否启用
+
+  optional string amount = 5 [
+    json_name = "amount",
+    (gnostic.openapi.v3.property) = {description: "金额，十进制字符串，最多两位小数，如 \"1234.50\""}
+  ]; // 金额
+
+  optional string remark = 6 [
+    json_name = "remark",
+    (gnostic.openapi.v3.property) = {description: "备注"}
+  ]; // 备注
+
+  optional google.protobuf.Timestamp created_at = 200 [json_name = "createdAt", (gnostic.openapi.v3.property) = {description: "创建时间"}]; // 创建时间
+  optional google.protobuf.Timestamp updated_at = 201 [json_name = "updatedAt", (gnostic.openapi.v3.property) = {description: "更新时间"}]; // 更新时间
+}
+
+// 查询联系人列表 - 回应
+message ListDemoContactResponse {
+  repeated DemoContact items = 1;
+  uint64 total = 2;
+}
+
+// 查询联系人详情 - 请求
+message GetDemoContactRequest {
+  oneof query_by {
+    string id = 1;
+  }
+}
+
+// 创建联系人 - 请求
+message CreateDemoContactRequest {
+  DemoContact data = 1;
+}
+
+// 更新联系人 - 请求
+message UpdateDemoContactRequest {
+  string id = 1;
+
+  DemoContact data = 2;
+
+  google.protobuf.FieldMask update_mask = 3 [
+    (gnostic.openapi.v3.property) = {
+      description: "要更新的字段列表",
+      example: {yaml : "name,amount"}
+    },
+    json_name = "updateMask"
+  ]; // 要更新的字段列表
+}
+
+// 删除联系人 - 请求
+message DeleteDemoContactRequest {
+  string id = 1;
+}

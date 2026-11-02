@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-kratos/kratos/v2/transport/http"
+	"github.com/google/uuid"
 	"go-wind-admin/third_party/go-utils/auditutil"
 	"go-wind-admin/third_party/go-utils/trans"
 
@@ -97,10 +98,10 @@ func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Tran
 	operationAuditLog.ResourceType = trans.Ptr(resourceType)
 	operationAuditLog.Action = trans.Ptr(action)
 
-	// 资源ID：REST 路径最后一个纯数字段（如 /admin/v1/roles/5 → "5"）。
+	// 资源ID：REST 路径最后一个 ID 段（纯数字或 UUID，如 /admin/v1/roles/5 → "5"）。
 	// Create 无路径 ID（资源 id 在响应体中，post-handler 不可见），留空。
 	if req := htr.Request(); req != nil {
-		if rid := lastNumericPathSegment(req.URL.Path); rid != "" {
+		if rid := lastIDPathSegment(req.URL.Path); rid != "" {
 			operationAuditLog.ResourceId = trans.Ptr(rid)
 		}
 	}
@@ -138,9 +139,11 @@ func (o *OperationAuditLogMiddleware) Handle(ctx context.Context, htr *http.Tran
 	}
 }
 
-// lastNumericPathSegment 返回路径中最后一个纯数字段（如 /admin/v1/roles/5 → "5"），
-// 无数字段返回空串。嵌套资源（/users/1/roles）取最深一层的属主 ID。
-func lastNumericPathSegment(path string) string {
+// lastIDPathSegment 返回路径中最后一个 ID 段：纯数字（主库自增 ID，如 /admin/v1/roles/5 → "5"），
+// 或 UUID（外部数据源的 string ID，如 /admin/v1/external-demo-contacts/<uuid>）。
+// 没有返回空串。嵌套资源（/users/1/roles）取最深一层的属主 ID。
+// 外部表的其他形态主键（客户自定的编码）和路径里的动作词分不开，不取。
+func lastIDPathSegment(path string) string {
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 	for i := len(segments) - 1; i >= 0; i-- {
 		s := segments[i]
@@ -156,6 +159,11 @@ func lastNumericPathSegment(path string) string {
 		}
 		if allDigits {
 			return s
+		}
+		if len(s) == 36 {
+			if _, err := uuid.Parse(s); err == nil {
+				return s
+			}
 		}
 	}
 	return ""

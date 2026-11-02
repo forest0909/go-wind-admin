@@ -48,3 +48,6 @@ export * from './dashboard';
 
 // 内部消息
 export * from './internal-message';
+
+// 外部数据示例（外部数据源 demo）
+export * from './external-demo-contact';

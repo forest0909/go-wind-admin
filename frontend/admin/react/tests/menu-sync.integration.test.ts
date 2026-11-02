@@ -31,7 +31,7 @@ it('maps the real MERGE sync payload into the backend pageMap', async () => {
     }
   };
   visit(request.items ?? []);
-  expect(pages).toBe(22);
+  expect(pages).toBe(23);
   expect(hidden.sort()).toEqual([
     '/internal-message/inbox',
     '/opm/profile',

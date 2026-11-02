@@ -226,7 +226,11 @@
       "DEPARTMENT_NOT_FOUND": "Department not found",
       "ORGANIZATION_NOT_FOUND": "Organization not found",
       "POSITION_NOT_FOUND": "Position not found",
-      "ROLE_NOT_FOUND": "Role not found"
+      "ROLE_NOT_FOUND": "Role not found",
+      "EXTERNAL_SOURCE_NOT_CONFIGURED": "External data source is not configured, please contact the administrator",
+      "EXTERNAL_SOURCE_READ_ONLY": "External data source is read-only and cannot be modified",
+      "EXTERNAL_SOURCE_UNAVAILABLE": "Cannot connect to the external data source, please try again later",
+      "EXTERNAL_SOURCE_TIMEOUT": "External data source query timed out, please narrow the query and try again"
     },
     "status": {
       "400": "Bad request",

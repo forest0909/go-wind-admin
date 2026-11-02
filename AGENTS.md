@@ -77,6 +77,7 @@ docs/                       文档（总入口 docs/README.md）
 - 查询/分页规则：`docs/list_query_rule.md`
 - **改一个字段速查**：`docs/field_change_guide.md`
 - **新增 CRUD 模块**：`docs/crud_module_guide/`（`backend.md`、`react.md`）
+- **接客户已有数据库（外部数据源，PG/MySQL/SQL Server，不走 ent）**：`docs/crud_module_guide/external.md`
 - 认证与令牌链路：`docs/authentication.md`
 - `tenant_id` 遗留列与旧库升级清理：`docs/tenant_isolation.md`
 - 任务调度：`docs/task_system.md`

@@ -55,6 +55,9 @@ managed:
     - file_option: go_package
       path: config/service/v1
       value: go-wind-admin/api/gen/go/config/service/v1;configpb
+    - file_option: go_package
+      path: external/service/v1
+      value: go-wind-admin/api/gen/go/external/service/v1;externalpb
 
 # 分页、脱敏和配置 proto 的 Go 代码已经在 third_party，不往 api/gen 再生成一份。
 inputs:

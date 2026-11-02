@@ -67,6 +67,14 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	minioClient := data.NewMinIoClient(ctx)
 
+	// 外部数据源（客户已有的业务库，不走 ent，见 docs/crud_module_guide/external.md）
+	externalSources, cleanupExternalSources, err := data.NewExternalSources(ctx)
+	if err != nil {
+		rollback()
+		return nil, nil, err
+	}
+	cleanups = append(cleanups, cleanupExternalSources)
+
 	// 认证基建:令牌缓存 → 认证器 → 访问令牌校验器。
 	clientType := data.NewClientType()
 	passwordCrypto := data.NewPasswordCrypto()
@@ -128,6 +136,9 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	internalMessageRepo := data.NewInternalMessageRepo(ctx, entClient)
 	internalMessageCategoryRepo := data.NewInternalMessageCategoryRepo(ctx, entClient)
 	internalMessageRecipientRepo := data.NewInternalMessageRecipientRepo(ctx, entClient)
+
+	// 外部数据示例
+	externalDemoContactRepo := data.NewExternalDemoContactRepo(ctx, externalSources)
 
 	// ── register:repo ── 新模块仓储在此行后注册(make register 工具锚点,勿删)
 	outboundCfg, err := service.LoadOutboundConfig(service.ResolveConfigDir())
@@ -199,6 +210,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	internalMessageRecipientService := service.NewInternalMessageRecipientService(ctx, internalMessageRepo, internalMessageRecipientRepo)
 
 	dashboardService := service.NewDashboardService(ctx, dashboardRepo)
+	externalDemoContactService := service.NewExternalDemoContactService(ctx, externalDemoContactRepo)
 
 	// ── register:service ── 新模块服务在此行后注册(make register 工具锚点,勿删)
 	configService := service.NewConfigService(ctx, configRepo)
@@ -226,6 +238,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		// register:rest-arg ── 新模块服务实参在此行后追加(make register 工具锚点,勿删)
 		auditExportService,
 		configService,
+		externalDemoContactService,
 	)
 	if err != nil {
 		rollback()
@@ -235,12 +248,17 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	if restServer != nil {
 		metrics.Install(restServer)
-		server.RegisterHealthRoutes(restServer,
+		checks := append([]server.HealthCheck{},
 			server.HealthCheck{Name: "database", Check: entClient.DB().PingContext},
 			server.HealthCheck{Name: "redis", Check: func(ctx context.Context) error {
 				return redisClient.Ping(ctx).Err()
 			}},
 		)
+		// required 的外部数据源进就绪检查，名字为 "external:<数据源名>"
+		for _, src := range externalSources.Required() {
+			checks = append(checks, server.HealthCheck{Name: "external:" + src.Name(), Check: src.Ping})
+		}
+		server.RegisterHealthRoutes(restServer, checks...)
 	}
 
 	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService)

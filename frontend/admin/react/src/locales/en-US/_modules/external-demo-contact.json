@@ -7,7 +7,6 @@
   "requiredName": "Please enter the name",
   "code": "Code",
   "codePlaceholder": "Enter code",
-  "requiredCode": "Please enter the code",
   "isActive": "Status",
   "amount": "Amount",
   "amountPlaceholder": "e.g. 1234.50",

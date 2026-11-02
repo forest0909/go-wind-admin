@@ -143,7 +143,6 @@ const ExternalDemoContactDrawer: React.FC<ExternalDemoContactDrawerProps> = ({
         name="code"
         label={t('code')}
         placeholder={t('codePlaceholder')}
-        rules={[{ required: true, message: t('requiredCode') }]}
         fieldProps={{ allowClear: true }}
       />
 

@@ -141,6 +141,8 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		rollback()
 		return nil, nil, fmt.Errorf("authorization engine %q failed to initialize", authzEngineCfg.Type)
 	}
+	// 多实例策略同步：本实例 ResetPolicies 后其他实例重载（必须在首次 ResetPolicies 之前装上）
+	data.NewPolicySync(ctx, redisClient, authz)
 
 	// ═══════════════════════ 四、服务层(internal/service) ═══════════════════════
 

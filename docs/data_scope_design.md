@@ -1,7 +1,7 @@
 # 数据权限范围（角色级 Data Scope）设计文档
 
-> V1 已落地并完成端到端验证（2026-09-11）。本文档是数据权限的唯一权威说明：
-> 五档语义、多角色聚合、执行层接入、运维注意与边界。
+> V1 已落地并完成端到端验证（2026-09-11）；2026-11 起覆盖用户、组织单元、登录/操作日志。
+> 本文档是数据权限的唯一权威说明：五档语义、多角色聚合、执行层接入、运维注意与边界。
 
 ## 1. 概述
 
@@ -14,7 +14,7 @@
 | 机制 | 管什么 | 层 |
 | --- | --- | --- |
 | authz 引擎（casbin/opa） | 用户能否调用某个**接口/操作** | HTTP 中间件 + 策略引擎 |
-| **数据范围（本文）** | 能看到哪些**业务行** | ent 查询隐私规则（逐表 opt-in） |
+| **数据范围（本文）** | 能看到哪些**业务行** | 仓储层谓词（用户/组织/日志）+ ent 查询隐私规则（业务表逐表 opt-in） |
 
 两者正交叠加：先过 authz（接口级），再过数据范围（行级组织/个人）。`tenant_id` 列是遗留设施，值固定为 0，见 [tenant_isolation.md](./tenant_isolation.md)。
 
@@ -67,23 +67,76 @@
 
 ## 4. 执行层
 
+### 4.1 覆盖范围与语义
+
+ALL 与平台管理员（令牌恒为 `[ALL]`）不受限制。多档并集取 OR。下表的"单元集"指令牌里的
+UNIT 类目标集（本部门 / 及以下 / 自定义，及以下在登录时已展开为后代）。
+
+| 表 | 接口 | UNIT 类 | SELF | 实现 |
+| --- | --- | --- | --- | --- |
+| 用户 `sys_users` | 列表、计数、详情、修改、删除、重置密码 | 至少属于单元集中一个单元的用户（按 `sys_user_org_units`） | 只有本人 | 仓储层 |
+| 组织单元 `sys_org_units` | 列表（树）、计数、详情、修改、删除 | 单元集内的单元 | 本人所属单元 | 仓储层 |
+| 登录日志、操作日志 | 列表、详情 | 操作人 `user_id` 属于上面的"可见用户" | 只有本人的日志 | 仓储层 |
+| 岗位 `sys_positions` | 全部查询 | `org_unit_id` 在单元集内 | `created_by` = 本人 | ent 查询策略 |
+
+细节：
+
+- **UNIT 类不附带本人**。只有 SELF 档才加 `id/user_id = 本人`。"自定义"的单元集不含自己的
+  单元时，在用户列表里看不到自己，也看不到自己的日志。service 读操作人本身（修改/删除接口的
+  前置检查）用的是未标记的 ctx，不受这条影响。
+- UNIT 类目标集为空且没有 SELF：一条都不匹配（空列表，不报错）。
+- **没有组织单元的用户只有 ALL 看得到**；SELF 档下本人能看到自己。
+- **越界按 id 访问回 404**，不区分"不存在"和"看不见"。修改、删除、重置密码在写之前
+  先用带范围的 ctx 读一次目标，越界即 404，什么都不写。
+- **`allow_missing`**：Update 带 `allow_missing` 且目标确实不存在（按未过滤的存在性判断）时，
+  照旧走仓储的创建分支；目标已存在但越界时仍是 404，不能借它改越界资源。
+- **删除组织单元按整棵子树判定**：删除会级联整棵子树（及其用户绑定）。带范围删除时，
+  先取未过滤的待删子树 ID 集合，与调用者可见集合比对，只要有一个后代不可见就整体返回
+  **403**，不删单元、不清绑定。目标本身不可见仍是 404。用 403 而不是 404，是因为目标本身
+  可见，问题出在看不见的后代上。
+- 组织树：可见单元的父节点不可见时，该单元作为根返回（`parent_id` 原值保留），
+  不会被当成孤儿丢掉。
+- 缺 viewer、无档位（含 `[UNSPECIFIED]` 剔空）、显式 NONE：403 拒绝（fail-closed）。
+- 日志导出只对平台管理员开放，平台管理员恒为 ALL，所以导出不需要另做过滤。
+
+### 4.2 用户、组织单元、日志：仓储层谓词
+
+这几张表**不挂** ent 隐私策略：登录、刷新令牌、站内信广播（遍历全部用户）、组织子树
+路径维护和级联删除、关联名称回填都要读全量，挂在 schema 上会把这些内部流程一起收窄。
+
+做法（`internal/data/data_scope_filter.go`）：
+
+- service 在对外接口入口用 `data.WithDataScope(ctx)` 包一层 ctx，只包传给仓储读方法的那次调用；
+- 被标记的 `List / Count / Get` 注入子查询谓词：
+  - 用户：`id = uid`（仅 SELF）`OR id IN (SELECT user_id FROM sys_user_org_units WHERE org_unit_id IN 单元集)`；
+  - 组织单元：`id IN 单元集 OR id IN (SELECT org_unit_id FROM sys_user_org_units WHERE user_id = uid)`（后者仅 SELF）；
+  - 日志：`user_id = uid`（仅 SELF）`OR user_id IN (SELECT user_id FROM sys_user_org_units WHERE org_unit_id IN 单元集)`；
+  - 三者都没有候选谓词时注入恒假条件；
+- 没标记的 ctx、系统上下文、ALL 都不加谓词。
+
+子查询走既有索引 `idx_uou_org_unit_id` / `idx_uou_user_id`，日志表 `user_id` 也有索引，没有改表结构。
+
+测试：`data/data_scope_filter_sqlite_test.go`（单元 × 用户 × 创建人矩阵，三张表），
+`service/data_scope_byid_sqlite_test.go`（用户、组织单元按 id 越界 404，子树含越界后代删除 403，
+`allow_missing` 创建与越界 404，日志接口过滤）。
+
+### 4.3 业务表：ent 查询策略（逐表 opt-in）
+
 - 核心规则：go-crud `rule.PermissionRule` —— 系统上下文放行；缺 Viewer 拒绝；
   无 scope / 显式 None 拒绝；ALL 放行；SELF 注入 `created_by = uid`；UNIT 注入
   `org_unit_id IN (targets)`；多 scope 以 OR 并集。`tenant_id == 0` 不再跳过这条规则。
-  平台管理员的令牌在登录时已经是 `[ALL]`，命中 ALL 放行。
-- 挂载方式：`schema/data_scope_guard.go` 提供 `DataScopeQueryPolicy`（仅查询侧，V1）
+- 挂载方式：`schema/data_scope_guard.go` 提供 `DataScopeQueryPolicy`（仅查询侧）
   与组合策略 `TenantAndDataScopePolicy`（租户变更防护 + 数据范围查询过滤）。
-- **V1 试点表：`sys_positions`（岗位）** —— 唯一同时具备 `created_by` 与 `org_unit_id`
-  两列的表。岗位列表随档位严格过滤（有守卫矩阵单测 + e2e 覆盖）。
+- 现有接入：`sys_positions`（岗位），守卫矩阵单测见 `ent/data_scope_guard_test.go`。
+- 和 4.2 不同，策略对**该表的所有查询**生效，不需要 ctx 标记。
 
-### 新表接入步骤（R2 逐表 opt-in）
+新表接入步骤：
 
-1. 确认实体同时具备 `created_by`（OperatorID mixin）与 `org_unit_id` 两列——缺列会在谓词注入时
-   引发运行时错误；
-2. 实体 `Policy()` 改返 `TenantAndDataScopePolicy{}`
-   （参照 `schema/position.go`）；
-3. `make ent` 重新生成，补守卫单测（参照 `data_scope_guard_test.go` 的 (单元×创建人) 矩阵范式）；
-4. 变更侧（Update/Delete）行级过滤为 R2 范围，V1 全部不挂。
+1. 实体同时具备 `created_by`（`mixin.OperatorID{}`）与 `org_unit_id` 两列，`org_unit_id` 加索引——
+   缺列会在谓词注入时报运行时错误，`make ent` 不会提示；
+2. 实体 `Policy()` 返回 `&TenantAndDataScopePolicy{}`（参照 `schema/position.go`）；
+3. `make ent` 重新生成，补守卫单测（参照 `data_scope_guard_test.go` 的 (单元×创建人) 矩阵）；
+4. 策略只过滤查询。按 id 修改/删除要在 service 里先 `Get` 一次（`Get` 受策略过滤，越界 404）。
 
 ## 5. 组织单元物化路径（path 列）约定
 
@@ -133,6 +186,8 @@ from sys_org_units p where c.parent_id = p.id and c.path <> p.path || c.id || '/
   选 `SELECTED_UNITS` 时渲染「授权组织单元」勾选树（react=antd Tree、vue-element=ElTree、
   vben=ApiTree），提交走 Role 消息的 `org_units` 关联字段（与 permissions 关联同形态：
   `update_mask` 带 `orgUnits` 即整体替换，含清空场景；不带则维持既有集）。
+- 「数据权限范围」下拉下方有一行说明（`dataScopeHint`），写明覆盖的表和判定依据，
+  与 4.1 保持一致。
 - i18n：react `_modules/role.json`；vue-element `pages/role.json` + `enum.json` 的
   `role.dataScope`；vben `page.json` 的 `role.*` + 既有 `enum.json role.dataScope`。
 
@@ -150,9 +205,11 @@ from sys_org_units p where c.parent_id = p.id and c.path <> p.path || c.id || '/
 4. **存量兼容**：迁移把全部存量角色回填 ALL，升级后行为零变化；旧令牌（仅 ds 声明）
    解析按单元素回退，过渡期后可下线 ds 单值轨道。
 
-## 8. 边界（V1 不做）
+## 8. 边界（不做）
 
-- 变更侧（Update/Delete）行级过滤（R2）；
 - assignment 级覆盖语义（`user_role.proto` / `membership_role.proto` 的 `data_scope = 80`
   为遗留字段，无存储无链路，已注释标记，接入前需完整设计）；
-- 其余表接入（R2 逐表 opt-in，见第 4 节步骤）；authz 引擎联动；令牌内容对前端透出。
+- 字段级权限与数据范围联动；authz 引擎联动；令牌内容对前端透出；
+- 新建时的范围校验：新建用户/组织单元时不检查所选单元或父单元是否在范围内；
+- 业务表 opt-in 策略的变更侧过滤（见 4.3 第 4 步，靠 service 先 Get）；
+- 未接入的其余表（角色、菜单、字典等）不受数据范围限制。

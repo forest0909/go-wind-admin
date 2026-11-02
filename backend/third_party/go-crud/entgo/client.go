@@ -198,7 +198,7 @@ func MakeTxCleanup(tx EntTx, errPtr *error) func() {
 func QueryAllChildrenIds[T EntClientInterface](ctx context.Context, entClient *EntClient[T], tableName string, parentID uint32) ([]uint32, error) {
 	var query string
 	switch entClient.Driver().Dialect() {
-	case dialect.MySQL:
+	case dialect.MySQL, dialect.SQLite: // SQLite 3.8.3+ 支持 WITH RECURSIVE，占位符同 MySQL
 		query = fmt.Sprintf(`
 			WITH RECURSIVE all_descendants AS (
 				SELECT 

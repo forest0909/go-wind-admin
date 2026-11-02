@@ -279,7 +279,7 @@ func (s *UserService) enrichRelations(ctx context.Context, users []*identityV1.U
 }
 
 func (s *UserService) List(ctx context.Context, req *paginationV1.PagingRequest) (*identityV1.ListUserResponse, error) {
-	resp, err := s.userRepo.List(ctx, req)
+	resp, err := s.userRepo.List(data.WithDataScope(ctx), req)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func (s *UserService) List(ctx context.Context, req *paginationV1.PagingRequest)
 }
 
 func (s *UserService) Count(ctx context.Context, req *paginationV1.PagingRequest) (*identityV1.CountUserResponse, error) {
-	count, err := s.userRepo.Count(ctx, req)
+	count, err := s.userRepo.Count(data.WithDataScope(ctx), req)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func (s *UserService) Count(ctx context.Context, req *paginationV1.PagingRequest
 }
 
 func (s *UserService) Get(ctx context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
-	resp, err := s.userRepo.Get(ctx, req)
+	resp, err := s.userRepo.Get(data.WithDataScope(ctx), req)
 	if err != nil {
 		return nil, err
 	}
@@ -483,6 +483,11 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		},
 	})
 	if err != nil {
+		return nil, err
+	}
+
+	// 数据范围外的用户按不存在处理（404）。allow_missing 且目标确实不存在时照旧进入仓储创建。
+	if err = s.requireUserInScopeForUpdate(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -679,6 +684,27 @@ func sameUint32Set(a, b []uint32) bool {
 	return true
 }
 
+// requireUserInScopeForUpdate Update 的范围检查：已存在但越界回 404；
+// allow_missing 且目标不存在（未过滤的存在性）时放行，由仓储创建。
+func (s *UserService) requireUserInScopeForUpdate(ctx context.Context, req *identityV1.UpdateUserRequest) error {
+	if req.GetAllowMissing() {
+		exist, err := s.userRepo.UserExists(ctx, &identityV1.UserExistsRequest{
+			QueryBy: &identityV1.UserExistsRequest_Id{Id: req.GetId()},
+		})
+		if err != nil {
+			s.log.Errorf(ctx, "check user exists failed: %v", err)
+			return err
+		}
+		if !exist.GetExist() {
+			return nil
+		}
+	}
+	_, err := s.userRepo.Get(data.WithDataScope(ctx), &identityV1.GetUserRequest{
+		QueryBy: &identityV1.GetUserRequest_Id{Id: req.GetId()},
+	})
+	return err
+}
+
 func (s *UserService) Delete(ctx context.Context, req *identityV1.DeleteUserRequest) (*emptypb.Empty, error) {
 	// 获取操作人信息
 	operator, err := auth.FromContext(ctx)
@@ -696,8 +722,8 @@ func (s *UserService) Delete(ctx context.Context, req *identityV1.DeleteUserRequ
 		return nil, err
 	}
 
-	// 获取将被删除的用户信息
-	target, err := s.userRepo.Get(ctx, &identityV1.GetUserRequest{
+	// 获取将被删除的用户信息（按数据范围，越界回 404）
+	target, err := s.userRepo.Get(data.WithDataScope(ctx), &identityV1.GetUserRequest{
 		QueryBy: &identityV1.GetUserRequest_Id{
 			Id: req.GetId(),
 		},
@@ -746,8 +772,8 @@ func (s *UserService) EditUserPassword(ctx context.Context, req *identityV1.Edit
 		return nil, err
 	}
 
-	// 获取目标用户信息
-	u, err := s.userRepo.Get(ctx, &identityV1.GetUserRequest{
+	// 获取目标用户信息（按数据范围，越界回 404）
+	u, err := s.userRepo.Get(data.WithDataScope(ctx), &identityV1.GetUserRequest{
 		QueryBy: &identityV1.GetUserRequest_Id{
 			Id: req.GetUserId(),
 		},

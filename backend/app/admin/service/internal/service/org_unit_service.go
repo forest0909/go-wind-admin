@@ -130,7 +130,7 @@ func (s *OrgUnitService) enrichRelations(ctx context.Context, orgUnits []*identi
 }
 
 func (s *OrgUnitService) List(ctx context.Context, req *paginationV1.PagingRequest) (*identityV1.ListOrgUnitResponse, error) {
-	resp, err := s.orgUnitRepo.List(ctx, req)
+	resp, err := s.orgUnitRepo.List(data.WithDataScope(ctx), req)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s *OrgUnitService) List(ctx context.Context, req *paginationV1.PagingReque
 }
 
 func (s *OrgUnitService) Count(ctx context.Context, req *paginationV1.PagingRequest) (*identityV1.CountOrgUnitResponse, error) {
-	count, err := s.orgUnitRepo.Count(ctx, req)
+	count, err := s.orgUnitRepo.Count(data.WithDataScope(ctx), req)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (s *OrgUnitService) Count(ctx context.Context, req *paginationV1.PagingRequ
 }
 
 func (s *OrgUnitService) Get(ctx context.Context, req *identityV1.GetOrgUnitRequest) (*identityV1.OrgUnit, error) {
-	resp, err := s.orgUnitRepo.Get(ctx, req)
+	resp, err := s.orgUnitRepo.Get(data.WithDataScope(ctx), req)
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +194,22 @@ func (s *OrgUnitService) Update(ctx context.Context, req *identityV1.UpdateOrgUn
 		return nil, err
 	}
 
+	// 数据范围外的单元按不存在处理（404）。allow_missing 且目标确实不存在时照旧进入仓储创建。
+	createMissing := false
+	if req.GetAllowMissing() {
+		exist, eerr := s.orgUnitRepo.IsExist(ctx, req.GetId())
+		if eerr != nil {
+			s.log.Errorf(ctx, "check org unit exists failed: %v", eerr)
+			return nil, eerr
+		}
+		createMissing = !exist
+	}
+	if !createMissing {
+		if err = s.requireOrgUnitInScope(ctx, req.GetId()); err != nil {
+			return nil, err
+		}
+	}
+
 	req.Data.Id = trans.Ptr(req.GetId())
 
 	req.Data.UpdatedBy = trans.Ptr(operator.UserId)
@@ -208,8 +224,20 @@ func (s *OrgUnitService) Update(ctx context.Context, req *identityV1.UpdateOrgUn
 	return &emptypb.Empty{}, nil
 }
 
+// requireOrgUnitInScope 按调用者数据范围确认单元可见，越界与不存在同样回 404。
+func (s *OrgUnitService) requireOrgUnitInScope(ctx context.Context, id uint32) error {
+	_, err := s.orgUnitRepo.Get(data.WithDataScope(ctx), &identityV1.GetOrgUnitRequest{
+		QueryBy: &identityV1.GetOrgUnitRequest_Id{Id: id},
+	})
+	return err
+}
+
 func (s *OrgUnitService) Delete(ctx context.Context, req *identityV1.DeleteOrgUnitRequest) (*emptypb.Empty, error) {
-	if err := s.orgUnitRepo.Delete(ctx, req); err != nil {
+	if err := s.requireOrgUnitInScope(ctx, req.GetId()); err != nil {
+		return nil, err
+	}
+	// 带范围删除：子树含范围外后代时仓储整体拒绝（403）
+	if err := s.orgUnitRepo.Delete(data.WithDataScope(ctx), req); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

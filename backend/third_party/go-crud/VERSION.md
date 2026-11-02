@@ -17,3 +17,5 @@
 
 
 2026-11-01：`entgo/pagination` 的 Page/Offset/Token 三个分页器不再保存请求级状态。它们挂在 Repository 单例上被并发请求共享，以前 `BuildSelector` 把页码写进共享字段、闭包在执行查询时才读，并发请求会互相改掉对方的 OFFSET/LIMIT（`-race` 报 DATA RACE）。现在每次新建底层分页器算出局部值，闭包只捕获局部值。回归测试：`entgo/pagination/shared_state_test.go`。
+
+2026-11-02：`entgo/client.go` 的 `QueryAllChildrenIds` 给 SQLite 加了分支，和 MySQL 共用同一段递归 CTE（`?` 占位符，SQLite 3.8.3 起支持 `WITH RECURSIVE`）。以前 SQLite 方言下查询串为空，子树收集拿不到后代：菜单和组织单元删除时不会级联，后代成为孤儿行。回归测试：`entgo/client_helpers_test.go` 的 `TestQueryAllChildrenIds_SQLite`，以及 `service/menu_service_sqlite_test.go` 的 `TestMenuServiceSqlite_Delete_CascadesSubtree`。

@@ -6,11 +6,6 @@
 //   - List / Get 的 enrichment：LeaderName / ContactUserName 经 userRepo.ListUsersByIds
 //     桩回填；未设置负责人的单元不回填。
 //   - Create 的操作人注入与 Delete 的基本路径。
-//
-// 已知方言限制（与 org_unit_repo_sqlite_test.go 的既有记录一致）：
-// QueryAllChildrenIds 的递归 CTE 仅有 MySQL/PG 分支，SQLite 下子树收集返回 0 行，
-// Delete 实际按 [自身ID] 删除——子节点在 SQLite 测试中会成为孤儿行，
-// 且孤儿行会被 BuildTree 跳过（不出现在列表里）。
 package service
 
 import (
@@ -151,8 +146,7 @@ func TestOrgUnitServiceSqlite_GetEnrichment(t *testing.T) {
 }
 
 // TestOrgUnitServiceSqlite_CreateAndDelete 验证 Create 的操作人注入与
-// Delete 的基本路径（SQLite 方言下按 [自身ID] 删除，子节点成为孤儿行且被
-// BuildTree 跳过——见文件头已知方言限制）。
+// Delete 的基本路径（无子节点单删）。
 func TestOrgUnitServiceSqlite_CreateAndDelete(t *testing.T) {
 	svc := newOrgUnitServiceForTest(t)
 	baseCtx := enttest.NewSystemContext(context.Background())

@@ -252,16 +252,18 @@ func TestSyncSequence(t *testing.T) {
 	}
 }
 
-func TestQueryAllChildrenIds_UnsupportedDialect(t *testing.T) {
+func TestQueryAllChildrenIds_SQLite(t *testing.T) {
 	ctx := context.Background()
 	cli := createTestEntClient(t)
 	defer cli.Close()
 
-	// the sqlite dialect builds no query, so the client reports a failure
-	// instead of returning children
-	_, err := QueryAllChildrenIds(ctx, cli, "menus", 1)
-	if err == nil {
-		t.Log("QueryAllChildrenIds unexpectedly succeeded on sqlite")
+	// sqlite 走与 MySQL 相同的递归 CTE；空表上返回空集而不是报错
+	ids, err := QueryAllChildrenIds(ctx, cli, "menus", 1)
+	if err != nil {
+		t.Fatalf("QueryAllChildrenIds on sqlite: %v", err)
+	}
+	if len(ids) != 0 {
+		t.Fatalf("empty table should have no children, got %v", ids)
 	}
 }
 

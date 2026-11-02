@@ -149,6 +149,14 @@ func (r *userRepo) init() {
 // Count 统计用户数量
 func (r *userRepo) Count(ctx context.Context, req *paginationV1.PagingRequest) (int, error) {
 	builder := r.entClient.Client().User.Query()
+	scopeSel, err := userScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return 0, err
+	}
+	if scopeSel != nil {
+		builder.Where(predicate.User(scopeSel))
+	}
 
 	whereSelectors, _, _ := r.repository.BuildListSelectorWithPaging(builder, req)
 	if len(whereSelectors) != 0 {
@@ -306,6 +314,15 @@ func (r *userRepo) List(ctx context.Context, req *paginationV1.PagingRequest) (*
 	}
 
 	builder := r.entClient.Client().User.Query()
+
+	scopeSel, err := userScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		builder.Where(predicate.User(scopeSel))
+	}
 
 	filterExpr, err := r.repository.ConvertFilterByPagingRequest(req)
 	if err != nil {
@@ -486,6 +503,16 @@ func (r *userRepo) Get(ctx context.Context, req *identityV1.GetUserRequest) (*id
 		whereCond = append(whereCond, user.UsernameEQ(req.GetUsername()), user.TenantIDEQ(0))
 	default:
 		whereCond = append(whereCond, user.IDEQ(req.GetId()))
+	}
+
+	scopeSel, err := userScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		// 越界与不存在同样回 404，不泄露存在性
+		whereCond = append(whereCond, scopeSel)
 	}
 
 	dto, err := r.repository.Get(ctx, builder, req.GetViewMask(), whereCond...)

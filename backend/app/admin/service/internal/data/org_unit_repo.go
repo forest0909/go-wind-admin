@@ -96,6 +96,14 @@ func (r *OrgUnitRepo) count(ctx context.Context, whereCond []func(s *sql.Selecto
 
 func (r *OrgUnitRepo) Count(ctx context.Context, req *paginationV1.PagingRequest) (int, error) {
 	builder := r.entClient.Client().OrgUnit.Query()
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return 0, err
+	}
+	if scopeSel != nil {
+		builder.Where(predicate.OrgUnit(scopeSel))
+	}
 
 	whereSelectors, _, _ := r.repository.BuildListSelectorWithPaging(builder, req)
 	if len(whereSelectors) != 0 {
@@ -118,10 +126,22 @@ func (r *OrgUnitRepo) List(ctx context.Context, req *paginationV1.PagingRequest)
 
 	builder := r.entClient.Client().OrgUnit.Query()
 
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		builder.Where(predicate.OrgUnit(scopeSel))
+	}
+
 	whereSelectors, _, err := r.repository.BuildListSelectorWithPaging(builder, req)
 	if err != nil {
 		r.log.Errorf(ctx, "parse list param error [%s]", err.Error())
 		return nil, identityV1.ErrorBadRequest("invalid query parameter")
+	}
+	if scopeSel != nil {
+		whereSelectors = append(whereSelectors, scopeSel)
 	}
 
 	entities, err := builder.All(ctx)
@@ -148,11 +168,25 @@ func (r *OrgUnitRepo) List(ctx context.Context, req *paginationV1.PagingRequest)
 		dtos = append(dtos, dto)
 	}
 
-	// 构建树形结构
+	// 构建树形结构。按数据范围过滤后，可见子树的父节点可能不可见：
+	// 这类节点当作根，否则 BuildTree 会把它们当孤儿丢掉。parent_id 字段本身不改。
+	parentOf := func(node *identityV1.OrgUnit) *uint32 { return node.ParentId }
+	if scopeSel != nil {
+		present := make(map[uint32]bool, len(dtos))
+		for _, d := range dtos {
+			present[d.GetId()] = true
+		}
+		parentOf = func(node *identityV1.OrgUnit) *uint32 {
+			if node.ParentId != nil && present[*node.ParentId] {
+				return node.ParentId
+			}
+			return nil
+		}
+	}
 	dtos = pagination.BuildTree(
 		dtos,
 		func(node *identityV1.OrgUnit) *uint32 { return node.Id },
-		func(node *identityV1.OrgUnit) *uint32 { return node.ParentId },
+		parentOf,
 		func(node *identityV1.OrgUnit) *[]*identityV1.OrgUnit { return &node.Children },
 	)
 
@@ -192,8 +226,22 @@ func (r *OrgUnitRepo) Get(ctx context.Context, req *identityV1.GetOrgUnitRequest
 		whereCond = append(whereCond, orgunit.IDEQ(req.GetId()))
 	}
 
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		// 越界与不存在同样回 404，不泄露存在性
+		whereCond = append(whereCond, scopeSel)
+	}
+
 	dto, err := r.repository.Get(ctx, builder, req.GetViewMask(), whereCond...)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, identityV1.ErrorNotFound("org unit not found")
+		}
+		r.log.Errorf(ctx, "query org unit failed: %v", err)
 		return nil, err
 	}
 
@@ -464,6 +512,11 @@ func (r *OrgUnitRepo) Delete(ctx context.Context, req *identityV1.DeleteOrgUnitR
 	}
 	childrenIds = append(childrenIds, req.GetId())
 
+	// 带数据范围时，待删子树必须整棵可见：含范围外的后代就整体拒绝（403），不做任何写入
+	if err = r.requireAllInScope(ctx, childrenIds); err != nil {
+		return err
+	}
+
 	//r.log.Info(ctx, "orgunits childrenIds to delete: ", childrenIds)
 
 	// 岗位硬性挂在单元上（org_unit_id NOT NULL，且无 DB 外键兜底）：子树内
@@ -514,6 +567,30 @@ func (r *OrgUnitRepo) Delete(ctx context.Context, req *identityV1.DeleteOrgUnitR
 	if commitErr := commitEntTx(tx, &txCommitted); commitErr != nil {
 		r.log.Errorf(ctx, "transaction commit failed: %s", commitErr.Error())
 		return identityV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
+}
+
+// requireAllInScope ctx 带数据范围时，ids 中只要有一个单元不可见就返回 403。
+func (r *OrgUnitRepo) requireAllInScope(ctx context.Context, ids []uint32) error {
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return err
+	}
+	if scopeSel == nil {
+		return nil
+	}
+	visible, err := r.entClient.Client().OrgUnit.Query().
+		Where(orgunit.IDIn(ids...), predicate.OrgUnit(scopeSel)).
+		Count(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "count visible org units failed: %v", err)
+		return identityV1.ErrorInternalServerError("count visible org units failed")
+	}
+	if visible != len(ids) {
+		r.log.Errorf(ctx, "org unit subtree has %d units outside data scope", len(ids)-visible)
+		return identityV1.ErrorForbidden("org unit subtree contains units outside your data scope")
 	}
 	return nil
 }

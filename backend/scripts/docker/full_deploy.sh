@@ -57,7 +57,7 @@ if [ ! -f .env ]; then
   exit 1
 fi
 missing=()
-for key in POSTGRES_PASSWORD REDIS_PASSWORD MINIO_ROOT_USER MINIO_ROOT_PASSWORD GWA_ADMIN_INITIAL_PASSWORD; do
+for key in POSTGRES_PASSWORD REDIS_PASSWORD MINIO_ROOT_USER MINIO_ROOT_PASSWORD GWA_ADMIN_INITIAL_PASSWORD GWA_AUTH_JWT_PRIVATE_KEY; do
   if ! grep -Eq "^${key}=.+" .env; then
     missing+=("$key")
   fi

@@ -38,7 +38,10 @@ func TestApplyJwtKeyOverrides_PrivateKeyOnlyDerivesPublicKey(t *testing.T) {
 		PrivateKey: ptrString(testRSAPrivateKey),
 		PublicKey:  ptrString(testRSAPublicKey),
 	}
-	jwtCfg = applyJwtKeyOverrides(bLogger.NewHelper(bLogger.NopLogger()), jwtCfg)
+	jwtCfg, err := applyJwtKeyOverrides(bLogger.NewHelper(bLogger.NopLogger()), jwtCfg)
+	if err != nil {
+		t.Fatalf("applyJwtKeyOverrides: %v", err)
+	}
 	if jwtCfg.PublicKey != nil {
 		t.Fatalf("stale yaml public key should be cleared when only private key is overridden")
 	}
@@ -54,12 +57,55 @@ func TestApplyJwtKeyOverrides_PrivateKeyOnlyDerivesPublicKey(t *testing.T) {
 
 // 两个环境变量都给时照用，不派生。
 func TestApplyJwtKeyOverrides_BothKeysKept(t *testing.T) {
-	t.Setenv("GWA_AUTH_JWT_PRIVATE_KEY", testRSAPrivateKey)
-	t.Setenv("GWA_AUTH_JWT_PUBLIC_KEY", testRSAPublicKey)
+	priv := newTestRSAPrivateKeyPEM(t)
+	pub := "-----BEGIN PUBLIC KEY-----\nnot-checked-here\n-----END PUBLIC KEY-----"
+	t.Setenv("GWA_AUTH_JWT_PRIVATE_KEY", priv)
+	t.Setenv("GWA_AUTH_JWT_PUBLIC_KEY", pub)
 
-	jwtCfg := applyJwtKeyOverrides(bLogger.NewHelper(bLogger.NopLogger()), &conf.Authentication_Jwt{Method: "RS256"})
-	if jwtCfg.GetPublicKey() != testRSAPublicKey || jwtCfg.GetPrivateKey() != testRSAPrivateKey {
+	jwtCfg, err := applyJwtKeyOverrides(bLogger.NewHelper(bLogger.NopLogger()), &conf.Authentication_Jwt{Method: "RS256"})
+	if err != nil {
+		t.Fatalf("applyJwtKeyOverrides: %v", err)
+	}
+	if jwtCfg.GetPublicKey() != pub || jwtCfg.GetPrivateKey() != priv {
 		t.Fatalf("both env keys should be applied as-is")
+	}
+}
+
+// 通过环境变量注入的是仓库公开的示例私钥（configs/auth.yaml 里那把）时拒绝启动，换行宽度不同也要认出来。
+// 修复前：只打告警，部署照常用公开私钥签令牌。
+func TestApplyJwtKeyOverrides_EnvSampleKeyRejected(t *testing.T) {
+	body := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(testRSAPrivateKey,
+		"-----BEGIN PRIVATE KEY-----"), "-----END PRIVATE KEY-----"))
+	oneLine := "-----BEGIN PRIVATE KEY-----\n" + strings.Join(strings.Fields(body), "") + "\n-----END PRIVATE KEY-----\n"
+
+	for name, key := range map[string]string{"as-in-yaml": testRSAPrivateKey, "rewrapped": oneLine} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("GWA_AUTH_JWT_PRIVATE_KEY", key)
+			t.Setenv("GWA_AUTH_JWT_PUBLIC_KEY", "")
+			_, err := applyJwtKeyOverrides(bLogger.NewHelper(bLogger.NopLogger()),
+				&conf.Authentication_Jwt{Method: "RS256"})
+			if err == nil {
+				t.Fatalf("sample private key injected via GWA_AUTH_JWT_PRIVATE_KEY must be rejected")
+			}
+		})
+	}
+}
+
+// 本地开发：没设环境变量、只从 auth.yaml 读到示例私钥，照常启动（只告警）。
+func TestApplyJwtKeyOverrides_YamlSampleKeyAllowed(t *testing.T) {
+	t.Setenv("GWA_AUTH_JWT_PRIVATE_KEY", "")
+	t.Setenv("GWA_AUTH_JWT_PUBLIC_KEY", "")
+
+	jwtCfg, err := applyJwtKeyOverrides(bLogger.NewHelper(bLogger.NopLogger()), &conf.Authentication_Jwt{
+		Method:     "RS256",
+		PrivateKey: ptrString(testRSAPrivateKey),
+		PublicKey:  ptrString(testRSAPublicKey),
+	})
+	if err != nil {
+		t.Fatalf("sample key from yaml must stay allowed for local dev: %v", err)
+	}
+	if jwtCfg.GetPrivateKey() != testRSAPrivateKey {
+		t.Fatalf("yaml key should be kept")
 	}
 }
 

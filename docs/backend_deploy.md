@@ -54,13 +54,13 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 |---|---|---|
 | `postgres` | `postgres:17.6-alpine` | 数据库 `gwa` |
 | `redis` | `redis:7.4.5-alpine` | 缓存和 asynq 任务队列，开了 AOF |
-| `minio` | `minio/minio:RELEASE.2025-09-07T16-13-09Z` | 文件管理、头像、富文本图片。桶由后端第一次上传时自动创建 |
+| `minio` | `pgsty/minio:RELEASE.2026-08-04T00-00-00Z` | 文件管理、头像、富文本图片。桶由后端第一次上传时自动创建。MinIO 官方已停止发布社区版镜像，这里用持续维护的社区 fork，命令和 S3 接口与原版一致 |
 | `admin-service` | 本地构建（`backend/Dockerfile`） | REST `:7788`、SSE `:7789`，只在容器网络内可达 |
 | `frontend` | 本地构建（`frontend/admin/react/scripts/deploy/Dockerfile`） | nginx 托管页面，并把 `/admin/` 反代到 7788、`/events` 反代到 7789。对外只开这一个端口 |
 
 浏览器只访问 `frontend` 一个源，页面、接口、SSE 同源，不需要 CORS。依赖镜像都固定了版本号，不用 `latest`。
 
-启动顺序靠健康检查串起来：postgres（`pg_isready`）、redis（`redis-cli ping`）、minio（`mc ready local`）都健康后才启动后端；后端 `/readyz` 返回 200 后才启动前端。
+启动顺序靠健康检查串起来：postgres（`pg_isready`）、redis（`redis-cli ping`）、minio（`curl /minio/health/live`）都健康后才启动后端；后端 `/readyz` 返回 200 后才启动前端。
 
 ### 前置条件
 
@@ -82,11 +82,19 @@ cp .env.example .env   # 然后编辑 .env
 | `REDIS_PASSWORD` | 是 | Redis 口令（缓存和 asynq 任务队列共用） |
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | 是 | MinIO 账号（密码至少 8 位） |
 | `GWA_ADMIN_INITIAL_PASSWORD` | 是 | 空库首次启动时播种的 `admin` 密码，须满足口令复杂度 |
-| `GWA_AUTH_JWT_PRIVATE_KEY` | 生产要填 | JWT 私钥，不填就用仓库里公开的示例密钥，见下文「生产环境密钥配置」 |
+| `GWA_AUTH_JWT_PRIVATE_KEY` | 是 | JWT 签名私钥，每个部署单独生成（命令见下）。填仓库 `configs/auth.yaml` 里的示例私钥会拒绝启动 |
 | `GOWIND_CRYPTO_KEY` | 否 | 签名图片 URL 的 HMAC 密钥，不填则富文本图片无法内嵌预览 |
 | `HTTP_PORT` | 否 | 前端 nginx 映射到宿主机的端口，默认 `80` |
 
 - 每个客户的口令都要单独生成，不要复用示例或别的客户的值。可以用 `openssl rand -hex 16`。
+- JWT 私钥也是每个部署单独生成。在 `backend/` 下执行（先删掉 `.env` 里那行空的 `GWA_AUTH_JWT_PRIVATE_KEY=`，再追加一个用双引号包住的多行 PEM）：
+
+  ```bash
+  sed -i.bak '/^GWA_AUTH_JWT_PRIVATE_KEY=/d' .env
+  printf 'GWA_AUTH_JWT_PRIVATE_KEY="%s"\n' "$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048)" >> .env
+  ```
+
+  换私钥会让已签发的令牌全部失效，用户要重新登录。私钥丢了不影响数据，重新生成即可。
 - 口令只用字母和数字：它们会被拼进数据库 DSN 和 `redis://` URI。
 - 必填项缺失时 `docker compose` 直接报错退出（`${VAR:?...}`）。
 - `.env` 已在 `backend/.dockerignore` 里，不会进镜像。
@@ -193,7 +201,65 @@ docker compose exec -T postgres pg_restore -U postgres -d gwa --clean --if-exist
 
 ### 从旧版 Compose 迁移
 
-旧版用的是 Bitnami 镜像，数据卷目录结构和官方镜像不同，新版不能直接接着用旧卷。旧环境里有要保留的数据时，先用旧版 Compose 起着 `pg_dump` 导出，然后 `docker compose down -v` 删掉旧卷，换新版启动，再按上面的方法导入。
+旧版用 Bitnami 镜像。各卷能不能直接接着用：
+
+| 卷 | 旧挂载点 | 新挂载点 | 处理 |
+|---|---|---|---|
+| `postgres-data` | `/bitnami/postgresql`（数据在卷内 `data/` 子目录） | `/var/lib/postgresql/data`（数据在卷根） | **不兼容**，要导出、换空卷、导入 |
+| `minio-data` | `/data` | `/data` | 保留，不动 |
+| `admin-data` | `/app/data` | `/app/data` | 保留，不动 |
+| `redis-data` | `/bitnami/redis/data` | `/data` | 目录结构相同（AOF 都在 `appendonlydir/`），保留。例外见第 7 步 |
+
+**不要用 `docker compose down -v`**：它会把 MinIO 上传的文件、审计归档、Redis 里的待执行任务一起删掉，而 `pg_dump` 只备份数据库。下面只替换 PostgreSQL 一个卷。命令都在 `backend/` 下执行。
+
+1. **用旧版 Compose 导出数据库**（旧容器还在跑的时候）。先看旧库主版本：
+
+   ```bash
+   docker compose exec -T -e PGPASSWORD='<.env 里的 POSTGRES_PASSWORD>' postgres \
+     psql -h 127.0.0.1 -U postgres -d gwa -Atc 'show server_version'
+   docker compose exec -T -e PGPASSWORD='<.env 里的 POSTGRES_PASSWORD>' postgres \
+     pg_dump -h 127.0.0.1 -U postgres -Fc gwa > gwa-before-upgrade.dump
+   ```
+
+   旧库主版本高于 17 时，新版不能降级导入：先停下来，把 compose 里的 `postgres` 镜像换成同主版本再继续（PostgreSQL 18 起官方镜像的数据目录改为 `/var/lib/postgresql`，挂载点要跟着改）。
+
+2. **校验备份**：文件不为空，且能列出表数据。用新镜像自带的 `pg_restore` 读，宿主机不用装 PostgreSQL：
+
+   ```bash
+   ls -l gwa-before-upgrade.dump
+   docker run --rm -i postgres:17.6-alpine pg_restore --list < gwa-before-upgrade.dump | grep -c 'TABLE DATA'
+   ```
+
+   第二条输出的是表数，应当是几十张。为 0 或报错就不要往下做。
+
+3. **停服**（不带 `-v`）：`docker compose down`
+
+4. **定位并只删 PostgreSQL 卷**：
+
+   ```bash
+   docker volume ls --filter name=postgres-data
+   ```
+
+   名字形如 `<项目名>_postgres-data`，项目名默认是目录名，即 `backend_postgres-data`；启动时用过 `-p` 或 `COMPOSE_PROJECT_NAME` 的以实际为准。确认只有这一个之后：
+
+   ```bash
+   docker volume rm backend_postgres-data
+   ```
+
+5. **换成新版文件，补齐 `.env`**：`git pull`，再对照 `.env.example` 补上新增的必填项（`GWA_AUTH_JWT_PRIVATE_KEY`，生成方法见文件里的注释）。原有口令不变。
+
+6. **先只起数据库，导入，再起全部**（后端不能先启动，否则它会往空库里播种默认数据，和导入的数据冲突）：
+
+   ```bash
+   docker compose up -d --wait postgres
+   docker compose exec -T postgres pg_restore -U postgres -d gwa --no-owner < gwa-before-upgrade.dump
+   docker compose exec -T postgres psql -U postgres -d gwa -Atc 'select count(*) from sys_users'
+   docker compose up -d --build --wait
+   ```
+
+   最后一条查询应当返回旧库的用户数。备份文件留着，确认新环境正常后再删。
+
+7. **Redis 例外**：旧 Bitnami Redis 是 8.x 时，新的 7.4 读不了它写的 RDB/AOF，`redis` 容器起不来，日志里会有 `Can't handle RDB format version`。Redis 里只有缓存和 asynq 任务：旧环境停服前让队列里的任务跑完，然后像第 4 步一样只删 `backend_redis-data` 这一个卷再启动。登录会话也在 Redis 里，删卷后所有用户要重新登录。
 
 ## Docker 依赖模式（本地开发）
 
@@ -291,7 +357,11 @@ server:
 | `GWA_AUTH_JWT_PUBLIC_KEY` | 非对称算法的 PEM 公钥 |
 | `GWA_AUTH_JWT_KEY` | 对称算法（HS256 等）的共享密钥 |
 
-`configs/auth.yaml` 内置的是开发示例密钥，生产环境必须通过上述环境变量替换为自有密钥，否则启动时会告警。
+`configs/auth.yaml` 内置的是开发示例密钥，生产环境必须通过上述环境变量替换为自有密钥：
+
+- 只从 `auth.yaml` 读到示例私钥（本地开发，没设环境变量）：照常启动，打 WARN。
+- 通过 `GWA_AUTH_JWT_PRIVATE_KEY` 注入的正是这把示例私钥（比如从 yaml 照抄过去）：拒绝启动。
+- 完整 Compose 部署把 `GWA_AUTH_JWT_PRIVATE_KEY` 设成了必填。
 
 - 只设置 `GWA_AUTH_JWT_PRIVATE_KEY`、不设公钥时，公钥由新私钥派生，yaml 里的示例公钥不再使用。
 - 启动时会用当前密钥签一个探针令牌再验签；公私钥不配对直接启动失败，不会等到上线后令牌全部验签失败。

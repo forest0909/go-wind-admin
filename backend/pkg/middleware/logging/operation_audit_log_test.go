@@ -6,7 +6,7 @@
 //     Service 后缀转小写）与动作类型（方法名映射，含 Export/Import 的
 //     操作审计特有分支、未知方法的 OTHER、各类畸形串的 UNSPECIFIED）；
 //  3. 触发路径（进程内 server）：字段来源映射（资源类型/动作/REST 路径
-//     最后数字段→ResourceId、令牌身份、IP、请求 ID、地理、错误映射）；
+//     最后 ID 段→ResourceId、令牌身份、IP、请求 ID、地理、错误映射）；
 //  4. 跳过路径：GET 读请求、会话维护端点、畸形 operation；
 //  5. 直调空 Transport：Request() 为 nil 的分支（ResourceId/Reason 的
 //     空值来源）与错误映射；
@@ -31,13 +31,17 @@ import (
 )
 
 func TestLastNumericPathSegment(t *testing.T) {
-	assert.Equal(t, "5", lastNumericPathSegment("/admin/v1/roles/5"))
-	assert.Equal(t, "12", lastNumericPathSegment("/admin/v1/users/12/roles"))
-	assert.Equal(t, "", lastNumericPathSegment("/admin/v1/roles"))
-	assert.Equal(t, "", lastNumericPathSegment("/admin/v1/roles/batch-delete"))
-	assert.Equal(t, "9", lastNumericPathSegment("/admin/v1/dicts/3/entries/9"))
-	assert.Equal(t, "", lastNumericPathSegment(""))
-	assert.Equal(t, "", lastNumericPathSegment("/"))
+	assert.Equal(t, "5", lastIDPathSegment("/admin/v1/roles/5"))
+	assert.Equal(t, "12", lastIDPathSegment("/admin/v1/users/12/roles"))
+	assert.Equal(t, "", lastIDPathSegment("/admin/v1/roles"))
+	assert.Equal(t, "", lastIDPathSegment("/admin/v1/roles/batch-delete"))
+	assert.Equal(t, "9", lastIDPathSegment("/admin/v1/dicts/3/entries/9"))
+	assert.Equal(t, "", lastIDPathSegment(""))
+	assert.Equal(t, "", lastIDPathSegment("/"))
+	// 外部数据源的 UUID 主键
+	assert.Equal(t, "0b6f1e8e-3c1a-4c55-9f43-2a7d5b8e9c01",
+		lastIDPathSegment("/admin/v1/external-demo-contacts/0b6f1e8e-3c1a-4c55-9f43-2a7d5b8e9c01"))
+	assert.Equal(t, "", lastIDPathSegment("/admin/v1/external-demo-contacts/not-a-uuid-but-thirty-six-chars-long"))
 }
 
 // TestOperationAuditLogMiddlewareNameAndConstructor 验证构造器落参与固定名称。

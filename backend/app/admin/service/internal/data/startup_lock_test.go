@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -68,4 +69,30 @@ func TestStartupLock_RedisDownDoesNotBlockStartup(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, release)
 	release()
+}
+
+// review-a2-round2 R3：启动期间租约丢失时进程必须退出，不能只记日志继续迁移。
+func TestStartupLock_LostLeaseExitsProcess(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	exited := make(chan int, 1)
+	exitProcess = func(code int) { exited <- code }
+	t.Cleanup(func() { exitProcess = os.Exit })
+	oldTTL := startupLockTTL
+	startupLockTTL = 90 * time.Millisecond
+	t.Cleanup(func() { startupLockTTL = oldTTL })
+
+	release, err := acquireStartupLock(context.Background(), rdb, bLogger.NewHelper(bLogger.NopLogger()), time.Second)
+	require.NoError(t, err)
+	defer release()
+
+	mr.Set(startupLockKey, "other-instance") // 另一个实例拿到了锁
+	select {
+	case code := <-exited:
+		require.Equal(t, 1, code)
+	case <-time.After(5 * time.Second):
+		t.Fatal("process did not exit after losing the startup lock")
+	}
 }

@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -16,9 +17,10 @@ import (
 
 var startupLockKey = serviceid.ProjectName + ":startup:migrate-and-seed"
 
+// startupLockTTL 锁租期，持有期间自动续期；持有者崩溃后最多这么久自动释放（测试里缩短）。
+var startupLockTTL = 30 * time.Second
+
 const (
-	// startupLockTTL 锁租期，持有期间自动续期；持有者崩溃后最多这么久自动释放。
-	startupLockTTL = 30 * time.Second
 	// startupLockWait 等别的实例完成启动的最长时间，超过就启动失败（交给编排重启）。
 	startupLockWait = 10 * time.Minute
 )
@@ -40,7 +42,12 @@ func AcquireStartupLock(ctx *bootstrap.Context, rdb *redis.Client) (release func
 
 func acquireStartupLock(ctx context.Context, rdb redis.UniversalClient, l *bLogger.Helper, wait time.Duration) (func(), error) {
 	start := time.Now()
-	release, err := redissync.Lock(ctx, rdb, startupLockKey, startupLockTTL, wait, l)
+	// 持锁期间租约丢了（Redis 重启丢 key、断连超过租期），别的实例可能已经进入迁移/播种。
+	// 这里没法安全地中断正在进行的迁移，直接退出进程，交给编排重启后重新排队。
+	release, err := redissync.Lock(ctx, rdb, startupLockKey, startupLockTTL, wait, l, func() {
+		l.Errorf(ctx, "startup lock lost during migration/seed, exiting so the orchestrator restarts this instance")
+		exitProcess(1)
+	})
 	if err != nil {
 		if errors.Is(err, redissync.ErrLockTimeout) || ctx.Err() != nil {
 			return nil, err
@@ -51,3 +58,6 @@ func acquireStartupLock(ctx context.Context, rdb redis.UniversalClient, l *bLogg
 	l.Infof(ctx, "startup lock acquired after %s", time.Since(start).Round(time.Millisecond))
 	return release, nil
 }
+
+// exitProcess 测试里替换。
+var exitProcess = os.Exit

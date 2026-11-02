@@ -1,0 +1,26 @@
+name: frontend
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/admin/react/**'
+      - 'docs/plans/react-lint-baseline.tsv'
+      - '.github/workflows/frontend.yml'
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/admin/react
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx -y pnpm@12.16.1 install --frozen-lockfile
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npx vitest run
+      # lint 问题数不得超过 docs/plans/react-lint-baseline.tsv
+      - run: node scripts/check-lint-baseline.mjs

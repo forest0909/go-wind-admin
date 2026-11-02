@@ -46,7 +46,9 @@ services:
 
   # 文件管理、头像、富文本图片的存储。桶由后端在第一次上传时自动创建。
   minio:
-    image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # MinIO 官方已停止发布社区版镜像（docker.io/minio/minio 已删除，quay.io 不再允许匿名拉取）。
+    # pgsty/minio 是持续维护的社区 fork，命令、端口、/data 目录、S3 接口与原版一致，镜像内带 curl 和 mc。
+    image: docker.io/pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     restart: always
     networks:
       - app-tier
@@ -57,7 +59,7 @@ services:
       - minio-data:/data
     command: server /data --console-address ':9001'
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -84,8 +86,9 @@ services:
       - GWA_MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:?请在 .env 中设置 MINIO_ROOT_PASSWORD}
       # 首次启动播种 admin 时使用的密码，完整部署必须提供
       - GWA_ADMIN_INITIAL_PASSWORD=${GWA_ADMIN_INITIAL_PASSWORD:?请在 .env 中设置 GWA_ADMIN_INITIAL_PASSWORD}
-      # 可选：生产 JWT 私钥（只给私钥时公钥自动派生）、签名图片 URL 的密钥
-      - GWA_AUTH_JWT_PRIVATE_KEY=${GWA_AUTH_JWT_PRIVATE_KEY:-}
+      # JWT 私钥，每个部署单独生成（只给私钥时公钥自动派生）。填仓库示例私钥会拒绝启动
+      - GWA_AUTH_JWT_PRIVATE_KEY=${GWA_AUTH_JWT_PRIVATE_KEY:?请在 .env 中设置 GWA_AUTH_JWT_PRIVATE_KEY（生成方法见 .env.example）}
+      # 可选：签名图片 URL 的密钥
       - GOWIND_CRYPTO_KEY=${GOWIND_CRYPTO_KEY:-}
       - AUDIT_ARCHIVE_DIR=/app/data/audit-archive
     volumes:

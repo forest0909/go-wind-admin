@@ -77,7 +77,9 @@ services:
       retries: 20
 
   minio:
-    image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # MinIO 官方已停止发布社区版镜像（docker.io/minio/minio 已删除，quay.io 不再允许匿名拉取）。
+    # pgsty/minio 是持续维护的社区 fork，命令、端口、/data 目录、S3 接口与原版一致，镜像内带 curl 和 mc。
+    image: docker.io/pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     restart: always
     ports:
       - "127.0.0.1:9000:9000"
@@ -91,7 +93,7 @@ services:
       - minio-data:/data
     command: server /data --console-address ':9001'
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 20

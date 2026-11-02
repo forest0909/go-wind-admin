@@ -38,3 +38,5 @@
 `netutil.SetTrustedProxies` 先把默认初始化标记为已完成：此前启动时调用它之后，首个请求里的 `initTrustedProxies` 仍会用默认网段覆盖配置（默认初始化写全局变量时也没加锁）。测试 `TestSetTrustedProxies_NotOverriddenByLazyDefault`。
 
 `authorizer` 加了 `SetResetWrapper` / `ReloadPolicies`：`ResetPolicies` 设置了包装函数时经它调用实际装载（admin 用它在装载前递增 Redis 版本号、装载后广播，让其他实例重载）；`ReloadPolicies` 只重载本实例。实际装载加了互斥锁，并发装载不会让旧快照覆盖新快照。
+
+`id.GenerateOrderIdWithRandom` 的 4 位随机数改为补零（`%04d`）：原来随机数小于 1000 时订单号少一位，`TestGenerateOrderIdWithRandom` 约 10% 概率失败。

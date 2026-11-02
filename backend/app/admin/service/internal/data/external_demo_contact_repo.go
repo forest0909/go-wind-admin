@@ -149,12 +149,12 @@ func (r *ExternalDemoContactRepo) Update(ctx context.Context, id string, data *e
 	if err != nil {
 		return err
 	}
-	if len(mask.GetPaths()) == 0 {
-		return extdb.ErrBadRequest("update_mask is required")
-	}
 	rec := goqu.Record{}
 	for _, path := range mask.GetPaths() {
 		field := stringcase.ToSnakeCase(path)
+		if field == "id" {
+			continue // 前端的 updateMask 末尾总会带 id（全仓惯例），主键不更新，忽略
+		}
 		col, ok := demoContactUpdatable[field]
 		if !ok {
 			return extdb.ErrBadRequest("field %q cannot be updated", path)
@@ -171,6 +171,9 @@ func (r *ExternalDemoContactRepo) Update(ctx context.Context, id string, data *e
 		case "remark":
 			rec[col] = nullable(data.Remark)
 		}
+	}
+	if len(rec) == 0 {
+		return extdb.ErrBadRequest("update_mask has no updatable field")
 	}
 	rec["updated_at"] = src.TimeToDB(time.Now())
 

@@ -100,6 +100,9 @@ func runDemoContactSuite(t *testing.T, reg *extdb.Registry) {
 	names, _ = list(q(`{"is_active":"false"}`, ""))
 	require.Equal(t, []string{"bob li"}, names)
 
+	names, _ = list(q(`{"isActive":true}`, `["-created_at"]`))
+	require.ElementsMatch(t, []string{"Alice Zhang", "100%_off"}, names)
+
 	names, _ = list(q(`{"amount__gte":"1"}`, ""))
 	require.Equal(t, []string{"Alice Zhang"}, names)
 
@@ -135,7 +138,18 @@ func runDemoContactSuite(t *testing.T, reg *extdb.Registry) {
 	require.Equal(t, alice.GetCreatedAt().AsTime(), alice2.GetCreatedAt().AsTime())
 
 	err = repo.Update(ctx, ids["Alice Zhang"], &externalV1.DemoContact{}, &fieldmaskpb.FieldMask{Paths: []string{"id"}})
-	require.True(t, externalV1.IsBadRequest(err), "id is not updatable: %v", err)
+	require.True(t, externalV1.IsBadRequest(err), "mask with only id updates nothing: %v", err)
+	err = repo.Update(ctx, ids["Alice Zhang"], &externalV1.DemoContact{}, &fieldmaskpb.FieldMask{Paths: []string{"created_at"}})
+	require.True(t, externalV1.IsBadRequest(err), "created_at is not updatable: %v", err)
+	// 前端写法：mask 末尾带 id；清空金额时不传 amount 但 mask 里有 → 置 NULL
+	err = repo.Update(ctx, ids["Alice Zhang"], &externalV1.DemoContact{Code: strPtr("C001")},
+		&fieldmaskpb.FieldMask{Paths: []string{"code", "amount", "id"}})
+	require.NoError(t, err)
+	alice3, err := repo.Get(ctx, ids["Alice Zhang"])
+	require.NoError(t, err)
+	require.Nil(t, alice3.Amount, "amount cleared")
+	require.Equal(t, ids["Alice Zhang"], alice3.GetId())
+
 	err = repo.Update(ctx, ids["Alice Zhang"], &externalV1.DemoContact{}, nil)
 	require.True(t, externalV1.IsBadRequest(err), "mask required: %v", err)
 	err = repo.Update(ctx, "00000000-0000-0000-0000-000000000000", &externalV1.DemoContact{Name: strPtr("x")},

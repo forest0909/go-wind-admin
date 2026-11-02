@@ -32,6 +32,7 @@ message Server {
 
     bool enable_swagger = 20;  // 启用SwaggerUI
     bool enable_pprof = 21;  // 启用pprof
+    bool enable_metrics = 23;  // 启用 GET /metrics（Prometheus），不经认证，只应在内网可达
 
     // 可信反向代理：只有直连对端属于这些网段时才采信 X-Forwarded-For / X-Real-IP。
     // 不配置时保持默认（RFC1918 私网 + 回环），docker 网络和常见反向代理依赖这一默认；

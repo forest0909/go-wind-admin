@@ -284,6 +284,7 @@ type Server_REST struct {
 	Tls            *TLS                        `protobuf:"bytes,12,opt,name=tls,proto3" json:"tls,omitempty"`                                             // TLS配置
 	EnableSwagger  bool                        `protobuf:"varint,20,opt,name=enable_swagger,json=enableSwagger,proto3" json:"enable_swagger,omitempty"`   // 启用SwaggerUI
 	EnablePprof    bool                        `protobuf:"varint,21,opt,name=enable_pprof,json=enablePprof,proto3" json:"enable_pprof,omitempty"`         // 启用pprof
+	EnableMetrics  bool                        `protobuf:"varint,23,opt,name=enable_metrics,json=enableMetrics,proto3" json:"enable_metrics,omitempty"`   // 启用 GET /metrics（Prometheus），不经认证，只应在内网可达
 	TrustedProxies *Server_REST_TrustedProxies `protobuf:"bytes,22,opt,name=trusted_proxies,json=trustedProxies,proto3" json:"trusted_proxies,omitempty"` // 可信反向代理
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -371,6 +372,13 @@ func (x *Server_REST) GetEnableSwagger() bool {
 func (x *Server_REST) GetEnablePprof() bool {
 	if x != nil {
 		return x.EnablePprof
+	}
+	return false
+}
+
+func (x *Server_REST) GetEnableMetrics() bool {
+	if x != nil {
+		return x.EnableMetrics
 	}
 	return false
 }
@@ -3603,7 +3611,7 @@ var File_conf_v1_kratos_conf_server_proto protoreflect.FileDescriptor
 
 const file_conf_v1_kratos_conf_server_proto_rawDesc = "" +
 	"\n" +
-	" conf/v1/kratos_conf_server.proto\x12\x04conf\x1a\x1egoogle/protobuf/duration.proto\x1a$conf/v1/kratos_conf_middleware.proto\x1a\x1dconf/v1/kratos_conf_tls.proto\"\xd1d\n" +
+	" conf/v1/kratos_conf_server.proto\x12\x04conf\x1a\x1egoogle/protobuf/duration.proto\x1a$conf/v1/kratos_conf_middleware.proto\x1a\x1dconf/v1/kratos_conf_tls.proto\"\xf8d\n" +
 	"\x06Server\x12*\n" +
 	"\x04rest\x18\x01 \x01(\v2\x11.conf.Server.RESTH\x00R\x04rest\x88\x01\x01\x12*\n" +
 	"\x04grpc\x18\x02 \x01(\v2\x11.conf.Server.GRPCH\x01R\x04grpc\x88\x01\x01\x123\n" +
@@ -3627,7 +3635,7 @@ const file_conf_v1_kratos_conf_server_proto_rawDesc = "" +
 	"\asignalr\x18\x17 \x01(\v2\x14.conf.Server.SignalRH\x11R\asignalr\x88\x01\x01\x12'\n" +
 	"\x03mcp\x18\x18 \x01(\v2\x10.conf.Server.MCPH\x12R\x03mcp\x88\x01\x01\x12-\n" +
 	"\x05asynq\x18\x1e \x01(\v2\x12.conf.Server.AsynqH\x13R\x05asynq\x88\x01\x01\x129\n" +
-	"\tmachinery\x18\x1f \x01(\v2\x16.conf.Server.MachineryH\x14R\tmachinery\x88\x01\x01\x1a\xa5\x04\n" +
+	"\tmachinery\x18\x1f \x01(\v2\x16.conf.Server.MachineryH\x14R\tmachinery\x88\x01\x01\x1a\xcc\x04\n" +
 	"\x04REST\x12\x18\n" +
 	"\anetwork\x18\x01 \x01(\tR\anetwork\x12\x12\n" +
 	"\x04addr\x18\x02 \x01(\tR\x04addr\x123\n" +
@@ -3639,7 +3647,8 @@ const file_conf_v1_kratos_conf_server_proto_rawDesc = "" +
 	"middleware\x12\x1b\n" +
 	"\x03tls\x18\f \x01(\v2\t.conf.TLSR\x03tls\x12%\n" +
 	"\x0eenable_swagger\x18\x14 \x01(\bR\renableSwagger\x12!\n" +
-	"\fenable_pprof\x18\x15 \x01(\bR\venablePprof\x12I\n" +
+	"\fenable_pprof\x18\x15 \x01(\bR\venablePprof\x12%\n" +
+	"\x0eenable_metrics\x18\x17 \x01(\bR\renableMetrics\x12I\n" +
 	"\x0ftrusted_proxies\x18\x16 \x01(\v2 .conf.Server.REST.TrustedProxiesR\x0etrustedProxies\x1a\x81\x01\n" +
 	"\x04CORS\x12\x18\n" +
 	"\aheaders\x18\x01 \x03(\tR\aheaders\x12\x18\n" +

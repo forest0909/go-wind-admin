@@ -5,3 +5,8 @@ node_modules
 dist
 .turbo
 dist.zip
+# .env / .env.production 要进构建上下文：vite build 从里面读 VITE_APP_TITLE、VITE_AES_KEY 等（都是公开的前端常量）。
+# 只排除本机私有覆盖。
+.env.local
+.env.*.local
+scripts/deploy/*.log

@@ -215,7 +215,18 @@
       "USER_LOCKED": "用户已被锁定",
       "DUPLICATE_ENTRY": "数据已存在",
       "VALIDATION_FAILED": "数据校验失败",
-      "INTERNAL_ERROR": "服务器内部错误"
+      "INTERNAL_ERROR": "服务器内部错误",
+      "ACCESS_TOKEN_NOT_FOUND": "访问令牌不存在，请重新登录",
+      "REFRESH_TOKEN_NOT_FOUND": "刷新令牌不存在，请重新登录",
+      "DELETE_FAILED": "删除失败，请稍后重试",
+      "DOWNLOAD_FAILED": "下载失败，请稍后重试",
+      "UPLOAD_FAILED": "上传失败，请稍后重试",
+      "FILE_NOT_FOUND": "文件不存在",
+      "FILE_TOO_LARGE": "文件过大，超出上传大小或存储空间限制",
+      "DEPARTMENT_NOT_FOUND": "部门不存在",
+      "ORGANIZATION_NOT_FOUND": "组织不存在",
+      "POSITION_NOT_FOUND": "岗位不存在",
+      "ROLE_NOT_FOUND": "角色不存在"
     },
     "status": {
       "400": "请求参数错误",

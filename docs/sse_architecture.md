@@ -63,6 +63,10 @@ SSE 连接不走 REST 的 auth 中间件链——transport 自带鉴权钩子，
 - **落库优先**：收件记录先经 `internalMessageRecipientRepo.Create` 落库，
   推送是 best-effort 增强——`TryPublish` 非阻塞（流不存在=用户离线、或缓冲已满，立即跳过，
   只记 debug 日志），失败不影响投递；离线用户重连后从**收件箱接口**补取（不依赖推送）；
+- **多实例**：配置了 Redis 时，注入给站内信服务的发布者是 `sseFanoutPublisher`（`internal/server/sse_fanout.go`）：
+  事件先发到 Redis 频道 `gowind:sse:fanout`，每个实例（含发送方自己）订阅后用本地 `TryPublish` 投递给本实例的连接。
+  用户连在 A、发信请求或广播任务在 B 执行，A 上的连接一样收到。Redis 发布失败时退回只推本实例；
+  Pub/Sub 断线期间的事件会丢，仍靠收件箱补取。
 - 事件结构：`{ ID: GUIDv4, Event: "notification", Data: <收件记录 JSON> }`；
   `Event` 字段即前端的事件名（三端 `on('notification', …)`）；
 - **`Data` 的编码是三端的解析契约，不是可"顺手换一个"的细节**：必须是
@@ -129,6 +133,7 @@ TLS 由外层负载均衡终止（与静态前端一致），网关仅监听 HTT
 |---|---|
 | 事件类型 | 仅 `notification`（站内信）；注册表见第 4 节末（`pkg/sseevent` + 三端 `SSE_EVENT`），但**注册表是常量约定、不是运行时校验**，漏加一端仍然静默失效 |
 | 推送可靠性 | 设计即 best-effort：无重放、无 ack、离线不积压（补取靠收件箱） |
+| 跨实例断流 | 用户令牌全部吊销时断开 SSE 只作用于本实例（auth-session 的 `CloseStream`），跨实例转发只覆盖通知事件 |
 | 慢消费者 | `TryPublish` 缓冲满即丢（debug 日志），不阻塞生产方；无背压 |
 | 观测 | 连接建立/断开（HandleSubscribe/日志）与跳过（debug 级）可查，无投递指标面板 |
 | 与 REST 的中间件差异 | SSE transport 不走 REST 中间件链（审计中间件不覆盖 /events 连接与事件），鉴权由 HandleAuthorize 独立承担 |

@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/go-kratos/kratos/v2/log"
 	kratosHttp "github.com/go-kratos/kratos/v2/transport/http"
 )
 
@@ -96,10 +97,14 @@ func (m *Metrics) Install(srv *kratosHttp.Server) {
 func (m *Metrics) routeTemplate(srv *kratosHttp.Server, r *nethttp.Request) string {
 	m.routerOnce.Do(func() {
 		m.router = mux.NewRouter()
-		_ = srv.WalkRoute(func(info kratosHttp.RouteInfo) error {
+		err := srv.WalkRoute(func(info kratosHttp.RouteInfo) error {
 			m.router.Handle(info.Path, nethttp.NotFoundHandler()).Methods(info.Method)
 			return nil
 		})
+		if err != nil {
+			// 路由表不全时部分请求会落到 unmatched，指标仍可用，但要让运维看到原因。
+			log.Errorf("metrics: walk routes failed: %v", err)
+		}
 	})
 	var match mux.RouteMatch
 	if m.router.Match(r, &match) && match.Route != nil {

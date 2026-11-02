@@ -10,6 +10,7 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/transport"
 	"github.com/go-kratos/kratos/v2/transport/http/status"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -70,7 +71,7 @@ func AccessLogServer(logger log.Logger) middleware.Middleware {
 				reason = se.Reason
 			}
 			level, stack := extractAccessLogError(err)
-			log.NewHelper(log.WithContext(ctx, logger)).Log(level,
+			kvs := []any{
 				"kind", "server",
 				"component", kind,
 				"operation", operation,
@@ -79,7 +80,13 @@ func AccessLogServer(logger log.Logger) middleware.Middleware {
 				"reason", reason,
 				"stack", stack,
 				"latency", time.Since(startTime).Seconds(),
-			)
+			}
+			// kratos log.WithContext 不会把 ctx 交给底层 Logger，trace_id 要在这里显式带上；
+			// 没有有效 span（未配置 tracer exporter）时不多输出字段。
+			if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+				kvs = append(kvs, "trace_id", sc.TraceID().String(), "span_id", sc.SpanID().String())
+			}
+			log.NewHelper(log.WithContext(ctx, logger)).Log(level, kvs...)
 			return
 		}
 	}

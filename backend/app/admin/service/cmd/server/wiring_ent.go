@@ -205,6 +205,11 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// ═══════════════════════ 五、传输层(internal/server) ═══════════════════════
 
+	var metrics *server.Metrics
+	if cfg := ctx.GetConfig(); cfg != nil && cfg.GetServer().GetRest().GetEnableMetrics() {
+		metrics = server.NewMetrics()
+	}
+
 	restMiddlewares := server.NewRestMiddleware(ctx, accessTokenChecker, authz,
 		loginAuditLogRepo, operationAuditLogRepo)
 
@@ -229,6 +234,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	releaseStartupLock()
 
 	if restServer != nil {
+		metrics.Install(restServer)
 		server.RegisterHealthRoutes(restServer,
 			server.HealthCheck{Name: "database", Check: entClient.DB().PingContext},
 			server.HealthCheck{Name: "redis", Check: func(ctx context.Context) error {

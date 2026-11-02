@@ -19,6 +19,7 @@ require (
 	github.com/lyft/protoc-gen-star/v2 v2.0.4
 	github.com/mileusna/useragent v1.3.5
 	github.com/minio/minio-go/v7 v7.3.0
+	github.com/prometheus/client_golang v1.24.1
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/stretchr/testify v1.12.1
 	github.com/xiaoqidun/entps v1.50.1
@@ -33,7 +34,12 @@ require (
 )
 
 require (
+	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.70.1 // indirect
+	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/yuin/gopher-lua v1.1.2 // indirect
 )

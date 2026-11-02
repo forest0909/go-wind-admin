@@ -269,10 +269,10 @@ func (r *OrgUnitRepo) Create(ctx context.Context, req *identityV1.CreateOrgUnitR
 		SetNillableCreatedBy(req.Data.CreatedBy).
 		SetCreatedAt(time.Now())
 
-	if req.Data.BusinessScopes == nil {
+	if req.Data.BusinessScopes != nil {
 		builder.SetBusinessScopes(req.Data.GetBusinessScopes())
 	}
-	if req.Data.PermissionTags == nil {
+	if req.Data.PermissionTags != nil {
 		builder.SetPermissionTags(req.Data.GetPermissionTags())
 	}
 
@@ -351,10 +351,10 @@ func (r *OrgUnitRepo) Update(ctx context.Context, req *identityV1.UpdateOrgUnitR
 				SetNillableUpdatedBy(req.Data.UpdatedBy).
 				SetUpdatedAt(time.Now())
 
-			if req.Data.BusinessScopes == nil {
+			if req.Data.BusinessScopes != nil {
 				builder.SetBusinessScopes(req.Data.GetBusinessScopes())
 			}
-			if req.Data.PermissionTags == nil {
+			if req.Data.PermissionTags != nil {
 				builder.SetPermissionTags(req.Data.GetPermissionTags())
 			}
 		},

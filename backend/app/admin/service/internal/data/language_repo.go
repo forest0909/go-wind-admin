@@ -248,9 +248,8 @@ func (r *LanguageRepo) Update(ctx context.Context, req *dictV1.UpdateLanguageReq
 	err := r.repository.UpdateX(ctx, builder, req.Data, req.GetUpdateMask(),
 		func(dto *dictV1.Language) {
 			builder.
-				SetLanguageName(req.Data.GetLanguageName()).
-				//SetLanguageCode(req.Data.GetLanguageCode()).
-				SetNativeName(req.Data.GetNativeName()).
+				SetNillableLanguageName(req.Data.LanguageName).
+				SetNillableNativeName(req.Data.NativeName).
 				SetNillableIsEnabled(req.Data.IsEnabled).
 				SetNillableIsDefault(req.Data.IsDefault).
 				SetNillableSortOrder(req.Data.SortOrder).

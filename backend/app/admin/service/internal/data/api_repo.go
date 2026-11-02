@@ -300,6 +300,7 @@ func (r *ApiRepo) Update(ctx context.Context, req *permissionV1.UpdateApiRequest
 				SetNillablePath(req.Data.Path).
 				SetNillableMethod(req.Data.Method).
 				SetNillableScope(r.scopeConverter.ToEntity(req.Data.Scope)).
+				SetNillableStatus(r.statusConverter.ToEntity(req.Data.Status)).
 				SetNillableUpdatedBy(req.Data.UpdatedBy).
 				SetUpdatedAt(time.Now())
 		},

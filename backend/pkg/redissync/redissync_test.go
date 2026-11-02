@@ -151,8 +151,8 @@ func TestLock_UnlockDoesNotDeleteOthersLock(t *testing.T) {
 func TestLock_WaitTimeout(t *testing.T) {
 	mr, rdb := newRedis(t)
 	mr.Set("k", "held")
-	if _, err := Lock(context.Background(), rdb, "k", time.Second, 50*time.Millisecond, testLogger{t}); err == nil {
-		t.Fatal("expected timeout error while lock is held")
+	if _, err := Lock(context.Background(), rdb, "k", time.Second, 50*time.Millisecond, testLogger{t}); !errors.Is(err, ErrLockTimeout) {
+		t.Fatalf("expected ErrLockTimeout while lock is held, got %v", err)
 	}
 }
 

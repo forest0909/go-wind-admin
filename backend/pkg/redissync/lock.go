@@ -26,6 +26,9 @@ end
 return 0`)
 )
 
+// ErrLockTimeout 等待超过 wait 仍未拿到锁。
+var ErrLockTimeout = errors.New("lock still held by another holder")
+
 // lockPollInterval 抢锁失败后的重试间隔。
 var lockPollInterval = 200 * time.Millisecond
 
@@ -49,7 +52,7 @@ func Lock(ctx context.Context, rdb redis.UniversalClient, key string, ttl, wait 
 			break
 		}
 		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("acquire lock %q: still held by another instance after %s", key, wait)
+			return nil, fmt.Errorf("acquire lock %q after waiting %s: %w", key, wait, ErrLockTimeout)
 		}
 		select {
 		case <-ctx.Done():

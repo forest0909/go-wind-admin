@@ -22,7 +22,7 @@ import (
 //
 // 默认用 SQLite 内存库（每次调用独占一个库），go test ./... 无需任何外部依赖就会真正执行
 // 租户/数据范围守卫断言——此前默认连本地 PG、连不上就 Skip，套件常绿却从未验证过隔离。
-// 设置 GUARD_TEST_PG_DSN 时改连该 PostgreSQL 加跑一遍（连不上直接失败，不再静默跳过），
+// 设置 GUARD_TEST_PG_DSN 时改用该 PostgreSQL 代替 SQLite 跑（不是两种都跑；连不上直接失败，不再静默跳过），
 // 并 TRUNCATE 给定表复位。
 func openGuardClient(t *testing.T, truncateTables ...string) *ent.Client {
 	t.Helper()

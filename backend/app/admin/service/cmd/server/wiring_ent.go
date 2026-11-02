@@ -171,7 +171,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	// 文件与任务
 	fileService := service.NewFileService(ctx, fileRepo, minioClient)
 	fileTransferService := service.NewFileTransferService(ctx, minioClient, fileRepo)
-	taskService := service.NewTaskService(ctx, taskRepo, userRepo, auditLogArchiveRepo)
+	taskService := service.NewTaskService(ctx, taskRepo, userRepo, auditLogArchiveRepo, redisClient)
 
 	// 审计日志
 	loginAuditLogService := service.NewLoginAuditLogService(ctx, loginAuditLogRepo)

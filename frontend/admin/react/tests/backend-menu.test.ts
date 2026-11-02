@@ -58,7 +58,7 @@ describe('backend menus', () => {
         imports.push(match[1]);
       }
     }
-    expect(imports).toHaveLength(22);
+    expect(imports).toHaveLength(23);
     for (const page of imports) {
       const component = page.replace('@/pages/', '') + '/index.vue';
       expect(

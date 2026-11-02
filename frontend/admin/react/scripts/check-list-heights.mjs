@@ -33,7 +33,7 @@ const LIST_ROUTES = [
   '/notification/channels', '/notification/deliveries', '/notification/rules', '/notification/templates',
   '/opm/org-units', '/opm/positions', '/opm/users',
   '/permission/apis', '/permission/codes', '/permission/menus', '/permission/roles',
-  '/system/access-keys', '/system/configs', '/system/dict', '/system/files', '/system/languages',
+  '/system/access-keys', '/system/configs', '/system/dict', '/system/external-demo-contacts', '/system/files', '/system/languages',
   '/system/login-policies', '/system/monitor-alerts', '/system/online-sessions', '/system/scripts',
   '/system/tasks', '/tenant/members', '/tenant/plans',
 ];

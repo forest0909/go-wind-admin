@@ -8,6 +8,7 @@
   "dashboard-workspace": "Workbench",
   "dict": "Dictionary Management",
   "error-pages": "Error",
+  "external-demo-contacts": "External Data Demo",
   "files": "File Management",
   "forbidden": "Forbidden",
   "home": "Home",
@@ -73,7 +74,8 @@
       "task": "Task Management",
       "language": "Language Management",
       "config": "Config Management",
-      "onlineSessions": "Online Users"
+      "onlineSessions": "Online Users",
+      "externalDemoContact": "External Data Demo"
     }
   },
   "page": {

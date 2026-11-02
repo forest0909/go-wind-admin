@@ -83,6 +83,16 @@ export const systemRoutes: AppRouteObject[] = [
           // permission: 'sys:platform_admin', // 仅平台管理员权限（开发阶段暂时注释）
         },
       },
+      {
+        name: 'external-demo-contacts',
+        path: 'external-demo-contacts', // 相对路径，最终为 /system/external-demo-contacts
+        element: createLazyRoute(() => import('@/pages/app/system/external-demo-contact')),
+        meta: {
+          title: 'routes:external-demo-contacts',
+          icon: 'lucide:database-zap', // Iconify 格式
+          order: 20,
+        },
+      },
     ],
   },
 ];

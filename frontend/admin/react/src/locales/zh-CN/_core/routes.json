@@ -8,6 +8,7 @@
   "dashboard-workspace": "工作台",
   "dict": "字典管理",
   "error-pages": "错误",
+  "external-demo-contacts": "外部数据示例",
   "files": "文件管理",
   "forbidden": "无权限",
   "home": "首页",
@@ -73,7 +74,8 @@
       "task": "任务管理",
       "language": "语言管理",
       "config": "参数管理",
-      "onlineSessions": "在线用户"
+      "onlineSessions": "在线用户",
+      "externalDemoContact": "外部数据示例"
     }
   },
   "page": {

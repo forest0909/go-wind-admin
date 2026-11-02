@@ -231,8 +231,8 @@ server:
 
 关键指标：
 
-- `server_requests_code_total{kind,operation,code,reason}`：请求数。`operation` 是接口的 proto 名（如 `/admin.service.v1.UserService/List`），不是原始 URL，不会因 ID 不同产生新序列。
-- `server_requests_seconds_bucket|sum|count{kind,operation}`：请求耗时（秒）。
+- `http_requests_total{route,method,code}`：请求数。统计在 REST 服务最外层，`code` 是客户端实际收到的最终状态码（错误映射后的 404/409、panic 后的 500、路由 404、请求解码 400、401 都按真实结果计一次）。`route` 是路由模板（如 `/admin/v1/users/{id}`），没匹配到路由的请求固定为 `unmatched`，不会出现原始 URL，不会因 ID 或随意路径产生新序列。
+- `http_request_duration_seconds_bucket|sum|count{route,method}`：请求耗时（秒）。
 - `go_*`、`process_*`：Go runtime 和进程默认指标（协程数、GC、内存、CPU、文件描述符）。
 
 `/healthz`、`/readyz`、`/metrics` 本身不计入请求指标。
@@ -243,7 +243,7 @@ server:
 
 ```yaml
 trace:
-  exporter: otlp-grpc        # 或 otlp-http；zipkin、stdout 也可用
+  exporter: otlp-grpc        # 或 otlp-http；zipkin、std（标准输出，调试用）也可用
   endpoint: "jaeger:4317"    # otlp-http 默认端口 4318
   insecure: true             # 内网明文；上云用 TLS 时去掉
   sampler: 0.1               # 采样率，不写按 1.0

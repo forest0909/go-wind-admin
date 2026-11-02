@@ -207,15 +207,11 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	var metrics *server.Metrics
 	if cfg := ctx.GetConfig(); cfg != nil && cfg.GetServer().GetRest().GetEnableMetrics() {
-		metrics, err = server.NewMetrics()
-		if err != nil {
-			rollback()
-			return nil, nil, err
-		}
+		metrics = server.NewMetrics()
 	}
 
 	restMiddlewares := server.NewRestMiddleware(ctx, accessTokenChecker, authz,
-		loginAuditLogRepo, operationAuditLogRepo, metrics)
+		loginAuditLogRepo, operationAuditLogRepo)
 
 	restServer, err := server.NewRestServer(ctx, restMiddlewares, authz,
 		authenticationService,
@@ -238,7 +234,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	releaseStartupLock()
 
 	if restServer != nil {
-		server.RegisterMetricsRoute(restServer, metrics)
+		metrics.Install(restServer)
 		server.RegisterHealthRoutes(restServer,
 			server.HealthCheck{Name: "database", Check: entClient.DB().PingContext},
 			server.HealthCheck{Name: "redis", Check: func(ctx context.Context) error {

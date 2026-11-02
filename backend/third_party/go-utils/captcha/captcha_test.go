@@ -531,10 +531,10 @@ func TestVerify_WrongAnswer(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, valid)
 
-	// 验证码应该仍然存在（因为验证失败不会删除）
+	// 答错也作废，防止对同一个 id 穷举
 	exists, err := captchaInstance.Exists(ctx, id)
 	require.NoError(t, err)
-	assert.True(t, exists)
+	assert.False(t, exists)
 }
 
 func TestVerifyWithoutDelete(t *testing.T) {

@@ -126,7 +126,8 @@ export function buildPermissionTree(
 ): TreeNode[] {
   if (!groups || groups.length === 0) return [];
 
-  return groups.map((group) => {
+  // 没有任何可选权限点的组不显示：租户只拿到自己能授的权限点，平台专属的组（如租户管理）会是空的
+  return groups.flatMap((group) => {
     // 子权限组（递归）
     const subGroups = buildPermissionTree(group.children || [], permissions, { translate, actionLabel });
     // 匹配的权限
@@ -137,11 +138,14 @@ export function buildPermissionTree(
     );
 
     const children = [...subGroups, ...matchedPerms];
-    return {
-      key: `g_${group.id}`,
-      title: translate(group.title || group.name || group.code || String(group.id)),
-      children: children.length > 0 ? children : undefined,
-    };
+    if (children.length === 0) return [];
+    return [
+      {
+        key: `g_${group.id}`,
+        title: translate(group.title || group.name || group.code || String(group.id)),
+        children,
+      },
+    ];
   });
 }
 

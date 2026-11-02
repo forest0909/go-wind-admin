@@ -102,7 +102,6 @@ type OperationAuditLog struct {
 	state          protoimpl.MessageState        `protogen:"open.v1"`
 	Id             *uint32                       `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`                                                                                     // 用户操作审计日志ID
 	TenantId       *uint32                       `protobuf:"varint,2,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`                                                         // 租户ID
-	TenantName     *string                       `protobuf:"bytes,3,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`                                                    // 租户名称
 	UserId         *uint32                       `protobuf:"varint,4,opt,name=user_id,json=userId,proto3,oneof" json:"user_id,omitempty"`                                                               // 用户ID
 	Username       *string                       `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`                                                                          // 账号名
 	ResourceType   *string                       `protobuf:"bytes,10,opt,name=resource_type,json=resourceType,proto3,oneof" json:"resource_type,omitempty"`                                             // 资源类型
@@ -166,13 +165,6 @@ func (x *OperationAuditLog) GetTenantId() uint32 {
 		return *x.TenantId
 	}
 	return 0
-}
-
-func (x *OperationAuditLog) GetTenantName() string {
-	if x != nil && x.TenantName != nil {
-		return *x.TenantName
-	}
-	return ""
 }
 
 func (x *OperationAuditLog) GetUserId() uint32 {
@@ -471,37 +463,35 @@ var File_audit_service_v1_operation_audit_log_proto protoreflect.FileDescriptor
 
 const file_audit_service_v1_operation_audit_log_proto_rawDesc = "" +
 	"\n" +
-	"*audit/service/v1/operation_audit_log.proto\x12\x10audit.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1epagination/v1/pagination.proto\x1a\x1daudit/service/v1/common.proto\x1a#audit/service/v1/geo_location.proto\"\xee\x0e\n" +
+	"*audit/service/v1/operation_audit_log.proto\x12\x10audit.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1epagination/v1/pagination.proto\x1a\x1daudit/service/v1/common.proto\x1a#audit/service/v1/geo_location.proto\"\xa4\x0e\n" +
 	"\x11OperationAuditLog\x12,\n" +
 	"\x02id\x18\x01 \x01(\rB\x17\xbaG\x14\x92\x02\x11API审计日志IDH\x00R\x02id\x88\x01\x01\x120\n" +
-	"\ttenant_id\x18\x02 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\x01R\btenantId\x88\x01\x01\x128\n" +
-	"\vtenant_name\x18\x03 \x01(\tB\x12\xbaG\x0f\x92\x02\f租户名称H\x02R\n" +
-	"tenantName\x88\x01\x01\x12,\n" +
-	"\auser_id\x18\x04 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDH\x03R\x06userId\x88\x01\x01\x120\n" +
-	"\busername\x18\x05 \x01(\tB\x0f\xbaG\f\x92\x02\t账号名H\x04R\busername\x88\x01\x01\x12<\n" +
+	"\ttenant_id\x18\x02 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\x01R\btenantId\x88\x01\x01\x12,\n" +
+	"\auser_id\x18\x04 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDH\x02R\x06userId\x88\x01\x01\x120\n" +
+	"\busername\x18\x05 \x01(\tB\x0f\xbaG\f\x92\x02\t账号名H\x03R\busername\x88\x01\x01\x12<\n" +
 	"\rresource_type\x18\n" +
-	" \x01(\tB\x12\xbaG\x0f\x92\x02\f资源类型H\x05R\fresourceType\x88\x01\x01\x124\n" +
-	"\vresource_id\x18\v \x01(\tB\x0e\xbaG\v\x92\x02\b资源IDH\x06R\n" +
+	" \x01(\tB\x12\xbaG\x0f\x92\x02\f资源类型H\x04R\fresourceType\x88\x01\x01\x124\n" +
+	"\vresource_id\x18\v \x01(\tB\x0e\xbaG\v\x92\x02\b资源IDH\x05R\n" +
 	"resourceId\x88\x01\x01\x12Y\n" +
-	"\x06action\x18\f \x01(\x0e2..audit.service.v1.OperationAuditLog.ActionTypeB\f\xbaG\t\x92\x02\x06动作H\aR\x06action\x88\x01\x01\x12;\n" +
-	"\vbefore_data\x18\r \x01(\tB\x15\xbaG\x12\x92\x02\x0f操作前数据H\bR\n" +
+	"\x06action\x18\f \x01(\x0e2..audit.service.v1.OperationAuditLog.ActionTypeB\f\xbaG\t\x92\x02\x06动作H\x06R\x06action\x88\x01\x01\x12;\n" +
+	"\vbefore_data\x18\r \x01(\tB\x15\xbaG\x12\x92\x02\x0f操作前数据H\aR\n" +
 	"beforeData\x88\x01\x01\x129\n" +
 	"\n" +
-	"after_data\x18\x0e \x01(\tB\x15\xbaG\x12\x92\x02\x0f操作后数据H\tR\tafterData\x88\x01\x01\x12b\n" +
-	"\x0fsensitive_level\x18\x0f \x01(\x0e2 .audit.service.v1.SensitiveLevelB\x12\xbaG\x0f\x92\x02\f敏感等级H\n" +
-	"R\x0esensitiveLevel\x88\x01\x01\x12P\n" +
+	"after_data\x18\x0e \x01(\tB\x15\xbaG\x12\x92\x02\x0f操作后数据H\bR\tafterData\x88\x01\x01\x12b\n" +
+	"\x0fsensitive_level\x18\x0f \x01(\x0e2 .audit.service.v1.SensitiveLevelB\x12\xbaG\x0f\x92\x02\f敏感等级H\tR\x0esensitiveLevel\x88\x01\x01\x12P\n" +
 	"\n" +
-	"request_id\x18\x10 \x01(\tB,\xbaG)\x92\x02&全局请求ID（关联网关日志）H\vR\trequestId\x88\x01\x01\x12\\\n" +
-	"\btrace_id\x18\x11 \x01(\tB<\xbaG9\x92\x026全局链路追踪ID（符合W3C TraceContext标准）H\fR\atraceId\x88\x01\x01\x127\n" +
-	"\asuccess\x18\x12 \x01(\bB\x18\xbaG\x15\x92\x02\x12操作是否成功H\rR\asuccess\x88\x01\x01\x12>\n" +
-	"\x0efailure_reason\x18\x13 \x01(\tB\x12\xbaG\x0f\x92\x02\f失败原因H\x0eR\rfailureReason\x88\x01\x01\x122\n" +
+	"request_id\x18\x10 \x01(\tB,\xbaG)\x92\x02&全局请求ID（关联网关日志）H\n" +
+	"R\trequestId\x88\x01\x01\x12\\\n" +
+	"\btrace_id\x18\x11 \x01(\tB<\xbaG9\x92\x026全局链路追踪ID（符合W3C TraceContext标准）H\vR\atraceId\x88\x01\x01\x127\n" +
+	"\asuccess\x18\x12 \x01(\bB\x18\xbaG\x15\x92\x02\x12操作是否成功H\fR\asuccess\x88\x01\x01\x12>\n" +
+	"\x0efailure_reason\x18\x13 \x01(\tB\x12\xbaG\x0f\x92\x02\f失败原因H\rR\rfailureReason\x88\x01\x01\x122\n" +
 	"\n" +
-	"ip_address\x18\x14 \x01(\tB\x0e\xbaG\v\x92\x02\bIP地址H\x0fR\tipAddress\x88\x01\x01\x12f\n" +
-	"\fgeo_location\x18\x15 \x01(\v2\x1d.audit.service.v1.GeoLocationB\x1f\xbaG\x1c\x92\x02\x19地理位置(来自IP库)H\x10R\vgeoLocation\x88\x01\x01\x12\\\n" +
-	"\blog_hash\x18( \x01(\tB<\xbaG9\x92\x026日志内容哈希（SHA256，十六进制字符串）H\x11R\alogHash\x88\x01\x01\x12}\n" +
-	"\tsignature\x18) \x01(\fBZ\xbaGW\x92\x02T日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）H\x12R\tsignature\x88\x01\x01\x12X\n" +
+	"ip_address\x18\x14 \x01(\tB\x0e\xbaG\v\x92\x02\bIP地址H\x0eR\tipAddress\x88\x01\x01\x12f\n" +
+	"\fgeo_location\x18\x15 \x01(\v2\x1d.audit.service.v1.GeoLocationB\x1f\xbaG\x1c\x92\x02\x19地理位置(来自IP库)H\x0fR\vgeoLocation\x88\x01\x01\x12\\\n" +
+	"\blog_hash\x18( \x01(\tB<\xbaG9\x92\x026日志内容哈希（SHA256，十六进制字符串）H\x10R\alogHash\x88\x01\x01\x12}\n" +
+	"\tsignature\x18) \x01(\fBZ\xbaGW\x92\x02T日志数字签名（ECDSA，签名内容：tenant_id+user_id+created_at+log_hash）H\x11R\tsignature\x88\x01\x01\x12X\n" +
 	"\n" +
-	"created_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12日志创建时间H\x13R\tcreatedAt\x88\x01\x01\"\x94\x01\n" +
+	"created_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12日志创建时间H\x12R\tcreatedAt\x88\x01\x01\"\x94\x01\n" +
 	"\n" +
 	"ActionType\x12\x1b\n" +
 	"\x17ACTION_TYPE_UNSPECIFIED\x10\x00\x12\n" +
@@ -522,8 +512,7 @@ const file_audit_service_v1_operation_audit_log_proto_rawDesc = "" +
 	"\x05OTHER\x10dB\x05\n" +
 	"\x03_idB\f\n" +
 	"\n" +
-	"_tenant_idB\x0e\n" +
-	"\f_tenant_nameB\n" +
+	"_tenant_idB\n" +
 	"\n" +
 	"\b_user_idB\v\n" +
 	"\t_usernameB\x10\n" +

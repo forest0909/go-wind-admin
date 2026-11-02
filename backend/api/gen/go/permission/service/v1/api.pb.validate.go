@@ -17,8 +17,6 @@ import (
 	"unicode/utf8"
 
 	"google.golang.org/protobuf/types/known/anypb"
-
-	identitypb "go-wind-admin/api/gen/go/identity/service/v1"
 )
 
 // ensure the imports are used
@@ -35,8 +33,6 @@ var (
 	_ = (*mail.Address)(nil)
 	_ = anypb.Any{}
 	_ = sort.Sort
-
-	_ = identitypb.Module(0)
 )
 
 // Validate checks the field values on Api with the rules defined in the proto
@@ -82,10 +78,6 @@ func (m *Api) validate(all bool) error {
 
 	if m.ModuleDescription != nil {
 		// no validation rules for ModuleDescription
-	}
-
-	if m.BusinessModule != nil {
-		// no validation rules for BusinessModule
 	}
 
 	if m.Description != nil {

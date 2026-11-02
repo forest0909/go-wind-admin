@@ -15,3 +15,5 @@
 
 2026-10-26：`entgo/rule/system.go` 的 `PermissionRule` 去掉 `IsPlatformContext()` 放行，只保留 `IsSystemContext()`。单租户下 `tenant_id == 0` 不是数据范围特权；平台管理员靠令牌里的 `ALL` 在规则内部放行。同文件的 `OwnerOnlyRule`、`SoftDeleteRule`、`DenyFieldsMutationRule`、`LimitFieldAccessRule` 未改。
 
+
+2026-11-01：`entgo/pagination` 的 Page/Offset/Token 三个分页器不再保存请求级状态。它们挂在 Repository 单例上被并发请求共享，以前 `BuildSelector` 把页码写进共享字段、闭包在执行查询时才读，并发请求会互相改掉对方的 OFFSET/LIMIT（`-race` 报 DATA RACE）。现在每次新建底层分页器算出局部值，闭包只捕获局部值。回归测试：`entgo/pagination/shared_state_test.go`。

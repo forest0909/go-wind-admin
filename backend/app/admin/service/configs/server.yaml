@@ -3,7 +3,14 @@ server:
     addr: ":7788"
     timeout: 10s
     enable_swagger: true
-    enable_pprof: true
+    # pprof 路由（/debug/*）不经过登录鉴权，默认关闭。
+    # 需要排查性能时在 configs/local/server.yaml 里写 server.rest.enable_pprof: true，
+    # 并且只在内网/本机可达的环境打开，用完关掉。
+    enable_pprof: false
+    # 可信反向代理：不写保持默认（私网 + 回环）。只对反向代理开放端口时建议收窄，见 docs/backend_deploy.md。
+    # trusted_proxies:
+    #   cidrs:
+    #     - "172.18.0.2"
     cors:
       # 前端 refresh token 走 HttpOnly Cookie（withCredentials=true），
       # 预检响应必须带 Access-Control-Allow-Credentials: true
@@ -36,7 +43,7 @@ server:
       enable_metadata: true
 
   asynq:
-    uri: "redis://:*Abcd123456@redis:6379/1"
+    uri: "redis://:${GWA_REDIS_PASSWORD:*Abcd123456}@redis:6379/1"
     codec: "json"
     concurrency: 10
     shutdown_timeout: 10s

@@ -60,7 +60,6 @@ func TestNewRefreshTokenAuthClaims_MinimalShape(t *testing.T) {
 		ClaimFieldDataScopeUnits,
 		ClaimFieldHiddenFields,
 		ClaimFieldIsPlatformAdmin,
-		ClaimFieldIsTenantAdmin,
 	} {
 		assert.NotContains(t, *claims, forbidden,
 			"刷新令牌 claims 不应携带业务字段 %q", forbidden)

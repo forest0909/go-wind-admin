@@ -36,8 +36,6 @@ export interface AppPreferences {
      * @zh_CN 是否开启refreshToken
      */
     enableRefreshToken: boolean;
-    /** 是否启用多租户 */
-    enableTenant: boolean;
     /** 是否移动端 */
     isMobile: boolean;
     /** 布局方式 */

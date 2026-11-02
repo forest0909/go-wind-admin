@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"sort"
+	"strconv"
 	"strings"
 
 	"go-wind-admin/third_party/go-utils/ossutil"
@@ -150,7 +151,7 @@ func (s *UserProfileService) ChangePassword(ctx context.Context, req *identityV1
 
 	// 前端与登录/注册一致走 AES 密文传输，必须解密后再校验/哈希——
 	// 此前漏设 NeedDecrypt，密文串被当明文哈希入库（改完即锁号）且绕过复杂度校验。
-	err = s.userCredentialRepo.ChangeCredential(ctx, &authenticationV1.ChangeCredentialRequest{
+	err = s.userCredentialRepo.ChangeCredential(ctx, operator.GetUserId(), &authenticationV1.ChangeCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    operator.GetUsername(),
 		OldCredential: req.GetOldPassword(),
@@ -202,6 +203,16 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		return nil, err
 	}
 
+	// 先记下旧头像，新头像写库成功后删掉旧对象。
+	var oldAvatar string
+	if user, gerr := s.userRepo.Get(ctx, &identityV1.GetUserRequest{
+		QueryBy: &identityV1.GetUserRequest_Id{Id: operator.GetUserId()},
+	}); gerr != nil {
+		s.log.Errorf(ctx, "get user before avatar upload failed, old avatar object will be kept: %v", gerr)
+	} else {
+		oldAvatar = user.GetAvatar()
+	}
+
 	var avatarURL string
 	switch req.GetSource().(type) {
 	case *identityV1.UploadAvatarRequest_ImageBase64:
@@ -214,8 +225,8 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		if len(imageBytes) == 0 {
 			return nil, authenticationV1.ErrorBadRequest("empty avatar data")
 		}
-		// 校验图片大小（复用上传限制，头像不应超过该上限）
-		if int64(len(imageBytes)) > ossutil.MaxUploadSize {
+		// 校验图片大小（与前端 BaseSetting 的 5 MiB 一致）
+		if int64(len(imageBytes)) > MaxAvatarBytes {
 			return nil, authenticationV1.ErrorBadRequest("avatar exceeds max size")
 		}
 		// 嗅探真实图片类型并校验白名单
@@ -223,8 +234,13 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		if !ossutil.IsAllowedMimeType(realMime) || len(realMime) < 6 || realMime[:6] != "image/" {
 			return nil, authenticationV1.ErrorBadRequest("only image files are allowed for avatar")
 		}
-		// 上传到 OSS（mc 自动嗅探 MIME/桶/对象名，头像统一进 images 桶）
-		_, _, downloadUrl, uerr := s.mc.UploadFile(ctx, "", "", realMime, imageBytes)
+		// 上传到 OSS：桶按 MIME 选（图片进 images），对象名放在本人的头像目录下，
+		// 换头像时只删得掉这个目录里的旧对象。
+		_, _, downloadUrl, uerr := s.mc.UploadFile(ctx,
+			ossutil.ContentTypeToBucketName(realMime),
+			ossutil.GenerateObjectName(avatarDirectory(operator.GetUserId()), imageBytes,
+				ossutil.ContentTypeToFileExtension(realMime), ossutil.GenerateFileNameTypeUUID),
+			realMime, imageBytes)
 		if uerr != nil {
 			s.log.Errorf(ctx, "upload avatar to oss failed [%s]", uerr.Error())
 			return nil, authenticationV1.ErrorInternalServerError("upload avatar failed")
@@ -250,7 +266,41 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		return nil, err
 	}
 
+	if oldAvatar != "" && oldAvatar != avatarURL {
+		if bucket, object, ok := ownedAvatarObject(s.mc.DownloadHost(), oldAvatar, operator.GetUserId()); ok {
+			if derr := s.mc.DeleteFile(ctx, bucket, object); derr != nil {
+				// 新头像已生效，旧对象删不掉只留下孤儿对象，不让本次请求失败。
+				s.log.Errorf(ctx, "delete old avatar object %s/%s failed: %v", bucket, object, derr)
+			}
+		}
+	}
+
 	return &identityV1.UploadAvatarResponse{
 		Url: avatarURL,
 	}, nil
+}
+
+// MaxAvatarBytes 头像解码后的大小上限，与前端上传前的 5 MiB 校验一致。
+// REST 默认请求体上限按它推算（见 server/body_limit.go）。
+const MaxAvatarBytes int64 = 5 << 20
+
+// avatarDirectory 用户头像对象所在目录。
+func avatarDirectory(userID uint32) string {
+	return "avatar/" + strconv.FormatUint(uint64(userID), 10)
+}
+
+// ownedAvatarObject 判断头像 URL 是否指向本服务给该用户上传的头像对象，是则返回桶和对象名。
+// 头像也可能是任意外链（ImageUrl），或者指向别人的对象，这些都不能删。
+func ownedAvatarObject(downloadHost, avatarURL string, userID uint32) (bucket, object string, ok bool) {
+	bucket = ossutil.BucketImages
+	prefix := ossutil.JoinObjectUrl(downloadHost, bucket, avatarDirectory(userID)) + "/"
+	if !strings.HasPrefix(avatarURL, prefix) {
+		return "", "", false
+	}
+	name := strings.TrimPrefix(avatarURL, prefix)
+	if name == "" || strings.Contains(name, "/") || strings.Contains(name, "..") ||
+		strings.ContainsAny(name, "?#") {
+		return "", "", false
+	}
+	return bucket, avatarDirectory(userID) + "/" + name, true
 }

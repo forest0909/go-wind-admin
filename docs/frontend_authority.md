@@ -1,5 +1,11 @@
 # 前端权限
 
+> **注意：本仓只剩 React 前端**（`frontend/admin/react`）。下文大量示例（`src/router/access.ts`、`#/api`、
+> `@vben/access`、`VITE_ROUTER_ACCESS_MODE`、vue-element 的指令等）来自已删除的 vue-vben / vue-element，
+> 只作历史参考，不要照抄路径。React 的实际位置：路由双模式在 `src/core/router/generators/generate-routes-{frontend,backend}.ts`，
+> 模式取 `preferences.app.accessMode`（默认 `backend`，菜单来自后端菜单表，失败即空菜单、不降级）；
+> 按钮级权限在 `src/core/access/`（`access-control.tsx`、`use-access.ts`）。各端差异以文末对比表的 react 列为准。
+
 前端的权限主要分为两个部分：
 
 1. 路由的访问权限；
@@ -369,7 +375,7 @@ import AccessButton from '@/components/common/AccessButton';
 
 按钮编码由 `go test` 里的 `TestPermissionCodeConsistency` 把关：从内嵌 OpenAPI、`DefaultMenus` 和前端的
 `code:` / `<AccessButton>` 推出三方编码，按钮编码没有接口能生成、或者没有对应的 `<资源>:view` 页面都会失败。
-确实是某页面里的子资源（如套餐页里的配额列表）时，在该测试的 `actionsWithoutPage` 里登记并写明原因。
+确实是某页面里的子资源（如权限点页里的分组子列表）时，在该测试的 `actionsWithoutPage` 里登记并写明原因。
 
 ## React 默认后端菜单模式
 

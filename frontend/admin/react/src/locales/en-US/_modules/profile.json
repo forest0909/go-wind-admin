@@ -8,7 +8,6 @@
     "securitySettings": "Security Settings",
     "sessions": "Active Sessions",
     "activeSessions": "Active Sessions",
-    "tenantUsage": "Plan Usage",
     "accountBind": "Account Bind"
   },
   "avatar": "Avatar",
@@ -32,7 +31,6 @@
   "roleNames": "Roles",
   "orgUnitNames": "Organizations",
   "positionNames": "Positions",
-  "tenantName": "Tenant",
   "lastLoginAt": "Last Login",
   "lastLoginIp": "Last Login IP",
   "createdAt": "Created At",
@@ -58,17 +56,6 @@
     "FEMALE": "Female",
     "SECRET": "Secret"
   },
-  "tenantUsage": {
-    "plan": "Current plan: ",
-    "noPlan": "No plan subscribed",
-    "empty": "No plan usage data for this account.",
-    "reached": "limit reached",
-    "quota": {
-      "USER_LIMIT": "Users",
-      "STORAGE": "Storage (MB)",
-      "API_CALL": "API calls"
-    }
-  },
   "locale": "Preferred language",
   "localePlaceholder": "Follow browser language",
   "field": {
@@ -89,7 +76,6 @@
     "roleNames": "Roles",
     "orgUnitNames": "Organizations",
     "positionNames": "Positions",
-    "tenantName": "Tenant",
     "lastLoginAt": "Last Login At",
     "lastLoginIp": "Last Login IP",
     "createdAt": "Created At"

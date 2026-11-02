@@ -20,15 +20,14 @@
 | [03 代码生成链路](./tutorial/03-codegen-chain.md) | proto→Go、proto→TS、schema→ent 三条生成链与边界 | 02 | 知道哪些代码是生成的、哪些是手写的 |
 | [04 第一个业务模块](./tutorial/04-first-crud-module.md) | 端到端新增一个 CRUD 模块（后端+前端） | 03 | 亲手跑通一遍完整开发闭环 |
 | [05 权限模型](./tutorial/05-permission-model.md) | 认证与令牌、路由/按钮/字段可见性、authz 引擎 | 04 | 理解"谁能看到什么、调到什么" |
-| [06 多租户与行级隔离](./tutorial/06-multi-tenant-isolation.md) | Api 表闸门、数据层租户谓词、数据范围五档 | 05 | 理解"行级谁的数据"与部署闸门 |
 | [07 审计与等保](./tutorial/07-audit-compliance.md) | 登录日志和操作日志的采集与留存、口令策略/限流/验证码 | 01 | 知道审计能力怎么用、边界在哪 |
 | [09 部署上线](./tutorial/09-deployment.md) | 部署形态决策、SSE 网关、生产密钥、备份 | 02 | 把系统安全地放到生产 |
 
 ### 按角色的推荐路线
 
-- **全栈采用者**（拿脚手架做自己产品）：01 → 02 → 03 → 04 → 05 → 06 → 09；07 按需。
+- **全栈采用者**（拿脚手架做自己产品）：01 → 02 → 03 → 04 → 05 → 09；07 按需。
 - **只维护一套前端的采用者**：01 → 02 → [只保留一个前端](./adopt-one-frontend.md)（**在动手写业务之前**先裁掉另外两端）→ 03 → 04（只做你那一端）→ 05 → 09。
-- **后端开发者**：01 → 02 → 03 → 04 → 06 → 07，再按子系统读参考层。
+- **后端开发者**：01 → 02 → 03 → 04 → 05 → 07，再按子系统读参考层。
 - **前端开发者**：01 → 02 → 03（重点 TS 生成链）→ 04（前端半）→ 05，再读对应端 `frontend/admin/*/AGENTS.md`。
 - **运维 / 安全**：01 → 02 → 07 → 09，参考层 `backend_deploy.md`、`audit-log-producer-design.md`。
 - **给本仓提 PR 的贡献者**：全部教程 + 根 `AGENTS.md` 与对应端 `AGENTS.md`（仓库约定以 AGENTS.md 为准）。
@@ -47,9 +46,8 @@
 | [frontend_authority.md](./frontend_authority.md) | 前端权限：路由访问模式、按钮权限码/角色、字段级权限 V1 | 改路由/按钮可见性/受控字段时 |
 | [adopt-one-frontend.md](./adopt-one-frontend.md) | 只保留一个前端的裁剪：三端独立性实测、`make ts` 回流、CORS、菜单表无"端"维度的后果 | 决定只用 react / vue-element / vue-vben 之一、要删掉另外两端之前 |
 | [authentication.md](./authentication.md) | 认证与令牌链路：登录全流程、令牌结构与配置、刷新轮换与 Cookie、限流与验证码、会话吊销 | 改登录/令牌/刷新/限流前 |
-| [tenant_isolation.md](./tenant_isolation.md) | 多租户隔离：上下文链路、HTTP 闸门、数据层读写隔离、套餐联动、覆盖边界、接入与排障 | 改隔离层/Api 表/套餐门禁、新表接租户前 |
-| [plan_billing.md](./plan_billing.md) | 套餐与计费管控：三档到期策略全链路、模块白名单、配额与用量计量、租户数据清理 | 改套餐/配额/到期处置、租户 403 排障前 |
-| [task_system.md](./task_system.md) | 任务调度系统：配置与启动链、任务数据模型、调度生命周期、系统级常驻任务、管理页、多租户语义与排障 | 加任务类型、排"任务没跑"、接新调度需求前 |
+| [tenant_isolation.md](./tenant_isolation.md) | `tenant_id` 遗留列（固定为 0）、旧库升级时自动清理的租户配置、`tenant_id>0` 业务数据的手工清理 | 升级旧库、看到 tenant_id 想动它之前 |
+| [task_system.md](./task_system.md) | 任务调度系统：配置与启动链、任务数据模型、调度生命周期、系统级常驻任务、管理页与排障 | 加任务类型、排"任务没跑"、接新调度需求前 |
 | [sys_config.md](./sys_config.md) | 参数管理（sys_config）：平台全局动态参数的键值模型、缓存读取器（GetConfigBool/Int/String 与负缓存）、写路径与多实例 Redis 失效广播、内置参数按键补种、新参数接入步骤 | 接入新的运行时参数、改口令策略阈值链路、排"改了参数没生效"前 |
 | [sse_architecture.md](./sse_architecture.md) | SSE 推送架构：服务端配置与生命周期、流鉴权与 streamID 语义、事件生产、三端消费模块、部署拓扑与排障 | 改推送链路、加新事件类型、排"收不到通知"前 |
 | [data_scope_design.md](./data_scope_design.md) | 角色级数据范围：五档语义、聚合、执行层、新表接入步骤 | 新表接入数据范围或改聚合规则前 |

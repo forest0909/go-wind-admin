@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/transport"
-	http "github.com/go-kratos/kratos/v2/transport/http"
 	"go-wind-admin/third_party/go-crud/viewer"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 	"go.opentelemetry.io/otel/trace"
@@ -60,6 +59,13 @@ func Server(opts ...Option) middleware.Middleware {
 				op.log.Errorf(ctx, "auth middleware: invalid access token")
 				return nil, ErrAccessTokenExpired
 			}
+			// 单租户：只接受 tid=0 的令牌。令牌校验实现（Authenticator）已拒绝，这里再挡一次，
+			// 防止换了校验实现后旧租户会话带着非零租户进入 viewer。
+			if tokenPayload.GetTenantId() != 0 {
+				op.log.Errorf(ctx, "auth middleware: reject token of legacy tenant [%d] for user [%d]",
+					tokenPayload.GetTenantId(), tokenPayload.GetUserId())
+				return nil, ErrLegacyTenantToken
+			}
 
 			ctx = NewContext(ctx, tokenPayload)
 
@@ -110,24 +116,6 @@ func Server(opts ...Option) middleware.Middleware {
 				)
 				if err != nil {
 					op.log.Errorf(ctx, "auth middleware: invalid token payload in context [%s]", err.Error())
-					return nil, err
-				}
-			}
-
-			// 租户级访问检查：仅对租户用户（tenantId>0）生效，平台管理员（tenantId=0）直接放行。
-			// 检查项：租户状态（OFF/EXPIRED/FREEZE 拒绝）、到期只读策略（仅放行 GET/HEAD/OPTIONS）、
-			// 套餐模块白名单（请求所属业务模块不在白名单则拒绝）、
-			// 套餐配额（API_CALL 调用量达套餐上限则拒绝）。
-			if op.tenantAccessChecker != nil && tokenPayload.GetTenantId() > 0 {
-				var path, method string
-				if htr, ok := tr.(*http.Transport); ok {
-					path = htr.PathTemplate()
-					method = htr.Request().Method
-				} else {
-					path = tr.Operation()
-					method = ""
-				}
-				if err := op.tenantAccessChecker.CheckTenantAccess(ctx, tokenPayload.GetTenantId(), path, method); err != nil {
 					return nil, err
 				}
 			}

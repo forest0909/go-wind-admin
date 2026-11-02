@@ -13,7 +13,7 @@
 
 - **为什么这么分**：access 放内存抗 XSS 窃取，refresh 走 HttpOnly Cookie 抗脚本读取；
   服务端可随时吊销 refresh（在线用户管理 → 强制下线）。
-- 每个请求由 transport 中间件验签，把 `UserTokenPayload`（用户/租户/角色/数据范围/字段黑名单等
+- 每个请求由 transport 中间件验签，把 `UserTokenPayload`（用户/角色/数据范围/字段黑名单等
   claim）注入上下文——后面所有轴都从这个上下文出发。
 - 登录支持账号、邮箱、手机号，并带图形验证码和登录限流。
 
@@ -24,17 +24,17 @@
 | 机制 | 管什么 | 层 |
 |---|---|---|
 | authz 引擎（casbin / opa / noop） | 用户能否调用某个**接口/操作** | HTTP 中间件 + 策略引擎 |
-| 租户隔离（TenantPrivacy） | 行属于哪个**租户**（tenant_id 列） | ent 隐私层 |
-| 数据范围 | 租户内能看到哪些**业务行** | ent 查询隐私规则（逐表 opt-in） |
+| 数据范围 | 能看到哪些**业务行** | ent 查询隐私规则（逐表 opt-in） |
 
-本章讲第一轴 + 前端可见性；行级两轴在[第 6 章](./06-multi-tenant-isolation.md)。
+本章讲接口轴 + 前端可见性；数据范围见 [data_scope_design.md](../data_scope_design.md)。
+`tenant_id` 列是遗留设施，值固定为 0，不构成一条授权轴（见 [tenant_isolation.md](../tenant_isolation.md)）。
 字段级（字段轴）见本章第 5 节。
 
 ## 3. authz 引擎（接口级）
 
 - 配置在 `app/admin/service/configs/auth.yaml` 的 `authz.type`（:68），实际可用的只有三个值：
-  `noop`（默认，引擎全放行——**生产必须切 casbin 或 opa 才有接口级拦截**，注意 noop 下租户闸门与
-  行级隔离仍然生效，别误以为"没开引擎=没权限"）、`casbin`、`opa`。
+  `noop`（默认，引擎全放行——**生产必须切 casbin 或 opa 才有接口级拦截**，注意 noop 下
+  数据范围仍然生效，别误以为"没开引擎=没权限"）、`casbin`、`opa`。
   两个坑：① `zanzibar` **只有占位实现**（`pkg/authorizer/authorizer.go:190-193` 的
   `newEngineZanzibar` 直接 `return nil`，而 `authz.type` 那行的注释仍把 zanzibar 列为可选值），
   选了它会在装配 REST 服务时 panic（`rest_server.go:266-269` → `ResetPolicies` 对 nil 引擎调
@@ -43,8 +43,7 @@
   "看起来在跑、其实全放行"的引擎，日志里没有任何提示。
 - 策略存数据库（角色—权限—接口映射），管理页变更后**热重建**、无需重启：触发点是角色、权限、
   接口三类写操作，以及「接口同步」「权限同步」两个批量入口（各自在结束时调一次
-  `authorizer.ResetPolicies`）；新建租户（连带播种管理员角色）与进程启动期也会各重建一次
-  （`tenant_service.go:276`、`rest_server.go:267`）；
+  `authorizer.ResetPolicies`）；进程启动期也会重建一次（`rest_server.go`）；
 - 策略评估日志已删除，鉴权判定不再单独落库。登录和操作是否写了日志，用 `request_id` 对
   （见[第 7 章](./07-audit-compliance.md)第 4 节）。
 
@@ -82,7 +81,7 @@
 第三条可见性轴：角色可配置一组**黑名单字段**，受控用户在界面上看不到、接口响应里也拿不到。
 
 - 服务端：黑名单在登录/刷新时聚进令牌 `hfs` claim。平台管理员（`is_platform_admin`）不写入；
-  `tenant_id==0` 的普通用户仍按角色聚合。读路径按黑名单清值（字段从响应里
+  其余用户按角色聚合。读路径按黑名单清值（字段从响应里
   **消失**），写路径清值并从 `field_mask` 剔除（越权字段被静默剥离，不会用零值覆盖库里真值）；
   `/me` 刻意不裁剪（自编辑需要全字段）；
 - 前端：`GetMyPermissionCode` 的响应在权限码之外同时下发 `hiddenFields`（`i_admin_portal.proto:42`）——
@@ -108,4 +107,4 @@
 - [data_scope_design.md](../data_scope_design.md) —— 三轴关系表（第 1 节）与数据范围全部细节
 - 根 [AGENTS.md](../../AGENTS.md) 与 [docs/frontend_authority](../frontend_authority.md) 的"项目代码"节 —— 前端权限的工程现状
 
-下一步：[06 · 多租户与行级隔离](./06-multi-tenant-isolation.md)。
+下一步：[07 · 审计与合规](./07-audit-compliance.md)。

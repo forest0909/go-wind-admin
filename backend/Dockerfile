@@ -26,11 +26,12 @@ RUN CGO_ENABLED=0 \
     go build -ldflags "-X main.version=$APP_VERSION" \
     -o /src/bin/${SERVICE_NAME}-server ./app/${SERVICE_NAME}/service/cmd/server/
 
-# 复制配置文件到统一目录
+# 复制配置文件到统一目录（local/ 是开发者本机覆盖层，.dockerignore 已排除，这里再删一次兜底）
 RUN mkdir -p /src/bin/configs && \
     if [ -d "/src/app/${SERVICE_NAME}/service/configs" ]; then \
       cp -r /src/app/${SERVICE_NAME}/service/configs/* /src/bin/configs/ 2>/dev/null || true; \
-    fi
+    fi && \
+    rm -rf /src/bin/configs/local
 
 ##################################
 # 第二阶段：创建最终的运行时镜像
@@ -53,8 +54,11 @@ COPY --from=builder /src/bin/${SERVICE_NAME}-server /app/bin/server
 # 拷贝配置文件
 COPY --from=builder /src/bin/configs/ /app/configs/
 
-# 创建一个名为 appuser 的非 root 用户
-RUN adduser -D appuser
+# 创建一个名为 appuser 的非 root 用户；
+# 预建 /app/data 交给 appuser，审计归档默认写 /app/data/audit-archive（Compose 把它挂到持久卷）
+RUN adduser -D appuser && \
+    mkdir -p /app/data/audit-archive && \
+    chown -R appuser:appuser /app/data
 
 # 切换到非特权用户
 USER appuser:appuser

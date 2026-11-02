@@ -53,7 +53,39 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 1. **完整模式**：三方中间件和微服务都运行在Docker之下；
 2. **依赖模式（推荐开发）**：三方中间件运行在Docker下，微服务在本地IDE运行调试。
 
+### 口令与 `.env`（两种模式都需要）
+
+Compose 文件里不再写死口令，统一从 `backend/.env` 读取。先复制模板再填：
+
+```bash
+cd backend
+cp .env.example .env   # 然后编辑 .env
+```
+
+| 变量 | 用途 | 完整模式 | 依赖模式 |
+|---|---|---|---|
+| `POSTGRES_PASSWORD` | PostgreSQL `postgres` 用户口令 | 必填 | 必填 |
+| `REDIS_PASSWORD` | Redis 口令（缓存和 asynq 任务队列共用） | 必填 | 必填 |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | MinIO 账号（密码至少 8 位） | 必填 | 必填 |
+| `GWA_ADMIN_INITIAL_PASSWORD` | 空库首次启动时播种的 admin 密码 | 必填 | 不用 |
+| `GWA_AUTH_JWT_PRIVATE_KEY` | 生产 JWT 私钥，见下文「生产环境密钥配置」 | 可选 | 不用 |
+| `GOWIND_CRYPTO_KEY` | 签名图片 URL 的 HMAC 密钥 | 可选 | 不用 |
+
+- 必填项缺失时 `docker compose` 直接报错退出（`${VAR:?...}`），`full_deploy.sh` 也会先检查一遍。
+- 口令只用字母和数字：它们会被拼进数据库 DSN 和 `redis://` URI。
+- `.env` 已在 `backend/.gitignore` 和 `.dockerignore` 里，不会进 Git 和镜像。
+- 完整模式下后端容器拿到的是同一份口令：Compose 把它们以 `GWA_DB_PASSWORD`、`GWA_REDIS_PASSWORD`、`GWA_MINIO_ACCESS_KEY`、`GWA_MINIO_SECRET_KEY` 传进容器，`configs/data.yaml`、`server.yaml`、`oss.yaml` 里的 `${GWA_XXX:默认值}` 占位符读取它们（见下文「配置里的环境变量占位符」）。
+
+### 数据持久化与端口
+
+- PostgreSQL、Redis、MinIO 和后端的审计归档目录（`/app/data`）都挂在 Compose **具名卷**上（`postgres-data`、`redis-data`、`minio-data`、`admin-data`）。`docker compose down` 再 `up -d` 数据还在；`docker compose down -v` 会连卷一起删掉，**不要在生产上用**。Redis 开了 AOF，重启后未执行的任务还在。
+- 完整模式只对外暴露后端 `7788`（HTTP）和 `7789`（SSE）。数据库、Redis、MinIO 不映射宿主机端口，只在 Compose 网络内可达。需要临时连库时用 `docker compose exec postgres psql -U postgres gwa`。
+- 依赖模式（`docker-compose.libs.yaml`）为了让本机后端连得上，把 5432 / 6379 / 9000 / 9001 映射出来，但只绑 `127.0.0.1`。
+- 旧版本 Compose 没有挂卷，升级前若有要保留的数据，先用 `pg_dump` 等工具导出，换新 Compose 后再导入。
+
 ### 1. 完整模式（三方中间件 + 微服务都在 Docker 下）
+
+先按上一节准备好 `.env`。
 
 **Linux / macOS：**
 
@@ -67,7 +99,11 @@ find ./scripts -name '*.sh' -exec chmod +x {} +
 .\scripts\docker\full_deploy.ps1
 ```
 
+> Windows 脚本没有做 `.env` 预检，缺必填项时由 `docker compose` 报错。
+
 ### 2. 依赖模式（仅启动三方中间件，微服务本地运行）
+
+同样需要 `.env` 里的四个依赖口令。本机后端要用同一份口令：在 `configs/local/` 里写，或者在启动后端的 shell 里导出 `GWA_DB_PASSWORD` 等同名变量。
 
 **Linux / macOS：**
 
@@ -121,7 +157,33 @@ docker run -d -p 8013:8080 --network <上面查到的网络名> --name sse-gatew
 - TLS 终止由外层负载均衡负责，与前端静态站点部署一致，网关自身仅监听 HTTP。
 - 独立部署时如后端地址变更，需修改 `nginx.conf` 中的 `upstream`。
 
+## 可信反向代理（客户端 IP）
+
+登录限流和审计日志按客户端 IP 记账。只有当 TCP 直连对端属于可信代理时，后端才采信 `X-Forwarded-For` / `X-Real-IP`，否则一律用对端地址。
+
+默认信任 RFC1918 私网和回环（`10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`、`127.0.0.0/8`、`::1/128`、`fc00::/7`）。docker 网络里的 nginx、同机反向代理都落在这些网段，所以不配置也能拿到真实 IP。代价是：任何能从内网直连后端的客户端都能伪造 XFF，躲过按 IP 的限流。
+
+后端端口只对反向代理开放时，建议在 `configs/server.yaml` 里收窄到实际代理地址：
+
+```yaml
+server:
+  rest:
+    trusted_proxies:
+      cidrs:
+        - "172.18.0.2"      # 反向代理容器地址，或其网段 "172.18.0.0/16"
+```
+
+- 不写 `trusted_proxies`：保持上面的默认网段。
+- 写了 `trusted_proxies` 但 `cidrs` 为空：不信任任何代理，始终用 TCP 对端地址（后端直接对外、前面没有代理时用）。
+- 支持 CIDR，也支持单个 IP。非法条目会被跳过。
+
 ## 生产环境密钥配置
+
+### 初始管理员密码
+
+空库首次启动时自动播种 `admin` 账号。设置了 `GWA_ADMIN_INITIAL_PASSWORD` 就用它作初始密码（须满足口令复杂度）；没设置时沿用仓库公开的默认密码（见 `pkg/constants/default_data.go`），启动日志会打 WARN。完整 Compose 部署把这个变量设成了必填。它只影响首次播种，库里已有用户后再改它不会改 admin 的密码。
+
+### JWT 密钥
 
 后端 JWT 签名密钥支持通过环境变量注入，优先级高于 `configs/auth.yaml`：
 
@@ -131,12 +193,54 @@ docker run -d -p 8013:8080 --network <上面查到的网络名> --name sse-gatew
 | `GWA_AUTH_JWT_PUBLIC_KEY` | 非对称算法的 PEM 公钥 |
 | `GWA_AUTH_JWT_KEY` | 对称算法（HS256 等）的共享密钥 |
 
-`configs/auth.yaml` 内置的是开发示例密钥，生产环境必须通过上述环境变量替换为自有密钥，否则启动时会告警。生成命令：
+`configs/auth.yaml` 内置的是开发示例密钥，生产环境必须通过上述环境变量替换为自有密钥，否则启动时会告警。
+
+- 只设置 `GWA_AUTH_JWT_PRIVATE_KEY`、不设公钥时，公钥由新私钥派生，yaml 里的示例公钥不再使用。
+- 启动时会用当前密钥签一个探针令牌再验签；公私钥不配对直接启动失败，不会等到上线后令牌全部验签失败。
+
+生成命令：
 
 ```bash
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_private_key.pem
 openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 ```
+
+## pprof
+
+`configs/server.yaml` 里 `server.rest.enable_pprof` 默认是 `false`。pprof 路由不经过登录鉴权，任何能访问 7788 的人都能读到内存、协程和命令行信息，还能触发 CPU profiling。
+
+关闭时 7788 和 7789 上的 `/debug/*` 都返回 404。REST 和 SSE 的未匹配路由都是明确的 404/405，不会回退到 Go 的全局 `http.DefaultServeMux`（`net/http/pprof` 会在那里自动注册 `/debug/pprof/*`）。打开后路由注册在 7788 的服务路由上：标准路径 `/debug/pprof/`（`heap`、`goroutine`、`allocs` 等按名字访问）、`/debug/pprof/cmdline`、`/debug/pprof/profile`、`/debug/pprof/symbol`、`/debug/pprof/trace`，可以直接用 `go tool pprof http://<host>:7788/debug/pprof/heap`；原来的 `/debug/heap` 等别名也还在。SSE 端口不提供 pprof。
+
+需要排查时，在 `configs/local/server.yaml` 里写：
+
+```yaml
+server:
+  rest:
+    enable_pprof: true
+```
+
+重启后生效。只在内网或本机可达的环境打开，用完删掉这段再重启。
+
+## 上传限制与超时
+
+- REST 服务最外层（早于 CORS、路由、JSON 解码和鉴权）统一限制请求体大小：文件上传 `/admin/v1/file/upload` 约 70.7 MiB（50 MiB 文件经 base64 膨胀后再加 4 MiB 余量），其他接口约 7.7 MiB（按头像上限 5 MiB 的 base64 再加 1 MiB）。`Content-Length` 超限时一个字节都不读直接返回 413；没有 `Content-Length` 的分块请求最多读到上限加 1 字节就返回 413。前置反向代理的 body 上限不要低于上传接口的值。
+- REST 端口（7788）底层设了 `ReadHeaderTimeout=10s`、`ReadTimeout=5m`、`IdleTimeout=2m`，不设写超时，大文件下载和审计导出不受影响。SSE 在 7789，是单独的服务，不受这些超时影响。
+
+## 审计归档目录
+
+审计归档任务每天把超过保留期的审计日志导出到 `AUDIT_ARCHIVE_DIR`（默认 `./data/audit-archive`）后从库里删除。镜像里预建了 `/app/data` 并交给运行用户 `appuser`；完整 Compose 设置 `AUDIT_ARCHIVE_DIR=/app/data/audit-archive` 并把 `/app/data` 挂到 `admin-data` 卷。某张表查询、写文件或删除失败时，其他表照常处理，任务最后返回错误，asynq 会记为失败并重试。
+
+## 多实例部署
+
+多个 admin 实例共享同一个数据库和同一个 Redis 时，下面这些跨实例协调都经 Redis 完成，不需要额外配置：
+
+| 内容 | 做法 |
+|---|---|
+| 启动 | 自动迁移、默认数据播种、接口/权限点/菜单同步、首次策略装载在 Redis 锁 `gowind:startup:migrate-and-seed` 内执行，并发启动的实例依次进行（最长等 10 分钟，超时启动失败）。持锁期间租约丢失（Redis 重启丢 key、断连超过 30 秒）时进程以退出码 1 退出，由编排重启。Redis 连不上时记 ERROR、不加锁继续启动 |
+| 授权策略 | 任一实例改了角色/权限点/接口后 INCR `gowind:authz:policy_version` 并广播，其他实例重载；订阅断线重连时无条件重载，另外每 5 分钟全量重载一次（INCR 失败、版本号撞值时最多 5 分钟收敛） |
+| 参数缓存 | 失效广播；订阅重连时清空本地缓存；每个条目最多缓存 5 分钟 |
+| SSE 通知 | 经 Redis 频道转发，各实例投递给自己的连接 |
+| 系统周期任务 | 审计归档同一轮只执行一次（见 [task_system.md](./task_system.md) 5.2） |
 
 ## 备份与恢复
 
@@ -152,11 +256,23 @@ openssl pkey -in jwt_private_key.pem -pubout -out jwt_public_key.pem
 2. 若存在 `config.yaml`，远程配置源仍按原逻辑加载，并覆盖主配置里的同名键。
 3. `configs/local/` 仅在目录存在时最后加载。合并是深度合并。这里显式写出的标量都会覆盖同名键，包括空字符串、false 和 0；没写的键保留前面的值。
 
-`configs/local/` 在仓库根 `.gitignore` 里。部署时可以把同名目录挂进容器或配置目录，用来覆盖镜像里的主配置，同样只放差异键。本地把主机名改成 `localhost` 的例子见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步。
+`configs/local/` 在仓库根 `.gitignore` 里，也在 `backend/.dockerignore` 里，构建镜像时不会被打进去（Dockerfile 复制配置后还会再删一次 `local/`）。部署时可以把同名目录挂进容器的 `/app/configs/local`，用来覆盖镜像里的主配置，同样只放差异键。
+
+### 配置里的环境变量占位符
+
+配置加载时，所有 `GWA_` 开头的环境变量会按原名加入配置，yaml 里可以用 `${GWA_XXX:默认值}` 引用：设置了变量就用变量值，没设置用冒号后的默认值。目前用到的有：
+
+| 占位符 | 位置 |
+|---|---|
+| `GWA_DB_PASSWORD` | `data.yaml` 的 `data.database.source` |
+| `GWA_REDIS_PASSWORD` | `data.yaml` 的 `data.redis.password`、`server.yaml` 的 `server.asynq.uri` |
+| `GWA_MINIO_ACCESS_KEY` / `GWA_MINIO_SECRET_KEY` | `oss.yaml` |
+
+默认值和原来写死的开发口令一致，本地开发不设变量时行为不变。`configs/local/` 里写死的值同样会覆盖占位符。本地把主机名改成 `localhost` 的例子见 [windows-startup-guide.md](./windows-startup-guide.md) 第三步。
 
 ## 本地开发配置 hosts
 
-如果使用完整模式部署后需要从宿主机访问服务，需修改`hosts`文件（需要管理员权限）：
+完整模式下依赖服务不再映射宿主机端口，下面的 hosts 配置只对依赖模式（端口绑在 127.0.0.1）有意义。如需从宿主机访问，修改`hosts`文件（需要管理员权限）：
 
 - Linux：`/etc/hosts`
 - MacOS：`/private/etc/hosts`

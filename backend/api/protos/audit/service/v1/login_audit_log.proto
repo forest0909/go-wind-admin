@@ -79,11 +79,6 @@ message LoginAuditLog {
     (gnostic.openapi.v3.property) = {description: "租户ID"}
   ]; // 租户ID
 
-  optional string tenant_name = 3 [
-    json_name = "tenantName",
-    (gnostic.openapi.v3.property) = {description: "租户名称"}
-  ]; // 租户名称
-
   optional uint32 user_id = 4 [
     json_name = "userId",
     (gnostic.openapi.v3.property) = {description: "用户ID"}

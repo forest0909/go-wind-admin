@@ -85,7 +85,6 @@ const BasicInfoPage: React.FC<BasicInfoPageProps> = ({ userId }) => {
         {!isFieldHidden(hiddenFieldEntries, 'User', 'mobile') && (
           <Descriptions.Item label={t('desc.mobile')}>{user.mobile || '-'}</Descriptions.Item>
         )}
-        <Descriptions.Item label={t('desc.tenantName')}>{user.tenantName || '-'}</Descriptions.Item>
         <Descriptions.Item label={t('desc.orgUnitName')}>
           {(user.orgUnitNames ?? []).length > 0
             ? (user.orgUnitNames ?? []).map((org) => (

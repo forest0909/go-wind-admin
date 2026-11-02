@@ -24,10 +24,7 @@ import (
 	"go-wind-admin/third_party/go-utils/trans"
 	"google.golang.org/protobuf/proto"
 
-	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
-
-	"go-wind-admin/pkg/constants"
 )
 
 type MenuRepo struct {
@@ -38,7 +35,6 @@ type MenuRepo struct {
 	mapper          *mapper.CopierMapper[permissionV1.Menu, ent.Menu]
 	statusConverter *mapper.EnumTypeConverter[permissionV1.Menu_Status, menu.Status]
 	typeConverter   *mapper.EnumTypeConverter[permissionV1.Menu_Type, menu.Type]
-	moduleConverter *mapper.EnumTypeConverter[identityV1.Module, menu.Module]
 
 	repository *entCrud.Repository[
 		ent.MenuQuery, ent.MenuSelect,
@@ -58,7 +54,6 @@ func NewMenuRepo(ctx *bootstrap.Context, entClient *entCrud.EntClient[*ent.Clien
 		mapper:          mapper.NewCopierMapper[permissionV1.Menu, ent.Menu](),
 		statusConverter: mapper.NewEnumTypeConverter[permissionV1.Menu_Status, menu.Status](permissionV1.Menu_Status_name, permissionV1.Menu_Status_value),
 		typeConverter:   mapper.NewEnumTypeConverter[permissionV1.Menu_Type, menu.Type](permissionV1.Menu_Type_name, permissionV1.Menu_Type_value),
-		moduleConverter: mapper.NewEnumTypeConverter[identityV1.Module, menu.Module](identityV1.Module_name, identityV1.Module_value),
 	}
 
 	repo.init()
@@ -81,7 +76,6 @@ func (r *MenuRepo) init() {
 
 	r.mapper.AppendConverters(r.statusConverter.NewConverterPair())
 	r.mapper.AppendConverters(r.typeConverter.NewConverterPair())
-	r.mapper.AppendConverters(r.moduleConverter.NewConverterPair())
 }
 
 func (r *MenuRepo) Count(ctx context.Context, whereCond []func(s *sql.Selector)) (int, error) {
@@ -201,12 +195,6 @@ func (r *MenuRepo) Create(ctx context.Context, req *permissionV1.CreateMenuReque
 		builder.SetParentID(*req.Data.ParentId)
 	}
 
-	// module 为 proto 零值（MODULE_UNSPECIFIED）时跳过：ent schema 未声明该值，
-	// SetNillableModule 会触发 ModuleValidator 失败。未指定即留空，等价不写。
-	if req.Data.Module != nil && *req.Data.Module != identityV1.Module_MODULE_UNSPECIFIED {
-		builder.SetNillableModule(r.moduleConverter.ToEntity(req.Data.Module))
-	}
-
 	if req.Data.Meta != nil {
 		builder.SetMeta(req.Data.Meta)
 	}
@@ -250,12 +238,6 @@ func (r *MenuRepo) newMenuCreate(client *ent.Client, data *permissionV1.Menu) *e
 	// SetParentID(0) 指向不存在的行触发自引用外键违约，必须按无父级处理。
 	if data.ParentId != nil && *data.ParentId > 0 {
 		builder.SetParentID(*data.ParentId)
-	}
-
-	// module 为 proto 零值（MODULE_UNSPECIFIED）时跳过：ent schema 未声明该值，
-	// SetNillableModule 会触发 ModuleValidator 失败。未指定即留空，等价不写。
-	if data.Module != nil && *data.Module != identityV1.Module_MODULE_UNSPECIFIED {
-		builder.SetNillableModule(r.moduleConverter.ToEntity(data.Module))
 	}
 
 	if data.Meta != nil {
@@ -327,12 +309,6 @@ func (r *MenuRepo) Update(ctx context.Context, req *permissionV1.UpdateMenuReque
 			// parent_id=0 同 Create：按无父级处理，避免外键违约
 			if req.Data.ParentId != nil && *req.Data.ParentId > 0 {
 				builder.SetParentID(*req.Data.ParentId)
-			}
-
-			// module 为 proto 零值（MODULE_UNSPECIFIED）时跳过：ent schema 未声明该值，
-			// SetNillableModule 会触发 ModuleValidator 失败。未指定即不更新该字段。
-			if req.Data.Module != nil && *req.Data.Module != identityV1.Module_MODULE_UNSPECIFIED {
-				builder.SetNillableModule(r.moduleConverter.ToEntity(req.Data.Module))
 			}
 
 			if req.Data.Meta != nil {
@@ -438,7 +414,6 @@ func (r *MenuRepo) syncInsertTree(ctx context.Context, client *ent.Client, items
 		} else {
 			dto.ParentId = nil
 		}
-		dto.Module = moduleForComponent(m.GetComponent())
 		dto.CreatedBy = trans.Ptr(operatorId)
 		dto.UpdatedBy = nil
 
@@ -496,11 +471,6 @@ func (r *MenuRepo) syncMergeTree(
 			} else {
 				builder.ClearParentID()
 			}
-			if module := moduleForComponent(m.GetComponent()); module != nil {
-				builder.SetNillableModule(r.moduleConverter.ToEntity(module))
-			} else {
-				builder.ClearModule()
-			}
 			if m.Meta != nil {
 				builder.SetMeta(m.Meta)
 			}
@@ -518,7 +488,6 @@ func (r *MenuRepo) syncMergeTree(
 			} else {
 				dto.ParentId = nil
 			}
-			dto.Module = moduleForComponent(m.GetComponent())
 			dto.CreatedBy = trans.Ptr(operatorId)
 			dto.UpdatedBy = nil
 
@@ -591,18 +560,6 @@ func (r *MenuRepo) buildMenuFullPathMap(ctx context.Context, client *ent.Client)
 	walk(roots, "")
 
 	return existing, nil
-}
-
-// moduleForComponent 由组件路径归类业务模块；未声明组件或无法归类时返回 nil（等价不写）
-func moduleForComponent(component string) *identityV1.Module {
-	if component == "" {
-		return nil
-	}
-	mod := constants.ComponentToModule(component)
-	if mod == identityV1.Module_MODULE_UNSPECIFIED {
-		return nil
-	}
-	return &mod
 }
 
 func (r *MenuRepo) Delete(ctx context.Context, req *permissionV1.DeleteMenuRequest) error {

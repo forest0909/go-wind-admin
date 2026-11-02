@@ -38,7 +38,6 @@ type UserTokenPayload struct {
 	DataScopeUnitIds []uint64               `protobuf:"varint,14,rep,packed,name=data_scope_unit_ids,json=dsu,proto3" json:"data_scope_unit_ids,omitempty"`                    // UNIT 类数据范围的组织单元目标集（多角色并集，登录期展开）
 	HiddenFields     []string               `protobuf:"bytes,15,rep,name=hidden_fields,json=hfs,proto3" json:"hidden_fields,omitempty"`                                        // 字段权限隐藏字段集（"资源.字段" 串，多角色并集，登录期聚合）
 	IsPlatformAdmin  *bool                  `protobuf:"varint,20,opt,name=is_platform_admin,json=ipa,proto3,oneof" json:"is_platform_admin,omitempty"`                         // 是否平台超级管理员
-	IsTenantAdmin    *bool                  `protobuf:"varint,21,opt,name=is_tenant_admin,json=ita,proto3,oneof" json:"is_tenant_admin,omitempty"`                             // 是否租户管理员
 	Jti              *string                `protobuf:"bytes,100,opt,name=jti,proto3,oneof" json:"jti,omitempty"`                                                              // 令牌唯一标识(JWT ID)
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -158,13 +157,6 @@ func (x *UserTokenPayload) GetIsPlatformAdmin() bool {
 	return false
 }
 
-func (x *UserTokenPayload) GetIsTenantAdmin() bool {
-	if x != nil && x.IsTenantAdmin != nil {
-		return *x.IsTenantAdmin
-	}
-	return false
-}
-
 func (x *UserTokenPayload) GetJti() string {
 	if x != nil && x.Jti != nil {
 		return *x.Jti
@@ -176,8 +168,7 @@ var File_authentication_service_v1_user_token_proto protoreflect.FileDescriptor
 
 const file_authentication_service_v1_user_token_proto_rawDesc = "" +
 	"\n" +
-	"*authentication/service/v1/user_token.proto\x12\x19authentication.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fidentity/service/v1/types.proto\"\x86\n" +
-	"\n" +
+	"*authentication/service/v1/user_token.proto\x12\x19authentication.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1fidentity/service/v1/types.proto\"\xb2\t\n" +
 	"\x10UserTokenPayload\x12$\n" +
 	"\auser_id\x18\x01 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDR\x03uid\x12+\n" +
 	"\ttenant_id\x18\x02 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\x00R\x03tid\x88\x01\x01\x12.\n" +
@@ -192,9 +183,8 @@ const file_authentication_service_v1_user_token_proto_rawDesc = "" +
 	"\vdata_scopes\x18\r \x03(\x0e2\x1e.identity.service.v1.DataScopeBw\xbaGt\x92\x02q数据权限范围类型集合（登录期由多角色配置聚合，ALL 主导，UNIT_* 已并入集合并集）R\x03dss\x12{\n" +
 	"\x13data_scope_unit_ids\x18\x0e \x03(\x04BY\xbaGV\x92\x02SUNIT 类数据范围的组织单元目标集（多角色并集，登录期展开）R\x03dsu\x12\x9f\x01\n" +
 	"\rhidden_fields\x18\x0f \x03(\tB\x82\x01\xbaG\x7f\x92\x02|字段权限隐藏字段集（\"资源.字段\" 串，多角色并集，登录期聚合；命中字段读写两侧被剔除）R\x03hfs\x12F\n" +
-	"\x11is_platform_admin\x18\x14 \x01(\bB!\xbaG\x1e\x92\x02\x1b是否平台超级管理员H\x06R\x03ipa\x88\x01\x01\x12>\n" +
-	"\x0fis_tenant_admin\x18\x15 \x01(\bB\x1b\xbaG\x18\x92\x02\x15是否租户管理员H\aR\x03ita\x88\x01\x01\x127\n" +
-	"\x03jti\x18d \x01(\tB \xbaG\x1d\x92\x02\x1a令牌唯一标识(JWT ID)H\bR\x03jti\x88\x01\x01B\f\n" +
+	"\x11is_platform_admin\x18\x14 \x01(\bB!\xbaG\x1e\x92\x02\x1b是否平台超级管理员H\x06R\x03ipa\x88\x01\x01\x127\n" +
+	"\x03jti\x18d \x01(\tB \xbaG\x1d\x92\x02\x1a令牌唯一标识(JWT ID)H\aR\x03jti\x88\x01\x01B\f\n" +
 	"\n" +
 	"_tenant_idB\f\n" +
 	"\n" +
@@ -204,8 +194,7 @@ const file_authentication_service_v1_user_token_proto_rawDesc = "" +
 	"\t_usernameB\r\n" +
 	"\v_data_scopeB\x0e\n" +
 	"\f_org_unit_idB\x14\n" +
-	"\x12_is_platform_adminB\x12\n" +
-	"\x10_is_tenant_adminB\x06\n" +
+	"\x12_is_platform_adminB\x06\n" +
 	"\x04_jtiB\xfa\x01\n" +
 	"\x1dcom.authentication.service.v1B\x0eUserTokenProtoP\x01ZCgo-wind-admin/api/gen/go/authentication/service/v1;authenticationpb\xa2\x02\x03ASX\xaa\x02\x19Authentication.Service.V1\xca\x02\x19Authentication\\Service\\V1\xe2\x02%Authentication\\Service\\V1\\GPBMetadata\xea\x02\x1bAuthentication::Service::V1b\x06proto3"
 

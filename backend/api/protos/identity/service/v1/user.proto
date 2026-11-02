@@ -66,10 +66,6 @@ message User {
     json_name = "tenantId",
     (gnostic.openapi.v3.property) = {description: "租户ID"}
   ];  // 租户ID
-  optional string tenant_name = 3 [
-    json_name = "tenantName",
-    (gnostic.openapi.v3.property) = {description: "租户名称"}
-  ];  // 租户名称
 
   optional uint32 org_unit_id = 4 [
     json_name = "orgUnitId",

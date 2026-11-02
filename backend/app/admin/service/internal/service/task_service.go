@@ -6,9 +6,11 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"go-wind-admin/third_party/go-utils/trans"
 	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
@@ -21,6 +23,8 @@ import (
 	taskV1 "go-wind-admin/api/gen/go/task/service/v1"
 
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/pkg/redissync"
+	"go-wind-admin/pkg/serviceid"
 	"go-wind-admin/pkg/task"
 	"go-wind-admin/third_party/go-crud/viewer"
 )
@@ -34,8 +38,10 @@ type TaskScheduler interface {
 	NewWaitResultTask(typeName string, msg any, opts ...asynq.Option) error
 	NewPeriodicTask(cronSpec, typeName string, msg any, opts ...asynq.Option) (string, error)
 
-	RemovePeriodicTask(id string) error
-	RemoveAllPeriodicTask()
+	// RemovePeriodicTaskByID 按 NewPeriodicTask 返回的 entryID 注销调度项。
+	// 不用按 typeName 注销的 RemovePeriodicTask / 全量注销的 RemoveAllPeriodicTask：
+	// 前者会误删同名的系统调度项，后者会连系统调度项一起清掉。
+	RemovePeriodicTaskByID(entryID string) error
 }
 
 // TaskService 任务服务
@@ -48,23 +54,33 @@ type TaskService struct {
 
 	userRepo            data.UserRepo
 	taskRepo            *data.TaskRepo
-	tenantUsageRepo     *data.TenantUsageRepo
 	auditLogArchiveRepo *data.AuditLogArchiveRepo
+
+	// rdb 用于系统周期任务的多副本执行去重（见 AsyncAuditLogArchive），为 nil 时不去重。
+	rdb redis.UniversalClient
+
+	// 本实例注册的周期调度项。用户任务按任务行 ID 绑定，系统任务按 typeName 绑定，
+	// 两者互不影响：停止/删除用户任务只注销它自己的 entry。
+	entryMu       sync.Mutex
+	taskEntries   map[uint32]string
+	systemEntries map[string]string
 }
 
 func NewTaskService(
 	ctx *bootstrap.Context,
 	taskRepo *data.TaskRepo,
 	userRepo data.UserRepo,
-	tenantUsageRepo *data.TenantUsageRepo,
 	auditLogArchiveRepo *data.AuditLogArchiveRepo,
+	rdb *redis.Client,
 ) *TaskService {
 	svc := &TaskService{
 		log:                 ctx.NewLoggerHelper("task/service/admin-service"),
 		taskRepo:            taskRepo,
 		userRepo:            userRepo,
-		tenantUsageRepo:     tenantUsageRepo,
 		auditLogArchiveRepo: auditLogArchiveRepo,
+	}
+	if rdb != nil { // 避免把 nil *redis.Client 存成非 nil 接口
+		svc.rdb = rdb
 	}
 
 	return svc
@@ -103,7 +119,12 @@ func (s *TaskService) ListTaskTypeName(_ context.Context, _ *emptypb.Empty) (*ta
 	if !s.hasScheduler() {
 		return &taskV1.ListTaskTypeNameResponse{}, nil
 	}
-	typeNames := s.taskScheduler.GetRegisteredTaskTypes()
+	var typeNames []string
+	for _, name := range s.taskScheduler.GetRegisteredTaskTypes() {
+		if !task.IsSystemTaskType(name) {
+			typeNames = append(typeNames, name)
+		}
+	}
 	return &taskV1.ListTaskTypeNameResponse{
 		TypeNames: typeNames,
 	}, nil
@@ -112,6 +133,10 @@ func (s *TaskService) ListTaskTypeName(_ context.Context, _ *emptypb.Empty) (*ta
 func (s *TaskService) Create(ctx context.Context, req *taskV1.CreateTaskRequest) (*emptypb.Empty, error) {
 	if req.Data == nil {
 		return nil, adminV1.ErrorBadRequest("invalid parameter")
+	}
+
+	if err := rejectSystemTaskType(req.Data.GetTypeName()); err != nil {
+		return nil, err
 	}
 
 	// H8：校验 typeName 已在调度器注册，防止创建无 handler 的幽灵任务（每个 cron tick 报错）
@@ -165,6 +190,13 @@ func (s *TaskService) Update(ctx context.Context, req *taskV1.UpdateTaskRequest)
 	if req.Data.GetTypeName() == "" && oldTask != nil {
 		req.Data.TypeName = trans.Ptr(oldTask.GetTypeName())
 	}
+	// 新旧 typeName 都不能是系统类型：既不能把用户任务改成系统任务，也不能改动遗留的系统类型行。
+	if err := rejectSystemTaskType(oldTask.GetTypeName()); err != nil {
+		return nil, err
+	}
+	if err := rejectSystemTaskType(req.Data.GetTypeName()); err != nil {
+		return nil, err
+	}
 	if !s.hasScheduler() || !s.taskScheduler.TaskTypeExists(req.Data.GetTypeName()) {
 		return nil, adminV1.ErrorBadRequest("task type [%s] is not registered", req.Data.GetTypeName())
 	}
@@ -188,13 +220,10 @@ func (s *TaskService) Update(ctx context.Context, req *taskV1.UpdateTaskRequest)
 		return nil, err
 	}
 
-	// 先移除调度器中旧的注册项（若存在），避免停用后仍运行、或启用时重复注册。
-	// 直接调用 RemovePeriodicTask 绕过 stopTask 内部的 enable 保护，
-	// 因为 oldTask 可能已是禁用状态，但其注册项可能仍残留在调度器中。
-	if s.hasScheduler() && oldTask != nil && oldTask.GetType() == taskV1.Task_PERIODIC && oldTask.GetTypeName() != "" {
-		if removeErr := s.taskScheduler.RemovePeriodicTask(oldTask.GetTypeName()); removeErr != nil {
-			s.log.Warnf(ctx, "移除旧定时任务注册项失败[%s]: %v", oldTask.GetTypeName(), removeErr)
-		}
+	// 先移除本任务行旧的调度项（若存在），避免停用后仍运行、或启用时重复注册。
+	// 绕过 stopTask 内部的 enable 保护：oldTask 可能已是禁用状态，但调度项仍可能残留。
+	if _, removeErr := s.unscheduleTask(oldTask.GetId()); removeErr != nil {
+		s.log.Warnf(ctx, "移除旧定时任务注册项失败[%d %s]: %v", oldTask.GetId(), oldTask.GetTypeName(), removeErr)
 	}
 
 	// 根据更新后的 enable 状态决定是否重新启动。
@@ -224,14 +253,11 @@ func (s *TaskService) Delete(ctx context.Context, req *taskV1.DeleteTaskRequest)
 		return nil, err
 	}
 
-	// DB 删除成功后清理调度项。stopTask 在 enable=false 时会返回错误并跳过清理，
-	// 但 disabled 任务的调度项仍可能残留（经由直接改库或历史 Update 路径），
-	// 因此这里绕过 enable 保护，直接按 typeName 注销。
-	if s.hasScheduler() && t.GetType() == taskV1.Task_PERIODIC && t.GetTypeName() != "" {
-		if removeErr := s.taskScheduler.RemovePeriodicTask(t.GetTypeName()); removeErr != nil {
-			// 注销失败仅告警，不阻断删除（DB 记录已删）
-			s.log.Warnf(ctx, "删除任务后注销调度项失败[%s]: %v", t.GetTypeName(), removeErr)
-		}
+	// DB 删除成功后清理本任务行的调度项（绕过 stopTask 的 enable 保护：禁用任务也可能残留调度项）。
+	// 只按任务行 ID 注销，不会碰到同名的系统调度项，所以遗留的系统类型行也允许删除。
+	if _, removeErr := s.unscheduleTask(t.GetId()); removeErr != nil {
+		// 注销失败仅告警，不阻断删除（DB 记录已删）
+		s.log.Warnf(ctx, "删除任务后注销调度项失败[%d %s]: %v", t.GetId(), t.GetTypeName(), removeErr)
 	}
 
 	return &emptypb.Empty{}, nil
@@ -242,6 +268,9 @@ func (s *TaskService) ControlTask(ctx context.Context, req *taskV1.ControlTaskRe
 	t, err := s.taskRepo.Get(ctx, &taskV1.GetTaskRequest{QueryBy: &taskV1.GetTaskRequest_TypeName{TypeName: req.GetTypeName()}})
 	if err != nil {
 		s.log.Errorf(ctx, "获取任务失败[%s]", err.Error())
+		return nil, err
+	}
+	if err = rejectSystemTaskType(t.GetTypeName()); err != nil {
 		return nil, err
 	}
 
@@ -271,7 +300,7 @@ func (s *TaskService) ControlTask(ctx context.Context, req *taskV1.ControlTaskRe
 	return &emptypb.Empty{}, nil
 }
 
-// StopAllTask 停止所有的调度任务
+// StopAllTask 停止所有的用户调度任务（系统调度项不受影响）
 func (s *TaskService) StopAllTask(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	s.stopAllTask()
 	return &emptypb.Empty{}, nil
@@ -287,9 +316,9 @@ func (s *TaskService) StartAllTask(ctx context.Context, _ *emptypb.Empty) (*empt
 	return &emptypb.Empty{}, nil
 }
 
-// RestartAllTask 重启所有的调度任务
+// RestartAllTask 重启所有的用户调度任务（系统调度项不受影响）
 func (s *TaskService) RestartAllTask(ctx context.Context, _ *emptypb.Empty) (*taskV1.RestartAllTaskResponse, error) {
-	// 停止所有的任务
+	// 停止所有的用户任务
 	s.stopAllTask()
 
 	// 重新启动所有的任务
@@ -312,76 +341,62 @@ func (s *TaskService) startAllTask(ctx context.Context) (int32, error) {
 
 	s.log.Infof(ctx, "开始开启定时任务，总计[%d]个", resp.GetTotal())
 
-	// 重新启动任务
-	//
-	// 注意（调度器限制）：底层 asynq 调度器用 typeName 既做 handler 路由又做调度项去重键，
-	// entryIDs[typeName] 只能保留一个 entry。若多个租户持有相同 typeName 的 PERIODIC 任务，
-	// 后注册者会覆盖 entryIDs，使先注册的调度项成为无法注销的"孤儿"（永久触发）。
-	// 因此这里按 typeName 去重，每个 typeName 只注册一次（取首个）。
-	// 彻底的跨租户隔离需调度器支持"路由类型/调度键分离"，属库层改造（TODO）。
+	// 调度项按任务行 ID 绑定（见 startTask），同名任务不再互相覆盖，无需按 typeName 去重。
 	var count int32
-	registeredTypeNames := make(map[string]bool)
 	for _, t := range resp.GetItems() {
-		if t.GetType() == taskV1.Task_PERIODIC {
-			if registeredTypeNames[t.GetTypeName()] {
-				s.log.Warnf(ctx, "跳过重复 typeName[%s] 的定时任务注册（调度器以 typeName 去重，多租户同名会泄漏孤儿调度项）", t.GetTypeName())
-				continue
-			}
-			registeredTypeNames[t.GetTypeName()] = true
+		if task.IsSystemTaskType(t.GetTypeName()) {
+			// 旧版本允许经 TaskService 创建系统类型的任务行，这类行一律不调度
+			s.log.Warnf(ctx, "跳过系统类型[%s]的任务行[%d]：系统任务不经任务表调度", t.GetTypeName(), t.GetId())
+			continue
 		}
 		if s.startTask(t) != nil {
 			continue
-		} else {
-			count++
 		}
+		count++
 	}
 
 	s.log.Infof(ctx, "总共成功开启定时任务[%d]个", count)
 
-	// 注册系统级常驻任务：租户到期扫描（不依赖 sys_tasks 表，规避 typeName 去重问题）。
-	// 放在 startAllTask 末尾，确保初始启动与 RestartAllTask（先 RemoveAllPeriodicTask 再
-	// startAllTask）后均能恢复调度项。handler 已在 NewAsynqServer 中通过 RegisterSubscriber 注册。
-	if s.hasScheduler() {
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.TenantExpiryScanCronSpec,
-			task.TenantExpiryScanTaskType,
-			&task.TenantExpiryScanTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册系统级到期扫描定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "系统级到期扫描定时任务已注册（cron=%s）", task.TenantExpiryScanCronSpec)
-		}
-
-		// 审计日志归档（等保 ≥6 个月留存）：超保留期行导出 JSONL 后删除，
-		// 目录/保留期走环境变量（见 AsyncAuditLogArchive）。
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.AuditLogArchiveCronSpec,
-			task.AuditLogArchiveTaskType,
-			&task.AuditLogArchiveTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册审计日志归档定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "审计日志归档定时任务已注册（cron=%s）", task.AuditLogArchiveCronSpec)
-		}
-
-		// 套餐配额水位扫描：扫全部 ON 租户三类配额水位，命中租户的告警经站内信
-		// 投递其管理员。handler 属套餐计费域（PlanQuotaWatermarkService.
-		// AsyncPlanQuotaWatermarkScan），调度项在此注册（同上理由）。
-		if _, err := s.taskScheduler.NewPeriodicTask(
-			task.PlanQuotaWatermarkCronSpec,
-			task.PlanQuotaWatermarkTaskType,
-			&task.PlanQuotaWatermarkTaskData{},
-		); err != nil {
-			s.log.Errorf(ctx, "注册套餐配额水位扫描定时任务失败: %s", err.Error())
-		} else {
-			s.log.Infof(ctx, "套餐配额水位扫描定时任务已注册（cron=%s）", task.PlanQuotaWatermarkCronSpec)
-		}
-	}
+	s.ensureSystemPeriodicTasks(ctx)
 
 	return count, nil
 }
 
-// stopAllTask 停止所有的任务
+// ensureSystemPeriodicTasks 注册系统级常驻周期任务（不依赖 sys_tasks 表）。
+// 已注册的跳过，所以 StartAllTask / RestartAllTask 重复调用不会叠加调度项。
+// handler 已在 NewAsynqServer 中通过 RegisterSubscriber 注册。
+func (s *TaskService) ensureSystemPeriodicTasks(ctx context.Context) {
+	if !s.hasScheduler() {
+		return
+	}
+
+	s.entryMu.Lock()
+	defer s.entryMu.Unlock()
+
+	if _, ok := s.systemEntries[task.AuditLogArchiveTaskType]; ok {
+		return
+	}
+	// 审计日志归档（等保 ≥6 个月留存）：超保留期行导出 JSONL 后删除，目录/保留期走环境变量。
+	// 多副本时每个实例都会注册这个 cron；asynq.Unique 让同一轮只入队一次，
+	// 执行端再用 Redis 标记兜底（见 AsyncAuditLogArchive）。
+	entryID, err := s.taskScheduler.NewPeriodicTask(
+		task.AuditLogArchiveCronSpec,
+		task.AuditLogArchiveTaskType,
+		&task.AuditLogArchiveTaskData{},
+		asynq.Unique(task.AuditLogArchiveOnceWindow),
+	)
+	if err != nil {
+		s.log.Errorf(ctx, "注册审计日志归档定时任务失败: %s", err.Error())
+		return
+	}
+	if s.systemEntries == nil {
+		s.systemEntries = make(map[string]string)
+	}
+	s.systemEntries[task.AuditLogArchiveTaskType] = entryID
+	s.log.Infof(ctx, "审计日志归档定时任务已注册（cron=%s）", task.AuditLogArchiveCronSpec)
+}
+
+// stopAllTask 注销本实例上全部用户任务的调度项，系统调度项保留。
 func (s *TaskService) stopAllTask() {
 	// nil 调度器防护
 	if !s.hasScheduler() {
@@ -389,12 +404,43 @@ func (s *TaskService) stopAllTask() {
 		return
 	}
 
-	s.log.Infof(context.Background(), "开始清除所有的定时任务...")
+	s.log.Infof(context.Background(), "开始清除所有的用户定时任务...")
 
-	// 清除所有的定时任务
-	s.taskScheduler.RemoveAllPeriodicTask()
+	s.entryMu.Lock()
+	entries := s.taskEntries
+	s.taskEntries = nil
+	s.entryMu.Unlock()
 
-	s.log.Infof(context.Background(), "完成清除所有的定时任务")
+	for taskID, entryID := range entries {
+		if err := s.taskScheduler.RemovePeriodicTaskByID(entryID); err != nil {
+			s.log.Errorf(context.Background(), "注销定时任务[%d]失败: %v", taskID, err)
+		}
+	}
+
+	s.log.Infof(context.Background(), "完成清除所有的用户定时任务，共[%d]个", len(entries))
+}
+
+// unscheduleTask 注销任务行 taskID 在本实例的周期调度项。没有调度项时返回 false。
+func (s *TaskService) unscheduleTask(taskID uint32) (bool, error) {
+	if !s.hasScheduler() {
+		return false, nil
+	}
+	s.entryMu.Lock()
+	entryID, ok := s.taskEntries[taskID]
+	delete(s.taskEntries, taskID)
+	s.entryMu.Unlock()
+	if !ok {
+		return false, nil
+	}
+	return true, s.taskScheduler.RemovePeriodicTaskByID(entryID)
+}
+
+// rejectSystemTaskType 系统任务类型不允许经任务管理接口创建、修改或启停。
+func rejectSystemTaskType(typeName string) error {
+	if task.IsSystemTaskType(typeName) {
+		return adminV1.ErrorForbidden("task type [%s] is reserved for the system", typeName)
+	}
+	return nil
 }
 
 // stopTask 停止一个任务
@@ -414,7 +460,14 @@ func (s *TaskService) stopTask(t *taskV1.Task) error {
 
 	switch t.GetType() {
 	case taskV1.Task_PERIODIC:
-		return s.taskScheduler.RemovePeriodicTask(t.GetTypeName())
+		removed, err := s.unscheduleTask(t.GetId())
+		if err != nil {
+			return err
+		}
+		if !removed {
+			return errors.New("periodic task is not scheduled")
+		}
+		return nil
 
 	// DELAY/WAIT_RESULT 是已投递到 asynq 队列的一次性任务，底层 transport
 	// 未暴露 Inspector（删除排队任务/取消在途任务的能力），无法安全停止。
@@ -493,11 +546,23 @@ func (s *TaskService) startTask(t *taskV1.Task) error {
 
 	switch t.GetType() {
 	case taskV1.Task_PERIODIC:
+		// 同一任务行重复启动时先注销旧调度项，避免一行任务挂两个 entry
+		if _, err = s.unscheduleTask(t.GetId()); err != nil {
+			s.log.Errorf(context.Background(), "[%d %s] 注销旧调度项失败[%s]", t.GetId(), t.GetTypeName(), err.Error())
+			return err
+		}
 		opts, payload = s.convertTaskOption(t)
-		if _, err = s.taskScheduler.NewPeriodicTask(t.GetCronSpec(), t.GetTypeName(), payload, opts...); err != nil {
+		var entryID string
+		if entryID, err = s.taskScheduler.NewPeriodicTask(t.GetCronSpec(), t.GetTypeName(), payload, opts...); err != nil {
 			s.log.Errorf(context.Background(), "[%s] 创建定时任务失败[%s]", t.GetTypeName(), err.Error())
 			return err
 		}
+		s.entryMu.Lock()
+		if s.taskEntries == nil {
+			s.taskEntries = make(map[uint32]string)
+		}
+		s.taskEntries[t.GetId()] = entryID
+		s.entryMu.Unlock()
 
 	case taskV1.Task_DELAY:
 		opts, payload = s.convertTaskOption(t)
@@ -541,42 +606,32 @@ func (s *TaskService) AsyncAuditLogArchive(taskType string, taskData *task.Audit
 	before := time.Now().AddDate(0, 0, -retentionDays)
 
 	ctx := viewer.WithSystemContext(context.Background())
-	results, err := s.auditLogArchiveRepo.ArchiveExpired(ctx, before, outDir)
+	archive := func() error {
+		results, err := s.auditLogArchiveRepo.ArchiveExpired(ctx, before, outDir)
+		if err != nil {
+			s.log.Errorf(ctx, "audit log archive failed: %s", err.Error())
+			return err
+		}
+		for table, n := range results {
+			s.log.Infof(ctx, "audit log archived: %s -> %d rows (dir=%s)", table, n, outDir)
+		}
+		return nil
+	}
+
+	if s.rdb == nil {
+		return archive()
+	}
+	// 多副本兜底：入队端的 asynq.Unique 在首个任务执行完后就释放，时钟偏差大的副本仍可能再入队一次。
+	// 同一时间窗内只让一个实例真正归档，否则两边会把同一批行各导出一份。
+	ran, err := redissync.RunOncePerWindow(ctx, s.rdb, auditLogArchiveOnceKey, task.AuditLogArchiveOnceWindow, archive)
 	if err != nil {
-		s.log.Errorf(ctx, "audit log archive failed: %s", err.Error())
 		return err
 	}
-	for table, n := range results {
-		s.log.Infof(ctx, "audit log archived: %s -> %d rows (dir=%s)", table, n, outDir)
+	if !ran {
+		s.log.Infof(ctx, "audit log archive skipped: already run by another instance within %s", task.AuditLogArchiveOnceWindow)
 	}
 	return nil
 }
 
-// AsyncTenantExpiryScan 租户到期扫描任务的实际执行逻辑。
-//
-// 系统级常驻定时任务（每小时整点），由 NewAsynqServer 启动时注册，不写入 sys_tasks 表。
-// 逻辑详见 TenantUsageRepo.EnforceExpiryPolicies：扫描 status==ON 且 expired_at<=now 的租户，
-// 按其套餐的 expiry_policy 修改租户状态（BLOCK_LOGIN→EXPIRED、FREEZE→FREEZE、READONLY 保持 ON），
-// 并吊销受影响租户全部用户的在线令牌。
-//
-// READONLY 策略的即时读写拦截由 TenantAccessChecker 中间件承担，不需要等待本扫描任务。
-func (s *TaskService) AsyncTenantExpiryScan(taskType string, taskData *task.TenantExpiryScanTaskData) error {
-	s.log.Infof(context.Background(), "AsyncTenantExpiryScan [%s] [%+v]", taskType, taskData)
-
-	if s.tenantUsageRepo == nil {
-		s.log.Errorf(context.Background(), "AsyncTenantExpiryScan: tenantUsageRepo is nil, aborting")
-		return errors.New("tenantUsageRepo is not configured")
-	}
-
-	// 用 SystemContext 包裹：到期扫描需要跨租户查询。
-	ctx := viewer.WithSystemContext(context.Background())
-
-	count, err := s.tenantUsageRepo.EnforceExpiryPolicies(ctx)
-	if err != nil {
-		s.log.Errorf(context.Background(), "AsyncTenantExpiryScan: enforce failed: %v", err)
-		return err
-	}
-
-	s.log.Infof(context.Background(), "AsyncTenantExpiryScan: completed, %d tenants enforced", count)
-	return nil
-}
+// auditLogArchiveOnceKey 审计归档执行去重标记的 Redis 键。
+var auditLogArchiveOnceKey = serviceid.ProjectName + ":cron-once:" + task.AuditLogArchiveTaskType

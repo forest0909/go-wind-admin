@@ -55,7 +55,7 @@ Repo 层（internal/data/）
   │  DTO↔entity 映射（CopierMapper + 字段转换器）；Update 走 FilterByFieldMask
   ▼
 ent 隐私层（internal/data/ent/，代码生成）
-  │  租户隔离（TenantPrivacy）、数据范围谓词
+  │  数据范围谓词（tenant_id 遗留谓词固定为 0）
   ▼
 PostgreSQL / MySQL
   │
@@ -81,7 +81,6 @@ PostgreSQL / MySQL
 |---|---|---|---|
 | 认证 | JWT（access 内存 + refresh HttpOnly Cookie），登录口令应用层 AES 加密传输 | `pkg/middleware/auth`、`internal/service` 认证服务 | 第 5 章 |
 | 授权（接口级） | authz 引擎判定"该用户能否调该接口"，策略存 DB 可热更新 | `pkg/middleware/auth` 引擎接入 | 第 5 章 |
-| 租户隔离 | 行级 `tenant_id` 谓词，读写在数据层强制；HTTP 层另有 Api 表 `(path,method)` 闸门 | ent 隐私层 + `pkg/middleware` | 第 6 章 |
 | 数据范围 | 角色级行过滤（五档），令牌承载聚合结果 | ent 隐私层（逐表 opt-in） | [data_scope_design.md](../data_scope_design.md) |
 | 字段级权限 | 角色黑名单字段，服务端响应裁剪 + 前端隐藏 | service 层切面（当前仅 `user`）+ 三端 access store | [frontend_authority.md](../frontend_authority.md) |
 | 审计日志 | 登录日志与操作日志 | `pkg/middleware/logging` | [audit-log-producer-design.md](../audit-log-producer-design.md) |

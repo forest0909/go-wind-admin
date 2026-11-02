@@ -3,6 +3,7 @@ package authorizer
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	authzEngine "go-wind-admin/third_party/kratos-authz/engine"
 	"go-wind-admin/third_party/kratos-authz/engine/casbin"
@@ -25,6 +26,22 @@ type Authorizer struct {
 
 	engine   authzEngine.Engine
 	provider Provider
+
+	// loadMu 串行化策略装载：读库和写入引擎在同一把锁里，后开始的装载一定不会被先开始的覆盖。
+	loadMu sync.Mutex
+	// resetWrapper 非 nil 时 ResetPolicies 经它调用实际装载，供多实例同步在装载前后做版本号和广播。
+	resetWrapper func(ctx context.Context, load func(context.Context) error) error
+}
+
+// SetResetWrapper 设置 ResetPolicies 的包装函数。wrapper 里调用 load 完成本实例的实际装载。
+// 必须在第一次 ResetPolicies 之前设置。
+func (a *Authorizer) SetResetWrapper(wrapper func(ctx context.Context, load func(context.Context) error) error) {
+	a.resetWrapper = wrapper
+}
+
+// ReloadPolicies 只在本实例重新装载策略，不经 resetWrapper（收到其他实例的变更通知时用）。
+func (a *Authorizer) ReloadPolicies(ctx context.Context) error {
+	return a.loadPolicies(ctx)
 }
 
 // NewAuthorizer 创建权限管理器。
@@ -66,8 +83,18 @@ func (a *Authorizer) Engine() authzEngine.Engine {
 	return a.engine
 }
 
-// ResetPolicies 重置策略
+// ResetPolicies 重置策略。权限数据变更后调用；设置了 resetWrapper 时会通知其他实例。
 func (a *Authorizer) ResetPolicies(ctx context.Context) error {
+	if a.resetWrapper != nil {
+		return a.resetWrapper(ctx, a.loadPolicies)
+	}
+	return a.loadPolicies(ctx)
+}
+
+func (a *Authorizer) loadPolicies(ctx context.Context) error {
+	a.loadMu.Lock()
+	defer a.loadMu.Unlock()
+
 	if a.engine == nil {
 		return fmt.Errorf("authorization engine is not initialized")
 	}

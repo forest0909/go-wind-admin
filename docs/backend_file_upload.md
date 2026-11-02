@@ -173,7 +173,7 @@ sig = HMAC-SHA256(GOWIND_CRYPTO_KEY, "{path}|{expires}")   // hex
 
 ### 边界与注意
 
-- **对象路径不自动带租户维度**（[tenant_isolation.md](./tenant_isolation.md) 第 6 节覆盖边界）：签名覆盖的是完整
+- **对象路径不带用户维度**：签名覆盖的是完整
   `{bucket}/{object}` 串，路径本身不可篡改；但 URL 的分发面（富文本内容、转发）即访问面。
 - 需要撤销/短期访问时，走鉴权下载端点（`GET /admin/v1/file/download`）而非公开 URL。
 - 换 `GOWIND_CRYPTO_KEY` 会使全部存量公开 URL 立即失效（含历史富文本内嵌图）——轮换前评估。

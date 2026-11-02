@@ -36,7 +36,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
+	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	pkgjwt "go-wind-admin/pkg/jwt"
+	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/third_party/go-utils/trans"
 )
 
 // ---------------------------------------------------------------------------
@@ -134,6 +137,13 @@ func (e *auditServerEnv) chainHandler() func(ctx khttp.Context) error {
 			innerErr = errors.New("plain test error")
 		}
 		h := ctx.Middleware(func(c context.Context, reqIn interface{}) (interface{}, error) {
+			// X-Test-Verified=1 模拟认证中间件验签通过：注入身份后经 CaptureVerifiedIdentity 交给外层审计。
+			if req.Header.Get("X-Test-Verified") == "1" {
+				c = auth.NewContext(c, testVerifiedPayload())
+				return CaptureVerifiedIdentity()(func(context.Context, interface{}) (interface{}, error) {
+					return nil, innerErr
+				})(c, reqIn)
+			}
 			return nil, innerErr
 		})
 		_, _ = h(ctx, nil)
@@ -165,44 +175,25 @@ func (e *auditServerEnv) fire(method, path string, headers map[string]string, bo
 // 测试数据构造
 // ---------------------------------------------------------------------------
 
-// mintTestToken 铸造测试 JWT。解析侧（jwtutil.ParseJWTPayload）不校验签名，
-// 任意 HS256 密钥签出的载荷即可映射出 UserTokenPayload
-// （sub→Username、uid→UserId、tid→TenantId、cid→ClientId），
-// 用于断言审计记录中用户身份字段的令牌来源映射。
-func mintTestToken(t *testing.T) string {
-	t.Helper()
-	claims := jwt.MapClaims{
-		authn.ClaimFieldSubject:   "alice",
-		pkgjwt.ClaimFieldUserID:   float64(42),
-		pkgjwt.ClaimFieldTenantID: float64(7),
-		pkgjwt.ClaimFieldClientID: "test-client-id",
+// testVerifiedPayload 模拟认证中间件验签后的身份。
+func testVerifiedPayload() *authenticationV1.UserTokenPayload {
+	return &authenticationV1.UserTokenPayload{
+		UserId:   42,
+		TenantId: trans.Ptr(uint32(7)),
+		Username: trans.Ptr("alice"),
+		ClientId: trans.Ptr("test-client-id"),
 	}
-	tok, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("test-signing-secret"))
-	require.NoError(t, err)
-	return tok
 }
 
-// mintTestTokenWithoutSubject 铸造无 sub 声明的令牌：载荷侧 GetSubject
-// 报错走日志分支，Username 不落库而数字身份照常映射。
-func mintTestTokenWithoutSubject(t *testing.T) string {
+// mintForgedToken 铸造一枚未经服务端签发的 JWT（任意密钥）。审计不得采信其中的身份。
+func mintForgedToken(t *testing.T) string {
 	t.Helper()
 	claims := jwt.MapClaims{
-		pkgjwt.ClaimFieldUserID:   float64(42),
-		pkgjwt.ClaimFieldTenantID: float64(7),
+		authn.ClaimFieldSubject:   "admin",
+		pkgjwt.ClaimFieldUserID:   float64(1),
+		pkgjwt.ClaimFieldTenantID: float64(9),
 	}
-	tok, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("test-signing-secret"))
-	require.NoError(t, err)
-	return tok
-}
-
-// mintTestTokenWithBadRoleClaim 铸造角色声明类型非法的令牌：载荷构造器
-// 在角色声明类型不符时报错返回，覆盖令牌身份提取的错误分支。
-func mintTestTokenWithBadRoleClaim(t *testing.T) string {
-	t.Helper()
-	claims := jwt.MapClaims{
-		pkgjwt.ClaimFieldRoleCodes: "not-an-array",
-	}
-	tok, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("test-signing-secret"))
+	tok, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("attacker-secret"))
 	require.NoError(t, err)
 	return tok
 }

@@ -20,7 +20,6 @@ import (
 	"go-wind-admin/third_party/go-utils/copierutil"
 	"go-wind-admin/third_party/go-utils/mapper"
 
-	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 )
 
@@ -29,10 +28,9 @@ type ApiRepo struct {
 	driverName string
 	log        *bLogger.Helper
 
-	mapper                  *mapper.CopierMapper[permissionV1.Api, ent.Api]
-	statusConverter         *mapper.EnumTypeConverter[permissionV1.Api_Status, api.Status]
-	scopeConverter          *mapper.EnumTypeConverter[permissionV1.Api_Scope, api.Scope]
-	businessModuleConverter *mapper.EnumTypeConverter[identityV1.Module, api.BusinessModule]
+	mapper          *mapper.CopierMapper[permissionV1.Api, ent.Api]
+	statusConverter *mapper.EnumTypeConverter[permissionV1.Api_Status, api.Status]
+	scopeConverter  *mapper.EnumTypeConverter[permissionV1.Api_Scope, api.Scope]
 
 	repository *entCrud.Repository[
 		ent.APIQuery, ent.APISelect,
@@ -55,9 +53,6 @@ func NewApiRepo(ctx *bootstrap.Context, entClient *entCrud.EntClient[*ent.Client
 		),
 		scopeConverter: mapper.NewEnumTypeConverter[permissionV1.Api_Scope, api.Scope](
 			permissionV1.Api_Scope_name, permissionV1.Api_Scope_value,
-		),
-		businessModuleConverter: mapper.NewEnumTypeConverter[identityV1.Module, api.BusinessModule](
-			identityV1.Module_name, identityV1.Module_value,
 		),
 	}
 
@@ -87,7 +82,6 @@ func (r *ApiRepo) init() {
 	// 流通；写路径维持"未指定即走列默认"现状不变。
 	r.mapper.AppendConverters(r.statusConverter.NewConverterPair())
 	r.mapper.AppendConverters(r.scopeConverter.NewConverterPair())
-	r.mapper.AppendConverters(r.businessModuleConverter.NewConverterPair())
 }
 
 func (r *ApiRepo) Count(ctx context.Context, req *paginationV1.PagingRequest) (*permissionV1.CountApiResponse, error) {
@@ -245,12 +239,6 @@ func (r *ApiRepo) newApiCreate(api *permissionV1.Api) *ent.APICreate {
 		SetNillableCreatedBy(api.CreatedBy).
 		SetCreatedAt(time.Now())
 
-	// business_module 为 proto 零值（MODULE_UNSPECIFIED）时跳过：ent schema 未声明该值，
-	// SetNillableBusinessModule 会触发 BusinessModuleValidator 失败。未指定即留空。
-	if api.BusinessModule != nil && *api.BusinessModule != identityV1.Module_MODULE_UNSPECIFIED {
-		builder.SetNillableBusinessModule(r.businessModuleConverter.ToEntity(api.BusinessModule))
-	}
-
 	if api.Id != nil {
 		builder.SetID(api.GetId())
 	}
@@ -312,14 +300,9 @@ func (r *ApiRepo) Update(ctx context.Context, req *permissionV1.UpdateApiRequest
 				SetNillablePath(req.Data.Path).
 				SetNillableMethod(req.Data.Method).
 				SetNillableScope(r.scopeConverter.ToEntity(req.Data.Scope)).
+				SetNillableStatus(r.statusConverter.ToEntity(req.Data.Status)).
 				SetNillableUpdatedBy(req.Data.UpdatedBy).
 				SetUpdatedAt(time.Now())
-
-			// business_module 为 proto 零值（MODULE_UNSPECIFIED）时跳过：ent schema 未声明该值，
-			// SetNillableBusinessModule 会触发 BusinessModuleValidator 失败。未指定即不更新该字段。
-			if req.Data.BusinessModule != nil && *req.Data.BusinessModule != identityV1.Module_MODULE_UNSPECIFIED {
-				builder.SetNillableBusinessModule(r.businessModuleConverter.ToEntity(req.Data.BusinessModule))
-			}
 		},
 		func(s *sql.Selector) {
 			s.Where(sql.EQ(api.FieldID, req.GetId()))

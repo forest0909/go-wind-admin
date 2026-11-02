@@ -20,7 +20,6 @@ import (
 	entRoleMetadata "go-wind-admin/app/admin/service/internal/data/ent/rolemetadata"
 	entRolePermission "go-wind-admin/app/admin/service/internal/data/ent/rolepermission"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
-	"go-wind-admin/pkg/constants"
 )
 
 // newRoleRepoSqlite 用 enttest helper 构造一个可直接做 CRUD 的 RoleRepo。
@@ -160,13 +159,13 @@ func TestRoleRepoSqlite_CreateAndMetadataCascade(t *testing.T) {
 	require.NotNil(t, roleRow.DataScope, "data_scope 枚举应经转换器落库")
 	require.Equal(t, entRole.DataScopeAll, *roleRow.DataScope, "proto DataScope_ALL 应映射为 ent DataScopeAll")
 
-	// Create 的级联：为该角色创建元数据行（TENANT 类型 → TENANT 作用域、非模板）
+	// Create 的级联：为该角色创建元数据行（单租户：作用域固定 PLATFORM、非模板）
 	metas, err := repo.entClient.Client().RoleMetadata.Query().All(ctx)
 	require.NoError(t, err)
 	require.Len(t, metas, 1, "sys_role_metadata 应有 1 条联动创建的元数据记录")
 	require.Equal(t, roleRow.ID, *metas[0].RoleID, "元数据行应挂到新角色上")
 	require.NotNil(t, metas[0].Scope, "scope 枚举应经转换器落库")
-	require.Equal(t, entRoleMetadata.ScopeTenant, *metas[0].Scope, "TENANT 类型角色的元数据作用域应为 TENANT")
+	require.Equal(t, entRoleMetadata.ScopePlatform, *metas[0].Scope, "单租户下角色元数据作用域固定为 PLATFORM")
 	require.NotNil(t, metas[0].IsTemplate)
 	require.False(t, *metas[0].IsTemplate, "非模板角色创建的元数据应为非模板")
 }
@@ -241,15 +240,12 @@ func TestRoleRepoSqlite_ListAndGet(t *testing.T) {
 	})
 	require.Error(t, err, "查询不存在的主键应返回错误")
 
-	// 平台上下文按名称/编码查询：跨租户风险，应被租户闸门拒绝
-	_, err = repo.Get(ctx, &permissionV1.GetRoleRequest{
-		QueryBy: &permissionV1.GetRoleRequest_Name{Name: "MARKERALPHA 角色"},
-	})
-	require.Error(t, err, "平台上下文按 name 查询角色应被拒绝")
-	_, err = repo.Get(ctx, &permissionV1.GetRoleRequest{
+	// 单租户：按编码查询直接命中（此前要求 tid>0 的租户闸门已随多租户移除）
+	byCode, err := repo.Get(ctx, &permissionV1.GetRoleRequest{
 		QueryBy: &permissionV1.GetRoleRequest_Code{Code: fmt.Sprintf("ROLE_SQLITE_%d", 12001)},
 	})
-	require.Error(t, err, "平台上下文按 code 查询角色应被拒绝")
+	require.NoError(t, err, "按 code 查询角色应命中")
+	require.Equal(t, fmt.Sprintf("ROLE_SQLITE_%d", 12001), byCode.GetCode())
 
 	// 按 ID 列表查询（角色与角色编码）
 	byIDs, err := repo.ListRolesByRoleIds(ctx, []uint32{roleAID, roleBID})
@@ -269,11 +265,13 @@ func TestRoleRepoSqlite_ListAndGet(t *testing.T) {
 		fmt.Sprintf("ROLE_SQLITE_%d", 12002),
 	}, codes, "按 ID 列表应返回两条角色编码")
 
-	// 平台上下文按编码列表查询：应被租户闸门拒绝
-	_, err = repo.ListRolesByRoleCodes(ctx, []string{fmt.Sprintf("ROLE_SQLITE_%d", 12001)})
-	require.Error(t, err, "平台上下文按编码列表查询角色应被拒绝")
-	_, err = repo.ListRoleIDsByRoleCodes(ctx, []string{fmt.Sprintf("ROLE_SQLITE_%d", 12001)})
-	require.Error(t, err, "平台上下文按编码列表查询角色 ID 应被拒绝")
+	// 按编码列表查询：单租户下直接命中
+	byCodes, err := repo.ListRolesByRoleCodes(ctx, []string{fmt.Sprintf("ROLE_SQLITE_%d", 12001)})
+	require.NoError(t, err)
+	require.Len(t, byCodes, 1)
+	idsByCode, err := repo.ListRoleIDsByRoleCodes(ctx, []string{fmt.Sprintf("ROLE_SQLITE_%d", 12001)})
+	require.NoError(t, err)
+	require.Equal(t, []uint32{roleAID}, idsByCode)
 
 	// 无权限关联时的权限 API/菜单 ID 列表应为空
 	apiIDs, err := repo.GetRolePermissionApiIDs(ctx, roleAID)
@@ -423,90 +421,4 @@ func TestRoleRepoSqlite_CanAssignRole(t *testing.T) {
 	require.NotZero(t, disabledRoleID, "应找到停用角色")
 	_, err = repo.CanAssignRole(ctx, disabledRoleID)
 	require.Error(t, err, "停用角色应不可分配")
-
-	// 模板角色：拒绝（Create 以 TEMPLATE 类型联动创建的元数据带模板标记）
-	require.NoError(t, repo.Create(ctx, &permissionV1.CreateRoleRequest{
-		Data: &permissionV1.Role{
-			Name:   trans.Ptr("模板角色"),
-			Code:   trans.Ptr(fmt.Sprintf("ROLE_SQLITE_%d", 15003)),
-			Status: permissionV1.Role_ON.Enum(),
-			Type:   permissionV1.Role_TEMPLATE.Enum(),
-		},
-	}))
-	roles, err = repo.entClient.Client().Role.Query().All(ctx)
-	require.NoError(t, err)
-	require.Len(t, roles, 3)
-	var templateRoleID uint32
-	for _, r := range roles {
-		if r.Type != nil && *r.Type == entRole.TypeTemplate {
-			templateRoleID = uint32(r.ID)
-		}
-	}
-	require.NotZero(t, templateRoleID, "应找到模板角色")
-	_, err = repo.CanAssignRole(ctx, templateRoleID)
-	require.Error(t, err, "模板角色应不可分配")
-}
-
-// TestRoleRepoSqlite_TemplateInstantiation 验证模板角色的专用查询与
-// 从模板实例化租户管理员角色的完整链路：模板按（前缀编码、启用、受保护、
-// 平台归属）四重条件命中；实例化产物挂到目标租户且编码去掉模板前缀。
-func TestRoleRepoSqlite_TemplateInstantiation(t *testing.T) {
-	repo := newRoleRepoSqlite(t)
-	ctx := enttest.NewSystemContext(context.Background())
-
-	// 造一个与生产播种同构的租户管理员模板角色
-	require.NoError(t, repo.Create(ctx, &permissionV1.CreateRoleRequest{
-		Data: &permissionV1.Role{
-			Name:        trans.Ptr(constants.DefaultTenantManagerRoleName + "模板"),
-			Code:        trans.Ptr(constants.TenantAdminTemplateRoleCode),
-			Status:      permissionV1.Role_ON.Enum(),
-			Type:        permissionV1.Role_TEMPLATE.Enum(),
-			IsProtected: trans.Ptr(true),
-		},
-	}))
-
-	// 专用查询应命中该模板（四重条件全部满足）
-	template, err := repo.GetTemplateRole(ctx, constants.TenantAdminRoleCode)
-	require.NoError(t, err, "按模板编码查询已播种模板应命中")
-	require.Equal(t, constants.TenantAdminTemplateRoleCode, template.GetCode(), "命中的应为模板角色本体")
-	// 读视图（GetTemplateRole 路径）：status/type 为写入值、data_scope 为列默认，
-	// 经 queryEnumsAndBackfill 如实回显。
-	require.Equal(t, permissionV1.Role_ON, template.GetStatus(), "读视图应回填 status")
-	require.Equal(t, permissionV1.Role_TEMPLATE, template.GetType(), "读视图应回填 type")
-	require.Equal(t, identityV1.DataScope_ALL, template.GetDataScope(), "读视图应回填列默认 data_scope")
-
-	// 未命中的模板编码应报错
-	_, err = repo.GetTemplateRole(ctx, "not_exists_template")
-	require.Error(t, err, "查询不存在的模板应返回错误")
-
-	// 空编码直接拒绝
-	_, err = repo.GetTemplateRole(ctx, "")
-	require.Error(t, err, "空模板编码应直接拒绝")
-
-	// 从模板实例化租户管理员角色（挂到租户 5）
-	tx, err := repo.entClient.Client().Tx(ctx)
-	require.NoError(t, err)
-	// 无论断言成败都释放事务连接：Commit 成功后 Rollback 返回 ErrTxDone 被忽略；
-	// 断言失败（Goexit）时回滚，避免残留写锁阻塞后续测试。
-	defer func() { _ = tx.Rollback() }()
-	_, err = repo.CreateTenantRoleFromTemplate(ctx, tx, 5, 1)
-	require.NoError(t, err, "从模板实例化租户管理员角色应成功")
-	require.NoError(t, tx.Commit())
-
-	// 实例化产物：挂到租户 5、编码去前缀、名称为租户管理员默认名、类型 TENANT、受保护
-	clones, err := repo.entClient.Client().Role.Query().
-		Where(entRole.TenantIDEQ(5)).
-		All(ctx)
-	require.NoError(t, err)
-	require.Len(t, clones, 1, "目标租户下应有一条实例化角色")
-	require.Equal(t, constants.TenantAdminRoleCode, *clones[0].Code, "实例化角色编码应为去前缀后的租户管理员编码")
-	require.Equal(t, constants.DefaultTenantManagerRoleName, *clones[0].Name, "实例化角色名称应为默认租户管理员名")
-	require.Equal(t, entRole.TypeTenant, *clones[0].Type, "实例化角色类型应为 TENANT")
-
-	// 模板本体仍在平台侧：经 repo 创建的行 tenant_id 落默认值 0（列默认，非 NULL）
-	platformRoles, err := repo.entClient.Client().Role.Query().
-		Where(entRole.TenantIDEQ(0)).
-		All(ctx)
-	require.NoError(t, err)
-	require.Len(t, platformRoles, 1, "平台侧应仍只有模板本体")
 }

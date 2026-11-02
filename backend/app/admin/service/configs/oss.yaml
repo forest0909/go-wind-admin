@@ -3,7 +3,7 @@ oss:
     endpoint: "minio:9000"
     upload_host: "minio:9000"
     download_host: "minio:9000"
-    access_key: "root"
-    secret_key: "*Abcd123456"
+    access_key: "${GWA_MINIO_ACCESS_KEY:root}"
+    secret_key: "${GWA_MINIO_SECRET_KEY:*Abcd123456}"
     token: ""
     use_ssl: false

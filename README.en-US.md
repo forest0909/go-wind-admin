@@ -30,7 +30,7 @@
 
 **A single-tenant admin: Go backend + React frontend.** There is no second frontend and no AI module.
 
-Tenant, plan, and quota code is still in the tree. Their sidebar entries are hidden. API authorization is Casbin.
+Tenants, plans, and quotas have been removed. The underlying `tenant_id` column stays, always 0, and new modules ignore it. API authorization is Casbin.
 
 Dependencies live in `backend/third_party/`. Licenses: [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES). Commands: [AGENTS.md](./AGENTS.md).
 
@@ -175,7 +175,7 @@ pnpm dev                    # port 15888
 <tr><td><strong>Realtime</strong></td><td><code>SSE</code> (server push) · <code>Asynq</code> (async tasks)</td></tr>
 <tr><td><strong>Frontend</strong></td><td>React only. See the React row below</td></tr>
 <tr><td><strong>Removed</strong></td><td>No second frontend, no AI, no SSO, no MFA, and no in-app database backup</td></tr>
-<tr><td><strong>Not a product surface</strong></td><td>Tenant, plan, and quota pages remain, and they are hidden from the sidebar</td></tr>
+<tr><td><strong>Removed (multi-tenancy)</strong></td><td>Tenants, plans, quotas, usage, and tenant branding. The underlying <code>tenant_id</code> column stays, always 0</td></tr>
 <tr><td><strong>React Edition</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> (no UMI) · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>Deployment & Ops</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
@@ -191,7 +191,7 @@ Security capabilities are designed with reference to the technical requirements 
 | **Security Audit** | Login logs and operation logs, recording the client IP (with geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
 | **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); image captcha; Redis login failure rate limiting (IP + username dual dimensions) |
 | **Access Control** | API authorization is Casbin. Role, permission, and API mappings live in the database and hot-reload. Menus, buttons, role data scope, and field permissions are also in place |
-| **Tenant code** | Isolation and plan code remains, and the sidebar entries are hidden. This tree is used as a single-tenant admin, not delivered as multi-tenant SaaS |
+| **Tenancy** | The multi-tenant business layer has been removed; only a `tenant_id` column fixed at 0 remains. This tree is a single-tenant admin |
 | **Data Confidentiality** | Passwords for login, user creation, reset, and profile change are AES-encrypted in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
 | **Data Backup & Recovery** | The program does not ship a database backup. Use the database's own tools (for example `pg_dump`) or an operations platform, and rehearse a restore |
 | **Frontend Security** | `frontend/admin/react/scripts/deploy/nginx.conf` sets X-Frame-Options / HSTS / Content-Security-Policy. The React build also injects a CSP `<meta>` into `index.html` |
@@ -209,8 +209,6 @@ Security capabilities are designed with reference to the technical requirements 
 | Feature | Description |
 |---------|-------------|
 | User Management | Manage and query users with advanced search and department-linked users; enable/disable users, set/unset manager, reset password, configure multiple roles / departments / managers, one-click login as a specified user. |
-| Tenant Management | The code and page remain at `/tenant/members`. The sidebar entry is hidden. This tree is not used as multi-tenant SaaS. |
-| Plan & Quota Management | The code and page remain at `/tenant/plans`. The sidebar entry is hidden. |
 | Role Management | Manage roles and role groups; user selection by role; menu grants, data-scope configuration (five levels / custom organization-unit sets), and field-level permissions (blacklisted field sets); batch add/remove employees. |
 | Permission Management | Manage permission groups, menus, and permission points with tree-view listing. |
 | Organization Management | Manage organizations with tree-view listing. |
@@ -227,7 +225,7 @@ Security capabilities are designed with reference to the technical requirements 
 | File Management | Manage uploads: search, upload to OSS or local storage, download, copy file address, delete, and image preview (large view). |
 | Account Login | Sign in with username / email / phone number, with image captcha and login rate limiting. |
 | Verification delivery | Profile email and phone changes read SMTP and SMS credentials from `app/admin/service/configs/mail.yaml`. An empty SMTP host or SMS provider means that path is not configured. Sends are synchronous and do not enter the task queue. |
-| Online Sessions | View currently online sessions (user, tenant, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
+| Online Sessions | View currently online sessions (user, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
 | Parameter Management | Manage platform-wide system parameters as key/value pairs (distinct from business dictionaries); built-in parameters are seeded at startup and cannot be deleted; reads go through a server-side caching accessor, and in multi-instance deployments changes are broadcast over Redis pub/sub to invalidate every instance's cache. |
 | Language Management | Manage supported languages: name, code, native name, enabled and default status. |
 
@@ -285,10 +283,6 @@ go-wind-admin/
     <tr>
         <td><img src="./docs/images/admin_user_list.png" alt="Backend user list page"/></td>
         <td><img src="./docs/images/admin_user_create.png" alt="Backend create user page"/></td>
-    </tr>
-    <tr>
-        <td><img src="./docs/images/admin_tenant_list.png" alt="Backend tenant list page"/></td>
-        <td><img src="./docs/images/admin_tenant_create.png" alt="Backend create tenant page"/></td>
     </tr>
     <tr>
         <td><img src="./docs/images/admin_org_unit_list.png" alt="Organization unit list page"/></td>

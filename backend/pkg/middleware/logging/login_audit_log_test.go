@@ -50,7 +50,7 @@ func TestLoginAuditLogHandleNilGuards(t *testing.T) {
 	}
 
 	// options 为 nil。
-	(&LoginAuditLogMiddleware{}).Handle(context.Background(), &khttp.Transport{}, nil)
+	(&LoginAuditLogMiddleware{}).Handle(context.Background(), &khttp.Transport{}, nil, nil)
 
 	// 传输层为 nil。
 	var op options
@@ -58,10 +58,10 @@ func TestLoginAuditLogHandleNilGuards(t *testing.T) {
 	WithLogoutOperation("unused-logout-op")(&op)
 	WithWriteLoginLogFunc(stub)(&op)
 	mw := NewLoginAuditLogMiddleware(&op)
-	mw.Handle(context.Background(), nil, nil)
+	mw.Handle(context.Background(), nil, nil, nil)
 
 	// operation 不匹配（零值 Transport 的 operation 为空串）。
-	mw.Handle(context.Background(), &khttp.Transport{}, nil)
+	mw.Handle(context.Background(), &khttp.Transport{}, nil, nil)
 
 	assert.Zero(t, written, "早退分支不得写入登录审计")
 }
@@ -75,7 +75,7 @@ func TestLoginAuditLogHandleLoginOpWithToken(t *testing.T) {
 	env.fire(nethttp.MethodPost, "/case/5", map[string]string{
 		"X-Test-Operation": adminV1.OperationAuthenticationServiceLogin,
 		"Content-Type":     "application/json",
-		"Authorization":    "Bearer " + mintTestToken(t),
+		"X-Test-Verified":  "1",
 	}, `{"username":"bob","password":"x"}`, "127.0.0.1:1234")
 
 	require.Len(t, env.capture.login, 1)
@@ -166,7 +166,7 @@ func TestLoginAuditLogHandleTokenUsernameFallback(t *testing.T) {
 	env := newAuditServer(t)
 	env.fire(nethttp.MethodPost, "/case/5", map[string]string{
 		"X-Test-Operation": adminV1.OperationAuthenticationServiceLogin,
-		"Authorization":    "Bearer " + mintTestToken(t),
+		"X-Test-Verified":  "1",
 	}, "", "127.0.0.1:1234")
 
 	require.Len(t, env.capture.login, 1)
@@ -218,7 +218,7 @@ func TestLoginAuditLogHandleDirectEmptySources(t *testing.T) {
 		tr := &khttp.Transport{}
 		ctx := transport.NewServerContext(context.Background(), tr)
 		khttp.SetOperation(ctx, adminV1.OperationAuthenticationServiceLogin)
-		mw.Handle(ctx, tr, nil)
+		mw.Handle(ctx, tr, nil, nil)
 
 		require.NotNil(t, rec, "空来源路径仍应构造并落库记录")
 		assert.Equal(t, auditV1.LoginAuditLog_LOGIN, rec.GetActionType())
@@ -258,7 +258,7 @@ func TestLoginAuditLogHandleDirectEmptySources(t *testing.T) {
 		tr := &khttp.Transport{}
 		ctx := transport.NewServerContext(context.Background(), tr)
 		khttp.SetOperation(ctx, adminV1.OperationAuthenticationServiceLogin)
-		mw.Handle(ctx, tr, kerrors.New(403, "TEST_FORBIDDEN", "forbidden for test"))
+		mw.Handle(ctx, tr, nil, kerrors.New(403, "TEST_FORBIDDEN", "forbidden for test"))
 
 		require.NotNil(t, rec)
 		assert.Equal(t, auditV1.LoginAuditLog_FAILED, rec.GetStatus())

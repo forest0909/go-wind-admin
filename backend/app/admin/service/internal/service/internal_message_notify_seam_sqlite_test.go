@@ -68,7 +68,7 @@ func newNotifySeamEnv(t *testing.T) *notifySeamEnv {
 		internalMessageCategoryRepo:  data.NewInternalMessageCategoryRepoForTest(entClient),
 		internalMessageRecipientRepo: data.NewInternalMessageRecipientRepoForTest(entClient),
 		userRepo: &internalMessageServiceUserRepoStub{
-			tenantByUserID: map[uint32]uint32{1024: 5},
+			tenantByUserID: map[uint32]uint32{1024: 0},
 		},
 		internalMessagePublisher: pub,
 	}
@@ -97,8 +97,8 @@ func TestDirectedSendWritesRecipientAndSSE(t *testing.T) {
 	require.Len(t, inbox.GetItems(), 1)
 	require.Equal(t, resp.GetMessageId(), inbox.GetItems()[0].GetMessageId())
 	require.Equal(t, uint32(1024), inbox.GetItems()[0].GetRecipientUserId())
-	require.Equal(t, uint32(5), inbox.GetItems()[0].GetTenantId(),
-		"收件行必须打在收件人的租户上")
+	require.Equal(t, uint32(0), inbox.GetItems()[0].GetTenantId(),
+		"单租户：收件行固定落在租户 0")
 
 	payload := ssePayloadAt(t, e.pub, 0)
 	require.NotZero(t, payload["id"], "SSE 载荷必须带收件行主键")
@@ -117,12 +117,11 @@ func TestBroadcastSsePayloadCarriesRecipientId(t *testing.T) {
 		return users
 	}
 	e.im.userRepo = &broadcastUserRepoStub{
-		usersByTenant: map[uint32][]*identityV1.User{7: mkUsers(701, 702, 703)},
+		usersByTenant: map[uint32][]*identityV1.User{0: mkUsers(701, 702, 703)},
 	}
 
 	msg, err := e.im.internalMessageRepo.Create(e.ctx, &internalMessageV1.CreateInternalMessageRequest{
 		Data: &internalMessageV1.InternalMessage{
-			TenantId:  trans.Ptr(uint32(7)),
 			Title:     trans.Ptr("广播标题"),
 			Content:   trans.Ptr("广播正文"),
 			Status:    internalMessageV1.InternalMessage_PUBLISHED.Enum(),
@@ -132,7 +131,7 @@ func TestBroadcastSsePayloadCarriesRecipientId(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	broadcastCtx := viewer.WithContext(context.Background(), viewer.NewUserContext(0, 7, 0, "", nil))
+	broadcastCtx := viewer.WithSystemContext(context.Background())
 	e.im.executeBroadcast(broadcastCtx, msg.GetId(), 1, 0, "广播标题", "广播正文")
 
 	require.Len(t, e.pub.events, 3, "三个收件人各推一条")

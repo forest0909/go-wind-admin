@@ -3,7 +3,7 @@
 > **定位**：本仓认证机制的唯一权威说明——登录链路全流程、令牌结构与配置、刷新轮换与 Cookie、
 > 限流与图形验证码、会话管理与吊销、白名单端点、运维与已知问题。
 > 前端权限消费侧（路由/按钮/字段黑名单）见 [frontend_authority.md](./frontend_authority.md)；
-> 租户隔离与数据范围另见 [tenant_isolation.md](./tenant_isolation.md)、[data_scope_design.md](./data_scope_design.md)。
+> 数据范围另见 [data_scope_design.md](./data_scope_design.md)；`tenant_id` 遗留列见 [tenant_isolation.md](./tenant_isolation.md)。
 
 ## 1. 组件地图
 
@@ -28,22 +28,22 @@ POST /admin/v1/login（grant_type=password）
   ├─ 0  ctx 复位：NoopContext + privacy.Allow（登录查询绕过租户隔离——显式豁免通道）
   ├─ 1  限流预检：IP + 用户名双维度 Redis 计数（锁定期直接 400）
   ├─ 2  图形验证码：X-Captcha-Id/X-Captcha-Value Header，Redis verify-and-delete（单次有效）
-  ├─ 3  租户解析：tenant_code 空=平台（tid 0）；非空查 sys_tenants，非 ON 统一文案拒绝
+  ├─ 3  单租户：凭证与用户都按 tenant_id = 0 查（旧库遗留的 tid>0 账号登录不了）
   ├─ 4  identifier 反查：输入含 @ → email、纯数字 → mobile，反查真实 username；多行歧义拒绝
   ├─ 5  凭证校验（user_credential_repo.FindUserCredential）：
-  │      AES 解密（DefaultAESKey）→ 按 (tenant, USERNAME, username) 查凭证 → bcrypt 比对；
+  │      AES 解密（DefaultAESKey）→ 按 (tenant 0, USERNAME, username) 查凭证 → bcrypt 比对；
   │      用户不存在时跑一次假 bcrypt（恒定时间防枚举）
   │      失败 → 限流计数自增 + 统一 INVALID_PASSWORD 文案（防用户名枚举，真实原因进日志/审计）
-  ├─ 6  取用户行：按凭证返回的 user_id 精确 Get（避免同 identifier 多租户歧义）
-  ├─ 7  纵深防御：凭证行 tenant 必须等于用户行 tenant，否则 "invalid tenant"
+  ├─ 6  取用户行：按凭证返回的 user_id 精确 Get
+  ├─ 7  纵深防御：用户行 tenant 也必须是 0，否则按用户名或密码错误拒绝
   │      （`authentication_service.go:504-509`——它在取到用户行之后，不在凭证库里）
   ├─ 8  授权丰富（`resolveUserAuthority`，调用点 `:520`）：
   │      **先**查 `user.status != NORMAL` 即拒（`:419`，Forbidden "user is disabled"）；
   │      再 authorizeAndEnrich*（一对一/一对多按 DefaultUserTenantRelationType）：
   │      角色链（user→role / membership→role）→ 权限码集合须含 SystemAccessBackendPermissionCode
-  │      → 角色 codes 进 token；fillAdminFlags（平台/租户管理员旗标）；
+  │      → 角色 codes 进 token；fillAdminFlags（平台管理员旗标）；
   │      聚合数据范围（dss/dsu）与字段黑名单（hfs）进 token。
-  │      hfs 只在非平台管理员时按角色聚合；tenant_id==0 的普通用户也会写入（见第 3.1 节）
+  │      hfs 只在非平台管理员时按角色聚合（见第 3.1 节）
   └─ 9  签发：CreateUserToken（access + refresh，jti，Redis 令牌对入缓存）
          → 会话元数据记录 + last_login 记录（均 best-effort）
          → 限流计数清零
@@ -51,7 +51,7 @@ POST /admin/v1/login（grant_type=password）
 ```
 
 错误语义统一化（防枚举）：`normalizeLoginVerifyError`（`authentication_service.go:149-158`）把
-USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编号错误同文案。
+USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案。
 真实原因保留在服务端日志与登录审计的 FailureReason。
 
 ⚠ **一处已知的归并缺口**：口令有效期到期时 `FindUserCredential` 返回的是
@@ -78,7 +78,7 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 | 个人中心改密 | `useUpdateUserProfile` | `ChangeCredential`，`NeedDecrypt: true` |
 
 创建用户没传密码时仍填 `constants.DefaultUserPassword` 明文常量，不拿去解密。
-启动播种和菜单已隐藏的 `CreateTenantWithAdminUser` 也传明文，不走这条解密。
+启动播种也传明文，不走这条解密。
 
 ## 3. 令牌体系
 
@@ -87,14 +87,14 @@ USER_NOT_FOUND / USER_FREEZE / INVALID_PASSWORD 归并为同文案；租户编�
 | claim | 字段 | 说明 |
 |---|---|---|
 | `uid` | user_id | 用户 ID |
-| `tid` | tenant_id | 租户 ID；0=平台上下文 |
+| `tid` | tenant_id | 遗留声明，固定为 0 |
 | `cid` / `did` | client_id / device_id | 客户端/设备标识 |
 | `sub` | username | 用户名 |
 | `roc` | roles | 角色码列表。只含状态为启用的角色；停用角色不参与登录和刷新时的角色码、管理员标志、数据范围、隐藏字段，也不装进 casbin |
-| `ipa` / `ita` | is_platform_admin / is_tenant_admin | 管理员旗标（fillAdminFlags 产出） |
+| `ipa` | is_platform_admin | 平台管理员旗标（fillAdminFlags 产出） |
 | `ds`/`dss`/`dsu` | data_scope(s)/unit_ids | 数据范围聚合（语义见 data_scope_design 第 3 节） |
 | `ouid` | org_unit_id | 当前组织单元 |
-| `hfs` | hidden_fields | 字段黑名单（"资源.字段"）。平台管理员（`is_platform_admin`）不写入；`tenant_id==0` 的普通用户仍按角色聚合。语义见 frontend_authority 字段级一节 |
+| `hfs` | hidden_fields | 字段黑名单（"资源.字段"）。平台管理员（`is_platform_admin`）不写入，其余用户按角色聚合。语义见 frontend_authority 字段级一节 |
 | `jti` | jti | 令牌对唯一标识（吊销/轮换/会话元数据键） |
 
 ### 3.2 配置（`configs/auth.yaml`）与引擎
@@ -154,7 +154,7 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 - **宽限窗口**（`RefreshTokenGraceWindow` 60s，`rtg:` 有序集合，score 为该成员自己的过期时间戳）：
   并发刷新对撞时，持有上一枚且尚未过期的 RT 兑换独立新会话，不再判 `INCORRECT_REFRESH_TOKEN`
   逼前端强制登出。后一次轮换只给新成员计 60 秒，不会把更早的旧 RT 一起续期。
-  全量吊销（登出、改密、重置密码、用户角色变化、角色授权变更、租户清理）都经过
+  全量吊销（登出、改密、重置密码、用户角色变化、角色授权变更）都经过
   `UserTokenCache.RevokeToken`，同时删除对应的 `rtg` 键，宽限期内的旧 RT 不能再换新令牌。
   窗口外重放仍拒绝；
 - **尚未堵住的竞态**：刷新在 Lua 里确认旧 RT 之后、把新令牌写回之前，全量吊销可能已经完成，
@@ -252,11 +252,9 @@ SameSite=Lax 按站点判断——localhost 不同端口同站，dev 直连后�
 | GenerateCaptcha / VerifyCaptcha | 单次有效、无敏感返回 |
 | RefreshToken | refresh 自描述 JWT 独立鉴权 + 原子轮换 + 缓存吊销核对 |
 
-白名单**跳过的是整个 `auth.Server` 中间件**——租户闸门就在这个中间件内部
-（`pkg/middleware/auth/auth.go:120-132` 的 `CheckTenantAccess`），而 selector 的语义是
-"命中白名单 ⇒ 返回 false ⇒ 不执行该中间件"（`kratos-bootstrap/rpc v0.1.3` 的
-`whitelist.go:132-144`，装配点 `rest_server.go:110`）。所以**白名单端点不过租户闸门**，
-租户用户（tid>0）在该类端点上也不例外——它后续访问的业务端点才过。
+白名单**跳过的是整个 `auth.Server` 中间件**（令牌校验、viewer 注入与接口鉴权都在里面），
+selector 的语义是"命中白名单 ⇒ 返回 false ⇒ 不执行该中间件"（`kratos-bootstrap/rpc v0.1.3` 的
+`whitelist.go:132-144`，装配点 `rest_server.go`）。
 
 不受影响的两项：**参数校验中间件对所有路由生效**（`validate.Validator()` 放在 selector 之外，`rest_server.go:77`，注释写明了理由），**登录/操作审计照记**（`applogging.Server` 在 selector 之前）。
 

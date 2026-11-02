@@ -206,6 +206,30 @@ func (r *UserOrgUnitRepo) AssignUserOrgUnits(
 	return nil
 }
 
+
+// ListOrgUnitIDsByUserIDs 一次查出多个用户的org unit ID，按用户分组（不排除过期关联，与 ListOrgUnitIDs(…, false) 同口径）。
+// 给用户列表用：以前逐个用户调 ListOrgUnitIDs，一页 100 个用户就是 100 次查询。
+func (r *UserOrgUnitRepo) ListOrgUnitIDsByUserIDs(ctx context.Context, userIDs []uint32) (map[uint32][]uint32, error) {
+	result := make(map[uint32][]uint32, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	rows, err := r.entClient.Client().UserOrgUnit.Query().
+		Where(userorgunit.UserIDIn(userIDs...)).
+		Select(userorgunit.FieldUserID, userorgunit.FieldOrgUnitID).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "query org unit ids by user ids failed: %s", err.Error())
+		return nil, identityV1.ErrorInternalServerError("query org unit ids by user ids failed")
+	}
+	for _, row := range rows {
+		if row.UserID == nil || row.OrgUnitID == nil {
+			continue
+		}
+		result[*row.UserID] = append(result[*row.UserID], *row.OrgUnitID)
+	}
+	return result, nil
+}
 // ListOrgUnitIDs 列出角色关联的组织单元ID列表
 func (r *UserOrgUnitRepo) ListOrgUnitIDs(ctx context.Context, userID uint32, excludeExpired bool) ([]uint32, error) {
 	if userID == 0 {

@@ -23,8 +23,9 @@ const (
 	// 入库时会做复杂度校验，不达标会被拒、初始化半途而废，admin 从此无法登录）
 	DefaultUserPassword = "Abcd@1234"
 
-	// PlatformTenantID 平台管理员租户ID
-	PlatformTenantID = uint32(0)
+	// AdminInitialPasswordEnv 首次播种 admin 凭证时读取的环境变量。
+	// 设置了就用它（同样要满足口令复杂度）；没设置仍用 DefaultUserPassword 并打 WARN。
+	AdminInitialPasswordEnv = "GWA_ADMIN_INITIAL_PASSWORD"
 )
 
 // DefaultPermissionGroups 系统初始化默认权限组数据
@@ -49,7 +50,7 @@ var DefaultPermissionGroups = []*permissionV1.PermissionGroup{
 	{
 		//Id:        trans.Ptr(uint32(3)),
 		ParentId:  trans.Ptr(uint32(1)),
-		Name:      trans.Ptr("租户管理"),
+		Name:      trans.Ptr("审计管理"),
 		Path:      trans.Ptr("/1/3/"),
 		Module:    trans.Ptr(SystemPermissionModule),
 		SortOrder: trans.Ptr(uint32(2)),
@@ -58,19 +59,10 @@ var DefaultPermissionGroups = []*permissionV1.PermissionGroup{
 	{
 		//Id:        trans.Ptr(uint32(4)),
 		ParentId:  trans.Ptr(uint32(1)),
-		Name:      trans.Ptr("审计管理"),
+		Name:      trans.Ptr("安全策略"),
 		Path:      trans.Ptr("/1/4/"),
 		Module:    trans.Ptr(SystemPermissionModule),
 		SortOrder: trans.Ptr(uint32(3)),
-		Status:    trans.Ptr(permissionV1.PermissionGroup_ON),
-	},
-	{
-		//Id:        trans.Ptr(uint32(5)),
-		ParentId:  trans.Ptr(uint32(1)),
-		Name:      trans.Ptr("安全策略"),
-		Path:      trans.Ptr("/1/5/"),
-		Module:    trans.Ptr(SystemPermissionModule),
-		SortOrder: trans.Ptr(uint32(4)),
 		Status:    trans.Ptr(permissionV1.PermissionGroup_ON),
 	},
 }
@@ -89,7 +81,7 @@ var DefaultPermissions = []*permissionV1.Permission{
 		//Id:          trans.Ptr(uint32(2)),
 		GroupId:     trans.Ptr(uint32(2)),
 		Name:        trans.Ptr("平台管理员权限"),
-		Description: trans.Ptr("拥有系统所有功能的操作权限，可管理租户、用户、角色及所有资源"),
+		Description: trans.Ptr("拥有系统所有功能的操作权限，可管理用户、角色及所有资源"),
 		Code:        trans.Ptr(SystemPlatformAdminPermissionCode),
 		Status:      trans.Ptr(permissionV1.Permission_ON),
 		// 后台左侧菜单读的是「角色 → 权限 → sys_permission_menus」这条链（GetNavigation 无超管绕过），
@@ -97,7 +89,6 @@ var DefaultPermissions = []*permissionV1.Permission{
 		// 已部署实例的权限行早已存在、这段不会再跑，须在「权限管理」里勾上新菜单。
 		MenuIds: []uint32{
 			1, 2, 103, 3, 4, 5, 6,
-			10, 11, 12,
 			20, 21, 22, 23, 24,
 			30, 31, 32, 33, 34,
 			40, 41, 42,
@@ -127,46 +118,6 @@ var DefaultPermissions = []*permissionV1.Permission{
 	{
 		//Id:          trans.Ptr(uint32(3)),
 		GroupId:     trans.Ptr(uint32(3)),
-		Name:        trans.Ptr("租户管理员权限"),
-		Description: trans.Ptr("拥有租户内所有功能的操作权限，可管理用户、角色及租户内所有资源"),
-		Code:        trans.Ptr(SystemTenantManagerPermissionCode),
-		Status:      trans.Ptr(permissionV1.Permission_ON),
-		MenuIds: []uint32{
-			1, 2, 103,
-			20, 21, 22, 23, 24,
-			30, 32, 33, 34,
-			40, 41,
-			50, 51,
-			60, 61, 62, 63,
-		},
-		ApiIds: []uint32{
-			1, 2, 3, 4, 5, 6, 7, 8, 9,
-			10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-			20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-			30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
-			40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-			50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
-			60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
-			70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-			80, 81, 82, 83, 84, 85, 86, 87, 88, 89,
-			90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
-			100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
-			110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
-			120, 121, 122, 123, 124, 125, 126, 127, 128,
-		},
-	},
-
-	{
-		//Id:          trans.Ptr(uint32(4)),
-		GroupId:     trans.Ptr(uint32(3)),
-		Name:        trans.Ptr("管理租户"),
-		Description: trans.Ptr("允许创建/修改/删除租户"),
-		Code:        trans.Ptr(SystemManageTenantsPermissionCode),
-		Status:      trans.Ptr(permissionV1.Permission_ON),
-	},
-	{
-		//Id:          trans.Ptr(uint32(5)),
-		GroupId:     trans.Ptr(uint32(4)),
 		Name:        trans.Ptr("查看审计日志"),
 		Description: trans.Ptr("允许查看系统操作日志"),
 		Code:        trans.Ptr(SystemAuditLogsPermissionCode),
@@ -181,22 +132,11 @@ var DefaultRoles = []*permissionV1.Role{
 		Name:        trans.Ptr(DefaultPlatformAdminRoleName),
 		Code:        trans.Ptr(PlatformAdminRoleCode),
 		Status:      trans.Ptr(permissionV1.Role_ON),
-		Description: trans.Ptr("拥有系统所有功能的操作权限，可管理租户、用户、角色及所有资源"),
+		Description: trans.Ptr("拥有系统所有功能的操作权限，可管理用户、角色及所有资源"),
 		IsProtected: trans.Ptr(true),
 		Type:        trans.Ptr(permissionV1.Role_SYSTEM),
 		SortOrder:   trans.Ptr(uint32(1)),
-		Permissions: []uint32{1, 2, 4},
-	},
-	{
-		//Id:          trans.Ptr(uint32(2)),
-		Name:        trans.Ptr(DefaultTenantManagerRoleName + "模板"),
-		Code:        trans.Ptr(TenantAdminTemplateRoleCode),
-		Status:      trans.Ptr(permissionV1.Role_ON),
-		Description: trans.Ptr("租户管理员角色，拥有租户内所有功能的操作权限，可管理用户、角色及租户内所有资源"),
-		IsProtected: trans.Ptr(true),
-		Type:        trans.Ptr(permissionV1.Role_TEMPLATE),
-		SortOrder:   trans.Ptr(uint32(2)),
-		Permissions: []uint32{1, 3},
+		Permissions: []uint32{1, 2, 3},
 	},
 }
 
@@ -208,15 +148,6 @@ var DefaultRoleMetadata = []*permissionV1.RoleMetadata{
 		IsTemplate:      trans.Ptr(false),
 		TemplateVersion: trans.Ptr(int32(1)),
 		Scope:           permissionV1.RoleMetadata_PLATFORM.Enum(),
-		SyncPolicy:      permissionV1.RoleMetadata_AUTO.Enum(),
-	},
-	{
-		//Id:              trans.Ptr(uint32(2)),
-		RoleId:          trans.Ptr(uint32(2)),
-		IsTemplate:      trans.Ptr(true),
-		TemplateFor:     trans.Ptr(TenantAdminRoleCode),
-		TemplateVersion: trans.Ptr(int32(1)),
-		Scope:           permissionV1.RoleMetadata_TENANT.Enum(),
 		SyncPolicy:      permissionV1.RoleMetadata_AUTO.Enum(),
 	},
 }
@@ -281,38 +212,6 @@ var DefaultLanguages = []*dictV1.Language{
 	{LanguageCode: trans.Ptr("fr-FR"), LanguageName: trans.Ptr("法语"), NativeName: trans.Ptr("Français"), IsDefault: trans.Ptr(false), IsEnabled: trans.Ptr(true), SortOrder: trans.Uint32(100)},
 }
 
-// ComponentToModule 根据前端组件路径前缀推断所属业务功能模块。
-// 用于默认菜单和存量菜单的 module 字段回填（套餐白名单依赖此字段过滤）。
-// catalog 容器节点（component 为 "BasicLayout" 或空）返回 UNSPECIFIED，不参与白名单过滤。
-func ComponentToModule(component string) identityV1.Module {
-	switch {
-	case component == "BasicLayout" || component == "":
-		return identityV1.Module_MODULE_UNSPECIFIED
-	case len(component) >= 10 && component[:10] == "dashboard/":
-		return identityV1.Module_DASHBOARD
-	case len(component) >= 8 && component[:8] == "app/opm/":
-		return identityV1.Module_OPM
-	case len(component) >= 11 && component[:11] == "app/system/":
-		return identityV1.Module_SYSTEM
-	case len(component) >= 9 && component[:9] == "app/dict/":
-		return identityV1.Module_DICT
-	case len(component) >= 11 && component[:11] == "app/tenant/":
-		return identityV1.Module_TENANT
-	case len(component) >= 15 && component[:15] == "app/permission/":
-		return identityV1.Module_PERMISSION
-	case len(component) >= 8 && component[:8] == "app/log/":
-		return identityV1.Module_LOG
-	case len(component) >= 21 && component[:21] == "app/internal_message/":
-		return identityV1.Module_INTERNAL_MESSAGE
-	case len(component) >= 9 && component[:9] == "app/file/":
-		return identityV1.Module_FILE
-	case len(component) >= 9 && component[:9] == "app/task/":
-		return identityV1.Module_TASK
-	default:
-		return identityV1.Module_MODULE_UNSPECIFIED
-	}
-}
-
 // DefaultMenus 系统初始化默认菜单数据
 var DefaultMenus = []*permissionV1.Menu{
 	{
@@ -328,7 +227,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Order:     trans.Ptr(int32(1)),
 			Title:     trans.Ptr("page.dashboard.title"),
 			Icon:      trans.Ptr("lucide:layout-dashboard"),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -343,7 +242,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Order:     trans.Ptr(int32(1)),
 			Title:     trans.Ptr("page.dashboard.analytics"),
 			Icon:      trans.Ptr("lucide:area-chart"),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 			AffixTab:  trans.Ptr(true),
 		},
 	},
@@ -359,7 +258,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Order:     trans.Ptr(int32(2)),
 			Title:     trans.Ptr("page.dashboard.workspace"),
 			Icon:      trans.Ptr("lucide:armchair"),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 
@@ -394,57 +293,6 @@ var DefaultMenus = []*permissionV1.Menu{
 	},
 
 	{
-		Id:        trans.Ptr(uint32(10)),
-		ParentId:  nil,
-		Type:      permissionV1.Menu_CATALOG.Enum(),
-		Name:      trans.Ptr("TenantManagement"),
-		Path:      trans.Ptr("/tenant"),
-		Redirect:  trans.Ptr("/tenant/members"),
-		Component: trans.Ptr("BasicLayout"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Order:      trans.Ptr(int32(2000)),
-			Title:      trans.Ptr("menu.tenant.moduleName"),
-			Icon:       trans.Ptr("lucide:building-2"),
-			Authority:  []string{"sys:platform_admin"},
-			HideInMenu: trans.Ptr(true),
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(11)),
-		ParentId:  trans.Ptr(uint32(10)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("TenantMemberManagement"),
-		Path:      trans.Ptr("members"),
-		Component: trans.Ptr("app/tenant/tenant/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Order:      trans.Ptr(int32(1)),
-			Title:      trans.Ptr("menu.tenant.member"),
-			Icon:       trans.Ptr("lucide:users"),
-			Authority:  []string{"sys:platform_admin"},
-			AffixTab:   trans.Ptr(true),
-			HideInMenu: trans.Ptr(true),
-		},
-	},
-	{
-		Id:        trans.Ptr(uint32(12)),
-		ParentId:  trans.Ptr(uint32(10)),
-		Type:      permissionV1.Menu_MENU.Enum(),
-		Name:      trans.Ptr("PlanManagement"),
-		Path:      trans.Ptr("plans"),
-		Component: trans.Ptr("app/tenant/plan/index.vue"),
-		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
-		Meta: &permissionV1.MenuMeta{
-			Order:      trans.Ptr(int32(2)),
-			Title:      trans.Ptr("menu.tenant.plan"),
-			Icon:       trans.Ptr("lucide:package"),
-			Authority:  []string{"sys:platform_admin"},
-			HideInMenu: trans.Ptr(true),
-		},
-	},
-
-	{
 		Id:        trans.Ptr(uint32(20)),
 		ParentId:  nil,
 		Type:      permissionV1.Menu_CATALOG.Enum(),
@@ -458,7 +306,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.opm.moduleName"),
 			Icon:      trans.Ptr("lucide:users"),
 			KeepAlive: trans.Ptr(true),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -473,7 +321,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Order:     trans.Ptr(int32(1)),
 			Title:     trans.Ptr("menu.opm.orgUnit"),
 			Icon:      trans.Ptr("lucide:layers"),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -488,7 +336,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Order:     trans.Ptr(int32(2)),
 			Title:     trans.Ptr("menu.opm.position"),
 			Icon:      trans.Ptr("lucide:briefcase"),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -503,7 +351,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Order:     trans.Ptr(int32(3)),
 			Title:     trans.Ptr("menu.opm.user"),
 			Icon:      trans.Ptr("lucide:user"),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -516,7 +364,7 @@ var DefaultMenus = []*permissionV1.Menu{
 		CreatedAt: timeutil.TimeToTimestamppb(trans.Ptr(time.Now())),
 		Meta: &permissionV1.MenuMeta{
 			Title:      trans.Ptr("menu.opm.userDetail"),
-			Authority:  []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority:  []string{"sys:platform_admin"},
 			HideInMenu: trans.Ptr(true),
 		},
 	},
@@ -535,7 +383,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.permission.moduleName"),
 			Icon:      trans.Ptr("lucide:shield-check"),
 			KeepAlive: trans.Ptr(true),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -566,7 +414,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.permission.role"),
 			Icon:      trans.Ptr("lucide:shield-user"),
 			Order:     trans.Ptr(int32(4)),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -614,7 +462,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.internalMessage.moduleName"),
 			Icon:      trans.Ptr("lucide:mail"),
 			KeepAlive: trans.Ptr(true),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -629,7 +477,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.internalMessage.internalMessage"),
 			Icon:      trans.Ptr("lucide:message-circle-more"),
 			Order:     trans.Ptr(int32(1)),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -710,7 +558,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.system.moduleName"),
 			Icon:      trans.Ptr("lucide:settings"),
 			KeepAlive: trans.Ptr(true),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -740,7 +588,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.system.file"),
 			Icon:      trans.Ptr("lucide:file-search"),
 			Order:     trans.Ptr(int32(2)),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{
@@ -755,7 +603,7 @@ var DefaultMenus = []*permissionV1.Menu{
 			Title:     trans.Ptr("menu.system.task"),
 			Icon:      trans.Ptr("lucide:list-todo"),
 			Order:     trans.Ptr(int32(3)),
-			Authority: []string{"sys:platform_admin", "sys:tenant_manager"},
+			Authority: []string{"sys:platform_admin"},
 		},
 	},
 	{

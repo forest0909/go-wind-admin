@@ -17,15 +17,6 @@ type AccessTokenChecker interface {
 	IsBlockedAccessToken(ctx context.Context, accessToken string) (blocked bool)
 }
 
-// TenantAccessChecker 租户级访问检查接口
-// 用于在认证通过后、鉴权前，按租户状态/到期策略/套餐模块白名单决定是否放行当前请求。
-// 仅对租户用户（tenantId>0）生效，平台管理员（tenantId=0）由中间件直接放行、不调用此接口。
-type TenantAccessChecker interface {
-	// CheckTenantAccess 检查当前租户用户是否可访问指定资源。
-	// 返回 nil 表示放行，返回 error 表示拒绝（由中间件终止请求）。
-	CheckTenantAccess(ctx context.Context, tenantId uint32, path string, method string) error
-}
-
 type AccessTokenCheckerFunc func(ctx context.Context, accessToken string, skipRedis bool) (bool, *authenticationV1.UserTokenPayload)
 
 func (f AccessTokenCheckerFunc) IsValidAccessToken(ctx context.Context, accessToken string, skipRedis bool) (bool, *authenticationV1.UserTokenPayload) {
@@ -72,9 +63,8 @@ type options struct {
 	log *bLogger.Helper
 
 	accessTokenChecker                AccessTokenChecker // 访问令牌检查器
-	tenantAccessChecker               TenantAccessChecker
-	enableCheckRefreshTokenExpiration bool // 是否启用刷新令牌过期检查
-	enableCheckScopes                 bool // 是否启用作用域检查
+	enableCheckRefreshTokenExpiration bool               // 是否启用刷新令牌过期检查
+	enableCheckScopes                 bool               // 是否启用作用域检查
 
 	enableAuthz bool // 是否启用鉴权
 
@@ -90,13 +80,6 @@ type Option func(*options)
 func WithAccessTokenChecker(checker AccessTokenChecker) Option {
 	return func(opts *options) {
 		opts.accessTokenChecker = checker
-	}
-}
-
-// WithTenantAccessChecker 设置租户访问检查器
-func WithTenantAccessChecker(checker TenantAccessChecker) Option {
-	return func(opts *options) {
-		opts.tenantAccessChecker = checker
 	}
 }
 

@@ -86,7 +86,8 @@ func seedOnlineSession(
 // 倒序、字段映射（用户名/IP/UA/设备/租户/客户端类型）、内存分页与越界清空。
 func TestOnlineSessionServiceSqlite_ListSortsAndPaginates(t *testing.T) {
 	svc, tokenCache := newOnlineSessionServiceForTest(t)
-	ctx := enttest.NewSystemContext(context.Background())
+	// 平台管理员视角：看得到、踢得了所有租户的会话
+	ctx := auth.NewContext(enttest.NewSystemContext(context.Background()), &authenticationV1.UserTokenPayload{UserId: 1})
 
 	seedOnlineSession(t, svc, tokenCache, ctx, authenticationV1.ClientType_admin, 101, "jti-101a", "user-101", "10.1.1.1", 1000)
 	seedOnlineSession(t, svc, tokenCache, ctx, authenticationV1.ClientType_admin, 102, "jti-102", "user-102", "10.2.2.2", 2000)
@@ -142,7 +143,8 @@ func TestOnlineSessionServiceSqlite_ListSortsAndPaginates(t *testing.T) {
 // 命中用户名或 IP 之一即保留；纯空白关键字视为无过滤；未命中清空。
 func TestOnlineSessionServiceSqlite_ListKeywordFilter(t *testing.T) {
 	svc, tokenCache := newOnlineSessionServiceForTest(t)
-	ctx := enttest.NewSystemContext(context.Background())
+	// 平台管理员视角：看得到、踢得了所有租户的会话
+	ctx := auth.NewContext(enttest.NewSystemContext(context.Background()), &authenticationV1.UserTokenPayload{UserId: 1})
 
 	seedOnlineSession(t, svc, tokenCache, ctx, authenticationV1.ClientType_admin, 201, "jti-201a", "user-201", "10.3.3.1", 1000)
 	seedOnlineSession(t, svc, tokenCache, ctx, authenticationV1.ClientType_admin, 202, "jti-202", "user-202", "10.4.4.4", 2000)
@@ -280,7 +282,8 @@ func TestOnlineSessionServiceSqlite_RevokeMySession(t *testing.T) {
 // 会话元数据与访问令牌清理、入参守卫。
 func TestOnlineSessionServiceSqlite_ForceLogoutSession(t *testing.T) {
 	svc, tokenCache := newOnlineSessionServiceForTest(t)
-	ctx := enttest.NewSystemContext(context.Background())
+	// 平台管理员视角：看得到、踢得了所有租户的会话
+	ctx := auth.NewContext(enttest.NewSystemContext(context.Background()), &authenticationV1.UserTokenPayload{UserId: 1})
 
 	const uid = 501
 	seedOnlineSession(t, svc, tokenCache, ctx, authenticationV1.ClientType_app, uid, "jti-501", "user-501", "10.9.9.9", 1000)

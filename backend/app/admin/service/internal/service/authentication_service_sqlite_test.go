@@ -1,7 +1,7 @@
 // AuthenticationService 的 SQLite 内存库 + miniredis 集成测试（白盒，包内测试）。
 //
 // 装配范式：
-//   - ent 仓储（tenant / role / permission / user_credential(+config)）走 data 包
+//   - ent 仓储（role / permission / user_credential(+config)）走 data 包
 //     repo_testkit 构造器（enttest SQLite 内存库）；
 //   - redis 依赖（user_token_cache / login_rate_limiter / captcha）
 //     一律 miniredis 假 client 注入（对齐 data 包 authenticator_test.go /
@@ -77,11 +77,8 @@ const authSvcTestKeyPrefix = "authsvc-test:captcha"
 const authSvcTestJWTKey = "authsvc-test-hs256-secret-key-0123456789abcdef"
 
 const (
-	authSvcTestUsername  = "authsvc-admin"
-	authSvcTestUserID    = uint32(7001)
-	authSvcTenantCode    = "AUTHSVC_TENANT_CHAIN"
-	authSvcTenantCodeOff = "AUTHSVC_TENANT_OFF"
-	authSvcTenantCodeB   = "AUTHSVC_TENANT_MISMATCH"
+	authSvcTestUsername = "authsvc-admin"
+	authSvcTestUserID   = uint32(7001)
 )
 
 // authSvcUserRepoStub 是 AuthenticationService 测试专用的 data.UserRepo 桩：
@@ -96,6 +93,8 @@ type authSvcUserRepoStub struct {
 	roleIDsByUser     map[uint32][]uint32
 	updates           []*identityV1.UpdateUserRequest
 	findIdentifierErr error
+	// aliases：email / 手机号 → username，模拟 identifier 反查；未登记的原样透传
+	aliases map[string]string
 }
 
 func (s *authSvcUserRepoStub) Get(_ context.Context, req *identityV1.GetUserRequest) (*identityV1.User, error) {
@@ -112,6 +111,9 @@ func (s *authSvcUserRepoStub) ListRoleIDsByUserID(_ context.Context, userID uint
 func (s *authSvcUserRepoStub) FindUsernameByIdentifier(_ context.Context, _ uint32, identifier string) (string, uint32, error) {
 	if s.findIdentifierErr != nil {
 		return "", 0, s.findIdentifierErr
+	}
+	if u, ok := s.aliases[identifier]; ok {
+		return u, 0, nil
 	}
 	return identifier, 0, nil
 }
@@ -196,7 +198,6 @@ func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 		userRepo:                stub,
 		userCredentialRepo:      userCredentialRepo,
 		roleRepo:                data.NewRoleRepoForTest(entClient),
-		tenantRepo:              data.NewTenantRepoForTest(entClient),
 		membershipRepo:          nil,
 		orgUnitRepo:             data.NewOrgUnitRepoForTest(entClient),
 		roleOrgUnitRepo:         data.NewRoleOrgUnitRepoForTest(entClient),
@@ -216,21 +217,6 @@ func newAuthenticationServiceForTest(t *testing.T) *authSvcEnv {
 		captchaClient: captchaClient,
 		ctx:           enttest.NewSystemContext(context.Background()),
 	}
-}
-
-// seedTenant 落库一个租户并返回其 ID（状态可指定）。
-func (e *authSvcEnv) seedTenant(t *testing.T, name, code string, status identityV1.Tenant_Status) uint32 {
-	t.Helper()
-	created, err := e.svc.tenantRepo.Create(e.ctx, &identityV1.Tenant{
-		Name:        trans.Ptr(name),
-		Code:        trans.Ptr(code),
-		Status:      status.Enum(),
-		Type:        identityV1.Tenant_TRIAL.Enum(),
-		AuditStatus: identityV1.Tenant_APPROVED.Enum(),
-	})
-	require.NoError(t, err)
-	require.NotNil(t, created.GetId())
-	return created.GetId()
 }
 
 // seedBackendAccessPermission 落库 sys:access_backend 权限并返回其 ID。
@@ -382,7 +368,7 @@ func TestAuthSvcSqlite_LoginGrantDispatch(t *testing.T) {
 }
 
 // TestAuthSvcSqlite_LoginCaptchaGate 验证强制验证码闸门：
-// 无传输上下文（取不到头）、空验证码头、错误验证码值均 400 拒绝；
+// 无传输上下文（取不到头）、空验证码头、错误验证码值均 400 INVALID_CAPTCHA 拒绝；
 // 正确验证码放行后进入后续凭证校验（此处以未播种凭证的 INVALID_PASSWORD 证明放行）。
 func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
@@ -392,13 +378,13 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	// 无传输上下文：HeaderFromContext 取不到头 → 闸门拒绝。
 	resp, err := e.svc.Login(base, req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 有传输上下文但无验证码头。
 	resp, err = e.svc.Login(headerCtx(base, http.Header{}), req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 有传输上下文、验证码头为空白值。
@@ -407,7 +393,7 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	blank.Set("X-Captcha-Value", "  ")
 	resp, err = e.svc.Login(headerCtx(base, blank), req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 错误验证码值：通过闸门头存在性检查后 Verify 比对失败。
@@ -419,7 +405,7 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	wrong.Set("X-Captcha-Value", "WRONGANSWER")
 	resp, err = e.svc.Login(headerCtx(base, wrong), req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err))
+	require.True(t, authenticationV1.IsInvalidCaptcha(err))
 	require.Nil(t, resp)
 
 	// 正确验证码：闸门放行，流程推进到凭证校验（凭证未播种 → 归一化的 INVALID_PASSWORD）。
@@ -430,43 +416,40 @@ func TestAuthSvcSqlite_LoginCaptchaGate(t *testing.T) {
 	require.Nil(t, resp)
 }
 
-// TestAuthSvcSqlite_LoginTenantResolution 验证租户解析：
-// 未知租户编号 / 非启用租户 / 凭证租户与用户租户不一致（纵深防御）均 400 invalid tenant。
-func TestAuthSvcSqlite_LoginTenantResolution(t *testing.T) {
+// TestAuthSvcSqlite_LoginOnlyTenantZero 单租户登录：请求里没有租户编号，
+// 只认租户 0 的凭证与用户。旧库遗留的 tenant_id>0 凭证查不到，凭证与用户行租户
+// 不一致也按用户名或密码错误拒绝（不再有 INVALID_TENANT）。
+func TestAuthSvcSqlite_LoginOnlyTenantZero(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
 	base := context.Background()
 
-	offTenantID := e.seedTenant(t, "AuthSvc 停用租户", authSvcTenantCodeOff, identityV1.Tenant_OFF)
-	onTenantID := e.seedTenant(t, "AuthSvc 启用租户甲", authSvcTenantCode, identityV1.Tenant_ON)
-	otherTenantID := e.seedTenant(t, "AuthSvc 启用租户乙", authSvcTenantCodeB, identityV1.Tenant_ON)
-	require.NotZero(t, offTenantID)
-	require.NotZero(t, onTenantID)
-	require.NotZero(t, otherTenantID)
+	permID := e.seedBackendAccessPermission(t)
+	roleID := e.seedRole(t, nil, permissionV1.Role_SYSTEM, "AUTHSVC_ROLE_T0", []uint32{permID}, nil, nil)
 
-	// 未知租户编号。
-	ctx1, req1 := e.loginHappyReq(t, base, "authsvc-anyone", constants.DefaultUserPassword)
-	req1.TenantCode = trans.Ptr("AUTHSVC_TENANT_NO_SUCH")
-	resp, err := e.svc.Login(ctx1, req1)
+	// 租户 0 的用户：不带任何租户信息即可登录，载荷租户为 0。
+	e.seedCredential(t, nil, 7600, "authsvc-t0-user", authenticationV1.UserCredential_ENABLED)
+	e.seedStubUser(7600, nil, "authsvc-t0-user", identityV1.User_NORMAL, []uint32{roleID})
+	ctx0, req0 := e.loginHappyReq(t, base, "authsvc-t0-user", constants.DefaultUserPassword)
+	resp, err := e.svc.Login(ctx0, req0)
+	require.NoError(t, err, "租户 0 用户应能直接登录")
+	require.NotEmpty(t, resp.GetAccessToken())
+
+	// 旧库遗留：凭证落在租户 5。
+	e.seedCredential(t, trans.Ptr(uint32(5)), 7601, "authsvc-legacy-user", authenticationV1.UserCredential_ENABLED)
+	e.seedStubUser(7601, trans.Ptr(uint32(5)), "authsvc-legacy-user", identityV1.User_NORMAL, []uint32{roleID})
+	ctx1, req1 := e.loginHappyReq(t, base, "authsvc-legacy-user", constants.DefaultUserPassword)
+	resp, err = e.svc.Login(ctx1, req1)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "未知租户编号应 400")
+	require.True(t, authenticationV1.IsInvalidPassword(err), "租户 5 的遗留凭证不应命中")
 	require.Nil(t, resp)
 
-	// 非启用租户。
-	ctx2, req2 := e.loginHappyReq(t, base, "authsvc-anyone", constants.DefaultUserPassword)
-	req2.TenantCode = trans.Ptr(authSvcTenantCodeOff)
+	// 凭证在租户 0，但用户行在租户 5（纵深防御）。
+	e.seedCredential(t, nil, 7602, "authsvc-mismatch-user", authenticationV1.UserCredential_ENABLED)
+	e.seedStubUser(7602, trans.Ptr(uint32(5)), "authsvc-mismatch-user", identityV1.User_NORMAL, []uint32{roleID})
+	ctx2, req2 := e.loginHappyReq(t, base, "authsvc-mismatch-user", constants.DefaultUserPassword)
 	resp, err = e.svc.Login(ctx2, req2)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "停用租户应 400 且文案与未知租户一致")
-	require.Nil(t, resp)
-
-	// 凭证租户（=解析出的租户）与用户行租户不一致。
-	e.seedCredential(t, trans.Ptr(onTenantID), 7601, "authsvc-mismatch-user", authenticationV1.UserCredential_ENABLED)
-	e.seedStubUser(7601, trans.Ptr(otherTenantID), "authsvc-mismatch-user", identityV1.User_NORMAL, nil)
-	ctx3, req3 := e.loginHappyReq(t, base, "authsvc-mismatch-user", constants.DefaultUserPassword)
-	req3.TenantCode = trans.Ptr(authSvcTenantCode)
-	resp, err = e.svc.Login(ctx3, req3)
-	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "凭证/用户租户不一致应 400 invalid tenant")
+	require.True(t, authenticationV1.IsInvalidPassword(err), "凭证/用户租户不一致应按用户名或密码错误拒绝")
 	require.Nil(t, resp)
 }
 
@@ -583,7 +566,7 @@ func TestAuthSvcSqlite_LoginFullPlatformChain(t *testing.T) {
 }
 
 // TestAuthSvcSqlite_LoginRateLimiterLockout 验证登录限流的锁定窗口：
-// 连续 5 次密码错误后，第 6 次在预检阶段即被 400 拒绝（先于验证码与凭证校验），
+// 连续 5 次密码错误后，第 6 次在预检阶段即被 429 拒绝（先于验证码与凭证校验），
 // 双维度计数均达到阈值。
 func TestAuthSvcSqlite_LoginRateLimiterLockout(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
@@ -609,39 +592,64 @@ func TestAuthSvcSqlite_LoginRateLimiterLockout(t *testing.T) {
 	ctx, req := e.loginHappyReq(t, base, authSvcTestUsername, constants.DefaultUserPassword)
 	resp, err := e.svc.Login(ctx, req)
 	require.Error(t, err)
-	require.True(t, authenticationV1.IsBadRequest(err), "锁定窗口内应 400")
+	require.True(t, authenticationV1.IsTooManyRequests(err), "锁定窗口内应 429 TOO_MANY_REQUESTS")
 	require.Contains(t, err.Error(), "too many login failures")
 	require.Nil(t, resp)
 }
 
-// TestAuthSvcSqlite_TenantLoginChain 验证租户上下文登录链路与令牌聚合：
-// 租户角色（带 sys:access_backend 权限 + SELF 数据范围 + User 资源字段权限）经
-// tenant_code 解析登录成功，载荷含租户 ID、租户管理员标志、[SELF] 数据范围
-// （含单值镜像）与按"资源.字段"聚合的隐藏字段集。
-func TestAuthSvcSqlite_TenantLoginChain(t *testing.T) {
+// 用户名维度已锁定后，换 email 登录也要在预检被 429（预检按解析后的用户名查）。
+// 修复前预检用原始输入（email），锁定可被绕过。
+func TestAuthSvcSqlite_LoginRateLimiterAliasCannotBypass(t *testing.T) {
 	e := newAuthenticationServiceForTest(t)
 	base := context.Background()
 
-	tenantID := e.seedTenant(t, "AuthSvc 租户链租户", authSvcTenantCode, identityV1.Tenant_ON)
 	permID := e.seedBackendAccessPermission(t)
-	tenantRoleID := e.seedRole(
+	roleID := e.seedRole(t, nil, permissionV1.Role_SYSTEM, constants.PlatformAdminRoleCode, []uint32{permID}, nil, nil)
+	e.seedCredential(t, nil, authSvcTestUserID, authSvcTestUsername, authenticationV1.UserCredential_ENABLED)
+	e.seedStubUser(authSvcTestUserID, nil, authSvcTestUsername, identityV1.User_NORMAL, []uint32{roleID})
+	const email = "alias@example.com"
+	e.stub.aliases = map[string]string{email: authSvcTestUsername}
+
+	for i := 0; i < 5; i++ {
+		ctx, req := e.loginHappyReq(t, base, email, "WrongP@ss9999")
+		_, err := e.svc.Login(ctx, req)
+		require.True(t, authenticationV1.IsInvalidPassword(err), "第 %d 次: %v", i+1, err)
+	}
+	usrCnt, _ := e.mr.Get("gowind:login:fail:user:" + authSvcTestUsername)
+	require.Equal(t, "5", usrCnt, "失败计数按解析后的用户名累计")
+
+	for _, input := range []string{email, authSvcTestUsername} {
+		ctx, req := e.loginHappyReq(t, base, input, constants.DefaultUserPassword)
+		_, err := e.svc.Login(ctx, req)
+		require.True(t, authenticationV1.IsTooManyRequests(err), "输入 %s 应被锁定: %v", input, err)
+	}
+}
+
+// TestAuthSvcSqlite_RoleScopeLoginChain 验证普通角色的登录链路与令牌聚合：
+// 角色（带 sys:access_backend 权限 + SELF 数据范围 + User 资源字段权限）登录成功，
+// 载荷租户为 0、[SELF] 数据范围（含单值镜像）与按"资源.字段"聚合的隐藏字段集。
+func TestAuthSvcSqlite_RoleScopeLoginChain(t *testing.T) {
+	e := newAuthenticationServiceForTest(t)
+	base := context.Background()
+
+	permID := e.seedBackendAccessPermission(t)
+	scopedRoleID := e.seedRole(
 		t,
-		trans.Ptr(tenantID),
-		permissionV1.Role_TENANT,
-		constants.TenantAdminRoleCode,
+		nil,
+		permissionV1.Role_SYSTEM,
+		"AUTHSVC_ROLE_SELF",
 		[]uint32{permID},
 		identityV1.DataScope_SELF.Enum(),
 		[]*permissionV1.RoleFieldPermission{
 			{Resource: "User", HiddenFields: []string{"email", "mobile"}},
 		},
 	)
-	e.seedCredential(t, trans.Ptr(tenantID), 7401, "authsvc-tenant-user", authenticationV1.UserCredential_ENABLED)
-	e.seedStubUser(7401, trans.Ptr(tenantID), "authsvc-tenant-user", identityV1.User_NORMAL, []uint32{tenantRoleID})
+	e.seedCredential(t, nil, 7401, "authsvc-scoped-user", authenticationV1.UserCredential_ENABLED)
+	e.seedStubUser(7401, nil, "authsvc-scoped-user", identityV1.User_NORMAL, []uint32{scopedRoleID})
 
-	ctx, req := e.loginHappyReq(t, base, "authsvc-tenant-user", constants.DefaultUserPassword)
-	req.TenantCode = trans.Ptr(authSvcTenantCode)
+	ctx, req := e.loginHappyReq(t, base, "authsvc-scoped-user", constants.DefaultUserPassword)
 	resp, err := e.svc.Login(ctx, req)
-	require.NoError(t, err, "租户链路应登录成功")
+	require.NoError(t, err, "普通角色应登录成功")
 	require.NotEmpty(t, resp.GetAccessToken())
 
 	valResp, err := e.svc.ValidateToken(base, &authenticationV1.ValidateTokenRequest{
@@ -652,12 +660,11 @@ func TestAuthSvcSqlite_TenantLoginChain(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, valResp.GetIsValid())
 	payload := valResp.GetPayload()
-	require.Equal(t, tenantID, payload.GetTenantId(), "载荷应携带租户 ID")
-	require.Equal(t, []string{constants.TenantAdminRoleCode}, payload.GetRoles())
-	require.True(t, payload.GetIsTenantAdmin(), "租户管理员角色码应置位租户管理员标志")
-	require.False(t, payload.GetIsPlatformAdmin(), "租户管理员不应置位平台管理员标志")
+	require.Equal(t, uint32(0), payload.GetTenantId(), "单租户载荷租户固定为 0")
+	require.Equal(t, []string{"AUTHSVC_ROLE_SELF"}, payload.GetRoles())
+	require.False(t, payload.GetIsPlatformAdmin(), "普通角色不应置位平台管理员标志")
 	require.Equal(t, []identityV1.DataScope{identityV1.DataScope_SELF}, payload.GetDataScopes(),
-		"租户角色 SELF 数据范围应聚合为 [SELF]")
+		"角色 SELF 数据范围应聚合为 [SELF]")
 	require.Equal(t, identityV1.DataScope_SELF, payload.GetDataScope(), "单值镜像字段应为 SELF")
 	require.ElementsMatch(t, []string{"User.email", "User.mobile"}, payload.GetHiddenFields(),
 		"字段权限应按'资源.字段'聚合进令牌")
@@ -700,28 +707,6 @@ func TestAuthSvcSqlite_AuthorizationDeniedBranches(t *testing.T) {
 	resp, err = e.svc.Login(ctx3, req3)
 	require.Error(t, err)
 	require.True(t, authenticationV1.IsForbidden(err), "非 NORMAL 用户应 403 user is disabled")
-	require.Nil(t, resp)
-}
-
-// TestAuthSvcSqlite_DisabledTenantViaRefresh 验证刷新令牌链路的租户状态检查：
-// 用户行租户指向停用租户时，授权阶段（OneToOne 分支内的租户状态检查）拒绝 403。
-func TestAuthSvcSqlite_DisabledTenantViaRefresh(t *testing.T) {
-	e := newAuthenticationServiceForTest(t)
-	base := context.Background()
-
-	offTenantID := e.seedTenant(t, "AuthSvc 刷新停用租户", authSvcTenantCodeOff, identityV1.Tenant_OFF)
-	e.seedStubUser(7501, trans.Ptr(offTenantID), "authsvc-refresh-user", identityV1.User_NORMAL, nil)
-
-	payload := &authenticationV1.UserTokenPayload{UserId: 7501, TenantId: trans.Ptr(offTenantID), Username: trans.Ptr("authsvc-refresh-user")}
-	_, refreshToken, err := e.svc.authenticator.CreateUserToken(base, authenticationV1.ClientType_admin, payload)
-	require.NoError(t, err)
-
-	req := &authenticationV1.LoginRequest{GrantType: authenticationV1.GrantType_refresh_token}
-	header := http.Header{}
-	header.Set("Cookie", "refresh_token="+refreshToken)
-	resp, err := e.svc.RefreshToken(headerCtx(base, header), req)
-	require.Error(t, err)
-	require.True(t, authenticationV1.IsForbidden(err), "停用租户的刷新应 403")
 	require.Nil(t, resp)
 }
 
@@ -982,17 +967,15 @@ func TestAuthSvcSqlite_ContainsPermission(t *testing.T) {
 	require.False(t, containsPermission([]string{"a"}, ""))
 }
 
-// TestAuthSvcSqlite_FillAdminFlags 验证按角色码填充平台/租户管理员标志。
+// TestAuthSvcSqlite_FillAdminFlags 验证按角色码填充平台管理员标志。
 func TestAuthSvcSqlite_FillAdminFlags(t *testing.T) {
 	payload := &authenticationV1.UserTokenPayload{}
-	fillAdminFlags(payload, []string{constants.PlatformAdminRoleCode, constants.TenantAdminRoleCode})
+	fillAdminFlags(payload, []string{constants.PlatformAdminRoleCode})
 	require.True(t, payload.GetIsPlatformAdmin(), "平台管理员角色码应置位平台管理员标志")
-	require.True(t, payload.GetIsTenantAdmin(), "租户管理员角色码应置位租户管理员标志")
 
 	plain := &authenticationV1.UserTokenPayload{}
 	fillAdminFlags(plain, []string{"some_role", "another_role"})
 	require.False(t, plain.GetIsPlatformAdmin())
-	require.False(t, plain.GetIsTenantAdmin())
 }
 
 // TestAuthSvcSqlite_CookieHelperGuards 验证 cookie 助手与记录函数的无传输守卫段：

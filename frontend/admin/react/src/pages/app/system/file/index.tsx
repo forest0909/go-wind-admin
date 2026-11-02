@@ -68,7 +68,6 @@ const FileManagement = () => {
   // 处理上传
   const handleUpload = (file: File) => {
     uploadMutation.mutate({
-      bucketName: 'images',
       fileDirectory: 'temp',
       file,
       method: 'post',
@@ -78,13 +77,10 @@ const FileManagement = () => {
 
   // 处理下载
   const handleDownload = (record: FileItem) => {
-    const objectName = record.fileDirectory && record.saveFileName
-      ? `${record.fileDirectory}/${record.saveFileName}`
-      : '';
-    if (record.bucketName && objectName) {
+    if (record.id) {
       downloadMutation.mutate({
-        bucketName: record.bucketName as string,
-        objectName,
+        fileId: record.id,
+        fileName: record.fileName || record.saveFileName || '',
         preferPresignedUrl: true,
       });
     }

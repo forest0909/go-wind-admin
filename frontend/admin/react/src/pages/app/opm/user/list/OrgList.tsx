@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Tree, Select, Input, Button, App, theme } from 'antd';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Tree, Input, Button, App, theme } from 'antd';
 import {
   ExpandOutlined,
   ShrinkOutlined,
@@ -10,35 +10,22 @@ import { useTranslation } from 'react-i18next';
 
 import { PaginationQuery } from '@/core';
 import { fetchListOrgUnits } from '@/api/hooks/org-unit';
-import { fetchListTenants } from '@/api/hooks/tenant';
-import { useUserStore } from '@/stores/user';
 
 interface OrgListProps {
   currentOrgUnitId: number | undefined;
-  currentTenantId: number | undefined;
-  onTenantSelect: (tenantId: number | undefined) => void;
   onOrgSelect: (orgUnitId: number | undefined) => void;
 }
 
 /**
  * 左侧组织树列表
- * 包含租户选择器（非租户用户可见）、搜索、树操作
+ * 包含搜索、树操作
  */
 const OrgList: React.FC<OrgListProps> = ({
   currentOrgUnitId,
-  currentTenantId,
-  onTenantSelect,
   onOrgSelect,
 }) => {
   const { t } = useTranslation('user');
   const { message } = App.useApp();
-  const isTenantUser = useUserStore((s) => s.isTenantUser());
-  // 用户页左侧的租户下拉已隐藏。改回 true 即恢复。
-  const showTenantPicker = false;
-
-  // 租户下拉
-  const [tenantOptions, setTenantOptions] = useState<{ label: string; value: number }[]>([]);
-
   // 组织树
   const [treeData, setTreeData] = useState<any[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
@@ -56,37 +43,12 @@ const OrgList: React.FC<OrgListProps> = ({
   const treeDataRef = useRef(treeData);
   treeDataRef.current = treeData;
 
-  // 获取有效租户 ID
-  const effectiveTenantId = useMemo(() => {
-    if (isTenantUser) {
-      const userStore = useUserStore.getState();
-      return (userStore as any).tenantId ?? 0;
-    }
-    return currentTenantId ?? 0;
-  }, [isTenantUser, currentTenantId]);
-
-  // 加载租户列表（非租户用户）
-  useEffect(() => {
-    if (showTenantPicker && !isTenantUser) {
-      fetchListTenants(new PaginationQuery({ formValues: { status: 'ON' } }))
-        .then((res) => {
-          const opts = (res.items || []).map((item: any) => ({
-            label: item.name ?? item.code ?? String(item.id ?? ''),
-            value: item.id,
-          }));
-          setTenantOptions(opts);
-        })
-        .catch(() => setTenantOptions([]));
-    }
-  }, [isTenantUser, showTenantPicker]);
-
   // 加载组织树（API 已返回树形结构，与 PermissionGroupList 一致）
   const fetchOrgUnits = useCallback(async () => {
     try {
       const res = await fetchListOrgUnits(
         new PaginationQuery({
           formValues: {
-            ...(effectiveTenantId ? { tenant_id: effectiveTenantId } : {}),
             status: 'ON',
           },
         }),
@@ -101,23 +63,11 @@ const OrgList: React.FC<OrgListProps> = ({
       messageRef.current.error(error.message || tRef.current('fetchFailed'));
       setTreeData([]);
     }
-  }, [effectiveTenantId]);
+  }, []);
 
   useEffect(() => {
     fetchOrgUnits();
   }, [fetchOrgUnits]);
-
-  // 租户切换
-  const handleTenantChanged = (value: number | undefined) => {
-    onTenantSelect(value);
-    // 清除选中
-    setSelectedKeys([]);
-    onOrgSelect(undefined);
-    // 清空搜索词：搜索 effect 现在只依赖 [searchValue]，
-    // 若不清空，切换租户后 treeData 变成新 key 集合，但 expandedKeys 仍指向旧树
-    // 的 key（在新树里不存在），导致展开态错乱。
-    setSearchValue('');
-  };
 
   // 选中组织节点
   const handleSelect = (keys: React.Key[], info: any) => {
@@ -154,7 +104,7 @@ const OrgList: React.FC<OrgListProps> = ({
   }, [currentOrgUnitId, treeData]);
 
   // 搜索自动展开：只依赖 searchValue，treeData 经 ref 读取。
-  // 避免把 treeData 放入依赖导致每次重拉（租户/语言切换）都清空用户手动展开的节点。
+  // 避免把 treeData 放入依赖导致每次重拉（语言切换）都清空用户手动展开的节点。
   useEffect(() => {
     const q = searchValue.trim();
     if (!q) {
@@ -216,19 +166,6 @@ const OrgList: React.FC<OrgListProps> = ({
         }}>
           {t('searchOrg')}
         </div>
-
-        {/* 租户选择器（仅非租户用户可见） */}
-        {showTenantPicker && !isTenantUser && (
-          <Select
-            showSearch
-            allowClear
-            style={{ width: '100%', marginBottom: 8 }}
-            placeholder={t('tenantIdPlaceholder')}
-            value={currentTenantId ?? undefined}
-            options={tenantOptions}
-            onChange={(value) => handleTenantChanged(value != null ? Number(value) : undefined)}
-          />
-        )}
 
         {/* 搜索栏 + 工具按钮 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

@@ -162,20 +162,6 @@ func (_c *APICreate) SetNillableModuleDescription(v *string) *APICreate {
 	return _c
 }
 
-// SetBusinessModule sets the "business_module" field.
-func (_c *APICreate) SetBusinessModule(v api.BusinessModule) *APICreate {
-	_c.mutation.SetBusinessModule(v)
-	return _c
-}
-
-// SetNillableBusinessModule sets the "business_module" field if the given value is not nil.
-func (_c *APICreate) SetNillableBusinessModule(v *api.BusinessModule) *APICreate {
-	if v != nil {
-		_c.SetBusinessModule(*v)
-	}
-	return _c
-}
-
 // SetOperation sets the "operation" field.
 func (_c *APICreate) SetOperation(v string) *APICreate {
 	_c.mutation.SetOperation(v)
@@ -293,11 +279,6 @@ func (_c *APICreate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Api.status": %w`, err)}
 		}
 	}
-	if v, ok := _c.mutation.BusinessModule(); ok {
-		if err := api.BusinessModuleValidator(v); err != nil {
-			return &ValidationError{Name: "business_module", err: fmt.Errorf(`ent: validator failed for field "Api.business_module": %w`, err)}
-		}
-	}
 	if v, ok := _c.mutation.Scope(); ok {
 		if err := api.ScopeValidator(v); err != nil {
 			return &ValidationError{Name: "scope", err: fmt.Errorf(`ent: validator failed for field "Api.scope": %w`, err)}
@@ -380,10 +361,6 @@ func (_c *APICreate) createSpec() (*Api, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModuleDescription(); ok {
 		_spec.SetField(api.FieldModuleDescription, field.TypeString, value)
 		_node.ModuleDescription = &value
-	}
-	if value, ok := _c.mutation.BusinessModule(); ok {
-		_spec.SetField(api.FieldBusinessModule, field.TypeEnum, value)
-		_node.BusinessModule = &value
 	}
 	if value, ok := _c.mutation.Operation(); ok {
 		_spec.SetField(api.FieldOperation, field.TypeString, value)
@@ -624,24 +601,6 @@ func (u *ApiUpsert) UpdateModuleDescription() *ApiUpsert {
 // ClearModuleDescription clears the value of the "module_description" field.
 func (u *ApiUpsert) ClearModuleDescription() *ApiUpsert {
 	u.SetNull(api.FieldModuleDescription)
-	return u
-}
-
-// SetBusinessModule sets the "business_module" field.
-func (u *ApiUpsert) SetBusinessModule(v api.BusinessModule) *ApiUpsert {
-	u.Set(api.FieldBusinessModule, v)
-	return u
-}
-
-// UpdateBusinessModule sets the "business_module" field to the value that was provided on create.
-func (u *ApiUpsert) UpdateBusinessModule() *ApiUpsert {
-	u.SetExcluded(api.FieldBusinessModule)
-	return u
-}
-
-// ClearBusinessModule clears the value of the "business_module" field.
-func (u *ApiUpsert) ClearBusinessModule() *ApiUpsert {
-	u.SetNull(api.FieldBusinessModule)
 	return u
 }
 
@@ -968,27 +927,6 @@ func (u *ApiUpsertOne) UpdateModuleDescription() *ApiUpsertOne {
 func (u *ApiUpsertOne) ClearModuleDescription() *ApiUpsertOne {
 	return u.Update(func(s *ApiUpsert) {
 		s.ClearModuleDescription()
-	})
-}
-
-// SetBusinessModule sets the "business_module" field.
-func (u *ApiUpsertOne) SetBusinessModule(v api.BusinessModule) *ApiUpsertOne {
-	return u.Update(func(s *ApiUpsert) {
-		s.SetBusinessModule(v)
-	})
-}
-
-// UpdateBusinessModule sets the "business_module" field to the value that was provided on create.
-func (u *ApiUpsertOne) UpdateBusinessModule() *ApiUpsertOne {
-	return u.Update(func(s *ApiUpsert) {
-		s.UpdateBusinessModule()
-	})
-}
-
-// ClearBusinessModule clears the value of the "business_module" field.
-func (u *ApiUpsertOne) ClearBusinessModule() *ApiUpsertOne {
-	return u.Update(func(s *ApiUpsert) {
-		s.ClearBusinessModule()
 	})
 }
 
@@ -1493,27 +1431,6 @@ func (u *ApiUpsertBulk) UpdateModuleDescription() *ApiUpsertBulk {
 func (u *ApiUpsertBulk) ClearModuleDescription() *ApiUpsertBulk {
 	return u.Update(func(s *ApiUpsert) {
 		s.ClearModuleDescription()
-	})
-}
-
-// SetBusinessModule sets the "business_module" field.
-func (u *ApiUpsertBulk) SetBusinessModule(v api.BusinessModule) *ApiUpsertBulk {
-	return u.Update(func(s *ApiUpsert) {
-		s.SetBusinessModule(v)
-	})
-}
-
-// UpdateBusinessModule sets the "business_module" field to the value that was provided on create.
-func (u *ApiUpsertBulk) UpdateBusinessModule() *ApiUpsertBulk {
-	return u.Update(func(s *ApiUpsert) {
-		s.UpdateBusinessModule()
-	})
-}
-
-// ClearBusinessModule clears the value of the "business_module" field.
-func (u *ApiUpsertBulk) ClearBusinessModule() *ApiUpsertBulk {
-	return u.Update(func(s *ApiUpsert) {
-		s.ClearBusinessModule()
 	})
 }
 

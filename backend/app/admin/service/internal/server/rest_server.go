@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
@@ -29,6 +30,8 @@ import (
 	applogging "go-wind-admin/pkg/middleware/logging"
 	"go-wind-admin/third_party/go-crud/viewer"
 	"go-wind-admin/third_party/go-utils/authorizer"
+	"go-wind-admin/third_party/go-utils/netutil"
+	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
 )
 
 // selfServiceOperations 只需登录、不走接口级鉴权（casbin）的操作。
@@ -64,7 +67,6 @@ func newAuthzRequiredMatcher() selector.MatchFunc {
 func NewRestMiddleware(
 	ctx *bootstrap.Context,
 	accessTokenChecker auth.AccessTokenChecker,
-	tenantAccessChecker auth.TenantAccessChecker,
 	authorizer *authorizer.Authorizer,
 	loginLogRepo *data.LoginAuditLogRepo,
 	operationAuditLogRepo *data.OperationAuditLogRepo,
@@ -73,6 +75,8 @@ func NewRestMiddleware(
 	// recovery 必须置于链首：任何中间件/handler 的 panic（如审计日志解析畸形 JWT）
 	// 兜底为 500，避免崩溃请求 goroutine、被用作未认证 DoS。
 	ms = append(ms, recovery.Recovery())
+	// 紧跟 recovery：内层（含访问日志、审计日志）看到的仍是原始错误，响应里只出映射后的 kratos 错误。
+	ms = append(ms, ErrorMapping(ctx.NewLoggerHelper("server/error-mapping")))
 	// 不用 Kratos logging.Server：它只认 Redact() string，本仓生成的是原地 Redact()，
 	// 对不上就把整个请求按 String() 打进访问日志。AccessLogServer 在克隆上脱敏。
 	ms = append(ms, applogging.AccessLogServer(bLogger.AsKratosLogger(ctx.GetLogger())))
@@ -101,8 +105,6 @@ func NewRestMiddleware(
 		// 可脱离 access token 独立鉴权。页面刷新后 access token 丢失时，前端凭
 		// refresh cookie 静默恢复会话，不再强制重新登录。
 		adminV1.OperationAuthenticationServiceRefreshToken,
-		// 租户白标查询免鉴权：登录前按租户编号取名称/Logo（只暴露展示字段）
-		adminV1.OperationAuthenticationServiceGetTenantBranding,
 		//OperationFileTransferServiceDownloadFile,
 		//OperationFileTransferServicePostUploadFile,
 		//OperationFileTransferServicePutUploadFile,
@@ -111,10 +113,11 @@ func NewRestMiddleware(
 	ms = append(ms, selector.Server(
 		auth.Server(
 			auth.WithAccessTokenChecker(accessTokenChecker),
-			auth.WithTenantAccessChecker(tenantAccessChecker),
 			auth.WithInjectMetadata(false),
 			auth.WithInjectEnt(true),
 		),
+		// 紧跟认证：把已验签身份交给外层审计中间件（认证失败的请求按匿名记）
+		applogging.CaptureVerifiedIdentity(),
 		selector.Server(authz.Server(authorizer.Engine())).
 			Match(newAuthzRequiredMatcher()).
 			Build(),
@@ -145,10 +148,6 @@ func NewRestServer(
 	dictEntryService *service.DictEntryService,
 	languageService *service.LanguageService,
 
-	tenantService *service.TenantService,
-	planService *service.PlanService,
-	planQuotaService *service.PlanQuotaService,
-	planModuleService *service.PlanModuleService,
 	userService *service.UserService,
 	userProfileService *service.UserProfileService,
 	roleService *service.RoleService,
@@ -170,7 +169,6 @@ func NewRestServer(
 	internalMessageRecipientService *service.InternalMessageRecipientService,
 
 	// register:param ── 新模块服务形参在此行后注册(make register 工具锚点,勿删)
-	myTenantUsageService *service.MyTenantUsageService,
 	auditExportService *service.AuditExportService,
 	configService *service.ConfigService,
 ) (*http.Server, error) {
@@ -180,12 +178,16 @@ func NewRestServer(
 		return nil, nil
 	}
 
+	applyTrustedProxies(cfg.Server.Rest)
+
 	srv, err := rpc.CreateRestServer(cfg,
 		middlewares...,
 	)
 	if err != nil {
 		return nil, err
 	}
+	// 请求体上限装在最外层，早于 CORS、路由、Bind 和鉴权中间件。
+	installRequestBodyLimit(srv)
 
 	apiService.RegisterRouteWalker(srv)
 
@@ -216,10 +218,6 @@ func NewRestServer(
 	adminV1.RegisterOrgUnitServiceHTTPServer(srv, orgUnitService)
 	adminV1.RegisterRoleServiceHTTPServer(srv, roleService)
 	adminV1.RegisterPositionServiceHTTPServer(srv, positionService)
-	adminV1.RegisterTenantServiceHTTPServer(srv, tenantService)
-	adminV1.RegisterPlanServiceHTTPServer(srv, planService)
-	adminV1.RegisterPlanQuotaServiceHTTPServer(srv, planQuotaService)
-	adminV1.RegisterPlanModuleServiceHTTPServer(srv, planModuleService)
 
 	adminV1.RegisterLoginAuditLogServiceHTTPServer(srv, loginAuditLogService)
 	adminV1.RegisterOperationAuditLogServiceHTTPServer(srv, operationAuditLogService)
@@ -244,7 +242,6 @@ func NewRestServer(
 	adminV1.RegisterInternalMessageRecipientServiceHTTPServer(srv, internalMessageRecipientService)
 
 	// register:route ── 新模块路由在此行后注册(make register 工具锚点,勿删)
-	adminV1.RegisterMyTenantUsageServiceHTTPServer(srv, myTenantUsageService)
 	adminV1.RegisterConfigServiceHTTPServer(srv, configService)
 
 	if cfg.GetServer().GetRest().GetEnableSwagger() {
@@ -253,6 +250,13 @@ func NewRestServer(
 			swaggerUI.WithTitle("GoWind Admin"),
 			swaggerUI.WithMemoryData(assets.OpenApiData, "yaml"),
 		)
+	}
+
+	if missing, checkErr := openAPIOperationsWithoutRoute(srv, assets.OpenApiData); checkErr != nil {
+		log.Errorf("route check against embedded openapi failed: %v", checkErr)
+	} else if len(missing) > 0 {
+		log.Errorf("%d operations in embedded openapi have no registered route (missing Register*HTTPServer call in rest_server.go?): %s",
+			len(missing), strings.Join(missing, ", "))
 	}
 
 	if authorizer != nil {
@@ -269,4 +273,14 @@ func NewRestServer(
 type userServiceServerAdapter struct {
 	adminV1.UnsafeUserServiceServer
 	adminV1.UserServiceHTTPServer
+}
+
+// applyTrustedProxies 按 server.rest.trusted_proxies 设置可信反向代理。
+// 不配置时保持 netutil 的默认网段（私网 + 回环），不改变现有部署行为。
+func applyTrustedProxies(rest *conf.Server_REST) {
+	tp := rest.GetTrustedProxies()
+	if tp == nil {
+		return
+	}
+	netutil.SetTrustedProxies(tp.GetCidrs())
 }

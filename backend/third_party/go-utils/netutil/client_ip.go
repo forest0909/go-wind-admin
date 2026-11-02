@@ -45,6 +45,8 @@ func defaultTrustedProxyCIDRs() []string {
 // initTrustedProxies 线程安全地初始化默认可信代理列表（仅一次）。
 func initTrustedProxies() {
 	trustedProxiesOnce.Do(func() {
+		trustedProxiesMu.Lock()
+		defer trustedProxiesMu.Unlock()
 		setTrustedProxiesLocked(defaultTrustedProxyCIDRs())
 	})
 }
@@ -53,6 +55,8 @@ func initTrustedProxies() {
 // 应在服务启动阶段（main）调用一次。传入空切片表示不信任任何代理（始终用 RemoteAddr）。
 // 非法 CIDR 会被跳过并忽略。
 func SetTrustedProxies(cidrs []string) {
+	// 先把默认初始化标记为已完成，否则首个请求的 initTrustedProxies 会用默认值覆盖这里的配置。
+	trustedProxiesOnce.Do(func() {})
 	trustedProxiesMu.Lock()
 	defer trustedProxiesMu.Unlock()
 	setTrustedProxiesLocked(cidrs)

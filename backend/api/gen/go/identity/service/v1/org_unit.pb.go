@@ -157,7 +157,6 @@ type OrgUnit struct {
 	LeaderId           *uint32                `protobuf:"varint,10,opt,name=leader_id,json=leaderId,proto3,oneof" json:"leader_id,omitempty"`                                                         // 负责人用户ID
 	LeaderName         *string                `protobuf:"bytes,11,opt,name=leader_name,json=leaderName,proto3,oneof" json:"leader_name,omitempty"`                                                    // 负责人用户名称
 	TenantId           *uint32                `protobuf:"varint,12,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`                                                         // 租户ID
-	TenantName         *string                `protobuf:"bytes,13,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`                                                    // 租户名称
 	Remark             *string                `protobuf:"bytes,20,opt,name=remark,proto3,oneof" json:"remark,omitempty"`                                                                              // 备注
 	Description        *string                `protobuf:"bytes,21,opt,name=description,proto3,oneof" json:"description,omitempty"`                                                                    // 描述信息
 	BusinessScopes     []string               `protobuf:"bytes,22,rep,name=business_scopes,json=businessScopes,proto3" json:"business_scopes,omitempty"`                                              // 组织的业务范围/服务条线
@@ -289,13 +288,6 @@ func (x *OrgUnit) GetTenantId() uint32 {
 		return *x.TenantId
 	}
 	return 0
-}
-
-func (x *OrgUnit) GetTenantName() string {
-	if x != nil && x.TenantName != nil {
-		return *x.TenantName
-	}
-	return ""
 }
 
 func (x *OrgUnit) GetRemark() string {
@@ -946,7 +938,7 @@ var File_identity_service_v1_org_unit_proto protoreflect.FileDescriptor
 
 const file_identity_service_v1_org_unit_proto_rawDesc = "" +
 	"\n" +
-	"\"identity/service/v1/org_unit.proto\x12\x13identity.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\x96\x1c\n" +
+	"\"identity/service/v1/org_unit.proto\x12\x13identity.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\xcc\x1b\n" +
 	"\aOrgUnit\x12)\n" +
 	"\x02id\x18\x01 \x01(\rB\x14\xbaG\x11\x92\x02\x0e组织单元IDH\x00R\x02id\x88\x01\x01\x121\n" +
 	"\x04name\x18\x02 \x01(\tB\x18\xbaG\x15\x92\x02\x12组织单元名称H\x01R\x04name\x88\x01\x01\x12\xac\x01\n" +
@@ -960,48 +952,46 @@ const file_identity_service_v1_org_unit_proto_rawDesc = "" +
 	" \x01(\rB\x17\xbaG\x14\x92\x02\x11负责人用户IDH\aR\bleaderId\x88\x01\x01\x12A\n" +
 	"\vleader_name\x18\v \x01(\tB\x1b\xbaG\x18\x92\x02\x15负责人用户名称H\bR\n" +
 	"leaderName\x88\x01\x01\x120\n" +
-	"\ttenant_id\x18\f \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\tR\btenantId\x88\x01\x01\x128\n" +
-	"\vtenant_name\x18\r \x01(\tB\x12\xbaG\x0f\x92\x02\f租户名称H\n" +
-	"R\n" +
-	"tenantName\x88\x01\x01\x12)\n" +
-	"\x06remark\x18\x14 \x01(\tB\f\xbaG\t\x92\x02\x06备注H\vR\x06remark\x88\x01\x01\x129\n" +
-	"\vdescription\x18\x15 \x01(\tB\x12\xbaG\x0f\x92\x02\f描述信息H\fR\vdescription\x88\x01\x01\x12\x87\x01\n" +
+	"\ttenant_id\x18\f \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\tR\btenantId\x88\x01\x01\x12)\n" +
+	"\x06remark\x18\x14 \x01(\tB\f\xbaG\t\x92\x02\x06备注H\n" +
+	"R\x06remark\x88\x01\x01\x129\n" +
+	"\vdescription\x18\x15 \x01(\tB\x12\xbaG\x0f\x92\x02\f描述信息H\vR\vdescription\x88\x01\x01\x12\x87\x01\n" +
 	"\x0fbusiness_scopes\x18\x16 \x03(\tB^\xbaG[\x92\x02X组织的业务范围/服务条线，支持多值，便于过滤、权限映射和同步R\x0ebusinessScopes\x12:\n" +
-	"\vexternal_id\x18d \x01(\tB\x14\xbaG\x11\x92\x02\x0e外部系统IDH\rR\n" +
+	"\vexternal_id\x18d \x01(\tB\x14\xbaG\x11\x92\x02\x0e外部系统IDH\fR\n" +
 	"externalId\x88\x01\x01\x12H\n" +
-	"\x0fis_legal_entity\x18e \x01(\bB\x1b\xbaG\x18\x92\x02\x15是否为法定主体H\x0eR\risLegalEntity\x88\x01\x01\x12^\n" +
-	"\x13registration_number\x18f \x01(\tB(\xbaG%\x92\x02\"注册号/统一社会信用代码H\x0fR\x12registrationNumber\x88\x01\x01\x12(\n" +
-	"\x06tax_id\x18g \x01(\tB\f\xbaG\t\x92\x02\x06税号H\x10R\x05taxId\x88\x01\x01\x12c\n" +
-	"\x13legal_entity_org_id\x18h \x01(\rB/\xbaG,\x92\x02)关联的法定主体组织ID（若有）H\x11R\x10legalEntityOrgId\x88\x01\x01\x121\n" +
-	"\aaddress\x18i \x01(\tB\x12\xbaG\x0f\x92\x02\f详细地址H\x12R\aaddress\x88\x01\x01\x12-\n" +
-	"\x05phone\x18j \x01(\tB\x12\xbaG\x0f\x92\x02\f联系电话H\x13R\x05phone\x88\x01\x01\x12-\n" +
-	"\x05email\x18k \x01(\tB\x12\xbaG\x0f\x92\x02\f联系邮箱H\x14R\x05email\x88\x01\x01\x12F\n" +
-	"\btimezone\x18l \x01(\tB%\xbaG\"\x92\x02\x1f时区，例如：Asia/ShanghaiH\x15R\btimezone\x88\x01\x01\x128\n" +
-	"\acountry\x18m \x01(\tB\x19\xbaG\x16\x92\x02\x13国家/地区代码H\x16R\acountry\x88\x01\x01\x12-\n" +
-	"\blatitude\x18n \x01(\x01B\f\xbaG\t\x92\x02\x06纬度H\x17R\blatitude\x88\x01\x01\x12/\n" +
-	"\tlongitude\x18o \x01(\x01B\f\xbaG\t\x92\x02\x06经度H\x18R\tlongitude\x88\x01\x01\x12]\n" +
-	"\bstart_at\x18p \x01(\v2\x1a.google.protobuf.TimestampB!\xbaG\x1e\x92\x02\x1b生效开始时间（UTC）H\x19R\astartAt\x88\x01\x01\x12Y\n" +
-	"\x06end_at\x18q \x01(\v2\x1a.google.protobuf.TimestampB!\xbaG\x1e\x92\x02\x1b生效结束时间（UTC）H\x1aR\x05endAt\x88\x01\x01\x12i\n" +
+	"\x0fis_legal_entity\x18e \x01(\bB\x1b\xbaG\x18\x92\x02\x15是否为法定主体H\rR\risLegalEntity\x88\x01\x01\x12^\n" +
+	"\x13registration_number\x18f \x01(\tB(\xbaG%\x92\x02\"注册号/统一社会信用代码H\x0eR\x12registrationNumber\x88\x01\x01\x12(\n" +
+	"\x06tax_id\x18g \x01(\tB\f\xbaG\t\x92\x02\x06税号H\x0fR\x05taxId\x88\x01\x01\x12c\n" +
+	"\x13legal_entity_org_id\x18h \x01(\rB/\xbaG,\x92\x02)关联的法定主体组织ID（若有）H\x10R\x10legalEntityOrgId\x88\x01\x01\x121\n" +
+	"\aaddress\x18i \x01(\tB\x12\xbaG\x0f\x92\x02\f详细地址H\x11R\aaddress\x88\x01\x01\x12-\n" +
+	"\x05phone\x18j \x01(\tB\x12\xbaG\x0f\x92\x02\f联系电话H\x12R\x05phone\x88\x01\x01\x12-\n" +
+	"\x05email\x18k \x01(\tB\x12\xbaG\x0f\x92\x02\f联系邮箱H\x13R\x05email\x88\x01\x01\x12F\n" +
+	"\btimezone\x18l \x01(\tB%\xbaG\"\x92\x02\x1f时区，例如：Asia/ShanghaiH\x14R\btimezone\x88\x01\x01\x128\n" +
+	"\acountry\x18m \x01(\tB\x19\xbaG\x16\x92\x02\x13国家/地区代码H\x15R\acountry\x88\x01\x01\x12-\n" +
+	"\blatitude\x18n \x01(\x01B\f\xbaG\t\x92\x02\x06纬度H\x16R\blatitude\x88\x01\x01\x12/\n" +
+	"\tlongitude\x18o \x01(\x01B\f\xbaG\t\x92\x02\x06经度H\x17R\tlongitude\x88\x01\x01\x12]\n" +
+	"\bstart_at\x18p \x01(\v2\x1a.google.protobuf.TimestampB!\xbaG\x1e\x92\x02\x1b生效开始时间（UTC）H\x18R\astartAt\x88\x01\x01\x12Y\n" +
+	"\x06end_at\x18q \x01(\v2\x1a.google.protobuf.TimestampB!\xbaG\x1e\x92\x02\x1b生效结束时间（UTC）H\x19R\x05endAt\x88\x01\x01\x12i\n" +
 	"\n" +
 	"attributes\x18r \x03(\v2,.identity.service.v1.OrgUnit.AttributesEntryB\x1b\xbaG\x18\x92\x02\x15自定义扩展属性R\n" +
 	"attributes\x12N\n" +
 	"\x0fpermission_tags\x18s \x03(\tB%\xbaG\"\x92\x02\x1f与权限/角色映射的标签R\x0epermissionTags\x12J\n" +
-	"\x0fcontact_user_id\x18t \x01(\rB\x1d\xbaG\x1a\x92\x02\x17业务联系人用户IDH\x1bR\rcontactUserId\x88\x01\x01\x12R\n" +
-	"\x11contact_user_name\x18u \x01(\tB!\xbaG\x1e\x92\x02\x1b业务联系人用户名称H\x1cR\x0fcontactUserName\x88\x01\x01\x124\n" +
-	"\tparent_id\x18\xf4\x03 \x01(\rB\x11\xbaG\x0e\x92\x02\v父节点IDH\x1dR\bparentId\x88\x01\x01\x12M\n" +
+	"\x0fcontact_user_id\x18t \x01(\rB\x1d\xbaG\x1a\x92\x02\x17业务联系人用户IDH\x1aR\rcontactUserId\x88\x01\x01\x12R\n" +
+	"\x11contact_user_name\x18u \x01(\tB!\xbaG\x1e\x92\x02\x1b业务联系人用户名称H\x1bR\x0fcontactUserName\x88\x01\x01\x124\n" +
+	"\tparent_id\x18\xf4\x03 \x01(\rB\x11\xbaG\x0e\x92\x02\v父节点IDH\x1cR\bparentId\x88\x01\x01\x12M\n" +
 	"\bchildren\x18\xf5\x03 \x03(\v2\x1c.identity.service.v1.OrgUnitB\x12\xbaG\x0f\x92\x02\f子节点树R\bchildren\x126\n" +
 	"\n" +
-	"created_by\x18\xfe\x03 \x01(\rB\x11\xbaG\x0e\x92\x02\v创建者IDH\x1eR\tcreatedBy\x88\x01\x01\x126\n" +
+	"created_by\x18\xfe\x03 \x01(\rB\x11\xbaG\x0e\x92\x02\v创建者IDH\x1dR\tcreatedBy\x88\x01\x01\x126\n" +
 	"\n" +
-	"updated_by\x18\xff\x03 \x01(\rB\x11\xbaG\x0e\x92\x02\v更新者IDH\x1fR\tupdatedBy\x88\x01\x01\x12<\n" +
+	"updated_by\x18\xff\x03 \x01(\rB\x11\xbaG\x0e\x92\x02\v更新者IDH\x1eR\tupdatedBy\x88\x01\x01\x12<\n" +
 	"\n" +
-	"deleted_by\x18\x80\x04 \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH R\tdeletedBy\x88\x01\x01\x12S\n" +
+	"deleted_by\x18\x80\x04 \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\x1fR\tdeletedBy\x88\x01\x01\x12S\n" +
 	"\n" +
-	"created_at\x18\x88\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H!R\tcreatedAt\x88\x01\x01\x12S\n" +
+	"created_at\x18\x88\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H R\tcreatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"updated_at\x18\x89\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\"R\tupdatedAt\x88\x01\x01\x12S\n" +
+	"updated_at\x18\x89\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H!R\tupdatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"deleted_at\x18\x8a\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H#R\tdeletedAt\x88\x01\x01\x1a=\n" +
+	"deleted_at\x18\x8a\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\"R\tdeletedAt\x88\x01\x01\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x19\n" +
@@ -1034,8 +1024,7 @@ const file_identity_service_v1_org_unit_proto_rawDesc = "" +
 	"_leader_idB\x0e\n" +
 	"\f_leader_nameB\f\n" +
 	"\n" +
-	"_tenant_idB\x0e\n" +
-	"\f_tenant_nameB\t\n" +
+	"_tenant_idB\t\n" +
 	"\a_remarkB\x0e\n" +
 	"\f_descriptionB\x0e\n" +
 	"\f_external_idB\x12\n" +

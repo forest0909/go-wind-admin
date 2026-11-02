@@ -1,6 +1,6 @@
 # AGENTS.md — go-wind-admin 开发指南（AI Agent 入口）
 
-> 本仓库是单租户管理端：Go 后端 + React 前端（`frontend/admin/react`）。没有第二套前端，没有 AI 模块。租户、套餐、配额的代码还在，侧栏菜单已隐藏。
+> 本仓库是单租户管理端：Go 后端 + React 前端（`frontend/admin/react`）。没有第二套前端，没有 AI 模块。租户、套餐、配额已删除；底层 `tenant_id` 列和 ent 租户隐私规则保留，值固定为 0，新模块不需要做租户处理（见 `docs/tenant_isolation.md`）。
 
 本文件是仓库入口：布局、门禁、铁律。前端规范见 `frontend/admin/react/AGENTS.md`。
 
@@ -24,6 +24,7 @@ docs/                       文档（总入口 docs/README.md）
 | 生成链 | `make api && make openapi && make ts && make ent`，之后生成目录不应再有未解释的 diff | `backend/` |
 | 前端 | `npm run typecheck`、`npm run build`、`npm run lint` | `frontend/admin/react` |
 | 上游依赖回流 | `bash scripts/check-no-upstream-deps.sh` | 仓库根 |
+| 错误 reason 译文 | `node scripts/check-error-reason-i18n.mjs` | 仓库根 |
 
 **门禁出现任何新报错，一律当作自己引入的 bug 修复。**
 
@@ -39,7 +40,7 @@ docs/                       文档（总入口 docs/README.md）
 
 **代码生成**：在 `backend/` 下用 Makefile。产物仍须按本仓铁律验收（`{ data: {...} }` 包裹、contains 搜索、新端点要先 `make openapi` 再重启——启动时会自动同步 Api 表和权限点，`make ts` 生成 React 客户端）。
 
-> 系统默认数据（admin 用户、角色、菜单、权限、语言等）由服务启动时在 Go 侧自动播种（`pkg/constants/default_data.go` + 各 service 的 count==0 守卫；Api 表每次启动都和**打进二进制的** `backend/app/admin/service/cmd/server/assets/openapi.yaml` 比对，不一致就自动按 (method, path) 合并同步，之后再自动同步一次权限点；所以新 proto 必须先 `make openapi` 再重启进程，否则新端点不在表里、租户闸门 fail-closed 403。管理页「接口同步」仍可手动触发。新菜单同理：`count==0` 守卫意味着老库要靠「菜单同步」(MERGE) 才会多出这一行），**不要**找 SQL 种子脚本，`backend/sql/` 下只剩演示数据。
+> 系统默认数据（admin 用户、角色、菜单、权限、语言等）由服务启动时在 Go 侧自动播种（`pkg/constants/default_data.go` + 各 service 的 count==0 守卫；Api 表每次启动都和**打进二进制的** `backend/app/admin/service/cmd/server/assets/openapi.yaml` 比对，不一致就自动按 (method, path) 合并同步，之后再自动同步一次权限点；所以新 proto 必须先 `make openapi` 再重启进程，否则新端点不在表里，也就没有对应的权限点，非平台管理员角色调用一律 403。管理页「接口同步」仍可手动触发。新菜单同理：`count==0` 守卫意味着老库要靠「菜单同步」(MERGE) 才会多出这一行），**不要**找 SQL 种子脚本，`backend/sql/` 下只剩演示数据。
 
 ## 后端任务：用 Makefile
 
@@ -77,8 +78,7 @@ docs/                       文档（总入口 docs/README.md）
 - **改一个字段速查**：`docs/field_change_guide.md`
 - **新增 CRUD 模块**：`docs/crud_module_guide/`（`backend.md`、`react.md`）
 - 认证与令牌链路：`docs/authentication.md`
-- 租户隔离（菜单已隐藏，代码还在）：`docs/tenant_isolation.md`
-- 套餐与配额（菜单已隐藏，代码还在）：`docs/plan_billing.md`
+- `tenant_id` 遗留列与旧库升级清理：`docs/tenant_isolation.md`
 - 任务调度：`docs/task_system.md`
 - SSE：`docs/sse_architecture.md`
 - 数据权限范围：`docs/data_scope_design.md`

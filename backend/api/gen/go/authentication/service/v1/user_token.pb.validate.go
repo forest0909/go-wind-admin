@@ -91,10 +91,6 @@ func (m *UserTokenPayload) validate(all bool) error {
 		// no validation rules for IsPlatformAdmin
 	}
 
-	if m.IsTenantAdmin != nil {
-		// no validation rules for IsTenantAdmin
-	}
-
 	if m.Jti != nil {
 		// no validation rules for Jti
 	}

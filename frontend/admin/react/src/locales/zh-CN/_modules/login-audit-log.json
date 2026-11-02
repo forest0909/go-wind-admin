@@ -29,7 +29,6 @@
   "userId": "用户ID",
   "loginMethod": "登录方式",
   "riskScore": "风险评分",
-  "tenantName": "租户名称",
   "osName": "操作系统",
   "browserName": "浏览器",
   "userAgent": "User-Agent",
@@ -51,5 +50,6 @@
   "exportXlsx": "Excel 工作簿",
   "exportServerXlsx": "服务端全量 (XLSX)",
   "exportServerSuccess": "已开始下载",
+  "exportServerTruncated": "已开始下载。符合条件的数据超过 {{limit}} 行上限，只导出了最新的 {{limit}} 行，请缩小搜索范围后分批导出",
   "exportServerFailed": "服务端导出失败"
 }

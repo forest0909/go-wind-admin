@@ -13,6 +13,7 @@ import (
 	"go-wind-admin/third_party/go-utils/trans"
 
 	auditV1 "go-wind-admin/api/gen/go/audit/service/v1"
+	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 
 	"go-wind-admin/third_party/go-crud/viewer"
 )
@@ -31,7 +32,8 @@ func (l *LoginAuditLogMiddleware) Name() string {
 	return "LoginAuditLogMiddleware"
 }
 
-func (l *LoginAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transport, middleErr error) {
+// ut 是认证中间件已验签的身份；为 nil 表示匿名。
+func (l *LoginAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transport, ut *authenticationV1.UserTokenPayload, middleErr error) {
 	if l.op == nil {
 		return
 	}
@@ -77,7 +79,6 @@ func (l *LoginAuditLogMiddleware) Handle(ctx context.Context, htr *http.Transpor
 		loginAuditLog.Username = trans.Ptr(username)
 	}
 
-	ut := extractAuthToken(htr)
 	if ut != nil {
 		loginAuditLog.UserId = trans.Ptr(ut.UserId)
 		loginAuditLog.TenantId = ut.TenantId

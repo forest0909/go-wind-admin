@@ -44,7 +44,6 @@ const (
 	IdentityErrorReason_DEPARTMENT_NOT_FOUND   IdentityErrorReason = 403 // 部门不存在
 	IdentityErrorReason_ORGANIZATION_NOT_FOUND IdentityErrorReason = 404 // 组织不存在
 	IdentityErrorReason_POSITION_NOT_FOUND     IdentityErrorReason = 405 // 职位不存在
-	IdentityErrorReason_TENANT_NOT_FOUND       IdentityErrorReason = 406 // 租户不存在
 	// 405
 	IdentityErrorReason_METHOD_NOT_ALLOWED IdentityErrorReason = 500 // 方法不允许
 	// 406
@@ -137,7 +136,6 @@ var (
 		403:  "DEPARTMENT_NOT_FOUND",
 		404:  "ORGANIZATION_NOT_FOUND",
 		405:  "POSITION_NOT_FOUND",
-		406:  "TENANT_NOT_FOUND",
 		500:  "METHOD_NOT_ALLOWED",
 		600:  "NOT_ACCEPTABLE",
 		700:  "PROXY_AUTHENTICATION_REQUIRED",
@@ -190,7 +188,6 @@ var (
 		"DEPARTMENT_NOT_FOUND":            403,
 		"ORGANIZATION_NOT_FOUND":          404,
 		"POSITION_NOT_FOUND":              405,
-		"TENANT_NOT_FOUND":                406,
 		"METHOD_NOT_ALLOWED":              500,
 		"NOT_ACCEPTABLE":                  600,
 		"PROXY_AUTHENTICATION_REQUIRED":   700,
@@ -262,7 +259,7 @@ var File_identity_service_v1_user_error_proto protoreflect.FileDescriptor
 
 const file_identity_service_v1_user_error_proto_rawDesc = "" +
 	"\n" +
-	"$identity/service/v1/user_error.proto\x12\x13identity.service.v1\x1a\x13errors/errors.proto*\x94\f\n" +
+	"$identity/service/v1/user_error.proto\x12\x13identity.service.v1\x1a\x13errors/errors.proto*\xf7\v\n" +
 	"\x13IdentityErrorReason\x12\x15\n" +
 	"\vBAD_REQUEST\x10\x00\x1a\x04\xa8E\x90\x03\x12\x18\n" +
 	"\x0eINVALID_USERID\x10\x01\x1a\x04\xa8E\x90\x03\x12\x1a\n" +
@@ -276,8 +273,7 @@ const file_identity_service_v1_user_error_proto_rawDesc = "" +
 	"\x0eROLE_NOT_FOUND\x10\x92\x03\x1a\x04\xa8E\x94\x03\x12\x1f\n" +
 	"\x14DEPARTMENT_NOT_FOUND\x10\x93\x03\x1a\x04\xa8E\x94\x03\x12!\n" +
 	"\x16ORGANIZATION_NOT_FOUND\x10\x94\x03\x1a\x04\xa8E\x94\x03\x12\x1d\n" +
-	"\x12POSITION_NOT_FOUND\x10\x95\x03\x1a\x04\xa8E\x94\x03\x12\x1b\n" +
-	"\x10TENANT_NOT_FOUND\x10\x96\x03\x1a\x04\xa8E\x94\x03\x12\x1d\n" +
+	"\x12POSITION_NOT_FOUND\x10\x95\x03\x1a\x04\xa8E\x94\x03\x12\x1d\n" +
 	"\x12METHOD_NOT_ALLOWED\x10\xf4\x03\x1a\x04\xa8E\x95\x03\x12\x19\n" +
 	"\x0eNOT_ACCEPTABLE\x10\xd8\x04\x1a\x04\xa8E\x96\x03\x12(\n" +
 	"\x1dPROXY_AUTHENTICATION_REQUIRED\x10\xbc\x05\x1a\x04\xa8E\x97\x03\x12\x1a\n" +

@@ -64,7 +64,7 @@ cover:
 
 # run static analysis
 vet:
-	go vet
+	go vet ./...
 
 # run lint
 lint:

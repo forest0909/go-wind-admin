@@ -8,7 +8,6 @@
   "code": "Role Code",
   "codePlaceholder": "Enter role code",
   "requiredCode": "Please enter role code",
-  "tenantName": "Tenant",
   "status": "Status",
   "statusPlaceholder": "Select status",
   "requiredStatus": "Please select status",

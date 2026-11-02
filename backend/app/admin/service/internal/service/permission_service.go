@@ -85,6 +85,17 @@ func (s *PermissionService) init() {
 	// 每次启动都按当前菜单和接口同步一次权限点，部署后不必再手点同步。
 	// 同步按编码合并、不删手工数据，权限点没变化时只有查询。
 	// SyncPermissions 要从令牌取操作人，启动期没有登录用户，用 0 代表系统。
+	if err := s.permissionRepo.AlignLinkSequences(ctx); err != nil {
+		s.log.Errorf(ctx, "权限关联表 id 序列对齐失败: %v", err)
+	}
+	// 多租户已移除：清掉旧库遗留的租户 / 套餐菜单、权限点、模板角色和权限组。
+	// 必须在权限点同步之前，否则同步会从遗留菜单再派生出权限点。没有遗留时只有查询。
+	if res, err := s.permissionRepo.PurgeLegacyTenantConfig(ctx); err != nil {
+		s.log.Errorf(ctx, "清理遗留租户配置失败: %v", err)
+	} else if !res.Empty() {
+		s.log.Infof(ctx, "已清理遗留租户配置: 菜单 %d、权限点 %d、角色 %d、权限组 %d",
+			res.Menus, res.Permissions, res.Roles, res.PermissionGroups)
+	}
 	apiCount, _ := s.apiRepo.Count(ctx, nil)
 	menusCount, _ := s.menuRepo.Count(ctx, []func(s *sql.Selector){})
 	if apiCount.Count > 0 && menusCount > 0 {
@@ -155,29 +166,7 @@ func (s *PermissionService) enrichRelations(ctx context.Context, permissions []*
 }
 
 func (s *PermissionService) List(ctx context.Context, req *paginationV1.PagingRequest) (*permissionV1.ListPermissionResponse, error) {
-	// 获取操作人信息
-	operator, err := auth.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var limitPermissionIDs []uint32
-	if operator.GetTenantId() > 0 {
-		limitPermissionIDs, err = s.roleRepo.ListPermissionIDsByRoleCodes(ctx, operator.GetRoles())
-		if err != nil {
-			return nil, err
-		}
-
-		// 没有任何 permission 可访问，直接返回空列表
-		if len(limitPermissionIDs) == 0 {
-			return &permissionV1.ListPermissionResponse{
-				Items: []*permissionV1.Permission{},
-				Total: 0,
-			}, nil
-		}
-	}
-
-	resp, err := s.permissionRepo.List(ctx, req, limitPermissionIDs)
+	resp, err := s.permissionRepo.List(ctx, req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -192,33 +181,9 @@ func (s *PermissionService) Count(ctx context.Context, req *paginationV1.PagingR
 }
 
 func (s *PermissionService) Get(ctx context.Context, req *permissionV1.GetPermissionRequest) (*permissionV1.Permission, error) {
-	// 获取操作人信息
-	operator, err := auth.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := s.permissionRepo.Get(ctx, req)
 	if err != nil {
 		return nil, err
-	}
-
-	if operator.GetTenantId() > 0 {
-		permissionIDs, err := s.roleRepo.ListPermissionIDsByRoleCodes(ctx, operator.GetRoles())
-		if err != nil {
-			return nil, err
-		}
-
-		found := false
-		for _, pid := range permissionIDs {
-			if pid == resp.GetId() {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return nil, adminV1.ErrorForbidden("no access to the permission")
-		}
 	}
 
 	fakeItems := []*permissionV1.Permission{resp}

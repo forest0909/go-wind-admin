@@ -117,7 +117,7 @@ func TestPositionRepoSqlite_List(t *testing.T) {
 }
 
 // TestPositionRepoSqlite_Get 验证 PositionRepo.Get 按主键查询的命中与未命中，
-// 以及按名称/编码查询在平台上下文（tid=0）下被租户闸门拒绝。
+// 以及按名称/编码查询固定匹配租户 0。
 func TestPositionRepoSqlite_Get(t *testing.T) {
 	repo := newPositionRepoSqlite(t)
 	ctx := enttest.NewSystemContext(context.Background())
@@ -152,17 +152,17 @@ func TestPositionRepoSqlite_Get(t *testing.T) {
 	})
 	require.Error(t, err, "查询不存在的主键应返回错误")
 
-	// 平台上下文下按名称查询：跨租户多行风险，应被租户闸门拒绝
-	_, err = repo.Get(ctx, &identityV1.GetPositionRequest{
+	// 按名称 / 编码查询：固定按租户 0 匹配
+	byName, err := repo.Get(ctx, &identityV1.GetPositionRequest{
 		QueryBy: &identityV1.GetPositionRequest_Name{Name: "sqlite查询职位"},
 	})
-	require.Error(t, err, "平台上下文按 name 查询应被拒绝")
-
-	// 平台上下文下按编码查询：同上
-	_, err = repo.Get(ctx, &identityV1.GetPositionRequest{
+	require.NoError(t, err, "按 name 查询应命中")
+	require.Equal(t, createdID, byName.GetId())
+	byCode, err := repo.Get(ctx, &identityV1.GetPositionRequest{
 		QueryBy: &identityV1.GetPositionRequest_Code{Code: fmt.Sprintf("POS_SQLITE_%d", 3001)},
 	})
-	require.Error(t, err, "平台上下文按 code 查询应被拒绝")
+	require.NoError(t, err, "按 code 查询应命中")
+	require.Equal(t, createdID, byCode.GetId())
 }
 
 // TestPositionRepoSqlite_Update 验证 PositionRepo.Update 在单字段 updateMask 下

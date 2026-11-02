@@ -10,7 +10,6 @@
 ##   - PostgreSQL 数据库
 ##   - Redis 缓存
 ##   - MinIO 对象存储
-##   - Jaeger 分布式追踪
 ##
 ## Compose 文件：
 ##   使用 docker-compose.yml 或 docker-compose.yaml（项目根目录）
@@ -24,16 +23,16 @@
 ## 用法：
 ##   bash scripts/full_deploy.sh
 ##
-## 环境变量：
-##   APP_ROOT        数据卷根目录 (默认: /root/app)
-##                   目录结构: APP_ROOT/postgres, APP_ROOT/redis 等
+## 前置条件：
+##   backend/.env 已按 .env.example 填好口令和 GWA_ADMIN_INITIAL_PASSWORD
+##   （cp .env.example .env 后修改）。缺少必填项时脚本和 docker compose 都会报错退出。
+##
+## 数据持久化：
+##   PostgreSQL / Redis / MinIO / 审计归档使用 Compose 具名卷，
+##   docker compose down 后再 up 数据仍在；docker compose down -v 会删除数据。
 ##
 ## 示例：
-##   # 使用默认设置
-##   bash scripts/full_deploy.sh
-##
-##   # 自定义数据目录
-##   APP_ROOT=/opt/app bash scripts/full_deploy.sh
+##   bash scripts/docker/full_deploy.sh
 ##
 ## 相关脚本：
 ##   - libs_only.sh  仅启动依赖，不启动应用
@@ -41,10 +40,6 @@
 ################################################################################
 set -euo pipefail
 IFS=$'\n\t'
-
-# 可通过环境变量覆盖，默认 /root/app
-APP_ROOT=${APP_ROOT:-/root/app}
-deps=(postgres redis etcd minio jaeger)
 
 # 切换到脚本所在目录的上一级（项目根）
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,29 +51,21 @@ if [ ! -f docker-compose.yml ] && [ ! -f docker-compose.yaml ]; then
   exit 1
 fi
 
-# 检查是否为 root，或是否有 sudo
-is_root=false
-if [ "$(id -u)" -eq 0 ]; then
-  is_root=true
+# 检查 .env 及必填项（docker compose 也会校验，这里提前给出更清楚的提示）
+if [ ! -f .env ]; then
+  echo "backend/.env not found. Run: cp .env.example .env, then fill in the passwords." >&2
+  exit 1
 fi
-has_sudo=false
-if command -v sudo >/dev/null 2>&1; then
-  has_sudo=true
-fi
-
-# 创建目录并设置权限（尽量使用 sudo 当非 root 时）
-mkdir -p "$APP_ROOT"
-for dep in "${deps[@]}"; do
-  echo "Preparing $dep..."
-  mkdir -p "$APP_ROOT/$dep"
-  if [ "$is_root" = true ]; then
-    chown -R 1001:1001 "$APP_ROOT/$dep"
-  elif [ "$has_sudo" = true ]; then
-    sudo chown -R 1001:1001 "$APP_ROOT/$dep"
-  else
-    echo "Warning: not root and sudo not available; skipping chown for $APP_ROOT/$dep" >&2
+missing=()
+for key in POSTGRES_PASSWORD REDIS_PASSWORD MINIO_ROOT_USER MINIO_ROOT_PASSWORD GWA_ADMIN_INITIAL_PASSWORD; do
+  if ! grep -Eq "^${key}=.+" .env; then
+    missing+=("$key")
   fi
 done
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "Missing required values in backend/.env: ${missing[*]}" >&2
+  exit 1
+fi
 
 # 选择 docker compose 命令（支持 v2 插件或旧的 docker-compose 可执行文件）
 DOCKER_COMPOSE_CMD=()

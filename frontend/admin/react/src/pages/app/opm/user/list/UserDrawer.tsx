@@ -20,7 +20,6 @@ interface UserDrawerProps {
   open: boolean;
   mode: 'create' | 'edit';
   data?: any;
-  tenantId: number | undefined;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -32,7 +31,6 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   open,
   mode,
   data,
-  tenantId,
   onClose,
   onSuccess,
 }) => {
@@ -60,32 +58,33 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
   // 加载下拉数据
   useEffect(() => {
     if (open) {
-      // 角色
-      // 角色 —— 与后端 CreateUser 的角色校验语义严格对齐：
-      // 平台用户只接受 SYSTEM 角色，租户用户只接受该租户的 TENANT 角色；
-      // 之前用 type__not: 'TEMPLATE' 会把 TENANT 类型角色也放进下拉，提交必 400。
+      // 角色 —— 与后端 CreateUser 的角色校验语义对齐：只接受 SYSTEM 角色。
       fetchListRoles(
         new PaginationQuery({
-          formValues: tenantId
-            ? { status: 'ON', type: 'TENANT', tenant_id: tenantId }
-            : { status: 'ON', type: 'SYSTEM' },
+          formValues: { status: 'ON', type: 'SYSTEM' },
         }),
       )
         .then((res) => {
           const tree = buildRoleTreeSelect(res?.items || []);
           setRoleTreeData(tree);
         })
-        .catch(() => setRoleTreeData([]));
+        .catch((err) => {
+          console.error('[UserDrawer] load roles failed', err);
+          setRoleTreeData([]);
+        });
 
       // 组织
       fetchListOrgUnits(
-        new PaginationQuery({ formValues: { status: 'ON', tenant_id: tenantId ?? 0 } }),
+        new PaginationQuery({ formValues: { status: 'ON' } }),
       )
         .then((res) => {
           const tree = buildOrgTreeSelectData(res?.items || []);
           setOrgUnitTreeData(tree);
         })
-        .catch(() => setOrgUnitTreeData([]));
+        .catch((err) => {
+          console.error('[UserDrawer] load org units failed', err);
+          setOrgUnitTreeData([]);
+        });
 
       // 职位
       fetchListPositions(new PaginationQuery({ formValues: { status: 'ON' } }))
@@ -96,9 +95,12 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           }));
           setPositionOptions(opts);
         })
-        .catch(() => setPositionOptions([]));
+        .catch((err) => {
+          console.error('[UserDrawer] load positions failed', err);
+          setPositionOptions([]);
+        });
     }
-  }, [open, tenantId]);
+  }, [open]);
 
   // 编辑模式下设置表单值
   useEffect(() => {
@@ -109,7 +111,8 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
           password: undefined,
           nickname: data.nickname || '',
           realname: data.realname || '',
-          email: data.email || '',
+          // 没邮箱时保持 undefined：回填成 '' 会被提交回去，后端以前存成空串，撞 (tenant_id,email) 唯一索引
+          email: data.email || undefined,
           mobile: data.mobile || '',
           gender: data.gender || 'SECRET',
           status: data.status || 'NORMAL',
@@ -223,6 +226,7 @@ const UserDrawer: React.FC<UserDrawerProps> = ({
         name="password"
         label={t('password')}
         placeholder={t('passwordPlaceholder')}
+        rules={mode === 'create' ? [{ required: true, message: t('requiredPassword') }] : undefined}
         fieldProps={{ allowClear: true }}
       />
 

@@ -145,3 +145,25 @@ func TestAuditLogArchiveRepoSqlite_ArchiveExpiredAfterNow(t *testing.T) {
 	}
 	require.Zero(t, jsonlCount, "空跑不应落盘任何 JSONL 文件")
 }
+
+// 某张表归档失败时，其他表照常归档，失败汇总后返回 error（任务队列据此记失败）。
+// 修复前：失败只写日志，ArchiveExpired 返回 nil，asynq 把任务记成成功。
+func TestAuditLogArchiveRepoSqlite_TableFailureReturnsError(t *testing.T) {
+	entClient := enttest.NewEntClientForTest(t)
+	repo := &AuditLogArchiveRepo{log: bLogger.NewHelper(bLogger.NopLogger()), client: entClient.Client()}
+	ctx := enttest.NewSystemContext(context.Background())
+	seedOneRowPerAuditTable(t, entClient.Client(), ctx, "fail")
+
+	_, err := entClient.DB().ExecContext(ctx, "DROP TABLE sys_login_audit_logs")
+	require.NoError(t, err)
+
+	outDir := t.TempDir()
+	results, err := repo.ArchiveExpired(ctx, time.Now().Add(time.Hour), outDir)
+	require.Error(t, err, "登录日志表查询失败应返回 error")
+	require.Contains(t, err.Error(), "sys_login_audit_logs")
+	require.Equal(t, 1, results["sys_operation_audit_logs"], "操作日志表应照常归档")
+
+	n, cerr := entClient.Client().OperationAuditLog.Query().Count(ctx)
+	require.NoError(t, cerr)
+	require.Zero(t, n)
+}

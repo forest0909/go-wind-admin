@@ -9,106 +9,56 @@ TRUNCATE TABLE public.sys_org_units,
                public.sys_dict_types,
                public.sys_dict_entries,
                public.internal_message_categories,
-               public.sys_plan_modules,
-               public.sys_plan_quotas,
-               public.sys_plans,
                public.internal_messages,
-               public.internal_message_recipients,
-               public.sys_memberships,
-               public.sys_membership_roles
+               public.internal_message_recipients
 RESTART IDENTITY CASCADE;
-
--- 测试租户
-INSERT INTO public.sys_tenants(id, name, code, type, audit_status, status, admin_user_id, created_at)
-VALUES (1, '测试租户', 'super', 'PAID', 'APPROVED', 'ON', 2, now())
-;
-SELECT setval('sys_tenants_id_seq', (SELECT MAX(id) FROM sys_tenants));
-
--- 插入租户管理员用户（sys_users 不在上方 TRUNCATE 清单——需保留平台管理员 admin，
--- 故以 ON CONFLICT 幂等插入，重复执行不冲突）
-INSERT INTO public.sys_users (id, tenant_id, username, nickname, realname, email, gender, created_at)
-VALUES
-    -- 2. 租户管理员（TENANT_ADMIN）
-    (2, 1, 'tenant_admin', '租户管理', '张管理员', 'tenant@company.com', 'MALE', now())
-ON CONFLICT (id) DO NOTHING
-;
-SELECT setval('sys_users_id_seq', (SELECT MAX(id) FROM sys_users));
-
--- 插入4个用户的凭证（密码统一为admin，哈希值与原admin一致，方便测试）；
--- NOT EXISTS 守卫：user_id=2 已有凭证时整组跳过，保证脚本可重复执行
-INSERT INTO public.sys_user_credentials (tenant_id, user_id, identity_type, identifier, credential_type, credential, status,
-                                         is_primary, created_at)
-SELECT * FROM (VALUES
-    -- 租户管理员（对应users表id=2，tenant_id=1）
-    (1, 2, 'USERNAME', 'tenant_admin', 'PASSWORD_HASH', '$2a$10$yajZDX20Y40FkG0Bu4N19eXNqRizez/S9fK63.JxGkfLq.RoNKR/a', 'ENABLED', true, now()),
-    (1, 2, 'EMAIL', 'tenant@company.com', 'PASSWORD_HASH', '$2a$10$yajZDX20Y40FkG0Bu4N19eXNqRizez/S9fK63.JxGkfLq.RoNKR/a', 'ENABLED', false, now())
-) AS seed(tenant_id, user_id, identity_type, identifier, credential_type, credential, status, is_primary, created_at)
-WHERE NOT EXISTS (SELECT 1 FROM public.sys_user_credentials WHERE user_id = 2)
-;
-SELECT setval('sys_user_credentials_id_seq', (SELECT MAX(id) FROM sys_user_credentials));
 
 -- 组织架构单元
 INSERT INTO public.sys_org_units (id, tenant_id, parent_id, type, name, code, description, path, sort_order, leader_id, status, created_at)
 VALUES
-    (1, 1, NULL, 'COMPANY', 'XX集团总部', 'HEADQUARTERS', '集团核心管理机构，统筹全集团战略规划、业务管控及资源调配', '/1', 1, 1, 'ON', now()),
-    (2, 1, 1, 'DIVISION', '技术部', 'TECH', '负责集团整体技术架构规划、研发管理、系统运维及技术创新', '/1/2', 2, 5, 'ON', now()),
-    (3, 1, 1, 'DIVISION', '财务部', 'FIN', '负责集团财务核算、资金管理、税务筹划、预算编制及财务风控', '/1/3', 3, 8, 'ON', now()),
-    (4, 1, 1, 'DIVISION', '人事部', 'HR', '负责人力资源规划、招聘配置、薪酬绩效、员工培训及组织发展', '/1/4', 4, 9, 'ON', now()),
-    (5, 1, 2, 'DEPARTMENT', '研发一部', 'DEV-1', '聚焦新能源领域产品研发、技术迭代及核心模块开发', '/1/2/5', 1, 6, 'ON', now()),
-    (6, 1, 1, 'REGION', '华北大区', 'NORTH', '负责华北区域市场运营、客户维护、销售管理及本地化服务落地', '/1/6', 3, 12, 'ON', now()),
-    (7, 1, 1, 'SUBSIDIARY', '广州分公司', 'GZ', '负责华南区域（广州及周边）业务拓展、客户服务及本地化运营', '/1/7', 5, 2, 'ON', now()),
-    (8, 1, 1, 'SUBSIDIARY', '深圳子公司', 'SZ', '负责深圳区域市场开拓、科技创新业务落地及高端客户对接', '/1/8', 6, 4, 'ON', now()),
-    (9, 1, 1, 'DIVISION', '销售部', 'SALES', '统筹集团整体销售策略制定、销售团队管理及业绩目标达成', '/1/9', 7, 16, 'ON', now()),
-    (10, 1, 9, 'DEPARTMENT', '海外事业部', 'INTL', '负责海外市场拓展、国际客户合作、跨境业务管理及本地化运营', '/1/9/10', 1, 17, 'ON', now()),
-    (11, 1, 10, 'TEAM', '海外销售组', 'INTL-SALES-1', '具体执行海外市场销售任务，跟进客户需求及订单落地', '/1/9/10/11', 1, 18, 'ON', now()),
-    (12, 1, 5, 'PROJECT', '新能源项目组', 'NEO-PROJ', '专项负责新能源项目的研发、落地、运营及成果转化', '/1/2/5/12', 1, 6, 'ON', now()),
-    (13, 1, 1, 'COMMITTEE', '审计委员会', 'AUDIT', '独立开展集团内部审计、风控检查、合规监督及问题整改跟进', '/1/13', 8, 12, 'ON', now()),
-    (14, 1, 1, 'DEPARTMENT', '客服部', 'CS', '负责全集团客户咨询、投诉处理、售后服务及客户满意度提升', '/1/14', 9, 11, 'ON', now()),
-    (15, 1, 14, 'TEAM', '客服一组', 'CS-1', '承接华南区域客户服务、售后问题处理及客户关系维护', '/1/14/15', 1, 20, 'ON', now())
+    (1, 0, NULL, 'COMPANY', 'XX集团总部', 'HEADQUARTERS', '集团核心管理机构，统筹全集团战略规划、业务管控及资源调配', '/1', 1, 1, 'ON', now()),
+    (2, 0, 1, 'DIVISION', '技术部', 'TECH', '负责集团整体技术架构规划、研发管理、系统运维及技术创新', '/1/2', 2, 5, 'ON', now()),
+    (3, 0, 1, 'DIVISION', '财务部', 'FIN', '负责集团财务核算、资金管理、税务筹划、预算编制及财务风控', '/1/3', 3, 8, 'ON', now()),
+    (4, 0, 1, 'DIVISION', '人事部', 'HR', '负责人力资源规划、招聘配置、薪酬绩效、员工培训及组织发展', '/1/4', 4, 9, 'ON', now()),
+    (5, 0, 2, 'DEPARTMENT', '研发一部', 'DEV-1', '聚焦新能源领域产品研发、技术迭代及核心模块开发', '/1/2/5', 1, 6, 'ON', now()),
+    (6, 0, 1, 'REGION', '华北大区', 'NORTH', '负责华北区域市场运营、客户维护、销售管理及本地化服务落地', '/1/6', 3, 12, 'ON', now()),
+    (7, 0, 1, 'SUBSIDIARY', '广州分公司', 'GZ', '负责华南区域（广州及周边）业务拓展、客户服务及本地化运营', '/1/7', 5, 2, 'ON', now()),
+    (8, 0, 1, 'SUBSIDIARY', '深圳子公司', 'SZ', '负责深圳区域市场开拓、科技创新业务落地及高端客户对接', '/1/8', 6, 4, 'ON', now()),
+    (9, 0, 1, 'DIVISION', '销售部', 'SALES', '统筹集团整体销售策略制定、销售团队管理及业绩目标达成', '/1/9', 7, 16, 'ON', now()),
+    (10, 0, 9, 'DEPARTMENT', '海外事业部', 'INTL', '负责海外市场拓展、国际客户合作、跨境业务管理及本地化运营', '/1/9/10', 1, 17, 'ON', now()),
+    (11, 0, 10, 'TEAM', '海外销售组', 'INTL-SALES-1', '具体执行海外市场销售任务，跟进客户需求及订单落地', '/1/9/10/11', 1, 18, 'ON', now()),
+    (12, 0, 5, 'PROJECT', '新能源项目组', 'NEO-PROJ', '专项负责新能源项目的研发、落地、运营及成果转化', '/1/2/5/12', 1, 6, 'ON', now()),
+    (13, 0, 1, 'COMMITTEE', '审计委员会', 'AUDIT', '独立开展集团内部审计、风控检查、合规监督及问题整改跟进', '/1/13', 8, 12, 'ON', now()),
+    (14, 0, 1, 'DEPARTMENT', '客服部', 'CS', '负责全集团客户咨询、投诉处理、售后服务及客户满意度提升', '/1/14', 9, 11, 'ON', now()),
+    (15, 0, 14, 'TEAM', '客服一组', 'CS-1', '承接华南区域客户服务、售后问题处理及客户关系维护', '/1/14/15', 1, 20, 'ON', now())
 ;
 SELECT setval('sys_org_units_id_seq', (SELECT COALESCE(MAX(id), 1) FROM sys_org_units));
 
 -- 岗位数据
 INSERT INTO public.sys_positions (id, tenant_id, type, name, code, org_unit_id, reports_to_position_id, description, job_family, job_grade, level, headcount, is_key_position, status, sort_order, created_at)
 VALUES
-    (1, 1, 'LEADER', '技术总监', 'TECH-DIRECTOR-001', 2, NULL, '负责公司整体技术战略规划、团队管理及核心技术决策', 'TECH', 1, 1, 1, true, 'ON', 1, now()),
-    (2, 1, 'MANAGER', '技术部经理', 'TECH-MANAGER-001', 2, 1, '负责技术部日常管理、项目排期及团队协作', 'TECH', 2, 2, 1, true, 'ON', 2, now()),
-    (3, 1, 'MANAGER', '前端主管', 'TECH-FE-LEADER-001', 2, 2, '负责前端团队开发管理、技术方案评审及需求落地', 'TECH', 3, 3, 3, false, 'ON', 3, now()),
-    (4, 1, 'MANAGER', '后端主管', 'TECH-BE-LEADER-001', 2, 2, '负责后端服务架构设计、数据库优化及接口开发管理', 'TECH', 4, 3, 3, false, 'ON', 4, now()),
-    (5, 1, 'REGULAR', '前端开发专员', 'TECH-FE-DEV-001', 2, 3, '负责Web/移动端前端页面开发、交互实现及兼容性优化', 'TECH', 5, 4, 5, false, 'ON', 5, now()),
-    (6, 1, 'REGULAR', '后端开发专员', 'TECH-BE-DEV-001', 2, 4, '负责后端接口开发、业务逻辑实现及系统稳定性维护', 'TECH', 6, 4, 5, false, 'ON', 6, now()),
-    (7, 1, 'REGULAR', '测试工程师', 'TECH-TEST-001', 2, 2, '负责项目功能测试、性能测试及自动化测试脚本开发', 'TECH', 3, 4, 3, false, 'ON', 7, now()),
-    (8, 1, 'LEADER', '人力总监', 'HR-DIRECTOR-001', 2, NULL, '负责人力资源战略规划、组织架构设计及人才梯队建设', 'HR', 1, 1, 1, true, 'ON', 1, now()),
-    (9, 1, 'MANAGER', '招聘主管', 'HR-RECRUIT-LEADER-001', 2, 8, '负责公司各部门招聘需求对接、简历筛选及面试安排', 'HR', 2, 2, 1, false, 'ON', 2, now()),
-    (10, 1, 'REGULAR', '薪酬绩效专员', 'HR-C&P-001', 2, 8, '负责员工薪酬核算、绩效考核制度落地及社保公积金管理', 'HR', 3, 2, 1, false, 'ON', 3, now()),
-    (11, 1, 'REGULAR', 'HRBP', 'HR-BP-001', 2, 8, '对接业务部门，提供人力资源支持（入离职、员工关系等）', 'HR', 4, 2, 1, false, 'ON', 4, now()),
-    (12, 1, 'LEADER', '财务总监', 'FIN-DIRECTOR-001', 2, NULL, '负责公司财务战略、预算管理及财务风险控制', 'FIN', 1, 1, 1, true, 'ON', 1, now()),
-    (13, 1, 'MANAGER', '会计主管', 'FIN-ACCOUNT-LEADER-001', 2, 12, '负责账务处理、财务报表编制及税务申报管理', 'FIN', 2, 2, 1, false, 'ON', 2, now()),
-    (14, 1, 'REGULAR', '出纳专员', 'FIN-CASHIER-001', 2, 13, '负责日常资金收付、银行对账及票据管理', 'FIN', 3, 3, 1, false, 'ON', 3, now()),
-    (15, 1, 'REGULAR', '成本会计', 'FIN-COST-001', 2, 13, '负责成本核算、成本分析及成本控制方案制定', 'FIN', 4, 3, 1, false, 'ON', 4, now()),
-    (16, 1, 'LEADER', '市场总监', 'MKT-DIRECTOR-001', 4, NULL, '负责市场战略规划、品牌建设及营销活动策划', 'MKT', 1, 1, 1, true, 'ON', 1, now()),
-    (17, 1, 'MANAGER', '新媒体运营主管', 'MKT-NEWS-LEADER-001', 4, 16, '负责新媒体平台内容运营及用户增长', 'MKT', 2, 2, 1, false, 'ON', 2, now()),
-    (18, 1, 'REGULAR', '活动策划专员', 'MKT-EVENT-001', 4, 16, '负责线下活动策划、执行及效果复盘', 'MKT', 3, 3, 1, false, 'ON', 3, now()),
-    (19, 1, 'REGULAR', '市场调研专员', 'MKT-RESEARCH-001', 4, 16, '负责行业动态调研、竞品分析及市场趋势报告撰写', 'MKT', 4, 3, 1, false, 'ON', 4, now()),
-    (20, 1, 'REGULAR', '行政助理', 'ADMIN-ASSIST-001', 2, 8, '负责办公用品采购、会议安排等行政工作（已合并至HRBP）', 'ADMIN', 5, 5, 1, false, 'OFF', 5, now())
+    (1, 0, 'LEADER', '技术总监', 'TECH-DIRECTOR-001', 2, NULL, '负责公司整体技术战略规划、团队管理及核心技术决策', 'TECH', 1, 1, 1, true, 'ON', 1, now()),
+    (2, 0, 'MANAGER', '技术部经理', 'TECH-MANAGER-001', 2, 1, '负责技术部日常管理、项目排期及团队协作', 'TECH', 2, 2, 1, true, 'ON', 2, now()),
+    (3, 0, 'MANAGER', '前端主管', 'TECH-FE-LEADER-001', 2, 2, '负责前端团队开发管理、技术方案评审及需求落地', 'TECH', 3, 3, 3, false, 'ON', 3, now()),
+    (4, 0, 'MANAGER', '后端主管', 'TECH-BE-LEADER-001', 2, 2, '负责后端服务架构设计、数据库优化及接口开发管理', 'TECH', 4, 3, 3, false, 'ON', 4, now()),
+    (5, 0, 'REGULAR', '前端开发专员', 'TECH-FE-DEV-001', 2, 3, '负责Web/移动端前端页面开发、交互实现及兼容性优化', 'TECH', 5, 4, 5, false, 'ON', 5, now()),
+    (6, 0, 'REGULAR', '后端开发专员', 'TECH-BE-DEV-001', 2, 4, '负责后端接口开发、业务逻辑实现及系统稳定性维护', 'TECH', 6, 4, 5, false, 'ON', 6, now()),
+    (7, 0, 'REGULAR', '测试工程师', 'TECH-TEST-001', 2, 2, '负责项目功能测试、性能测试及自动化测试脚本开发', 'TECH', 3, 4, 3, false, 'ON', 7, now()),
+    (8, 0, 'LEADER', '人力总监', 'HR-DIRECTOR-001', 2, NULL, '负责人力资源战略规划、组织架构设计及人才梯队建设', 'HR', 1, 1, 1, true, 'ON', 1, now()),
+    (9, 0, 'MANAGER', '招聘主管', 'HR-RECRUIT-LEADER-001', 2, 8, '负责公司各部门招聘需求对接、简历筛选及面试安排', 'HR', 2, 2, 1, false, 'ON', 2, now()),
+    (10, 0, 'REGULAR', '薪酬绩效专员', 'HR-C&P-001', 2, 8, '负责员工薪酬核算、绩效考核制度落地及社保公积金管理', 'HR', 3, 2, 1, false, 'ON', 3, now()),
+    (11, 0, 'REGULAR', 'HRBP', 'HR-BP-001', 2, 8, '对接业务部门，提供人力资源支持（入离职、员工关系等）', 'HR', 4, 2, 1, false, 'ON', 4, now()),
+    (12, 0, 'LEADER', '财务总监', 'FIN-DIRECTOR-001', 2, NULL, '负责公司财务战略、预算管理及财务风险控制', 'FIN', 1, 1, 1, true, 'ON', 1, now()),
+    (13, 0, 'MANAGER', '会计主管', 'FIN-ACCOUNT-LEADER-001', 2, 12, '负责账务处理、财务报表编制及税务申报管理', 'FIN', 2, 2, 1, false, 'ON', 2, now()),
+    (14, 0, 'REGULAR', '出纳专员', 'FIN-CASHIER-001', 2, 13, '负责日常资金收付、银行对账及票据管理', 'FIN', 3, 3, 1, false, 'ON', 3, now()),
+    (15, 0, 'REGULAR', '成本会计', 'FIN-COST-001', 2, 13, '负责成本核算、成本分析及成本控制方案制定', 'FIN', 4, 3, 1, false, 'ON', 4, now()),
+    (16, 0, 'LEADER', '市场总监', 'MKT-DIRECTOR-001', 4, NULL, '负责市场战略规划、品牌建设及营销活动策划', 'MKT', 1, 1, 1, true, 'ON', 1, now()),
+    (17, 0, 'MANAGER', '新媒体运营主管', 'MKT-NEWS-LEADER-001', 4, 16, '负责新媒体平台内容运营及用户增长', 'MKT', 2, 2, 1, false, 'ON', 2, now()),
+    (18, 0, 'REGULAR', '活动策划专员', 'MKT-EVENT-001', 4, 16, '负责线下活动策划、执行及效果复盘', 'MKT', 3, 3, 1, false, 'ON', 3, now()),
+    (19, 0, 'REGULAR', '市场调研专员', 'MKT-RESEARCH-001', 4, 16, '负责行业动态调研、竞品分析及市场趋势报告撰写', 'MKT', 4, 3, 1, false, 'ON', 4, now()),
+    (20, 0, 'REGULAR', '行政助理', 'ADMIN-ASSIST-001', 2, 8, '负责办公用品采购、会议安排等行政工作（已合并至HRBP）', 'ADMIN', 5, 5, 1, false, 'OFF', 5, now())
 ;
 SELECT setval('sys_positions_id_seq', (SELECT COALESCE(MAX(id), 1) FROM sys_positions));
-
--- 用户-租户关联关系
-INSERT INTO public.sys_memberships (id, tenant_id, user_id, org_unit_id, position_id, role_id, is_primary, status)
-VALUES
-    -- 租户管理员（TENANT_ADMIN）
-    (2, 1, 2, null, null, 2, true, 'ACTIVE')
-;
-SELECT setval('sys_memberships_id_seq', (SELECT MAX(id) FROM sys_memberships));
-
--- 租户成员-角色关联关系
-INSERT INTO sys_membership_roles (id, membership_id, tenant_id, role_id, is_primary, status)
-VALUES
-    -- 租户管理员（TENANT_ADMIN）
-    (2, 2, 1, 2, true, 'ACTIVE')
-;
-SELECT setval('sys_membership_roles_id_seq', (SELECT MAX(id) FROM sys_membership_roles));
 
 -- 插入字典类型
 INSERT INTO public.sys_dict_types (
@@ -240,73 +190,15 @@ VALUES
 ;
 SELECT setval('internal_message_categories_id_seq', (SELECT MAX(id) FROM internal_message_categories));
 
--- 套餐目录种子（三版本：免费/标准/企业）
-INSERT INTO public.sys_plans (id, name, version, expiry_policy, data_retention_days, description, created_at)
-VALUES
-    (1, '免费版', 'FREE', 'READONLY', 0, '免费版套餐，仅基础功能', now()),
-    (2, '标准版', 'STANDARD', 'BLOCK_LOGIN', 30, '标准版套餐，含核心业务模块', now()),
-    (3, '企业版', 'ENTERPRISE', 'FREEZE', 90, '企业版套餐，全功能模块', now())
-;
-SELECT setval('sys_plans_id_seq', (SELECT MAX(id) FROM sys_plans));
-
--- 套餐配额种子
-INSERT INTO public.sys_plan_quotas (plan_id, quota_type, quota_value, created_at)
-VALUES
-    (1, 'USER_LIMIT', 5, now()),
-    (1, 'STORAGE', 1073741824, now()),
-    (1, 'API_CALL', 1000, now()),
-    (2, 'USER_LIMIT', 50, now()),
-    (2, 'STORAGE', 10737418240, now()),
-    (2, 'API_CALL', 10000, now()),
-    (3, 'USER_LIMIT', 500, now()),
-    (3, 'STORAGE', 107374182400, now()),
-    (3, 'API_CALL', 100000, now())
-;
-
--- 套餐模块白名单种子
--- 免费版（plan_id=1）：DASHBOARD + TENANT
-INSERT INTO public.sys_plan_modules (plan_id, module, created_at)
-VALUES
-    (1, 'DASHBOARD', now()),
-    (1, 'TENANT', now())
-;
-
--- 标准版（plan_id=2）：DASHBOARD + OPM + SYSTEM + DICT + LOG + TENANT
-INSERT INTO public.sys_plan_modules (plan_id, module, created_at)
-VALUES
-    (2, 'DASHBOARD', now()),
-    (2, 'OPM', now()),
-    (2, 'SYSTEM', now()),
-    (2, 'DICT', now()),
-    (2, 'LOG', now()),
-    (2, 'TENANT', now())
-;
-
--- 企业版（plan_id=3）：全模块
-INSERT INTO public.sys_plan_modules (plan_id, module, created_at)
-VALUES
-    (3, 'DASHBOARD', now()),
-    (3, 'OPM', now()),
-    (3, 'SYSTEM', now()),
-    (3, 'DICT', now()),
-    (3, 'TENANT', now()),
-    (3, 'PERMISSION', now()),
-    (3, 'LOG', now()),
-    (3, 'INTERNAL_MESSAGE', now()),
-    (3, 'FILE', now()),
-    (3, 'TASK', now())
-;
-
 -- ============================================================
 -- 增补：站内信（含收件人）
--- （tenant_admin 的登录凭证已由上方 sys_user_credentials 段 provisioning）
 -- ============================================================
 
 -- 站内信（状态 tag：DRAFT/PUBLISHED/SCHEDULED/ARCHIVED；类型 tag：NOTIFICATION）
 INSERT INTO public.internal_messages (tenant_id, title, content, sender_id, category_id, status, type) VALUES
     (0, '平台维护公告', '本周六 02:00-04:00 平台例行维护，期间服务短暂不可用。', 1,
         (SELECT id FROM public.internal_message_categories ORDER BY id LIMIT 1), 'PUBLISHED', 'NOTIFICATION'),
-    (1, '租户版本更新说明', '新版工作台已上线，详情见帮助中心。', 1,
+    (0, '版本更新说明', '新版工作台已上线，详情见帮助中心。', 1,
         (SELECT id FROM public.internal_message_categories ORDER BY id OFFSET 1 LIMIT 1), 'PUBLISHED', 'NOTIFICATION'),
     (0, '促销活动草稿', '双十一活动方案（草稿，待审批）。', 1, NULL, 'DRAFT', 'NOTIFICATION'),
     (0, '下月功能预告', '定时发布：下月 1 日 09:00 自动推送。', 1, NULL, 'SCHEDULED', 'NOTIFICATION'),
@@ -317,7 +209,7 @@ INSERT INTO public.internal_messages (tenant_id, title, content, sender_id, cate
 INSERT INTO public.internal_message_recipients (tenant_id, message_id, recipient_user_id, status, received_at, read_at) VALUES
     (0, (SELECT id FROM public.internal_messages WHERE title = '平台维护公告'), 1, 'READ', now(), now()),
     (0, (SELECT id FROM public.internal_messages WHERE title = '已归档的旧公告'), 1, 'RECEIVED', now(), NULL),
-    (1, (SELECT id FROM public.internal_messages WHERE title = '租户版本更新说明'), 2, 'READ', now(), now())
+    (0, (SELECT id FROM public.internal_messages WHERE title = '版本更新说明'), 1, 'READ', now(), now())
 ;
 
 COMMIT;

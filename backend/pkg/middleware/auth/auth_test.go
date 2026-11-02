@@ -12,8 +12,6 @@ package auth
 import (
 	"context"
 	"encoding/base64"
-	"errors"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -76,32 +74,6 @@ func newTransportCtx(authzHeader string) context.Context {
 		ft.hdr.Set("Authorization", authzHeader)
 	}
 	return transport.NewServerContext(context.Background(), ft)
-}
-
-// tenantCheckerStub 记录调用参数的租户访问检查器桩，可注入返回错误。
-type tenantCheckerStub struct {
-	mu    sync.Mutex
-	calls []tenantAccessCall
-	err   error
-}
-
-type tenantAccessCall struct {
-	tenantId uint32
-	path     string
-	method   string
-}
-
-func (s *tenantCheckerStub) CheckTenantAccess(_ context.Context, tenantId uint32, path, method string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.calls = append(s.calls, tenantAccessCall{tenantId: tenantId, path: path, method: method})
-	return s.err
-}
-
-func (s *tenantCheckerStub) callCount() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.calls)
 }
 
 // validChecker 返回一个恒判有效并回放指定 payload 的令牌检查器。
@@ -251,59 +223,6 @@ func TestServer_InjectionsDisabled(t *testing.T) {
 }
 
 // ----------------------------------------------------------------------------
-// 租户访问检查门控
-// ----------------------------------------------------------------------------
-
-// TestServer_TenantCheckerGating 租户访问检查的门控语义：
-// 平台管理员（tenantId=0）不触发检查；租户用户触发检查且路径取自 Operation()
-// （非 http transport 假件下 method 为空）；检查器拒绝则请求被终止。
-func TestServer_TenantCheckerGating(t *testing.T) {
-	// 平台管理员：检查器不被调用。
-	platform := &tenantCheckerStub{}
-	reached, _, err := runAuthMiddleware(
-		t, newTransportCtx("Bearer good-token"), nil,
-		validChecker(&authenticationV1.UserTokenPayload{UserId: 1}),
-		WithTenantAccessChecker(platform),
-	)
-	require.NoError(t, err)
-	require.True(t, reached)
-	require.Zero(t, platform.callCount(), "平台管理员不得触发租户访问检查")
-
-	// 租户用户：检查器被调用，参数为（租户ID, Operation(), 空方法）。
-	tenant := &tenantCheckerStub{}
-	reached, _, err = runAuthMiddleware(
-		t, newTransportCtx("Bearer good-token"), nil,
-		validChecker(&authenticationV1.UserTokenPayload{
-			UserId:   2,
-			TenantId: trans.Ptr(uint32(7)),
-		}),
-		WithTenantAccessChecker(tenant),
-	)
-	require.NoError(t, err)
-	require.True(t, reached)
-	require.Equal(t, 1, tenant.callCount())
-	tenant.mu.Lock()
-	call := tenant.calls[0]
-	tenant.mu.Unlock()
-	require.Equal(t, uint32(7), call.tenantId)
-	require.Equal(t, "/fake.Test/Op", call.path)
-	require.Equal(t, "", call.method)
-
-	// 检查器拒绝：请求被终止，不到达 handler。
-	deny := &tenantCheckerStub{err: errors.New("tenant frozen")}
-	reached, _, err = runAuthMiddleware(
-		t, newTransportCtx("Bearer good-token"), nil,
-		validChecker(&authenticationV1.UserTokenPayload{
-			UserId:   2,
-			TenantId: trans.Ptr(uint32(7)),
-		}),
-		WithTenantAccessChecker(deny),
-	)
-	require.EqualError(t, err, "tenant frozen")
-	require.False(t, reached)
-}
-
-// ----------------------------------------------------------------------------
 // 请求字段回填（OperatorId / TenantId）
 // ----------------------------------------------------------------------------
 
@@ -334,7 +253,7 @@ type tenantCarrier struct {
 func TestServer_TenantIdInjection(t *testing.T) {
 	payload := &authenticationV1.UserTokenPayload{
 		UserId:   2,
-		TenantId: trans.Ptr(uint32(3)),
+		TenantId: trans.Ptr(uint32(0)), // 单租户：非 0 租户的令牌会被拒绝
 	}
 	req := &tenantCarrier{}
 	reached, _, err := runAuthMiddleware(
@@ -345,7 +264,7 @@ func TestServer_TenantIdInjection(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, reached)
 	require.NotNil(t, req.TenantId, "TenantId 应回填为令牌租户ID")
-	require.Equal(t, uint32(3), *req.TenantId)
+	require.Equal(t, uint32(0), *req.TenantId)
 }
 
 // TestSetRequestIds_NilAndNoMatch 直接单元测试回填函数：
@@ -393,7 +312,6 @@ func TestOptionSetters(t *testing.T) {
 		_ = Server(
 			WithLogger(bLogger.NopLogger()),
 			WithAccessTokenChecker(NewAccessTokenCheckerFromFuncs(nil, nil)),
-			WithTenantAccessChecker(nil),
 			WithEnableCheckRefreshTokenExpiration(true),
 			WithEnableCheckScopes(true),
 			WithInjectOperatorId(false),

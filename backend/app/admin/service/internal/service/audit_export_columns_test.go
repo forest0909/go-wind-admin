@@ -19,12 +19,12 @@ func TestAuditExportColumnHeaders(t *testing.T) {
 		want []string
 	}{
 		{"login", headersOf(loginExportColumns()), []string{
-			"id", "createdAt", "username", "tenantName", "actionType", "status",
+			"id", "createdAt", "username", "actionType", "status",
 			"loginMethod", "mfaStatus", "failureReason", "ipAddress", "deviceInfo",
 			"requestId", "traceId",
 		}},
 		{"operation", headersOf(operationExportColumns()), []string{
-			"id", "createdAt", "username", "tenantName", "resourceType", "resourceId",
+			"id", "createdAt", "username", "resourceType", "resourceId",
 			"action", "success", "sensitiveLevel", "requestId",
 		}},
 	}
@@ -57,9 +57,6 @@ func TestParseExportRequest(t *testing.T) {
 		}
 		if req.GetLimit() != 500000 {
 			t.Fatalf("limit = %d, want 500000", req.GetLimit())
-		}
-		if !req.GetNoPaging() {
-			t.Fatal("NoPaging must be true for export")
 		}
 	})
 	t.Run("bad format rejected", func(t *testing.T) {

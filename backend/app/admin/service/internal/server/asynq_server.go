@@ -15,7 +15,7 @@ import (
 )
 
 // NewAsynqServer creates a new asynq server.
-func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, internalMessageService *service.InternalMessageService, planQuotaWatermarkService *service.PlanQuotaWatermarkService) (*asynqServer.Server, error) {
+func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, internalMessageService *service.InternalMessageService) (*asynqServer.Server, error) {
 	cfg := ctx.GetConfig()
 
 	if cfg == nil || cfg.Server == nil || cfg.Server.Asynq == nil {
@@ -34,27 +34,9 @@ func NewAsynqServer(ctx *bootstrap.Context, taskService *service.TaskService, in
 
 	var err error
 
-	// 套餐配额水位扫描 handler（系统级常驻 cron，每日 09:00）：
-	// 扫描全部 ON 租户三类配额水位，命中租户的告警站内信投递其管理员。
-	if planQuotaWatermarkService != nil {
-		if err = asynqServer.RegisterSubscriber(srv, task.PlanQuotaWatermarkTaskType, planQuotaWatermarkService.AsyncPlanQuotaWatermarkScan); err != nil {
-			log.Error(err)
-			return nil, err
-		}
-	}
-
-	// 注册租户到期扫描任务（系统级常驻任务，不写入 sys_tasks 表）。
-	// 该任务每小时整点扫描 status==ON 且 expired_at<=now 的租户，按套餐 expiry_policy 修改状态并吊销令牌。
-	// READONLY 策略的即时读写拦截由 TenantAccessChecker 中间件承担，不依赖本扫描任务。
-	// 注意：仅在此注册 handler（subscriber），周期调度在 startAllTask 末尾注册，
-	// 以确保 RestartAllTask（先 RemoveAllPeriodicTask 再 startAllTask）后仍能恢复。
-	if err = asynqServer.RegisterSubscriber(srv, task.TenantExpiryScanTaskType, taskService.AsyncTenantExpiryScan); err != nil {
-		log.Error(err)
-		return nil, err
-	}
-
 	// 注册审计日志归档任务 handler（等保 ≥6 个月留存：超期行导出 JSONL 后删除）。
-	// 周期调度同样在 startAllTask 末尾注册。
+	// 周期调度在 startAllTask 末尾注册，以确保 RestartAllTask
+	// （先 RemoveAllPeriodicTask 再 startAllTask）后仍能恢复。
 	if err = asynqServer.RegisterSubscriber(srv, task.AuditLogArchiveTaskType, taskService.AsyncAuditLogArchive); err != nil {
 		log.Error(err)
 		return nil, err

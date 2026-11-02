@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strings"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"go-wind-admin/third_party/go-utils/trans"
@@ -59,6 +60,7 @@ func (s *FileService) Create(ctx context.Context, req *storageV1.CreateFileReque
 	}
 
 	req.Data.CreatedBy = trans.Ptr(operator.UserId)
+	clearFileStorageFields(req.Data)
 
 	if err = s.fileRepo.Create(ctx, req); err != nil {
 		return nil, err
@@ -79,6 +81,10 @@ func (s *FileService) Update(ctx context.Context, req *storageV1.UpdateFileReque
 	}
 
 	req.Data.Id = trans.Ptr(req.GetId())
+	clearFileStorageFields(req.Data)
+	if req.UpdateMask != nil {
+		req.UpdateMask.Paths = dropFileStoragePaths(req.UpdateMask.Paths)
+	}
 
 	req.Data.UpdatedBy = trans.Ptr(operator.UserId)
 	if req.UpdateMask != nil {
@@ -104,12 +110,43 @@ func (s *FileService) Delete(ctx context.Context, req *storageV1.DeleteFileReque
 		return nil, err
 	}
 
+	// 手工建的文件记录没有存储位置（见 clearFileStorageFields），没有对象可删。
+	if f.GetBucketName() == "" || f.GetSaveFileName() == "" {
+		return &emptypb.Empty{}, nil
+	}
+
 	if err = s.mc.DeleteFile(ctx,
 		f.GetBucketName(),
-		f.GetFileDirectory()+"/"+f.GetSaveFileName(),
+		joinObjectPath(f.GetFileDirectory(), f.GetSaveFileName()),
 	); err != nil {
 		return nil, err
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// fileStorageFields 文件记录里描述存储位置和大小的字段，只能由上传流程写入。
+// 客户端能改的话，就能让记录指向别人的对象，再借 Delete 删掉它。
+var fileStorageFields = map[string]struct{}{
+	"bucketname": {}, "filedirectory": {}, "savefilename": {}, "size": {}, "sizeformat": {},
+}
+
+func clearFileStorageFields(f *storageV1.File) {
+	f.BucketName = nil
+	f.FileDirectory = nil
+	f.SaveFileName = nil
+	f.Size = nil
+	f.SizeFormat = nil
+}
+
+// dropFileStoragePaths 去掉 update mask 里的存储字段，兼容 snake_case 和 camelCase。
+func dropFileStoragePaths(paths []string) []string {
+	kept := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if _, ok := fileStorageFields[strings.ToLower(strings.ReplaceAll(p, "_", ""))]; ok {
+			continue
+		}
+		kept = append(kept, p)
+	}
+	return kept
 }

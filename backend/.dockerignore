@@ -53,6 +53,10 @@ vendor/
 
 # Secrets / env (compose reads .env on the host; never baked into image layers)
 .env
+.env.*
+
+# 本机覆盖配置（含本地/生产凭证），不能进构建上下文和镜像
+**/configs/local/
 
 # SQL seed/migration dumps (not needed for image build)
 sql/

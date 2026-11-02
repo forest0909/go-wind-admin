@@ -15,7 +15,6 @@
     "email": "邮箱",
     "region": "地区",
     "address": "地址",
-    "tenantName": "所属租户",
     "orgUnitName": "组织",
     "positionName": "职位",
     "createdAt": "创建时间",

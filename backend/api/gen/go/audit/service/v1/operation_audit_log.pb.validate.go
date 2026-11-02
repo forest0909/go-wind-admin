@@ -65,10 +65,6 @@ func (m *OperationAuditLog) validate(all bool) error {
 		// no validation rules for TenantId
 	}
 
-	if m.TenantName != nil {
-		// no validation rules for TenantName
-	}
-
 	if m.UserId != nil {
 		// no validation rules for UserId
 	}

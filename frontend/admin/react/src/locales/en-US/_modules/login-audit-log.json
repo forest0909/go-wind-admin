@@ -29,7 +29,6 @@
   "userId": "User ID",
   "loginMethod": "Login Method",
   "riskScore": "Risk Score",
-  "tenantName": "Tenant",
   "osName": "OS",
   "browserName": "Browser",
   "userAgent": "User-Agent",
@@ -51,5 +50,6 @@
   "exportXlsx": "Excel Workbook",
   "exportServerXlsx": "Server-side full (XLSX)",
   "exportServerSuccess": "Download started",
+  "exportServerTruncated": "Download started. More rows match than the {{limit}}-row limit; only the newest {{limit}} rows were exported. Narrow the search and export in batches",
   "exportServerFailed": "Server-side export failed"
 }

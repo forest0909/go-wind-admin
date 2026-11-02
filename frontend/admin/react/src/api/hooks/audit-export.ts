@@ -7,10 +7,16 @@ import type { PaginationQuery } from '@/core';
  * 同源序列化（contains 转换/空值清理与列表页一致）透传——导出的即当前
  * 搜索看到的。
  */
+export interface AuditExportServerResult {
+  /** 符合条件的数据超过服务端行数上限，只导出了最新的 rowLimit 行 */
+  truncated: boolean;
+  rowLimit?: number;
+}
+
 export async function exportAuditLogsServer(
   type: 'login' | 'operation',
   query: PaginationQuery,
-): Promise<void> {
+): Promise<AuditExportServerResult> {
   const token = useAuthStore.getState().accessToken;
   const params = new URLSearchParams({ format: 'xlsx', type });
   const queryJson = query.queryString;
@@ -36,4 +42,9 @@ export async function exportAuditLogsServer(
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
+
+  // 服务端按最新在前导出；超过上限时用响应头告知，不静默截断
+  const truncated = res.headers.get('x-export-truncated') === 'true';
+  const rowLimit = Number(res.headers.get('x-export-row-limit')) || undefined;
+  return { truncated, rowLimit };
 }

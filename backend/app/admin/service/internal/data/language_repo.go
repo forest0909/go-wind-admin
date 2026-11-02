@@ -184,6 +184,44 @@ func (r *LanguageRepo) Create(ctx context.Context, req *dictV1.CreateLanguageReq
 	return nil
 }
 
+// BatchCreate 在同一事务内逐条创建语言，字段与 Create 一致。
+func (r *LanguageRepo) BatchCreate(ctx context.Context, items []*dictV1.Language) (err error) {
+	tx, err := r.entClient.Client().Tx(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "start transaction failed: %s", err.Error())
+		return dictV1.ErrorInternalServerError("start transaction failed")
+	}
+	var txCommitted bool
+	defer finishEntTx(tx, &txCommitted, func(rollbackErr error) {
+		r.log.Errorf(ctx, "transaction rollback failed: %s", rollbackErr.Error())
+	})
+
+	for _, item := range items {
+		builder := tx.Language.Create().
+			SetLanguageName(item.GetLanguageName()).
+			SetLanguageCode(item.GetLanguageCode()).
+			SetNativeName(item.GetNativeName()).
+			SetNillableIsEnabled(item.IsEnabled).
+			SetNillableIsDefault(item.IsDefault).
+			SetNillableSortOrder(item.SortOrder).
+			SetNillableCreatedBy(item.CreatedBy).
+			SetCreatedAt(time.Now())
+		if item.Id != nil {
+			builder.SetID(item.GetId())
+		}
+		if err = builder.Exec(ctx); err != nil {
+			r.log.Errorf(ctx, "batch insert language failed: %s", err.Error())
+			return dictV1.ErrorInternalServerError("insert data failed")
+		}
+	}
+
+	if err = commitEntTx(tx, &txCommitted); err != nil {
+		r.log.Errorf(ctx, "transaction commit failed: %s", err.Error())
+		return dictV1.ErrorInternalServerError("transaction commit failed")
+	}
+	return nil
+}
+
 func (r *LanguageRepo) Update(ctx context.Context, req *dictV1.UpdateLanguageRequest) error {
 	if req == nil || req.Data == nil {
 		return dictV1.ErrorBadRequest("invalid parameter")
@@ -210,9 +248,8 @@ func (r *LanguageRepo) Update(ctx context.Context, req *dictV1.UpdateLanguageReq
 	err := r.repository.UpdateX(ctx, builder, req.Data, req.GetUpdateMask(),
 		func(dto *dictV1.Language) {
 			builder.
-				SetLanguageName(req.Data.GetLanguageName()).
-				//SetLanguageCode(req.Data.GetLanguageCode()).
-				SetNativeName(req.Data.GetNativeName()).
+				SetNillableLanguageName(req.Data.LanguageName).
+				SetNillableNativeName(req.Data.NativeName).
 				SetNillableIsEnabled(req.Data.IsEnabled).
 				SetNillableIsDefault(req.Data.IsDefault).
 				SetNillableSortOrder(req.Data.SortOrder).

@@ -22,7 +22,7 @@ The backend is the source of truth. Frontends depend on the types generated here
 8. `backend/app/admin/service/internal/server/rest_server.go` — param + `Register<Entity>ServiceHTTPServer` call; also injected by `make register`
 9. `backend/api/buf.gen.yaml` — **only if** you created a brand-new domain (not permission/dict/identity/...). Add a `go_package` override entry.
 
-**Never hand-edit (regenerated):** `api/gen/go/**`, `internal/data/ent/**` (except `schema/`). Dependency wiring in `cmd/server/wiring_ent.go` is hand-written — no codegen step exists for it; a missing wire-up is a compile error at the call site.
+**Never hand-edit (regenerated):** `api/gen/go/**`, `internal/data/ent/**` (except `schema/`). Dependency wiring in `cmd/server/wiring_ent.go` is hand-written — no codegen step exists for it. A missing wire-up is **not** reliably a compile error: forgetting the whole registration still builds (the endpoint then 404s while its Api row and permission point exist), and so does a service that leaves a method to the embedded `XxxServiceHTTPServer` interface (the call nil-panics into a 500). `go test ./...` catches both (`TestEveryOpenAPIOperationHasRoute`, `TestRestServicesImplementAllMethods`), and the server logs an error at startup for openapi operations without a route.
 
 ## Step 1 — Domain proto
 
@@ -87,7 +87,7 @@ service <Entity>Service {
 
 Route prefix is always `/admin/v1/<entities>`. For batch delete the path drops `{id}` (see `i_dict_type.proto`). The BFF can expose fewer RPCs than the domain (e.g. omit Count).
 
-**If you introduced a NEW domain** (one not already present in `buf.gen.yaml`'s overrides), add a `go_package` override entry there pointing `<domain>/service/v1` → `go-wind-admin/api/gen/go/<domain>/service/v1;<domain>pb`. Otherwise `make api` won't know where to emit the domain package.
+**If you introduced a NEW domain** (one not already present in `buf.gen.yaml`'s overrides), add a `go_package` override entry there pointing `<domain>/service/v1` → `go-wind-admin/api/gen/go/<domain>/service/v1;<domain>pb`. Without it `make api` still emits the code under `go-wind-admin/api/gen/go/<domain>/service/v1`, but with the managed-mode package name `servicev1` instead of the repo convention `<domain>pb`.
 
 ## Step 3 — Generate proto code
 
@@ -98,7 +98,7 @@ Produces `api/gen/go/<domain>/service/v1/*.pb.go` and `api/gen/go/admin/service/
 
 ## Step 4 — Ent schema
 
-Path: `backend/app/admin/service/internal/data/ent/schema/<entity>.go`. Mirror `schema/api.go` (plain) or `schema/dict_type.go` (with tenant + edges).
+Path: `backend/app/admin/service/internal/data/ent/schema/<entity>.go`. Mirror `schema/api.go` (plain) or `schema/dict_type.go` (with edges).
 
 ```go
 package schema
@@ -140,7 +140,7 @@ func (<Entity>) Mixin() []ent.Mixin {
         // Optional extras:
         // mixin.IsEnabled{},         // bool is_enabled
         // mixin.SortOrder{},         // uint32 sort_order
-        // mixin.TenantID[uint32]{},  // tenant_id (multi-tenant)
+        // mixin.TenantID[uint32]{},  // legacy tenant_id column, always 0 — copy it if the sibling tables have it, never branch on it
     }
 }
 
@@ -231,7 +231,7 @@ Five methods (mirror `api_repo.go` lines noted):
 **List filter conventions (repo-wide iron rules):** search conditions use contains-suffix operators, never plain `EQ`; ID fields are excluded from fuzzy search (precedent: `permission_repo.go`'s `clearFilterExprByFieldNames(filterExpr, "id"...)`); a key already carrying an operator suffix (`__not`, `__gte`, …) must never gain `__contains` on top — go-crud would flip the semantics or error out (the three frontend serializers guard this). Full protocol: [../list_query_rule.md](../list_query_rule.md).
 - **Get** — `switch req.QueryBy.(type)` to build `[]func(s *sql.Selector)` where-conds, then `r.repository.Get(ctx, builder, req.GetViewMask(), whereCond...)`. The view_mask controls which fields are returned.
 - **Create** — build via `r.entClient.Client().<Entity>.Create().SetNillable*(...).SetNillableCreatedBy(...).SetCreatedAt(time.Now()).Exec(ctx)`. `CreatedBy` is injected by the Service from `auth.FromContext`.
-- **Update** — `r.repository.UpdateX(ctx, builder, req.Data, req.GetUpdateMask(), setCallback, whereCallback)`. The setCallback applies FieldMask-passed fields via `SetNillable*`; whereCallback sets `sql.EQ(<entity>.FieldID, req.GetId())`. `allow_missing` triggers a Create-if-absent (upsert) inside UpdateX. If the entity carries association ID lists (edges), the subsection below is mandatory before writing this method.
+- **Update** — `r.repository.UpdateX(ctx, builder, req.Data, req.GetUpdateMask(), setCallback, whereCallback)`. The setCallback applies FieldMask-passed fields via `SetNillable*`; whereCallback sets `sql.EQ(<entity>.FieldID, req.GetId())`. `allow_missing` triggers a Create-if-absent (upsert) inside UpdateX. If the entity carries association ID lists (edges), the subsection below is mandatory before writing this method. The setCallback is hand-written per field: a field the callback forgets returns 200 and is silently not written, and `SetX(req.Data.GetX())` instead of `SetNillableX(req.Data.X)` writes the zero value whenever the field is outside the mask. Add a case for the new repo to `TestRepoUpdateRoundTrip` (`internal/data/update_roundtrip_sqlite_test.go`): it sets every DTO field through the mask and asserts each one is written, then checks fields outside the mask stay unchanged; fields that legitimately cannot be updated go in the case's `skip` with a reason.
 - **Delete** — `r.repository.Delete(ctx, builder, whereCallback)`. Batch variant: `r.entClient.Client().<Entity>.Delete().Where(<entity>.IDIn(ids...)).Exec(ctx)`.
 
 **Error returns in repo:** prefer domain errors (`<domain>V1.ErrorInternalServerError(...)`) — though many repos mix in `adminV1`. The Service layer standardizes on `adminV1`. Be consistent within the file.
@@ -376,7 +376,7 @@ This injects all five registration points in one shot, anchored on `register:*` 
 
 The tool only emits the standard CRUD shape (`data.New<Entity>Repo(ctx, entClient)` / `service.New<Entity>Service(ctx, <entity>Repo)`). For services with extra dependencies, edit the injected lines by hand — the markers show exactly where things belong.
 
-A missing wire-up is a compile error at the call site — if `go build` fails, fix the wiring, not the generated code.
+If `go build` fails, fix the wiring, not the generated code. A build that passes is not proof the module is wired: run `go test ./internal/server/` in `backend/app/admin/service` (route ↔ openapi and service-method completeness checks).
 
 ## Step 10 — Build & verify
 
@@ -394,7 +394,7 @@ Consequences for a new module:
 
 - **Fresh deployment**: everything (including Api registry rows) appears automatically on first boot.
 - **Existing deployment never re-seeds.** Adding entries to `DefaultMenus` / `DefaultRoles` / etc. changes nothing on a running instance — new menus go in via the 菜单管理 admin page.
-- **New endpoints register on restart.** On every boot `ApiService.init()` compares the Api table with the embedded `openapi.yaml` and runs `SyncApis` when they differ; `PermissionService.init()` then re-syncs permission points. So run `make openapi` before building/restarting — an endpoint missing from the embedded document stays out of the Api table and the tenant access checker fails closed with 403. 接口管理 →「接口同步」 still works for a manual run.
+- **New endpoints register on restart.** On every boot `ApiService.init()` compares the Api table with the embedded `openapi.yaml` and runs `SyncApis` when they differ; `PermissionService.init()` then re-syncs permission points. So run `make openapi` before building/restarting — an endpoint missing from the embedded document stays out of the Api table, gets no permission point, and every non-platform-admin role gets 403. 接口管理 →「接口同步」 still works for a manual run.
 - **Button codes are checked by `go test`.** `TestPermissionCodeConsistency` (`internal/service/permission_consistency_test.go`) derives codes from the embedded OpenAPI, `DefaultMenus` and the React `code:` / `<AccessButton>` usages; a button code no API produces, or one without a matching `<resource>:view` page, fails the test.
 - If the module needs its own built-in rows (like default dict types), follow the same pattern: data in `pkg/constants/default_data.go`, seeded from the service's `init()` behind `count == 0`.
 

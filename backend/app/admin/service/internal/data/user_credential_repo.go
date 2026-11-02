@@ -23,6 +23,7 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	"go-wind-admin/app/admin/service/internal/data/ent/predicate"
 
+	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
 
 	"go-wind-admin/pkg/constants"
@@ -303,10 +304,8 @@ func (r *UserCredentialRepo) DeleteByIdentifier(ctx context.Context, identityTyp
 		usercredential.IdentityTypeEQ(*r.identityTypeConverter.ToEntity(&identityType)),
 		usercredential.IdentifierEQ(identifier),
 	)
-	// 租户范围过滤（平台管理员 tenant_id=0 不限定）
-	if tid, hasTenant := maybeTenantFromViewer(ctx); hasTenant {
-		builder.Where(usercredential.TenantIDEQ(tid))
-	}
+	// 单租户：只认租户 0，旧库遗留的同名 tenant_id>0 凭证不受影响
+	builder.Where(usercredential.TenantIDEQ(0))
 	if affected, err := builder.Exec(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return authenticationV1.ErrorNotFound("user credential not found")
@@ -346,19 +345,6 @@ func (r *UserCredentialRepo) Get(ctx context.Context, req *authenticationV1.GetU
 	return dto, err
 }
 
-// maybeTenantFromViewer returns the viewer's tenant id if present and >0, plus whether a viewer context exists.
-func maybeTenantFromViewer(ctx context.Context) (tenantID uint32, hasTenant bool) {
-	vc, exist := viewer.FromContext(ctx)
-	if !exist {
-		return 0, false
-	}
-	tid := vc.TenantID()
-	if tid == 0 {
-		return 0, false
-	}
-	return uint32(tid), true
-}
-
 func (r *UserCredentialRepo) GetByIdentifier(ctx context.Context, req *authenticationV1.GetUserCredentialByIdentifierRequest) (*authenticationV1.UserCredential, error) {
 	builder := r.entClient.Client().UserCredential.Query()
 
@@ -368,10 +354,8 @@ func (r *UserCredentialRepo) GetByIdentifier(ctx context.Context, req *authentic
 		usercredential.IdentifierEQ(req.GetIdentifier()),
 	)
 
-	// 租户范围过滤（平台管理员 tenant_id=0 不限定）
-	if tid, hasTenant := maybeTenantFromViewer(ctx); hasTenant {
-		whereConds = append(whereConds, usercredential.TenantIDEQ(tid))
-	}
+	// 单租户：只认租户 0，旧库遗留的同名 tenant_id>0 凭证不参与匹配
+	whereConds = append(whereConds, usercredential.TenantIDEQ(0))
 
 	builder.Where(whereConds...)
 
@@ -401,7 +385,7 @@ func (r *UserCredentialRepo) performDummyVerify(plainCredential string) {
 }
 
 // FindUserCredential 在指定租户范围内根据身份类型+标识符查询单条凭证并校验密码。
-// tenantID 由调用方解析确定（登录时按 tenant_code 解析；留空视为平台 tenant 0）。
+// 单租户：登录固定传 tenantID = 0，旧库遗留的 tenant_id>0 凭证不参与匹配。
 // (tenant_id, identity_type, identifier) 在该 tenant 内唯一，无需跨租户消歧。
 // needDecrypt 为 true 时，plainCredential 应为 base64+AES 加密密文，会自动解密。
 // 返回匹配到的用户 ID，调用方可据此通过 ID 查找用户。
@@ -420,7 +404,8 @@ func (r *UserCredentialRepo) FindUserCredential(ctx context.Context, tenantID ui
 		plainCredential = string(decrypted)
 	}
 
-	entity, err := r.entClient.Client().UserCredential.Query().
+	var entity *ent.UserCredential
+	entities, err := r.entClient.Client().UserCredential.Query().
 		Select(
 			usercredential.FieldUserID,
 			usercredential.FieldCredentialType,
@@ -434,7 +419,10 @@ func (r *UserCredentialRepo) FindUserCredential(ctx context.Context, tenantID ui
 			usercredential.IdentityTypeEQ(*r.identityTypeConverter.ToEntity(trans.Ptr(identityType))),
 			usercredential.IdentifierEQ(identifier),
 		).
-		Only(ctx)
+		All(ctx)
+	if err == nil {
+		entity, err = r.pickLiveCredential(ctx, entities)
+	}
 	if err != nil {
 		// 恒定时间防护：用户不存在时也跑一次 bcrypt 校验，避免被计时攻击枚举用户名
 		r.performDummyVerify(plainCredential)
@@ -467,6 +455,56 @@ func (r *UserCredentialRepo) FindUserCredential(ctx context.Context, tenantID ui
 	}
 
 	return 0, authenticationV1.ErrorInvalidPassword("incorrect password")
+}
+
+// pickLiveCredential 从同一 (tenant, identity_type, identifier) 命中的凭证里挑出唯一一条。
+// 旧版删除用户不清凭证，同名重建后会留下 user_id 已不存在的孤儿行，Only() 因此 NotSingular。
+// 只有多行时才去掉孤儿：单行沿用原语义，不额外查用户表。
+// 去掉孤儿后仍多于一行属于真实数据冲突，按 NotSingular 报错。
+func (r *UserCredentialRepo) pickLiveCredential(ctx context.Context, entities []*ent.UserCredential) (*ent.UserCredential, error) {
+	switch len(entities) {
+	case 0:
+		return nil, &ent.NotFoundError{}
+	case 1:
+		return entities[0], nil
+	}
+
+	userIDs := make([]uint32, 0, len(entities))
+	for _, e := range entities {
+		if e.UserID != nil {
+			userIDs = append(userIDs, *e.UserID)
+		}
+	}
+	// 用户 ID 全局唯一，按系统上下文查存在性，不受调用方租户视角影响。
+	liveIDs, err := r.entClient.Client().User.Query().
+		Where(user.IDIn(userIDs...)).
+		IDs(viewer.WithSystemContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	live := make(map[uint32]struct{}, len(liveIDs))
+	for _, id := range liveIDs {
+		live[id] = struct{}{}
+	}
+
+	var picked []*ent.UserCredential
+	for _, e := range entities {
+		if e.UserID == nil {
+			continue
+		}
+		if _, ok := live[*e.UserID]; ok {
+			picked = append(picked, e)
+		}
+	}
+	switch len(picked) {
+	case 0:
+		return nil, &ent.NotFoundError{}
+	case 1:
+		r.log.Warnf(ctx, "skipped %d orphan credential row(s) whose user no longer exists", len(entities)-1)
+		return picked[0], nil
+	default:
+		return nil, &ent.NotSingularError{}
+	}
 }
 
 func (r *UserCredentialRepo) VerifyCredential(ctx context.Context, req *authenticationV1.VerifyCredentialRequest) (*authenticationV1.VerifyCredentialResponse, error) {
@@ -524,7 +562,11 @@ func (r *UserCredentialRepo) prepareCredential(ctx context.Context, credentialTy
 }
 
 // ChangeCredential 修改认证信息
-func (r *UserCredentialRepo) ChangeCredential(ctx context.Context, req *authenticationV1.ChangeCredentialRequest) error {
+func (r *UserCredentialRepo) ChangeCredential(ctx context.Context, userID uint32, req *authenticationV1.ChangeCredentialRequest) error {
+	if userID == 0 {
+		return authenticationV1.ErrorBadRequest("user id is required")
+	}
+
 	if req.GetNeedDecrypt() {
 		// 解密旧密码
 		oldBytes, err := base64.StdEncoding.DecodeString(req.GetOldCredential())
@@ -554,13 +596,12 @@ func (r *UserCredentialRepo) ChangeCredential(ctx context.Context, req *authenti
 		req.NewCredential = string(newPlain)
 	}
 
-	// 租户范围 where 条件（平台管理员 tenant_id=0 不限定）
+	// 按 user_id 定位，并且只认租户 0：旧库遗留的同名 tenant_id>0 凭证不参与匹配，也不会被一并改掉。
 	tenantWhere := []predicate.UserCredential{
+		usercredential.UserIDEQ(userID),
 		usercredential.IdentityTypeEQ(*r.identityTypeConverter.ToEntity(trans.Ptr(req.GetIdentityType()))),
 		usercredential.IdentifierEQ(req.GetIdentifier()),
-	}
-	if tid, hasTenant := maybeTenantFromViewer(ctx); hasTenant {
-		tenantWhere = append(tenantWhere, usercredential.TenantIDEQ(tid))
+		usercredential.TenantIDEQ(0),
 	}
 
 	entity, err := r.entClient.Client().UserCredential.
@@ -624,7 +665,11 @@ func (r *UserCredentialRepo) ChangeCredential(ctx context.Context, req *authenti
 }
 
 // ResetCredential 修改认证信息
-func (r *UserCredentialRepo) ResetCredential(ctx context.Context, req *authenticationV1.ResetCredentialRequest) error {
+func (r *UserCredentialRepo) ResetCredential(ctx context.Context, userID uint32, req *authenticationV1.ResetCredentialRequest) error {
+	if userID == 0 {
+		return authenticationV1.ErrorBadRequest("user id is required")
+	}
+
 	if req.GetNeedDecrypt() {
 		// 解密新密码（base64/AES 错误不可吞：吞错会把空串/垃圾串哈希存为新口令）
 		bytesPass, err := base64.StdEncoding.DecodeString(req.GetNewCredential())
@@ -640,13 +685,12 @@ func (r *UserCredentialRepo) ResetCredential(ctx context.Context, req *authentic
 		req.NewCredential = string(plainPassword)
 	}
 
-	// 租户范围 where 条件（平台管理员 tenant_id=0 不限定）
+	// 按 user_id 定位，并且只认租户 0：旧库遗留的同名 tenant_id>0 凭证不参与匹配，也不会被一并改掉。
 	tenantWhere := []predicate.UserCredential{
+		usercredential.UserIDEQ(userID),
 		usercredential.IdentityTypeEQ(*r.identityTypeConverter.ToEntity(trans.Ptr(req.GetIdentityType()))),
 		usercredential.IdentifierEQ(req.GetIdentifier()),
-	}
-	if tid, hasTenant := maybeTenantFromViewer(ctx); hasTenant {
-		tenantWhere = append(tenantWhere, usercredential.TenantIDEQ(tid))
+		usercredential.TenantIDEQ(0),
 	}
 
 	entity, err := r.entClient.Client().UserCredential.

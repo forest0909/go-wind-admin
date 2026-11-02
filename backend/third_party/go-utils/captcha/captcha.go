@@ -487,13 +487,21 @@ func (c *Captcha) Save(ctx context.Context, captchaID, answer string) error {
 	return c.rdb.Set(ctx, key, answer, c.config.Expire).Err()
 }
 
+// takeAnswerScript 原子地读出并删除答案。用 Lua 而不是 GETDEL，兼容 Redis 6.2 之前的版本。
+var takeAnswerScript = redis.NewScript(`
+local v = redis.call('GET', KEYS[1])
+if v then redis.call('DEL', KEYS[1]) end
+return v
+`)
+
 // Verify 从Redis读取并校验验证码
-// 验证成功自动删除
+// 一个验证码只能校验一次：读取和删除在同一个原子操作里，答错也作废。
+// 这样既不能对同一个 id 穷举答案，并发提交同一个正确答案也只有一个能通过。
 func (c *Captcha) Verify(ctx context.Context, captchaID, userInput string) (bool, error) {
 	key := fmt.Sprintf("%s:%s", c.config.KeyPrefix, captchaID)
 
-	// 获取答案
-	ans, err := c.rdb.Get(ctx, key).Result()
+	// 领取答案（读后即删）
+	ans, err := takeAnswerScript.Run(ctx, c.rdb, []string{key}).Text()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return false, nil // 过期/不存在
@@ -517,10 +525,6 @@ func (c *Captcha) Verify(ctx context.Context, captchaID, userInput string) (bool
 		match = ans == strings.TrimSpace(userInput)
 	} else {
 		match = ans == userInput
-	}
-
-	if match {
-		_ = c.rdb.Del(ctx, key).Err()
 	}
 
 	return match, nil

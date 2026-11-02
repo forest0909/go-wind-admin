@@ -30,10 +30,8 @@ var (
 // actionsWithoutPage 允许没有同名页面的操作资源及原因。这些操作在角色页平铺在模块组下，能授权但不挂页面。
 // 新业务别往这里加，先让页面路径和接口资源名对上；实在是一个页面里的子资源才登记，并写清原因。
 var actionsWithoutPage = map[string]string{
-	"tenant":           "租户模块菜单已隐藏；页面路径是 members（member:view），接口是 /tenants",
 	"permission":       "权限点页（codes，code:view）已从菜单隐藏，只给平台管理员排查用",
 	"permission-group": "权限点页里的分组子列表",
-	"plan-quota":       "套餐页（plan:view）里的配额子列表；租户模块菜单已隐藏",
 }
 
 // TestPermissionCodeConsistency 前端按钮编码、接口派生编码、菜单派生页面编码三方对齐。

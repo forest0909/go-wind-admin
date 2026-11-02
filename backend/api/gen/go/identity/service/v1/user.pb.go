@@ -143,7 +143,6 @@ type User struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            *uint32                `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`                                               // 用户ID
 	TenantId      *uint32                `protobuf:"varint,2,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`                   // 租户ID
-	TenantName    *string                `protobuf:"bytes,3,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`              // 租户名称
 	OrgUnitId     *uint32                `protobuf:"varint,4,opt,name=org_unit_id,json=orgUnitId,proto3,oneof" json:"org_unit_id,omitempty"`              // 组织ID
 	OrgUnitIds    []uint32               `protobuf:"varint,5,rep,packed,name=org_unit_ids,json=orgUnitIds,proto3" json:"org_unit_ids,omitempty"`          // 归属组织ID列表
 	OrgUnitName   *string                `protobuf:"bytes,6,opt,name=org_unit_name,json=orgUnitName,proto3,oneof" json:"org_unit_name,omitempty"`         // 组织名称
@@ -226,13 +225,6 @@ func (x *User) GetTenantId() uint32 {
 		return *x.TenantId
 	}
 	return 0
-}
-
-func (x *User) GetTenantName() string {
-	if x != nil && x.TenantName != nil {
-		return *x.TenantName
-	}
-	return ""
 }
 
 func (x *User) GetOrgUnitId() uint32 {
@@ -1760,58 +1752,56 @@ var File_identity_service_v1_user_proto protoreflect.FileDescriptor
 
 const file_identity_service_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x1eidentity/service/v1/user.proto\x12\x13identity.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x16redact/v1/redact.proto\x1a\x1epagination/v1/pagination.proto\x1a\x17validate/validate.proto\"\x9f\x16\n" +
+	"\x1eidentity/service/v1/user.proto\x12\x13identity.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x16redact/v1/redact.proto\x1a\x1epagination/v1/pagination.proto\x1a\x17validate/validate.proto\"\xd5\x15\n" +
 	"\x04User\x12#\n" +
 	"\x02id\x18\x01 \x01(\rB\x0e\xbaG\v\x92\x02\b用户IDH\x00R\x02id\x88\x01\x01\x120\n" +
-	"\ttenant_id\x18\x02 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\x01R\btenantId\x88\x01\x01\x128\n" +
-	"\vtenant_name\x18\x03 \x01(\tB\x12\xbaG\x0f\x92\x02\f租户名称H\x02R\n" +
-	"tenantName\x88\x01\x01\x123\n" +
-	"\vorg_unit_id\x18\x04 \x01(\rB\x0e\xbaG\v\x92\x02\b组织IDH\x03R\torgUnitId\x88\x01\x01\x12<\n" +
+	"\ttenant_id\x18\x02 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\x01R\btenantId\x88\x01\x01\x123\n" +
+	"\vorg_unit_id\x18\x04 \x01(\rB\x0e\xbaG\v\x92\x02\b组织IDH\x02R\torgUnitId\x88\x01\x01\x12<\n" +
 	"\forg_unit_ids\x18\x05 \x03(\rB\x1a\xbaG\x17\x92\x02\x14归属组织ID列表R\n" +
 	"orgUnitIds\x12;\n" +
-	"\rorg_unit_name\x18\x06 \x01(\tB\x12\xbaG\x0f\x92\x02\f组织名称H\x04R\vorgUnitName\x88\x01\x01\x12>\n" +
+	"\rorg_unit_name\x18\x06 \x01(\tB\x12\xbaG\x0f\x92\x02\f组织名称H\x03R\vorgUnitName\x88\x01\x01\x12>\n" +
 	"\x0eorg_unit_names\x18\a \x03(\tB\x18\xbaG\x15\x92\x02\x12组织名称列表R\forgUnitNames\x124\n" +
-	"\vposition_id\x18\b \x01(\rB\x0e\xbaG\v\x92\x02\b职位IDH\x05R\n" +
+	"\vposition_id\x18\b \x01(\rB\x0e\xbaG\v\x92\x02\b职位IDH\x04R\n" +
 	"positionId\x88\x01\x01\x125\n" +
 	"\fposition_ids\x18\t \x03(\rB\x12\xbaG\x0f\x92\x02\f职位列表R\vpositionIds\x12<\n" +
 	"\rposition_name\x18\n" +
-	" \x01(\tB\x12\xbaG\x0f\x92\x02\f职位名称H\x06R\fpositionName\x88\x01\x01\x12?\n" +
+	" \x01(\tB\x12\xbaG\x0f\x92\x02\f职位名称H\x05R\fpositionName\x88\x01\x01\x12?\n" +
 	"\x0eposition_names\x18\v \x03(\tB\x18\xbaG\x15\x92\x02\x12职位名称列表R\rpositionNames\x12,\n" +
-	"\arole_id\x18\f \x01(\rB\x0e\xbaG\v\x92\x02\b角色IDH\aR\x06roleId\x88\x01\x01\x12/\n" +
+	"\arole_id\x18\f \x01(\rB\x0e\xbaG\v\x92\x02\b角色IDH\x06R\x06roleId\x88\x01\x01\x12/\n" +
 	"\brole_ids\x18\r \x03(\rB\x14\xbaG\x11\x92\x02\x0e角色ID列表R\aroleIds\x12+\n" +
 	"\x05roles\x18\x0e \x03(\tB\x15\xbaG\x12\x92\x02\x0f角色码列表R\x05roles\x127\n" +
 	"\n" +
 	"role_names\x18\x0f \x03(\tB\x18\xbaG\x15\x92\x02\x12角色名称列表R\troleNames\x120\n" +
-	"\busername\x18\x14 \x01(\tB\x0f\xbaG\f\x92\x02\t用户名H\bR\busername\x88\x01\x01\x12-\n" +
-	"\bnickname\x18\x15 \x01(\tB\f\xbaG\t\x92\x02\x06昵称H\tR\bnickname\x88\x01\x01\x123\n" +
-	"\brealname\x18\x16 \x01(\tB\x12\xbaG\x0f\x92\x02\f真实姓名H\n" +
-	"R\brealname\x88\x01\x01\x12)\n" +
-	"\x06avatar\x18\x17 \x01(\tB\f\xbaG\t\x92\x02\x06头像H\vR\x06avatar\x88\x01\x01\x120\n" +
-	"\x05email\x18\x18 \x01(\tB\x15\xbaG\t\x92\x02\x06邮箱ڶ\x1a\x05\xc2\x01\x02\b\x02H\fR\x05email\x88\x01\x01\x127\n" +
-	"\x06mobile\x18\x19 \x01(\tB\x1a\xbaG\f\x92\x02\t手机号ڶ\x1a\a\xb2\x01\x04\b\x03\x10\x04H\rR\x06mobile\x88\x01\x01\x122\n" +
-	"\ttelephone\x18\x1a \x01(\tB\x0f\xbaG\f\x92\x02\t座机号H\x0eR\ttelephone\x88\x01\x01\x12K\n" +
-	"\x06gender\x18\x1b \x01(\x0e2 .identity.service.v1.User.GenderB\f\xbaG\t\x92\x02\x06性别H\x0fR\x06gender\x88\x01\x01\x12+\n" +
-	"\aaddress\x18\x1c \x01(\tB\f\xbaG\t\x92\x02\x06住址H\x10R\aaddress\x88\x01\x01\x12/\n" +
-	"\x06region\x18\x1d \x01(\tB\x12\xbaG\x0f\x92\x02\f国家地区H\x11R\x06region\x88\x01\x01\x12S\n" +
-	"\x06locale\x18  \x01(\tB6\xbaG3\x92\x020偏好语言（zh-CN/en-US，空=跟随请求）H\x12R\x06locale\x88\x01\x01\x129\n" +
-	"\vdescription\x18\x1e \x01(\tB\x12\xbaG\x0f\x92\x02\f个人描述H\x13R\vdescription\x88\x01\x01\x12)\n" +
-	"\x06remark\x18\x1f \x01(\tB\f\xbaG\t\x92\x02\x06备注H\x14R\x06remark\x88\x01\x01\x12]\n" +
-	"\rlast_login_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12最后登录时间H\x15R\vlastLoginAt\x88\x01\x01\x12=\n" +
-	"\rlast_login_ip\x183 \x01(\tB\x14\xbaG\x11\x92\x02\x0e最后登录IPH\x16R\vlastLoginIp\x88\x01\x01\x12K\n" +
-	"\x06status\x184 \x01(\x0e2 .identity.service.v1.User.StatusB\f\xbaG\t\x92\x02\x06状态H\x17R\x06status\x88\x01\x01\x12\\\n" +
-	"\flocked_until\x185 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12锁定截止时间H\x18R\vlockedUntil\x88\x01\x01\x125\n" +
+	"\busername\x18\x14 \x01(\tB\x0f\xbaG\f\x92\x02\t用户名H\aR\busername\x88\x01\x01\x12-\n" +
+	"\bnickname\x18\x15 \x01(\tB\f\xbaG\t\x92\x02\x06昵称H\bR\bnickname\x88\x01\x01\x123\n" +
+	"\brealname\x18\x16 \x01(\tB\x12\xbaG\x0f\x92\x02\f真实姓名H\tR\brealname\x88\x01\x01\x12)\n" +
+	"\x06avatar\x18\x17 \x01(\tB\f\xbaG\t\x92\x02\x06头像H\n" +
+	"R\x06avatar\x88\x01\x01\x120\n" +
+	"\x05email\x18\x18 \x01(\tB\x15\xbaG\t\x92\x02\x06邮箱ڶ\x1a\x05\xc2\x01\x02\b\x02H\vR\x05email\x88\x01\x01\x127\n" +
+	"\x06mobile\x18\x19 \x01(\tB\x1a\xbaG\f\x92\x02\t手机号ڶ\x1a\a\xb2\x01\x04\b\x03\x10\x04H\fR\x06mobile\x88\x01\x01\x122\n" +
+	"\ttelephone\x18\x1a \x01(\tB\x0f\xbaG\f\x92\x02\t座机号H\rR\ttelephone\x88\x01\x01\x12K\n" +
+	"\x06gender\x18\x1b \x01(\x0e2 .identity.service.v1.User.GenderB\f\xbaG\t\x92\x02\x06性别H\x0eR\x06gender\x88\x01\x01\x12+\n" +
+	"\aaddress\x18\x1c \x01(\tB\f\xbaG\t\x92\x02\x06住址H\x0fR\aaddress\x88\x01\x01\x12/\n" +
+	"\x06region\x18\x1d \x01(\tB\x12\xbaG\x0f\x92\x02\f国家地区H\x10R\x06region\x88\x01\x01\x12S\n" +
+	"\x06locale\x18  \x01(\tB6\xbaG3\x92\x020偏好语言（zh-CN/en-US，空=跟随请求）H\x11R\x06locale\x88\x01\x01\x129\n" +
+	"\vdescription\x18\x1e \x01(\tB\x12\xbaG\x0f\x92\x02\f个人描述H\x12R\vdescription\x88\x01\x01\x12)\n" +
+	"\x06remark\x18\x1f \x01(\tB\f\xbaG\t\x92\x02\x06备注H\x13R\x06remark\x88\x01\x01\x12]\n" +
+	"\rlast_login_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12最后登录时间H\x14R\vlastLoginAt\x88\x01\x01\x12=\n" +
+	"\rlast_login_ip\x183 \x01(\tB\x14\xbaG\x11\x92\x02\x0e最后登录IPH\x15R\vlastLoginIp\x88\x01\x01\x12K\n" +
+	"\x06status\x184 \x01(\x0e2 .identity.service.v1.User.StatusB\f\xbaG\t\x92\x02\x06状态H\x16R\x06status\x88\x01\x01\x12\\\n" +
+	"\flocked_until\x185 \x01(\v2\x1a.google.protobuf.TimestampB\x18\xbaG\x15\x92\x02\x12锁定截止时间H\x17R\vlockedUntil\x88\x01\x01\x125\n" +
 	"\n" +
-	"created_by\x18d \x01(\rB\x11\xbaG\x0e\x92\x02\v创建者IDH\x19R\tcreatedBy\x88\x01\x01\x125\n" +
+	"created_by\x18d \x01(\rB\x11\xbaG\x0e\x92\x02\v创建者IDH\x18R\tcreatedBy\x88\x01\x01\x125\n" +
 	"\n" +
-	"updated_by\x18e \x01(\rB\x11\xbaG\x0e\x92\x02\v更新者IDH\x1aR\tupdatedBy\x88\x01\x01\x12;\n" +
+	"updated_by\x18e \x01(\rB\x11\xbaG\x0e\x92\x02\v更新者IDH\x19R\tupdatedBy\x88\x01\x01\x12;\n" +
 	"\n" +
-	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\x1bR\tdeletedBy\x88\x01\x01\x12S\n" +
+	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\x1aR\tdeletedBy\x88\x01\x01\x12S\n" +
 	"\n" +
-	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\x1cR\tcreatedAt\x88\x01\x01\x12S\n" +
+	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\x1bR\tcreatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\x1dR\tupdatedAt\x88\x01\x01\x12S\n" +
+	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\x1cR\tupdatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x1eR\tdeletedAt\x88\x01\x01\"*\n" +
+	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x1dR\tdeletedAt\x88\x01\x01\"*\n" +
 	"\x06Gender\x12\n" +
 	"\n" +
 	"\x06SECRET\x10\x00\x12\b\n" +
@@ -1831,7 +1821,6 @@ const file_identity_service_v1_user_proto_rawDesc = "" +
 	"\x03_idB\f\n" +
 	"\n" +
 	"_tenant_idB\x0e\n" +
-	"\f_tenant_nameB\x0e\n" +
 	"\f_org_unit_idB\x10\n" +
 	"\x0e_org_unit_nameB\x0e\n" +
 	"\f_position_idB\x10\n" +

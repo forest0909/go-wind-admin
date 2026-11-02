@@ -38,8 +38,6 @@ type Api struct {
 	Module *string `json:"module,omitempty"`
 	// 业务模块描述
 	ModuleDescription *string `json:"module_description,omitempty"`
-	// 所属业务功能模块（用于套餐白名单过滤）
-	BusinessModule *api.BusinessModule `json:"business_module,omitempty"`
 	// 接口操作名
 	Operation *string `json:"operation,omitempty"`
 	// 接口路径
@@ -58,7 +56,7 @@ func (*Api) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case api.FieldID, api.FieldCreatedBy, api.FieldUpdatedBy, api.FieldDeletedBy:
 			values[i] = new(sql.NullInt64)
-		case api.FieldStatus, api.FieldDescription, api.FieldModule, api.FieldModuleDescription, api.FieldBusinessModule, api.FieldOperation, api.FieldPath, api.FieldMethod, api.FieldScope:
+		case api.FieldStatus, api.FieldDescription, api.FieldModule, api.FieldModuleDescription, api.FieldOperation, api.FieldPath, api.FieldMethod, api.FieldScope:
 			values[i] = new(sql.NullString)
 		case api.FieldCreatedAt, api.FieldUpdatedAt, api.FieldDeletedAt:
 			values[i] = new(sql.NullTime)
@@ -152,13 +150,6 @@ func (_m *Api) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ModuleDescription = new(string)
 				*_m.ModuleDescription = value.String
-			}
-		case api.FieldBusinessModule:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field business_module", values[i])
-			} else if value.Valid {
-				_m.BusinessModule = new(api.BusinessModule)
-				*_m.BusinessModule = api.BusinessModule(value.String)
 			}
 		case api.FieldOperation:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -272,11 +263,6 @@ func (_m *Api) String() string {
 	if v := _m.ModuleDescription; v != nil {
 		builder.WriteString("module_description=")
 		builder.WriteString(*v)
-	}
-	builder.WriteString(", ")
-	if v := _m.BusinessModule; v != nil {
-		builder.WriteString("business_module=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
 	if v := _m.Operation; v != nil {

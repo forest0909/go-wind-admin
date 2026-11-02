@@ -3,6 +3,7 @@ package netutil
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -123,4 +124,18 @@ func TestClientIP_NoTrustedProxiesAlwaysPeer(t *testing.T) {
 		"X-Forwarded-For": "8.8.8.8",
 	})
 	assert.Equal(t, "10.0.0.1", ClientIPFromRequest(req), "不信任任何代理时应返回对端 IP")
+}
+
+// 启动时配置的可信代理不能被首个请求的默认初始化覆盖。
+func TestSetTrustedProxies_NotOverriddenByLazyDefault(t *testing.T) {
+	trustedProxiesOnce = sync.Once{}
+	t.Cleanup(func() { SetTrustedProxies(defaultTrustedProxyCIDRs()) })
+
+	SetTrustedProxies([]string{"203.0.113.10"})
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.1.2.3:5555"
+	req.Header.Set("X-Forwarded-For", "1.1.1.1")
+	if got := ClientIPFromRequest(req); got != "10.1.2.3" {
+		t.Fatalf("10.x 不在配置的可信代理里，应忽略 XFF，got %s", got)
+	}
 }

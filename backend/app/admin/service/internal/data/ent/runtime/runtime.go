@@ -27,9 +27,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/permissiongroup"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionmenu"
 	"go-wind-admin/app/admin/service/internal/data/ent/permissionpolicy"
-	"go-wind-admin/app/admin/service/internal/data/ent/plan"
-	"go-wind-admin/app/admin/service/internal/data/ent/planmodule"
-	"go-wind-admin/app/admin/service/internal/data/ent/planquota"
 	"go-wind-admin/app/admin/service/internal/data/ent/position"
 	"go-wind-admin/app/admin/service/internal/data/ent/role"
 	"go-wind-admin/app/admin/service/internal/data/ent/rolefieldpermission"
@@ -39,7 +36,6 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/schema"
 	"go-wind-admin/app/admin/service/internal/data/ent/sysconfig"
 	"go-wind-admin/app/admin/service/internal/data/ent/task"
-	"go-wind-admin/app/admin/service/internal/data/ent/tenant"
 	"go-wind-admin/app/admin/service/internal/data/ent/user"
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
 	"go-wind-admin/app/admin/service/internal/data/ent/userorgunit"
@@ -648,37 +644,6 @@ func init() {
 	permissionpolicyDescID := permissionpolicyMixinFields0[0].Descriptor()
 	// permissionpolicy.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	permissionpolicy.IDValidator = permissionpolicyDescID.Validators[0].(func(uint32) error)
-	planMixin := schema.Plan{}.Mixin()
-	planMixinFields0 := planMixin[0].Fields()
-	_ = planMixinFields0
-	planFields := schema.Plan{}.Fields()
-	_ = planFields
-	// planDescName is the schema descriptor for name field.
-	planDescName := planFields[0].Descriptor()
-	// plan.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	plan.NameValidator = planDescName.Validators[0].(func(string) error)
-	// planDescID is the schema descriptor for id field.
-	planDescID := planMixinFields0[0].Descriptor()
-	// plan.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	plan.IDValidator = planDescID.Validators[0].(func(uint32) error)
-	planmoduleMixin := schema.PlanModule{}.Mixin()
-	planmoduleMixinFields0 := planmoduleMixin[0].Fields()
-	_ = planmoduleMixinFields0
-	planmoduleFields := schema.PlanModule{}.Fields()
-	_ = planmoduleFields
-	// planmoduleDescID is the schema descriptor for id field.
-	planmoduleDescID := planmoduleMixinFields0[0].Descriptor()
-	// planmodule.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	planmodule.IDValidator = planmoduleDescID.Validators[0].(func(uint32) error)
-	planquotaMixin := schema.PlanQuota{}.Mixin()
-	planquotaMixinFields0 := planquotaMixin[0].Fields()
-	_ = planquotaMixinFields0
-	planquotaFields := schema.PlanQuota{}.Fields()
-	_ = planquotaFields
-	// planquotaDescID is the schema descriptor for id field.
-	planquotaDescID := planquotaMixinFields0[0].Descriptor()
-	// planquota.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	planquota.IDValidator = planquotaDescID.Validators[0].(func(uint32) error)
 	positionMixin := schema.Position{}.Mixin()
 	position.Policy = privacy.NewPolicies(positionMixin[5], schema.Position{})
 	position.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -934,23 +899,6 @@ func init() {
 	taskDescID := taskMixinFields0[0].Descriptor()
 	// task.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	task.IDValidator = taskDescID.Validators[0].(func(uint32) error)
-	tenantMixin := schema.Tenant{}.Mixin()
-	tenantMixinFields0 := tenantMixin[0].Fields()
-	_ = tenantMixinFields0
-	tenantFields := schema.Tenant{}.Fields()
-	_ = tenantFields
-	// tenantDescName is the schema descriptor for name field.
-	tenantDescName := tenantFields[0].Descriptor()
-	// tenant.NameValidator is a validator for the "name" field. It is called by the builders before save.
-	tenant.NameValidator = tenantDescName.Validators[0].(func(string) error)
-	// tenantDescCode is the schema descriptor for code field.
-	tenantDescCode := tenantFields[1].Descriptor()
-	// tenant.CodeValidator is a validator for the "code" field. It is called by the builders before save.
-	tenant.CodeValidator = tenantDescCode.Validators[0].(func(string) error)
-	// tenantDescID is the schema descriptor for id field.
-	tenantDescID := tenantMixinFields0[0].Descriptor()
-	// tenant.IDValidator is a validator for the "id" field. It is called by the builders before save.
-	tenant.IDValidator = tenantDescID.Validators[0].(func(uint32) error)
 	userMixin := schema.User{}.Mixin()
 	user.Policy = privacy.NewPolicies(userMixin[4], schema.User{})
 	user.Hooks[0] = func(next ent.Mutator) ent.Mutator {

@@ -15,3 +15,7 @@
 
 LICENSE 版权人是 FlyPig，许可证仍是 MIT。
 
+
+`transport/sse` 新增 `Server.CloseStream(streamID)`：关闭流并断开其全部订阅者，供用户令牌全部吊销时断开其 SSE 长连接。为此一并修了三处：`Subscriber.close` 在流已关闭时不再永久阻塞在 deregister 上；`addSubscriber` 遇到已关闭的流返回 nil（`ServeHTTP` 回 503 让客户端重连重新鉴权），不再阻塞在 register 上；连接断开后的自动清理按流指针 `Remove`，不再按 ID 误删客户端重连出的同名新流。测试 `close_stream_test.go`。
+
+2026-11-02：`transport/sse` 的 `Server.init` 把路由的 `NotFoundHandler` / `MethodNotAllowedHandler` 从 `http.DefaultServeMux` 改为固定 404 / 405。原来 SSE 端口（7789）上未匹配的请求会落到 DefaultServeMux，`net/http/pprof` 注册在那里的 `/debug/pprof/*` 能免鉴权访问。测试 `default_mux_fallback_test.go`。

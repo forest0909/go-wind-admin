@@ -55,7 +55,8 @@ function convertRoutes(
     return mapTree(routes, (node) => {
         const {component: componentPath, name, ...rest} = node;
 
-        if (!name) {
+        // 下方为带 redirect 的目录注入的 index 跳转路由没有 name，mapTree 递归到它时跳过检查
+        if (!name && !('index' in node && node.index)) {
             console.error('Route name is required', node);
         }
 

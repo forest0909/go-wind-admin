@@ -299,6 +299,7 @@ Rules:
 - `meta.title` MUST have the `'routes:'` prefix and the key MUST exist in `routes.json` (Step 1) — otherwise the menu title is blank.
 - `icon` is an Iconify string (`'lucide:xxx'`), not an antd Icon component.
 - `path` is relative (no leading `/`), auto-joined to the parent.
+- **The route file alone does not put the page in the sidebar.** The app runs in `accessMode: "backend"` (`src/core/preferences/config/default.ts`): the menu tree comes from the backend menu table via `GetNavigation`, each menu row's `component` is resolved against a glob of `src/pages/app/**` (`pageMap` in `src/router/index.tsx`), and the route files under `src/router/modules/` are what 「同步菜单」 reads (`businessRoutes`). After adding the route, click 菜单管理 →「同步菜单」 (merges `businessRoutes` into the menu table by path, keeping existing menu IDs and role grants), then grant the new menu/permission to roles. `DefaultMenus` in `pkg/constants/default_data.go` only seeds an empty database.
 - For access control use `authority: ['sys:<group>:view']` (an **array**). The codebase currently has `permission: '...'` (string, commented out) in places — that field is NOT in the `RouteMeta` type and won't enforce. Use `authority`.
 
 ## React-specific pitfalls

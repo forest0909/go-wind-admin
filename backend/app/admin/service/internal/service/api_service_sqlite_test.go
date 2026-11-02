@@ -16,7 +16,6 @@ import (
 	entCrud "go-wind-admin/third_party/go-crud/entgo"
 
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
-	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 	"go-wind-admin/app/admin/service/internal/data"
 	"go-wind-admin/app/admin/service/internal/data/ent"
@@ -163,7 +162,6 @@ func TestApiServiceSqlite_CreateGetUpdateDelete(t *testing.T) {
 			ModuleDescription: trans.Ptr("服务层测试模块"),
 			Description:       trans.Ptr("服务层创建的接口描述"),
 			Scope:             permissionV1.Api_ADMIN.Enum(),
-			BusinessModule:    identityV1.Module_DASHBOARD.Enum(),
 		},
 	})
 	require.NoError(t, err, "服务层 Create 应成功")
@@ -178,7 +176,6 @@ func TestApiServiceSqlite_CreateGetUpdateDelete(t *testing.T) {
 	require.Equal(t, "服务层测试模块", *rows[0].ModuleDescription, "module_description 应按请求落库")
 	require.Equal(t, "服务层创建的接口描述", *rows[0].Description, "description 应按请求落库")
 	require.Equal(t, entApi.ScopeAdmin, *rows[0].Scope, "scope 应经转换器落库为 ADMIN")
-	require.Equal(t, entApi.BusinessModuleDashboard, *rows[0].BusinessModule, "business_module 应经转换器落库为 DASHBOARD")
 	require.NotNil(t, rows[0].CreatedBy, "created_by 应被服务层盖入操作人 ID")
 	require.Equal(t, uint32(7), *rows[0].CreatedBy, "created_by 应等于令牌声明中的操作人 ID")
 

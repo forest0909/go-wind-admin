@@ -41,6 +41,14 @@ func NewMinIoClient(cfg *conf.Bootstrap, logger bLogger.Logger) *MinIOClient {
 	}
 }
 
+// DownloadHost 返回配置的下载地址前缀（UploadFile 返回的 downloadUrl 以它开头）。
+func (c *MinIOClient) DownloadHost() string {
+	if c == nil || c.conf == nil || c.conf.Minio == nil {
+		return ""
+	}
+	return c.conf.Minio.GetDownloadHost()
+}
+
 // GetClient returns the underlying MinIO client
 func (c *MinIOClient) GetClient() *minio.Client {
 	return c.mc

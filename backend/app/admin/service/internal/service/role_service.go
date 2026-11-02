@@ -4,7 +4,6 @@ import (
 	"context"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
-	"go-wind-admin/third_party/go-utils/aggregator"
 	"go-wind-admin/third_party/go-utils/stringcase"
 	"go-wind-admin/third_party/go-utils/trans"
 	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
@@ -15,6 +14,7 @@ import (
 	"go-wind-admin/app/admin/service/internal/data"
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
+	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
 	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
 
@@ -33,7 +33,6 @@ type RoleService struct {
 	authorizer *authorizer.Authorizer
 
 	roleRepo     *data.RoleRepo
-	tenantRepo   *data.TenantRepo
 	userRoleRepo roleHolderLister
 
 	authenticator *data.Authenticator
@@ -42,13 +41,14 @@ type RoleService struct {
 // roleHolderLister 列出角色持有人。生产实现是 *data.UserRoleRepo。
 type roleHolderLister interface {
 	ListUserIDsByRoleIDs(ctx context.Context, roleIDs []uint32, excludeExpired bool) ([]uint32, error)
+	// ListRoleIDs 列出某个用户持有的角色，授权上限用来算操作人自己的权限集。
+	ListRoleIDs(ctx context.Context, userID uint32, excludeExpired bool) ([]uint32, error)
 }
 
 func NewRoleService(
 	ctx *bootstrap.Context,
 	authorizer *authorizer.Authorizer,
 	roleRepo *data.RoleRepo,
-	tenantRepo *data.TenantRepo,
 	userRoleRepo *data.UserRoleRepo,
 	authenticator *data.Authenticator,
 ) *RoleService {
@@ -56,7 +56,6 @@ func NewRoleService(
 		log:           ctx.NewLoggerHelper("role/service/admin-service"),
 		authorizer:    authorizer,
 		roleRepo:      roleRepo,
-		tenantRepo:    tenantRepo,
 		userRoleRepo:  userRoleRepo,
 		authenticator: authenticator,
 	}
@@ -73,72 +72,11 @@ func (s *RoleService) init() {
 	}
 }
 
-func (s *RoleService) extractRelationIDs(
-	roles []*permissionV1.Role,
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
-) {
-	for _, p := range roles {
-		if p.GetTenantId() > 0 {
-			tenantSet[p.GetTenantId()] = nil
-		}
-	}
-}
-
-func (s *RoleService) fetchRelationInfo(
-	ctx context.Context,
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
-) error {
-	if len(tenantSet) > 0 {
-		tenantIds := make([]uint32, 0, len(tenantSet))
-		for id := range tenantSet {
-			tenantIds = append(tenantIds, id)
-		}
-
-		tenants, err := s.tenantRepo.ListTenantsByIds(ctx, tenantIds)
-		if err != nil {
-			s.log.Errorf(context.Background(), "query tenants err: %v", err)
-			return err
-		}
-
-		for _, tenant := range tenants {
-			tenantSet[tenant.GetId()] = tenant
-		}
-	}
-
-	return nil
-}
-
-func (s *RoleService) bindRelations(
-	roles []*permissionV1.Role,
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
-) {
-	aggregator.Populate(
-		roles,
-		tenantSet,
-		func(ou *permissionV1.Role) uint32 { return ou.GetTenantId() },
-		func(ou *permissionV1.Role, r *identityV1.Tenant) {
-			ou.TenantName = r.Name
-		},
-	)
-}
-
-func (s *RoleService) enrichRelations(ctx context.Context, roles []*permissionV1.Role) error {
-	var tenantSet = make(aggregator.ResourceMap[uint32, *identityV1.Tenant])
-	s.extractRelationIDs(roles, tenantSet)
-	if err := s.fetchRelationInfo(ctx, tenantSet); err != nil {
-		return err
-	}
-	s.bindRelations(roles, tenantSet)
-	return nil
-}
-
 func (s *RoleService) List(ctx context.Context, req *paginationV1.PagingRequest) (*permissionV1.ListRoleResponse, error) {
 	resp, err := s.roleRepo.List(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-
-	_ = s.enrichRelations(ctx, resp.Items)
 
 	return resp, nil
 }
@@ -160,9 +98,6 @@ func (s *RoleService) Get(ctx context.Context, req *permissionV1.GetRoleRequest)
 		return nil, err
 	}
 
-	fakeItems := []*permissionV1.Role{resp}
-	_ = s.enrichRelations(ctx, fakeItems)
-
 	return resp, nil
 }
 
@@ -179,8 +114,13 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 
 	req.Data.CreatedBy = trans.Ptr(operator.UserId)
 
-	if operator.GetTenantId() > 0 && req.Data.GetType() != permissionV1.Role_TENANT {
-		req.Data.Type = trans.Ptr(permissionV1.Role_TENANT)
+	// 非超级管理员建角色不写数据范围时，仓储列默认是 ALL：改成最窄的 SELF，不能靠省略字段拿到全量。
+	if !operator.GetIsPlatformAdmin() &&
+		(req.Data.DataScope == nil || req.Data.GetDataScope() == identityV1.DataScope_DATA_SCOPE_UNSPECIFIED) {
+		req.Data.DataScope = trans.Ptr(identityV1.DataScope_SELF)
+	}
+	if err = s.ensureRoleGrantWithinOperator(ctx, operator, req.Data.GetCode(), req.Data.GetPermissions(), req.Data.GetDataScope()); err != nil {
+		return nil, err
 	}
 
 	if err = s.roleRepo.Create(ctx, req); err != nil {
@@ -192,6 +132,31 @@ func (s *RoleService) Create(ctx context.Context, req *permissionV1.CreateRoleRe
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// ensureRoleGrantWithinOperator 非超级管理员建角色、改角色时：
+// 勾的权限点必须是自己拥有的；角色码不能是超级管理员角色码（特权来自角色码，不来自权限点）。
+// dataScope 为 UNSPECIFIED 表示本次不授出数据范围（Update 未改范围）。
+func (s *RoleService) ensureRoleGrantWithinOperator(ctx context.Context, operator *authenticationV1.UserTokenPayload, code string, permissionIDs []uint32, dataScope identityV1.DataScope) error {
+	if operator.GetIsPlatformAdmin() {
+		return nil
+	}
+	if code == constants.PlatformAdminRoleCode {
+		s.log.Errorf(ctx, "operator [%d] tried to use super admin role code", operator.GetUserId())
+		return adminV1.ErrorForbidden("only super admin can use the super admin role code")
+	}
+	listRoles := func(ctx context.Context, userID uint32) ([]uint32, error) {
+		return s.userRoleRepo.ListRoleIDs(ctx, userID, false)
+	}
+	if err := ensurePermissionsWithinOperator(ctx, s.roleRepo, listRoles, operator, permissionIDs); err != nil {
+		s.log.Errorf(ctx, "operator [%d] grant permissions %v rejected: %v", operator.GetUserId(), permissionIDs, err)
+		return err
+	}
+	if err := ensureDataScopesWithinOperator(ctx, s.roleRepo, listRoles, operator, dataScope); err != nil {
+		s.log.Errorf(ctx, "operator [%d] grant data scope %v rejected: %v", operator.GetUserId(), dataScope, err)
+		return err
+	}
+	return nil
 }
 
 func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRequest) (*emptypb.Empty, error) {
@@ -213,10 +178,6 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "updated_by")
 	}
 
-	if operator.GetTenantId() > 0 && req.Data.GetType() != permissionV1.Role_TENANT {
-		req.Data.Type = trans.Ptr(permissionV1.Role_TENANT)
-	}
-
 	r, err := s.roleRepo.Get(ctx, &permissionV1.GetRoleRequest{
 		QueryBy: &permissionV1.GetRoleRequest_Id{
 			Id: req.GetId(),
@@ -224,11 +185,6 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	// 非系统管理员禁止修改系统角色
-	if r.GetType() == permissionV1.Role_SYSTEM && operator.GetTenantId() > 0 {
-		return nil, adminV1.ErrorForbidden("no permission to update system role")
 	}
 
 	// Get 会填权限、组织单元和字段权限；填充失败时只记日志，这里补查。
@@ -252,6 +208,40 @@ func (s *RoleService) Update(ctx context.Context, req *permissionV1.UpdateRoleRe
 			req.Data.Type = nil
 			req.Data.Status = nil
 			req.Data.Code = nil
+		}
+	}
+
+	// 授权上限：只校验这次新加的权限点；改角色码时不能改成超级管理员角色码。
+	var addedPerms []uint32
+	if rolePermissionsWouldChange(r, req.Data, req.GetUpdateMask()) {
+		addedPerms = newlyAdded(req.Data.GetPermissions(), r.GetPermissions())
+	}
+	var newCode string
+	if roleCodeWouldChange(r, req.Data, req.GetUpdateMask()) {
+		newCode = req.Data.GetCode()
+	}
+	// 只改 data_scope 也会抬权：范围要变时校验新值。
+	newScope := identityV1.DataScope_DATA_SCOPE_UNSPECIFIED
+	if roleDataScopeWouldChange(r, req.Data, req.GetUpdateMask()) {
+		newScope = req.Data.GetDataScope()
+	}
+	if err = s.ensureRoleGrantWithinOperator(ctx, operator, newCode, addedPerms, newScope); err != nil {
+		return nil, err
+	}
+	// 范围枚举不变、只改 org_units 同样会扩大数据范围：按更新后的有效范围整体判断，
+	// SELECTED_UNITS 新增的单元必须在操作人可授出的单元里。
+	effectiveScope := r.GetDataScope()
+	if roleDataScopeWouldChange(r, req.Data, req.GetUpdateMask()) {
+		effectiveScope = req.Data.GetDataScope()
+	}
+	if effectiveScope == identityV1.DataScope_SELECTED_UNITS && roleOrgUnitsWouldChange(r, req.Data, req.GetUpdateMask()) {
+		addedUnits := newlyAdded(req.Data.GetOrgUnits(), r.GetOrgUnits())
+		listRoles := func(ctx context.Context, userID uint32) ([]uint32, error) {
+			return s.userRoleRepo.ListRoleIDs(ctx, userID, false)
+		}
+		if err = ensureSelectedUnitsWithinOperator(ctx, s.roleRepo, listRoles, operator, addedUnits); err != nil {
+			s.log.Errorf(ctx, "operator [%d] grant org units %v rejected: %v", operator.GetUserId(), addedUnits, err)
+			return nil, err
 		}
 	}
 

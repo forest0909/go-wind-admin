@@ -81,6 +81,20 @@ func ErrorInvalidPassword(format string, args ...interface{}) *errors.Error {
 	return errors.New(400, AuthenticationErrorReason_INVALID_PASSWORD.String(), fmt.Sprintf(format, args...))
 }
 
+// 验证码缺失或错误
+func IsInvalidCaptcha(err error) bool {
+	if err == nil {
+		return false
+	}
+	e := errors.FromError(err)
+	return e.Reason == AuthenticationErrorReason_INVALID_CAPTCHA.String() && e.Code == 400
+}
+
+// 验证码缺失或错误
+func ErrorInvalidCaptcha(format string, args ...interface{}) *errors.Error {
+	return errors.New(400, AuthenticationErrorReason_INVALID_CAPTCHA.String(), fmt.Sprintf(format, args...))
+}
+
 // 401
 func IsUnauthorized(err error) bool {
 	if err == nil {

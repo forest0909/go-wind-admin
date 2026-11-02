@@ -8,7 +8,11 @@
 //
 //	func TestFooRepo(t *testing.T) {
 //	    entClient := enttest.NewEntClientForTest(t)
-//	    repo := NewFooRepo(testCtx(), entClient) // 复用生产构造函数
+//	    // 生产构造函数要 *bootstrap.Context，测试里用带 NopLogger 的那个；
+//	    // 直接传 bootstrap.NewContext(ctx, nil) 会在 NewLoggerHelper 里 nil panic。
+//	    // 不想带 bootstrap 的，用 data 包导出的 NewFooRepoForTest(entClient)（repo_testkit*.go）。
+//	    boot := bootstrap.NewContextWithParam(context.Background(), nil, nil, bLogger.NopLogger())
+//	    repo := NewFooRepo(boot, entClient)
 //	    ctx := enttest.NewSystemContext(context.Background())
 //	    // ... 对 repo 做 CRUD 断言 ...
 //	}

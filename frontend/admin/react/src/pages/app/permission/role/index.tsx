@@ -76,12 +76,6 @@ const RoleManagement = () => {
       width: 150,
     },
     {
-      title: t('tenantName'),
-      dataIndex: 'tenantName',
-      width: 150,
-      hideInSearch: true,
-    },
-    {
       title: t('status'),
       dataIndex: 'status',
       width: 95,

@@ -47,11 +47,11 @@ internal/data/ent/schema/<entity>.go     ✍ 手写：Fields() / Mixin() / Index
 internal/data/ent/<entity>/**            🤖 make ent 生成：查询构建器、predicate、迁移 DDL
 ```
 
-手写 schema 的三个要点（样例 `schema/api.go`、带租户与边的 `schema/dict_type.go`）：
+手写 schema 的三个要点（样例 `schema/api.go`、带边的 `schema/dict_type.go`）：
 
 - **Mixin 装配公共列**（全仓实际用到的）：`AutoIncrementId` / `TimeAt`（created_at 等）/
   `OperatorID`（created_by 等）/ `SwitchStatus`（status 枚举，默认 ON）/ `IsEnabled` / `SortOrder` /
-  `Remark` / `Description` / `TenantID[uint32]{}`（租户表）/ `Tree[<Entity>]{}`（树表：给 `parent_id`
+  `Remark` / `Description` / `TenantID[uint32]{}`（遗留 tenant_id 列，固定 0，照抄即可）/ `Tree[<Entity>]{}`（树表：给 `parent_id`
   与 children/parent 边）/ `TreePath{}`（给 `path` 列）。mixin 提供的列名与 proto 审计字段一一对应，
   mapper 按名接线；
 - **枚举列**：`field.Enum(...).NamedValues(...)` + proto 枚举**两端命名逐字一致**

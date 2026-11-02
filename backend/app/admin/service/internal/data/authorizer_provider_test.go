@@ -5,6 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
+	permissionV1 "go-wind-admin/api/gen/go/permission/service/v1"
+	"go-wind-admin/app/admin/service/internal/data/enttest"
 	"go-wind-admin/third_party/go-utils/authorizer"
 	authzEngine "go-wind-admin/third_party/kratos-authz/engine"
 	conf "go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1"
@@ -94,4 +98,43 @@ func TestCasbinPlatformAdminWildcard(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, c.want, ok, "%s %s dom=%s", c.method, c.path, c.dom)
 	}
+}
+
+// TestAuthorizerProviderDisabledApi 普通角色经权限点绑定一个接口：ON 可访问，
+// 置 OFF 并重建策略后拒绝，再置回 ON 后恢复。此前策略装载不看接口状态，停用不生效。
+func TestAuthorizerProviderDisabledApi(t *testing.T) {
+	ec := enttest.NewEntClientForTest(t)
+	ctx := enttest.NewSystemContext(context.Background())
+	cli := ec.Client()
+
+	api := cli.Api.Create().SetPath("/admin/v1/disable-probe").SetMethod("GET").SaveX(ctx)
+	role := cli.Role.Create().SetCode("probe:operator").SetName("probe").SaveX(ctx)
+	perm := cli.Permission.Create().SetCode("probe:view").SetName("probe").SaveX(ctx)
+	cli.RolePermission.Create().SetRoleID(role.ID).SetPermissionID(perm.ID).SaveX(ctx)
+	cli.PermissionApi.Create().SetPermissionID(perm.ID).SetAPIID(api.ID).SaveX(ctx)
+
+	apiRepo := NewApiRepoForTest(ec)
+	provider := &AuthorizerProvider{log: bLogger.NewHelper(bLogger.NopLogger()), roleRepo: NewRoleRepoForTest(ec), apiRepo: apiRepo}
+	a := authorizer.NewAuthorizer(ctx, bLogger.NopLogger(), &authorizer.EngineConfig{Type: "casbin"}, provider)
+
+	setStatus := func(st permissionV1.Api_Status) {
+		require.NoError(t, apiRepo.Update(ctx, &permissionV1.UpdateApiRequest{
+			Id: api.ID, Data: &permissionV1.Api{Status: st.Enum()},
+			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{"status"}},
+		}))
+		require.NoError(t, a.ResetPolicies(ctx))
+	}
+	allowed := func() bool {
+		ok, err := a.Engine().IsAuthorized(ctx, authzEngine.Subject("probe:operator"), authzEngine.Action("GET"),
+			authzEngine.Resource("/admin/v1/disable-probe"), authzEngine.Project("0"))
+		require.NoError(t, err)
+		return ok
+	}
+
+	require.NoError(t, a.ResetPolicies(ctx))
+	require.True(t, allowed(), "ON：普通角色可访问")
+	setStatus(permissionV1.Api_OFF)
+	require.False(t, allowed(), "OFF：重建策略后必须拒绝")
+	setStatus(permissionV1.Api_ON)
+	require.True(t, allowed(), "重新启用后恢复访问")
 }

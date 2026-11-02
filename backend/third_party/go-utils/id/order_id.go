@@ -39,7 +39,7 @@ func GenerateOrderIdWithRandom(prefix string, tm *time.Time) string {
 
 	randNum := rand.IntN(10000) // 生成0-9999之间的随机数
 
-	return fmt.Sprintf("%s%s%d", prefix, timestamp, randNum)
+	return fmt.Sprintf("%s%s%04d", prefix, timestamp, randNum)
 }
 
 // GenerateOrderIdWithIncreaseIndex 生成20位订单号，前缀+时间+自增长索引

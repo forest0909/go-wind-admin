@@ -149,7 +149,6 @@ type Position struct {
 	Level                 *int32                 `protobuf:"varint,12,opt,name=level,proto3,oneof" json:"level,omitempty"`                                                                 // 数值化职级
 	IsKeyPosition         *bool                  `protobuf:"varint,13,opt,name=is_key_position,json=isKeyPosition,proto3,oneof" json:"is_key_position,omitempty"`                          // 是否关键岗位
 	TenantId              *uint32                `protobuf:"varint,20,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`                                           // 租户ID
-	TenantName            *string                `protobuf:"bytes,21,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`                                      // 租户名称
 	OrgUnitId             *uint32                `protobuf:"varint,22,opt,name=org_unit_id,json=orgUnitId,proto3,oneof" json:"org_unit_id,omitempty"`                                      // 所属组织单元ID
 	OrgUnitName           *string                `protobuf:"bytes,23,opt,name=org_unit_name,json=orgUnitName,proto3,oneof" json:"org_unit_name,omitempty"`                                 // 所属组织单元名称
 	ReportsToPositionId   *uint32                `protobuf:"varint,24,opt,name=reports_to_position_id,json=reportsToPositionId,proto3,oneof" json:"reports_to_position_id,omitempty"`      // 汇报关系用户ID
@@ -292,13 +291,6 @@ func (x *Position) GetTenantId() uint32 {
 		return *x.TenantId
 	}
 	return 0
-}
-
-func (x *Position) GetTenantName() string {
-	if x != nil && x.TenantName != nil {
-		return *x.TenantName
-	}
-	return ""
 }
 
 func (x *Position) GetOrgUnitId() uint32 {
@@ -862,7 +854,7 @@ var File_identity_service_v1_position_proto protoreflect.FileDescriptor
 
 const file_identity_service_v1_position_proto_rawDesc = "" +
 	"\n" +
-	"\"identity/service/v1/position.proto\x12\x13identity.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\xad\x13\n" +
+	"\"identity/service/v1/position.proto\x12\x13identity.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\xe3\x12\n" +
 	"\bPosition\x12#\n" +
 	"\x02id\x18\x01 \x01(\rB\x0e\xbaG\v\x92\x02\b职位IDH\x00R\x02id\x88\x01\x01\x12+\n" +
 	"\x04name\x18\x02 \x01(\tB\x12\xbaG\x0f\x92\x02\f职位名称H\x01R\x04name\x88\x01\x01\x12\xa6\x01\n" +
@@ -881,27 +873,25 @@ const file_identity_service_v1_position_proto_rawDesc = "" +
 	"R\bjobGrade\x88\x01\x01\x120\n" +
 	"\x05level\x18\f \x01(\x05B\x15\xbaG\x12\x92\x02\x0f数值化职级H\vR\x05level\x88\x01\x01\x12E\n" +
 	"\x0fis_key_position\x18\r \x01(\bB\x18\xbaG\x15\x92\x02\x12是否关键岗位H\fR\risKeyPosition\x88\x01\x01\x120\n" +
-	"\ttenant_id\x18\x14 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\rR\btenantId\x88\x01\x01\x128\n" +
-	"\vtenant_name\x18\x15 \x01(\tB\x12\xbaG\x0f\x92\x02\f租户名称H\x0eR\n" +
-	"tenantName\x88\x01\x01\x12?\n" +
-	"\vorg_unit_id\x18\x16 \x01(\rB\x1a\xbaG\x17\x92\x02\x14所属组织单元IDH\x0fR\torgUnitId\x88\x01\x01\x12G\n" +
-	"\rorg_unit_name\x18\x17 \x01(\tB\x1e\xbaG\x1b\x92\x02\x18所属组织单元名称H\x10R\vorgUnitName\x88\x01\x01\x12T\n" +
-	"\x16reports_to_position_id\x18\x18 \x01(\rB\x1a\xbaG\x17\x92\x02\x14汇报关系用户IDH\x11R\x13reportsToPositionId\x88\x01\x01\x12\\\n" +
-	"\x18reports_to_position_name\x18\x19 \x01(\tB\x1e\xbaG\x1b\x92\x02\x18汇报关系用户名称H\x12R\x15reportsToPositionName\x88\x01\x01\x12W\n" +
-	"\bstart_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x1b\xbaG\x18\x92\x02\x15生效时间（UTC）H\x13R\astartAt\x88\x01\x01\x12S\n" +
-	"\x06end_at\x183 \x01(\v2\x1a.google.protobuf.TimestampB\x1b\xbaG\x18\x92\x02\x15失效时间（UTC）H\x14R\x05endAt\x88\x01\x01\x125\n" +
+	"\ttenant_id\x18\x14 \x01(\rB\x0e\xbaG\v\x92\x02\b租户IDH\rR\btenantId\x88\x01\x01\x12?\n" +
+	"\vorg_unit_id\x18\x16 \x01(\rB\x1a\xbaG\x17\x92\x02\x14所属组织单元IDH\x0eR\torgUnitId\x88\x01\x01\x12G\n" +
+	"\rorg_unit_name\x18\x17 \x01(\tB\x1e\xbaG\x1b\x92\x02\x18所属组织单元名称H\x0fR\vorgUnitName\x88\x01\x01\x12T\n" +
+	"\x16reports_to_position_id\x18\x18 \x01(\rB\x1a\xbaG\x17\x92\x02\x14汇报关系用户IDH\x10R\x13reportsToPositionId\x88\x01\x01\x12\\\n" +
+	"\x18reports_to_position_name\x18\x19 \x01(\tB\x1e\xbaG\x1b\x92\x02\x18汇报关系用户名称H\x11R\x15reportsToPositionName\x88\x01\x01\x12W\n" +
+	"\bstart_at\x182 \x01(\v2\x1a.google.protobuf.TimestampB\x1b\xbaG\x18\x92\x02\x15生效时间（UTC）H\x12R\astartAt\x88\x01\x01\x12S\n" +
+	"\x06end_at\x183 \x01(\v2\x1a.google.protobuf.TimestampB\x1b\xbaG\x18\x92\x02\x15失效时间（UTC）H\x13R\x05endAt\x88\x01\x01\x125\n" +
 	"\n" +
-	"created_by\x18d \x01(\rB\x11\xbaG\x0e\x92\x02\v创建者IDH\x15R\tcreatedBy\x88\x01\x01\x125\n" +
+	"created_by\x18d \x01(\rB\x11\xbaG\x0e\x92\x02\v创建者IDH\x14R\tcreatedBy\x88\x01\x01\x125\n" +
 	"\n" +
-	"updated_by\x18e \x01(\rB\x11\xbaG\x0e\x92\x02\v更新者IDH\x16R\tupdatedBy\x88\x01\x01\x12;\n" +
+	"updated_by\x18e \x01(\rB\x11\xbaG\x0e\x92\x02\v更新者IDH\x15R\tupdatedBy\x88\x01\x01\x12;\n" +
 	"\n" +
-	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\x17R\tdeletedBy\x88\x01\x01\x12S\n" +
+	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\x16R\tdeletedBy\x88\x01\x01\x12S\n" +
 	"\n" +
-	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\x18R\tcreatedAt\x88\x01\x01\x12S\n" +
+	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\x17R\tcreatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\x19R\tupdatedAt\x88\x01\x01\x12S\n" +
+	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\x18R\tupdatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x1aR\tdeletedAt\x88\x01\x01\"\x19\n" +
+	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x19R\tdeletedAt\x88\x01\x01\"\x19\n" +
 	"\x06Status\x12\a\n" +
 	"\x03OFF\x10\x00\x12\x06\n" +
 	"\x02ON\x10\x01\"Q\n" +
@@ -931,7 +921,6 @@ const file_identity_service_v1_position_proto_rawDesc = "" +
 	"\x10_is_key_positionB\f\n" +
 	"\n" +
 	"_tenant_idB\x0e\n" +
-	"\f_tenant_nameB\x0e\n" +
 	"\f_org_unit_idB\x10\n" +
 	"\x0e_org_unit_nameB\x19\n" +
 	"\x17_reports_to_position_idB\x1b\n" +

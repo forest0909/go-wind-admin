@@ -38,7 +38,6 @@ type DictEntry struct {
 	I18N          map[string]*DictEntryI18N `protobuf:"bytes,7,rep,name=i18n,proto3" json:"i18n,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 多语言信息，key为语言代码，如zh-CN、en-US等
 	CurrentI18N   *DictEntryI18N            `protobuf:"bytes,8,opt,name=current_i18n,json=currentI18n,proto3,oneof" json:"current_i18n,omitempty"`                                    // 当前语言的翻译（由服务端自动填充）
 	TenantId      *uint32                   `protobuf:"varint,50,opt,name=tenant_id,json=tenantId,proto3,oneof" json:"tenant_id,omitempty"`                                           // 租户ID，0代表系统全局角色
-	TenantName    *string                   `protobuf:"bytes,51,opt,name=tenant_name,json=tenantName,proto3,oneof" json:"tenant_name,omitempty"`                                      // 租户名称
 	CreatedBy     *uint32                   `protobuf:"varint,100,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`                                       // 创建者用户ID
 	UpdatedBy     *uint32                   `protobuf:"varint,101,opt,name=updated_by,json=updatedBy,proto3,oneof" json:"updated_by,omitempty"`                                       // 更新者用户ID
 	DeletedBy     *uint32                   `protobuf:"varint,102,opt,name=deleted_by,json=deletedBy,proto3,oneof" json:"deleted_by,omitempty"`                                       // 删除者用户ID
@@ -140,13 +139,6 @@ func (x *DictEntry) GetTenantId() uint32 {
 		return *x.TenantId
 	}
 	return 0
-}
-
-func (x *DictEntry) GetTenantName() string {
-	if x != nil && x.TenantName != nil {
-		return *x.TenantName
-	}
-	return ""
 }
 
 func (x *DictEntry) GetCreatedBy() uint32 {
@@ -707,7 +699,7 @@ var File_dict_service_v1_dict_entry_proto protoreflect.FileDescriptor
 
 const file_dict_service_v1_dict_entry_proto_rawDesc = "" +
 	"\n" +
-	" dict/service/v1/dict_entry.proto\x12\x0fdict.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\x8c\r\n" +
+	" dict/service/v1/dict_entry.proto\x12\x0fdict.service.v1\x1a$gnostic/openapi/v3/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a google/protobuf/field_mask.proto\x1a\x1epagination/v1/pagination.proto\"\xc2\f\n" +
 	"\tDictEntry\x12&\n" +
 	"\x02id\x18\x01 \x01(\rB\x11\xbaG\x0e\x92\x02\v字典项IDH\x00R\x02id\x88\x01\x01\x122\n" +
 	"\atype_id\x18\x02 \x01(\rB\x14\xbaG\x11\x92\x02\x0e字典类型IDH\x01R\x06typeId\x88\x01\x01\x12g\n" +
@@ -720,22 +712,20 @@ const file_dict_service_v1_dict_entry_proto_rawDesc = "" +
 	"sort_order\x18\x06 \x01(\rB'\xbaG$\x92\x02!排序顺序，值越小越靠前H\x05R\tsortOrder\x88\x01\x01\x12\xd1\x01\n" +
 	"\x04i18n\x18\a \x03(\v2$.dict.service.v1.DictEntry.I18nEntryB\x96\x01\xbaG\x92\x01:I\x12G{ \"zh-CN\": { \"entryLabel\": \"男\" }, \"en-US\": { \"entryLabel\": \"Male\" } }\x92\x02D多语言信息，key 为 BCP-47 语言标签（如 zh-CN、en-US）R\x04i18n\x12\x83\x01\n" +
 	"\fcurrent_i18n\x18\b \x01(\v2\x1e.dict.service.v1.DictEntryI18nB;\xbaG8\x18\x01\x92\x023当前语言的翻译（由服务端自动填充）H\x06R\vcurrentI18n\x88\x01\x01\x12L\n" +
-	"\ttenant_id\x182 \x01(\rB*\xbaG'\x92\x02$租户ID，0代表系统全局角色H\aR\btenantId\x88\x01\x01\x128\n" +
-	"\vtenant_name\x183 \x01(\tB\x12\xbaG\x0f\x92\x02\f租户名称H\bR\n" +
-	"tenantName\x88\x01\x01\x12;\n" +
+	"\ttenant_id\x182 \x01(\rB*\xbaG'\x92\x02$租户ID，0代表系统全局角色H\aR\btenantId\x88\x01\x01\x12;\n" +
 	"\n" +
-	"created_by\x18d \x01(\rB\x17\xbaG\x14\x92\x02\x11创建者用户IDH\tR\tcreatedBy\x88\x01\x01\x12;\n" +
+	"created_by\x18d \x01(\rB\x17\xbaG\x14\x92\x02\x11创建者用户IDH\bR\tcreatedBy\x88\x01\x01\x12;\n" +
 	"\n" +
-	"updated_by\x18e \x01(\rB\x17\xbaG\x14\x92\x02\x11更新者用户IDH\n" +
-	"R\tupdatedBy\x88\x01\x01\x12;\n" +
+	"updated_by\x18e \x01(\rB\x17\xbaG\x14\x92\x02\x11更新者用户IDH\tR\tupdatedBy\x88\x01\x01\x12;\n" +
 	"\n" +
-	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\vR\tdeletedBy\x88\x01\x01\x12S\n" +
+	"deleted_by\x18f \x01(\rB\x17\xbaG\x14\x92\x02\x11删除者用户IDH\n" +
+	"R\tdeletedBy\x88\x01\x01\x12S\n" +
 	"\n" +
-	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\fR\tcreatedAt\x88\x01\x01\x12S\n" +
+	"created_at\x18\xc8\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f创建时间H\vR\tcreatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\rR\tupdatedAt\x88\x01\x01\x12S\n" +
+	"updated_at\x18\xc9\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f更新时间H\fR\tupdatedAt\x88\x01\x01\x12S\n" +
 	"\n" +
-	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\x0eR\tdeletedAt\x88\x01\x01\x1aW\n" +
+	"deleted_at\x18\xca\x01 \x01(\v2\x1a.google.protobuf.TimestampB\x12\xbaG\x0f\x92\x02\f删除时间H\rR\tdeletedAt\x88\x01\x01\x1aW\n" +
 	"\tI18nEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x124\n" +
 	"\x05value\x18\x02 \x01(\v2\x1e.dict.service.v1.DictEntryI18nR\x05value:\x028\x01B\x05\n" +
@@ -748,8 +738,7 @@ const file_dict_service_v1_dict_entry_proto_rawDesc = "" +
 	"\v_sort_orderB\x0f\n" +
 	"\r_current_i18nB\f\n" +
 	"\n" +
-	"_tenant_idB\x0e\n" +
-	"\f_tenant_nameB\r\n" +
+	"_tenant_idB\r\n" +
 	"\v_created_byB\r\n" +
 	"\v_updated_byB\r\n" +
 	"\v_deleted_byB\r\n" +

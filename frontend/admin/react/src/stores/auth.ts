@@ -14,6 +14,8 @@ import {
 import { startRefreshTimer, stopRefreshTimer, disconnectSSEServer } from '@/hooks/useTokenRefresh';
 import { queryClient } from '@/core/query-client';
 import { setCaptchaHeaders } from '@/core/transport/rest';
+import { useUserStore } from '@/stores/user';
+import { useTabsStore } from '@/stores/tabs';
 
 /**
  * 令牌载荷
@@ -115,6 +117,48 @@ async function applySuccessfulLogin(
   }
 }
 
+// 退出时记下是哪个账号退出的。登录页 ?redirect= 是上一个账号停留的页面，
+// 换了账号再跳过去，新账号可能根本没有这个页面（没有授权的页面就是 404）。
+const SIGNED_OUT_ACCOUNT_KEY = 'signed-out-account';
+
+function accountKey(info: UserInfo | null): string | null {
+  return info?.id ? `${info.id}` : null;
+}
+
+function rememberSignedOutAccount(info: UserInfo | null): void {
+  const key = accountKey(info);
+  if (!key) return;
+  try {
+    sessionStorage.setItem(SIGNED_OUT_ACCOUNT_KEY, key);
+  } catch (error) {
+    console.warn('记录退出账号失败，登录后将按 redirect 跳转:', error);
+  }
+}
+
+// canReuseLoginRedirect 登录成功后判断能否沿用 ?redirect=：
+// 没有退出记录（直接打开登录链接、令牌过期前没拿到用户信息）或同一账号重新登录时可以。
+export function canReuseLoginRedirect(info: UserInfo | null): boolean {
+  let signedOut: string | null = null;
+  try {
+    signedOut = sessionStorage.getItem(SIGNED_OUT_ACCOUNT_KEY);
+    sessionStorage.removeItem(SIGNED_OUT_ACCOUNT_KEY);
+  } catch (error) {
+    console.warn('读取退出账号失败，按可沿用 redirect 处理:', error);
+  }
+  return !signedOut || signedOut === accountKey(info);
+}
+
+// clearAccountState 清掉上一个账号留在内存里的用户信息、角色码、权限码和标签页。
+// 只删 localStorage 不够：store 还在内存里，下一个账号登录时 getUserPermissionCodes
+// 会直接复用缓存的角色码/权限码，页面上显示的也还是上一个账号。
+function clearAccountState(): void {
+  rememberSignedOutAccount(useAuthStore.getState().userInfo);
+  localStorage.removeItem('auth-storage');
+  localStorage.removeItem('user-storage');
+  useUserStore.getState().$reset();
+  useTabsStore.getState().$reset();
+}
+
 // ========== Store 实现 ==========
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -177,9 +221,7 @@ export const useAuthStore = create<AuthState>()(
           // （如 getMe 因 401 返回 null 被 fetchQuery 缓存）导致重新登录时命中脏数据
           queryClient.clear();
 
-          // 清除 localStorage 中的持久化数据
-          localStorage.removeItem('auth-storage');
-          localStorage.removeItem('user-storage');
+          clearAccountState();
 
           // 清除内存中的状态
           set({
@@ -228,8 +270,7 @@ export const useAuthStore = create<AuthState>()(
         console.warn('Force logout: clearing auth state');
         // 清除 queryClient 缓存，防止缓存污染导致重新登录失败
         queryClient.clear();
-        localStorage.removeItem('auth-storage');
-        localStorage.removeItem('user-storage');
+        clearAccountState();
         set({
           accessToken: null,
           accessTokenExpireAt: null,

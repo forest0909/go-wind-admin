@@ -203,6 +203,30 @@ func (r *UserPositionRepo) AssignUserPositions(
 	return nil
 }
 
+
+// ListPositionIDsByUserIDs 一次查出多个用户的position ID，按用户分组（不排除过期关联，与 ListPositionIDs(…, false) 同口径）。
+// 给用户列表用：以前逐个用户调 ListPositionIDs，一页 100 个用户就是 100 次查询。
+func (r *UserPositionRepo) ListPositionIDsByUserIDs(ctx context.Context, userIDs []uint32) (map[uint32][]uint32, error) {
+	result := make(map[uint32][]uint32, len(userIDs))
+	if len(userIDs) == 0 {
+		return result, nil
+	}
+	rows, err := r.entClient.Client().UserPosition.Query().
+		Where(userposition.UserIDIn(userIDs...)).
+		Select(userposition.FieldUserID, userposition.FieldPositionID).
+		All(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "query position ids by user ids failed: %s", err.Error())
+		return nil, identityV1.ErrorInternalServerError("query position ids by user ids failed")
+	}
+	for _, row := range rows {
+		if row.UserID == nil || row.PositionID == nil {
+			continue
+		}
+		result[*row.UserID] = append(result[*row.UserID], *row.PositionID)
+	}
+	return result, nil
+}
 // ListPositionIDs 获取用户的岗位ID列表
 func (r *UserPositionRepo) ListPositionIDs(ctx context.Context, userID uint32, excludeExpired bool) ([]uint32, error) {
 	if userID == 0 {

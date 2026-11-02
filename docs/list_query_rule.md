@@ -178,7 +178,6 @@
 
 - **字符串值统一转 `__contains`**（裸键 EQ→模糊匹配；contains 是完整值精确匹配的超集）；
 - **ID 类字段**（`*_id`/`idXxx`/`^id$`）保持 EQ，不转 contains；
-- **`isTenantUser` 时剔除 `tenant_id`/`tenantId` 键**；
 - `orderBy` 缺省 `['-created_at']`；`fieldMask` 数组转逗号分隔串；
 - **操作符后缀守卫 `hasOperatorSuffix`**：键尾段（**仅小写 snake_case 形态**）已是操作符拼写则不再追加 `__contains`——
   否则 `a__gte__contains` 会被三段解析成 `a CONTAINS value`（语义静默反转）或按未知键报错。驼峰形态的盲区见下节。

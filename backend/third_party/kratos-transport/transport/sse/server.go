@@ -211,8 +211,11 @@ func (s *Server) init(opts ...ServerOption) {
 	}
 
 	s.router.StrictSlash(s.strictSlash)
-	s.router.NotFoundHandler = http.DefaultServeMux
-	s.router.MethodNotAllowedHandler = http.DefaultServeMux
+	// 不回退到 http.DefaultServeMux：net/http/pprof 等包会在初始化时往里注册免鉴权路由。
+	s.router.NotFoundHandler = http.NotFoundHandler()
+	s.router.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	})
 
 	s.Server = &http.Server{
 		Handler:   s.router,
@@ -365,6 +368,12 @@ func (s *Server) CreateStream(streamId StreamID) *Stream {
 	s.streamMgr.Add(stream)
 
 	return stream
+}
+
+// CloseStream 关闭指定流并断开它的全部订阅者（例如该用户的令牌已全部吊销）。
+// 客户端重连时会重新走 authorizeFunc。流不存在时什么也不做。
+func (s *Server) CloseStream(streamId StreamID) {
+	s.streamMgr.RemoveWithID(streamId)
 }
 
 // process applies server-side event transformations before delivery.

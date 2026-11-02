@@ -40,20 +40,17 @@ type FileTransferService struct {
 
 	mc                *oss.MinIOClient
 	fileServiceClient *data.FileRepo
-	usageRepo         *data.TenantUsageRepo
 }
 
 func NewFileTransferService(
 	ctx *bootstrap.Context,
 	mc *oss.MinIOClient,
 	fileServiceClient *data.FileRepo,
-	usageRepo *data.TenantUsageRepo,
 ) *FileTransferService {
 	return &FileTransferService{
 		log:               ctx.NewLoggerHelper("file-transfer/service/app-service"),
 		mc:                mc,
 		fileServiceClient: fileServiceClient,
-		usageRepo:         usageRepo,
 	}
 }
 
@@ -149,7 +146,8 @@ func (s *FileTransferService) recordFile(
 // directUploadFile 直接上传文件
 func (s *FileTransferService) directUploadFile(ctx context.Context, req *storageV1.UploadFileRequest) (*storageV1.UploadFileResponse, error) {
 	if req.StorageObject == nil {
-		return nil, storageV1.ErrorUploadFailed("unknown storageObject")
+		// 客户端只能给 fileDirectory，不传 storageObject 就放在根目录。
+		req.StorageObject = &storageV1.StorageObject{}
 	}
 
 	if req.GetFile() == nil {
@@ -167,20 +165,6 @@ func (s *FileTransferService) directUploadFile(ctx context.Context, req *storage
 	// H3: 文件大小校验，防 DoS / 超大文件滥用
 	if int64(len(req.GetFile())) > ossutil.MaxUploadSize {
 		return nil, storageV1.ErrorFileTooLarge("file size %d exceeds max upload size %d", len(req.GetFile()), ossutil.MaxUploadSize)
-	}
-
-	// 套餐 STORAGE 硬限制：租户用户上传前检查配额（当前占用+本次大小>上限拒绝；
-	// fail-open：无套餐/无配额条目/计量失败放行）。平台用户（tenantId==0）不检查。
-	if operator, opErr := auth.FromContext(ctx); opErr == nil && operator != nil && operator.GetTenantId() > 0 && s.usageRepo != nil {
-		used, usedErr := s.usageRepo.SumStorageInTenant(ctx, operator.GetTenantId())
-		if usedErr == nil {
-			quotas, qErr := s.usageRepo.GetUsage(ctx, operator.GetTenantId())
-			if qErr == nil {
-				if qerr := checkStorageQuotaWith(quotas.GetQuotas(), used, uint64(len(req.GetFile()))); qerr != nil {
-					return nil, storageV1.ErrorFileTooLarge("plan storage quota: %v", qerr)
-				}
-			}
-		}
 	}
 
 	// H3: 通过文件内容嗅探真实 MIME，避免信任客户端可伪造的 mime 字段
@@ -203,21 +187,18 @@ func (s *FileTransferService) directUploadFile(ctx context.Context, req *storage
 		return nil, err
 	}
 
-	if req.StorageObject.BucketName == nil {
-		req.StorageObject.BucketName = trans.Ptr(ossutil.ContentTypeToBucketName(req.GetMime()))
-	}
-
-	if req.StorageObject.ObjectName == nil {
-		req.StorageObject.ObjectName = trans.Ptr(
-			ossutil.EnsureObjectName(
-				req.GetStorageObject().GetFileDirectory(),
-				req.GetSourceFileName(),
-				req.GetMime(),
-				req.GetFile(),
-				ossutil.GenerateFileNameTypeUUID,
-			),
-		)
-	}
+	// 桶和对象名一律由服务端决定，忽略客户端传来的值：
+	// 否则知道别人对象 key 的人可以直接覆盖它，或者顺手建出任意桶。
+	req.StorageObject.BucketName = trans.Ptr(ossutil.ContentTypeToBucketName(req.GetMime()))
+	req.StorageObject.ObjectName = trans.Ptr(
+		ossutil.EnsureObjectName(
+			req.GetStorageObject().GetFileDirectory(),
+			req.GetSourceFileName(),
+			req.GetMime(),
+			req.GetFile(),
+			ossutil.GenerateFileNameTypeUUID,
+		),
+	)
 
 	info, storagePath, downloadUrl, err := s.mc.UploadFile(
 		ctx,
@@ -460,7 +441,8 @@ func (s *FileTransferService) DownloadFile(ctx context.Context, req *storageV1.D
 		return s.mc.DownloadFile(ctx, req)
 
 	case *storageV1.DownloadFileRequest_StorageObject:
-		return s.mc.DownloadFile(ctx, req)
+		// 直接按 bucket/objectName 下载会绕过文件表的归属检查，只允许按 fileId 下载。
+		return nil, storageV1.ErrorBadRequest("download by storageObject is not allowed, use fileId")
 
 	case *storageV1.DownloadFileRequest_DownloadUrl:
 		return s.downloadFileFromURL(ctx, req.GetDownloadUrl())

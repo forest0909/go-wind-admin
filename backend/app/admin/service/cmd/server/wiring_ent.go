@@ -48,6 +48,15 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	}
 	cleanups = append(cleanups, cleanupRedis)
 
+	// 多实例启动互斥：自动迁移、默认数据播种、接口/权限点/菜单同步和首次策略装载都在
+	// 下面的构造过程里同步执行，持锁直到 REST 服务装配完成，并发启动的实例依次进行。
+	releaseStartupLock, err := data.AcquireStartupLock(ctx, redisClient)
+	if err != nil {
+		rollback()
+		return nil, nil, err
+	}
+	cleanups = append(cleanups, releaseStartupLock) // 中途失败时由 rollback 释放；可重复调用
+
 	entClient, cleanupEnt, err := data.NewEntClient(ctx)
 	if err != nil {
 		rollback()
@@ -81,11 +90,9 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	configRepo := data.NewConfigRepo(ctx, entClient, redisClient)
 	userCredentialRepo := data.NewUserCredentialRepo(ctx, entClient, passwordCrypto, configRepo)
 
-	// 组织架构与租户
+	// 组织架构
 	orgUnitRepo := data.NewOrgUnitRepo(ctx, entClient, userOrgUnitRepo)
 	positionRepo := data.NewPositionRepo(ctx, entClient)
-	tenantRepo := data.NewTenantRepo(ctx, entClient)
-	tenantUsageRepo := data.NewTenantUsageRepo(ctx, entClient, authenticator)
 
 	// RBAC:权限 → 角色(聚合权限),Api/Menu 为权限挂载点
 	permissionApiRepo := data.NewPermissionApiRepo(ctx, entClient)
@@ -111,11 +118,6 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	dictEntryRepo := data.NewDictEntryRepo(ctx, entClient, dictEntryI18nRepo)
 	languageRepo := data.NewLanguageRepo(ctx, entClient)
 
-	// 套餐与计费
-	planRepo := data.NewPlanRepo(ctx, entClient)
-	planQuotaRepo := data.NewPlanQuotaRepo(ctx, entClient)
-	planModuleRepo := data.NewPlanModuleRepo(ctx, entClient)
-
 	// 任务 / 文件 / 运维观测
 	taskRepo := data.NewTaskRepo(ctx, entClient)
 	fileRepo := data.NewFileRepo(ctx, entClient)
@@ -134,11 +136,9 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	}
 	outboundSender := service.NewOutboundSender(outboundCfg)
 	transactionalMailer := &service.TransactionMailer{}
-	myTenantUsageService := service.NewMyTenantUsageService(ctx, tenantUsageRepo)
 
 	// ═══════════════════════ 三、认证与鉴权 ═══════════════════════
 
-	tenantAccessChecker := data.NewTenantAccessCheckerImpl(ctx, entClient)
 	authorizerProvider := data.NewAuthorizerProvider(ctx, roleRepo, apiRepo)
 	authzEngineCfg, err := data.NewAuthorizerEngineConfig(ctx.GetConfig())
 	if err != nil {
@@ -150,6 +150,8 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		rollback()
 		return nil, nil, fmt.Errorf("authorization engine %q failed to initialize", authzEngineCfg.Type)
 	}
+	// 多实例策略同步：本实例 ResetPolicies 后其他实例重载（必须在首次 ResetPolicies 之前装上）
+	data.NewPolicySync(ctx, redisClient, authz)
 
 	// ═══════════════════════ 四、服务层(internal/service) ═══════════════════════
 
@@ -157,26 +159,20 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	auditExportService := service.NewAuditExportService(ctx, loginAuditLogRepo, operationAuditLogRepo, accessTokenChecker)
 
 	// 认证
-	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, tenantRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter)
+	authenticationService := service.NewAuthenticationService(ctx, userRepo, userCredentialRepo, roleRepo, membershipRepo, orgUnitRepo, roleOrgUnitRepo, roleFieldPermissionRepo, permissionRepo, authenticator, clientType, captcha, loginRateLimiter)
 
 	// 身份与组织
-	userService := service.NewUserService(ctx, userRepo, roleRepo, userCredentialRepo, positionRepo, orgUnitRepo, tenantRepo, tenantUsageRepo, membershipRepo, authenticator)
+	userService := service.NewUserService(ctx, userRepo, roleRepo, userCredentialRepo, positionRepo, orgUnitRepo, membershipRepo, authenticator)
 	userProfileService := service.NewUserProfileService(ctx, userRepo, roleRepo, userCredentialRepo, authenticator, outboundSender, vcodeCache, minioClient, transactionalMailer)
 	positionService := service.NewPositionService(ctx, positionRepo, orgUnitRepo)
 	orgUnitService := service.NewOrgUnitService(ctx, orgUnitRepo, userRepo)
 
 	// RBAC
-	roleService := service.NewRoleService(ctx, authz, roleRepo, tenantRepo, userRoleRepo, authenticator)
+	roleService := service.NewRoleService(ctx, authz, roleRepo, userRoleRepo, authenticator)
 	menuService := service.NewMenuService(ctx, menuRepo)
 	apiService := service.NewApiService(ctx, apiRepo, authz)
 	permissionService := service.NewPermissionService(ctx, permissionRepo, permissionGroupRepo, menuRepo, apiRepo, roleRepo, authz)
 	permissionGroupService := service.NewPermissionGroupService(ctx, permissionGroupRepo, permissionRepo)
-
-	// 租户与套餐
-	tenantService := service.NewTenantService(ctx, tenantRepo, tenantUsageRepo, userRepo, userCredentialRepo, roleRepo, authz)
-	planService := service.NewPlanService(ctx, planRepo)
-	planQuotaService := service.NewPlanQuotaService(ctx, planQuotaRepo)
-	planModuleService := service.NewPlanModuleService(ctx, planModuleRepo)
 
 	// 字典与多语言
 	dictTypeService := service.NewDictTypeService(ctx, dictTypeRepo)
@@ -185,8 +181,8 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 文件与任务
 	fileService := service.NewFileService(ctx, fileRepo, minioClient)
-	fileTransferService := service.NewFileTransferService(ctx, minioClient, fileRepo, tenantUsageRepo)
-	taskService := service.NewTaskService(ctx, taskRepo, userRepo, tenantUsageRepo, auditLogArchiveRepo)
+	fileTransferService := service.NewFileTransferService(ctx, minioClient, fileRepo)
+	taskService := service.NewTaskService(ctx, taskRepo, userRepo, auditLogArchiveRepo, redisClient)
 
 	// 审计日志
 	loginAuditLogService := service.NewLoginAuditLogService(ctx, loginAuditLogRepo)
@@ -194,7 +190,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 运维观测与门户
 	onlineSessionService := service.NewOnlineSessionService(ctx, authenticator)
-	adminPortalService := service.NewAdminPortalService(ctx, menuRepo, roleRepo, userRepo, permissionRepo, planModuleRepo, tenantRepo)
+	adminPortalService := service.NewAdminPortalService(ctx, menuRepo, roleRepo, userRepo, permissionRepo)
 
 	// 站内信
 	internalMessageService := service.NewInternalMessageService(ctx, internalMessageRepo, internalMessageCategoryRepo, internalMessageRecipientRepo, userRepo, authenticator, clientType)
@@ -203,16 +199,12 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	dashboardService := service.NewDashboardService(ctx, dashboardRepo)
 
-	// 套餐配额水位通知：用量扫描（tenantUsageRepo）+ 站内信投递内核。
-	// 依赖 internalMessageService，故置其后。
-	planQuotaWatermarkService := service.NewPlanQuotaWatermarkService(ctx, tenantUsageRepo, internalMessageService, internalMessageRepo, entClient)
-
 	// ── register:service ── 新模块服务在此行后注册(make register 工具锚点,勿删)
 	configService := service.NewConfigService(ctx, configRepo)
 
 	// ═══════════════════════ 五、传输层(internal/server) ═══════════════════════
 
-	restMiddlewares := server.NewRestMiddleware(ctx, accessTokenChecker, tenantAccessChecker, authz,
+	restMiddlewares := server.NewRestMiddleware(ctx, accessTokenChecker, authz,
 		loginAuditLogRepo, operationAuditLogRepo)
 
 	restServer, err := server.NewRestServer(ctx, restMiddlewares, authz,
@@ -220,14 +212,12 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		adminPortalService, taskService,
 		fileService, fileTransferService,
 		dictTypeService, dictEntryService, languageService,
-		tenantService, planService, planQuotaService, planModuleService,
 		userService, userProfileService, roleService, positionService, orgUnitService,
 		menuService, apiService, permissionService, permissionGroupService,
 		loginAuditLogService, operationAuditLogService,
 		onlineSessionService, dashboardService,
 		internalMessageService, internalMessageCategoryService, internalMessageRecipientService,
 		// register:rest-arg ── 新模块服务实参在此行后追加(make register 工具锚点,勿删)
-		myTenantUsageService,
 		auditExportService,
 		configService,
 	)
@@ -235,14 +225,15 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		rollback()
 		return nil, nil, err
 	}
+	releaseStartupLock()
 
-	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService, planQuotaWatermarkService)
+	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService)
 	if err != nil {
 		rollback()
 		return nil, nil, err
 	}
 
-	sseServer := server.NewSseServer(ctx, internalMessageService)
+	sseServer := server.NewSseServer(ctx, internalMessageService, authenticator, redisClient)
 
 	return newApp(ctx, restServer, asynqServer, sseServer), rollback, nil
 }

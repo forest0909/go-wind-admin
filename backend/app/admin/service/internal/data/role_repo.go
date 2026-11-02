@@ -195,6 +195,11 @@ func (r *RoleRepo) fillOrgUnitIDs(ctx context.Context, dto *permissionV1.Role) e
 	return nil
 }
 
+// ListOrgUnitIDsByRoleIDs 按角色列出自定义数据范围（SELECTED_UNITS）配置的组织单元。
+func (r *RoleRepo) ListOrgUnitIDsByRoleIDs(ctx context.Context, roleIDs []uint32) (map[uint32][]uint32, error) {
+	return r.roleOrgUnitRepo.ListOrgUnitIDsByRoleIDs(ctx, roleIDs)
+}
+
 // EnsureGrantSnapshot 读出授权比较要用的权限、组织单元和字段权限。
 // Get 会填这三项，但填充失败只记日志；调用方在更新前再查一次，失败就放弃更新，
 // 避免把没读到的关联当成空集。
@@ -226,12 +231,6 @@ func (r *RoleRepo) fillFieldPermissions(ctx context.Context, dto *permissionV1.R
 func (r *RoleRepo) ListRolesByRoleCodes(ctx context.Context, codes []string) ([]*permissionV1.Role, error) {
 	if len(codes) == 0 {
 		return []*permissionV1.Role{}, nil
-	}
-
-	// role.code 仅在 (tenant_id, code) 维度唯一，平台上下文(tid=0)下按 code 列表查询
-	// 会跨租户返回所有匹配角色，造成跨租户角色/权限泄露。仅允许在具名租户上下文(tid>0)下查询。
-	if _, hasTenant := maybeTenantFromViewer(ctx); !hasTenant {
-		return nil, permissionV1.ErrorBadRequest("tenant scope required to query roles by codes")
 	}
 
 	entities, err := r.entClient.Client().Role.Query().
@@ -335,12 +334,6 @@ func (r *RoleRepo) ListRoleIDsByRoleCodes(ctx context.Context, codes []string) (
 		return []uint32{}, nil
 	}
 
-	// role.code 仅在 (tenant_id, code) 维度唯一，平台上下文(tid=0)下按 code 列表查询
-	// 会跨租户返回所有匹配角色 ID，造成跨租户角色/权限泄露。仅允许在具名租户上下文(tid>0)下查询。
-	if _, hasTenant := maybeTenantFromViewer(ctx); !hasTenant {
-		return nil, permissionV1.ErrorBadRequest("tenant scope required to query role ids by codes")
-	}
-
 	entities, err := r.entClient.Client().Role.Query().
 		Where(role.CodeIn(codes...)).
 		Select(role.FieldID).
@@ -372,19 +365,8 @@ func (r *RoleRepo) Get(ctx context.Context, req *permissionV1.GetRoleRequest) (*
 	case *permissionV1.GetRoleRequest_Id:
 		whereCond = append(whereCond, role.IDEQ(req.GetId()))
 	case *permissionV1.GetRoleRequest_Name:
-		// role.name 连租户内都不唯一，平台上下文(tid=0)下按 name 查询必然跨租户匹配多行，
-		// .Only() 会报 not singular。仅允许在具名租户上下文(tid>0)下按 name 查询。
-		if _, hasTenant := maybeTenantFromViewer(ctx); !hasTenant {
-			return nil, permissionV1.ErrorBadRequest("tenant scope required to query role by name")
-		}
 		whereCond = append(whereCond, role.NameEQ(req.GetName()))
 	case *permissionV1.GetRoleRequest_Code:
-		// role.code 仅在 (tenant_id, code) 维度唯一，平台上下文(tid=0)下按 code 查询
-		// 会跨租户匹配多行导致 .Only() 报 not singular。模板角色查询请用 GetTemplateRole。
-		// 仅允许在具名租户上下文(tid>0)下按 code 查询。
-		if _, hasTenant := maybeTenantFromViewer(ctx); !hasTenant {
-			return nil, permissionV1.ErrorBadRequest("tenant scope required to query role by code")
-		}
 		whereCond = append(whereCond, role.CodeEQ(req.GetCode()))
 	}
 
@@ -398,65 +380,6 @@ func (r *RoleRepo) Get(ctx context.Context, req *permissionV1.GetRoleRequest) (*
 	_ = r.fillFieldPermissions(ctx, dto)
 
 	return dto, err
-}
-
-// GetTemplateRole 获取角色模板信息
-func (r *RoleRepo) GetTemplateRole(ctx context.Context, templateCode string) (*permissionV1.Role, error) {
-	if templateCode == "" {
-		return nil, permissionV1.ErrorBadRequest("invalid parameter")
-	}
-
-	code := constants.TemplateRoleCodePrefix + templateCode
-	builder := r.entClient.Client().Role.Query().
-		Where(
-			role.CodeEQ(code),
-			role.StatusEQ(role.StatusOn),
-			role.IsProtectedEQ(true),
-			role.Or(
-				role.TenantIDIsNil(),
-				role.TenantIDEQ(0),
-			),
-		)
-
-	dto, err := r.repository.Get(ctx, builder, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	_ = r.fillPermissionIDs(ctx, dto)
-
-	return dto, err
-}
-
-// CreateTenantRoleFromTemplate 从模版创建租户角色
-func (r *RoleRepo) CreateTenantRoleFromTemplate(ctx context.Context, tx *ent.Tx, tenantID, operatorID uint32) (dto *permissionV1.Role, err error) {
-	// 通过专门的 GetTemplateRole 查询模板角色（tenant_id=0 的受保护模板），
-	// 它自带 TenantIDIsNil/TenantIDEQ(0) 过滤，避免通用 Get(Code) 在平台上下文下
-	// 跨租户匹配多行或误中非模板角色。
-	roleTemplate, err := r.GetTemplateRole(ctx, constants.TenantAdminRoleCode)
-	if err != nil {
-		return nil, err
-	}
-
-	roleTemplate.Id = nil
-	roleTemplate.Name = trans.Ptr(constants.DefaultTenantManagerRoleName)
-	roleTemplate.Code = trans.Ptr(constants.ExtractRoleCodeFromTemplate(roleTemplate.GetCode()))
-	roleTemplate.Type = trans.Ptr(permissionV1.Role_TENANT)
-	roleTemplate.IsProtected = trans.Ptr(true)
-	roleTemplate.TenantId = trans.Ptr(tenantID)
-	roleTemplate.CreatedBy = trans.Ptr(operatorID)
-	roleTemplate.CreatedAt = nil
-	roleTemplate.UpdatedBy = nil
-	roleTemplate.UpdatedAt = nil
-
-	//r.log.Infof(ctx, "Creating tenant role from template: %+v", roleTemplate)
-
-	dto, err = r.CreateWithTx(ctx, tx, roleTemplate)
-	if err != nil {
-		return nil, err
-	}
-
-	return dto, nil
 }
 
 // Create 创建角色
@@ -522,30 +445,13 @@ func (r *RoleRepo) CreateWithTx(ctx context.Context, tx *ent.Tx, data *permissio
 	}
 
 	// 创建角色元数据
-	var isTemplate bool
-	var scope *permissionV1.RoleMetadata_Scope
-	switch data.GetType() {
-	case permissionV1.Role_SYSTEM:
-		scope = permissionV1.RoleMetadata_PLATFORM.Enum()
-	case permissionV1.Role_TEMPLATE:
-		scope = permissionV1.RoleMetadata_PLATFORM.Enum()
-		isTemplate = true
-	case permissionV1.Role_TENANT:
-		scope = permissionV1.RoleMetadata_TENANT.Enum()
-	}
-
-	var templateFor string
-	if isTemplate {
-		templateFor = constants.ExtractRoleCodeFromTemplate(data.GetCode())
-	}
 	if err = r.roleMetadataRepo.Create(ctx, tx, &permissionV1.RoleMetadata{
-		RoleId:      trans.Ptr(ret.ID),
-		TenantId:    data.TenantId,
-		CreatedBy:   data.CreatedBy,
-		IsTemplate:  trans.Ptr(isTemplate),
-		TemplateFor: trans.Ptr(templateFor),
-		SyncPolicy:  permissionV1.RoleMetadata_AUTO.Enum(),
-		Scope:       scope,
+		RoleId:     trans.Ptr(ret.ID),
+		TenantId:   data.TenantId,
+		CreatedBy:  data.CreatedBy,
+		IsTemplate: trans.Ptr(false),
+		SyncPolicy: permissionV1.RoleMetadata_AUTO.Enum(),
+		Scope:      permissionV1.RoleMetadata_PLATFORM.Enum(),
 	}); err != nil {
 		r.log.Errorf(ctx, "create role metadata failed: %s", err.Error())
 		return nil, permissionV1.ErrorInternalServerError("create role metadata failed")

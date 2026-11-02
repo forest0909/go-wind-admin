@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
 	"go-wind-admin/third_party/go-utils/aggregator"
@@ -40,8 +41,6 @@ type UserService struct {
 	roleRepo     *data.RoleRepo
 	positionRepo *data.PositionRepo
 	orgUnitRepo  *data.OrgUnitRepo
-	tenantRepo   *data.TenantRepo
-	usageRepo    *data.TenantUsageRepo
 
 	membershipRepo *data.MembershipRepo
 
@@ -55,8 +54,6 @@ func NewUserService(
 	userCredentialRepo *data.UserCredentialRepo,
 	positionRepo *data.PositionRepo,
 	orgUnitRepo *data.OrgUnitRepo,
-	tenantRepo *data.TenantRepo,
-	usageRepo *data.TenantUsageRepo,
 	membershipRepo *data.MembershipRepo,
 	authenticator *data.Authenticator,
 ) *UserService {
@@ -67,8 +64,6 @@ func NewUserService(
 		userCredentialRepo: userCredentialRepo,
 		positionRepo:       positionRepo,
 		orgUnitRepo:        orgUnitRepo,
-		tenantRepo:         tenantRepo,
-		usageRepo:          usageRepo,
 		membershipRepo:     membershipRepo,
 		authenticator:      authenticator,
 	}
@@ -102,17 +97,12 @@ func (s *UserService) init() {
 func (s *UserService) extractRelationIDs(
 	users []*identityV1.User,
 	roleSet aggregator.ResourceMap[uint32, *permissionV1.Role],
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
 	orgUnitSet aggregator.ResourceMap[uint32, *identityV1.OrgUnit],
 	posSet aggregator.ResourceMap[uint32, *identityV1.Position],
 ) {
 	for _, v := range users {
 		if v == nil {
 			continue
-		}
-
-		if id := v.GetTenantId(); id > 0 {
-			tenantSet[id] = nil
 		}
 
 		if id := v.GetRoleId(); id > 0 {
@@ -152,7 +142,6 @@ func (s *UserService) extractRelationIDs(
 func (s *UserService) fetchRelationInfo(
 	ctx context.Context,
 	roleSet aggregator.ResourceMap[uint32, *permissionV1.Role],
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
 	orgUnitSet aggregator.ResourceMap[uint32, *identityV1.OrgUnit],
 	posSet aggregator.ResourceMap[uint32, *identityV1.Position],
 ) error {
@@ -170,23 +159,6 @@ func (s *UserService) fetchRelationInfo(
 
 		for _, role := range roles {
 			roleSet[role.GetId()] = role
-		}
-	}
-
-	if len(tenantSet) > 0 {
-		tenantIds := make([]uint32, 0, len(tenantSet))
-		for id := range tenantSet {
-			tenantIds = append(tenantIds, id)
-		}
-
-		tenants, err := s.tenantRepo.ListTenantsByIds(ctx, tenantIds)
-		if err != nil {
-			s.log.Errorf(context.Background(), "query tenants err: %v", err)
-			return err
-		}
-
-		for _, tenant := range tenants {
-			tenantSet[tenant.GetId()] = tenant
 		}
 	}
 
@@ -230,7 +202,6 @@ func (s *UserService) fetchRelationInfo(
 func (s *UserService) bindRelations(
 	users []*identityV1.User,
 	roleSet aggregator.ResourceMap[uint32, *permissionV1.Role],
-	tenantSet aggregator.ResourceMap[uint32, *identityV1.Tenant],
 	orgUnitSet aggregator.ResourceMap[uint32, *identityV1.OrgUnit],
 	posSet aggregator.ResourceMap[uint32, *identityV1.Position],
 ) {
@@ -252,15 +223,6 @@ func (s *UserService) bindRelations(
 		func(ou *identityV1.User, r *permissionV1.Role) {
 			ou.RoleNames = append(ou.RoleNames, r.GetName())
 			ou.Roles = append(ou.Roles, r.GetCode())
-		},
-	)
-
-	aggregator.Populate(
-		users,
-		tenantSet,
-		func(ou *identityV1.User) uint32 { return ou.GetTenantId() },
-		func(ou *identityV1.User, r *identityV1.Tenant) {
-			ou.TenantName = r.Name
 		},
 	)
 
@@ -305,15 +267,14 @@ func (s *UserService) bindRelations(
 
 func (s *UserService) enrichRelations(ctx context.Context, users []*identityV1.User) error {
 	var roleSet = make(aggregator.ResourceMap[uint32, *permissionV1.Role])
-	var tenantSet = make(aggregator.ResourceMap[uint32, *identityV1.Tenant])
 	var orgUnitSet = make(aggregator.ResourceMap[uint32, *identityV1.OrgUnit])
 	var posSet = make(aggregator.ResourceMap[uint32, *identityV1.Position])
 
-	s.extractRelationIDs(users, roleSet, tenantSet, orgUnitSet, posSet)
-	if err := s.fetchRelationInfo(ctx, roleSet, tenantSet, orgUnitSet, posSet); err != nil {
+	s.extractRelationIDs(users, roleSet, orgUnitSet, posSet)
+	if err := s.fetchRelationInfo(ctx, roleSet, orgUnitSet, posSet); err != nil {
 		return err
 	}
-	s.bindRelations(users, roleSet, tenantSet, orgUnitSet, posSet)
+	s.bindRelations(users, roleSet, orgUnitSet, posSet)
 	return nil
 }
 
@@ -323,7 +284,10 @@ func (s *UserService) List(ctx context.Context, req *paginationV1.PagingRequest)
 		return nil, err
 	}
 
-	_ = s.enrichRelations(ctx, resp.Items)
+	// 回填角色/组织/岗位名称是展示增强，失败不阻断列表，但要留日志
+	if err = s.enrichRelations(ctx, resp.Items); err != nil {
+		s.log.Errorf(ctx, "enrich user relations failed: %v", err)
+	}
 
 	return resp, nil
 }
@@ -346,7 +310,9 @@ func (s *UserService) Get(ctx context.Context, req *identityV1.GetUserRequest) (
 	}
 
 	fakeItems := []*identityV1.User{resp}
-	_ = s.enrichRelations(ctx, fakeItems)
+	if err = s.enrichRelations(ctx, fakeItems); err != nil {
+		s.log.Errorf(ctx, "enrich user relations failed: %v", err)
+	}
 
 	return resp, nil
 }
@@ -373,9 +339,8 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	}
 
 	req.Data.CreatedBy = trans.Ptr(operator.UserId)
-	if operator.GetTenantId() > 0 {
-		req.Data.TenantId = operator.TenantId
-	}
+	// 单租户：用户固定落在租户 0，不接受调用方指定租户
+	req.Data.TenantId = nil
 
 	var roleIds []uint32
 	if len(req.Data.GetRoleIds()) > 0 {
@@ -390,17 +355,9 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 		return nil, adminV1.ErrorBadRequest("role_ids is required")
 	}
 
-	var queryString string
-	if operator.GetTenantId() > 0 || req.Data.GetTenantId() > 0 {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "TENANT", "tenant_id": %d}`,
-			sliceutil.NumberSliceToString(roleIds),
-			req.Data.GetTenantId(),
-		)
-	} else {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
-			sliceutil.NumberSliceToString(roleIds),
-		)
-	}
+	queryString := fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
+		sliceutil.NumberSliceToString(roleIds),
+	)
 	roles, err := s.roleRepo.List(ctx, &paginationV1.PagingRequest{
 		NoPaging: trans.Ptr(true),
 		FilteringType: &paginationV1.PagingRequest_Query{
@@ -424,32 +381,24 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 	req.Data.RoleId = nil
 	req.Data.RoleIds = roleIds
 
-	// 套餐 USER_LIMIT 硬限制：租户用户创建前检查配额（平台用户/计量失败 fail-open）
-	targetTenantID := req.Data.GetTenantId()
-	if targetTenantID == 0 {
-		targetTenantID = operator.GetTenantId()
-	}
-	if targetTenantID > 0 && s.usageRepo != nil {
-		usage, uerr := s.usageRepo.GetUsage(ctx, targetTenantID)
-		if uerr == nil {
-			if limit, ok := quotaLimitFromUsages(usage.GetQuotas(), identityV1.PlanQuota_USER_LIMIT); ok {
-				if uint64(usage.GetUserCount()) >= limit {
-					return nil, quotaExceededError("USER_LIMIT", limit, usage.GetUserCount())
-				}
-			}
-		}
+	// 授权上限：非超级管理员只能分配权限点不超出自己的角色。
+	if err = ensureRolesWithinOperator(ctx, s.roleRepo, s.userRepo.ListRoleIDsByUserID, operator, roleIds); err != nil {
+		s.log.Errorf(ctx, "operator [%d] assign roles %v rejected: %v", operator.GetUserId(), roleIds, err)
+		return nil, err
 	}
 
 	// 创建请求里的密码与改密、重置同一条传输契约：前端 AES 密文。
-	// 空密码不解密，下面仍填 DefaultUserPassword 明文常量。
-	if len(req.GetPassword()) > 0 {
-		plainPassword, derr := decryptTransportPassword(req.GetPassword())
-		if derr != nil {
-			s.log.Errorf(ctx, "decrypt create user password failed: %s", derr.Error())
-			return nil, derr
-		}
-		req.Password = trans.Ptr(plainPassword)
+	// 必须显式给密码：不再回落到公开的统一默认密码。
+	if len(req.GetPassword()) == 0 {
+		s.log.Errorf(ctx, "create user without password rejected")
+		return nil, adminV1.ErrorBadRequest("password is required")
 	}
+	plainPassword, derr := decryptTransportPassword(req.GetPassword())
+	if derr != nil {
+		s.log.Errorf(ctx, "decrypt create user password failed: %s", derr.Error())
+		return nil, derr
+	}
+	req.Password = trans.Ptr(plainPassword)
 
 	// 用户行、角色/组织/岗位关联、凭据在同一个事务里。
 	// 凭据复杂度校验失败或写入过程 panic 时整笔回滚，避免留下没有密码的用户。
@@ -464,31 +413,24 @@ func (s *UserService) Create(ctx context.Context, req *identityV1.CreateUserRequ
 			return err
 		}
 
-		if len(req.GetPassword()) == 0 {
-			// 如果没有设置密码，则设置为默认密码。明文常量，不要再解密。
-			req.Password = trans.Ptr(constants.DefaultUserPassword)
+		// 测试注入：模拟凭据写入过程中 panic。生产路径保持 nil。
+		if userCreateCredentialHook != nil {
+			userCreateCredentialHook()
 		}
+		if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
+			UserId:   user.Id,
+			TenantId: user.TenantId,
 
-		if len(req.GetPassword()) > 0 {
-			// 测试注入：模拟凭据写入过程中 panic。生产路径保持 nil。
-			if userCreateCredentialHook != nil {
-				userCreateCredentialHook()
-			}
-			if err = s.userCredentialRepo.CreateWithTx(ctx, tx, &authenticationV1.UserCredential{
-				UserId:   user.Id,
-				TenantId: user.TenantId,
+			IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
+			Identifier:   req.Data.Username,
 
-				IdentityType: authenticationV1.UserCredential_USERNAME.Enum(),
-				Identifier:   req.Data.Username,
+			CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
+			Credential:     req.Password,
 
-				CredentialType: authenticationV1.UserCredential_PASSWORD_HASH.Enum(),
-				Credential:     req.Password,
-
-				IsPrimary: trans.Ptr(true),
-				Status:    authenticationV1.UserCredential_ENABLED.Enum(),
-			}); err != nil {
-				return err
-			}
+			IsPrimary: trans.Ptr(true),
+			Status:    authenticationV1.UserCredential_ENABLED.Enum(),
+		}); err != nil {
+			return err
 		}
 		return nil
 	}, func(rollbackErr error) {
@@ -551,9 +493,8 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 
 	req.Data.Id = trans.Ptr(req.GetId())
 
-	if operator.GetTenantId() > 0 {
-		req.Data.TenantId = operator.TenantId
-	}
+	// 单租户：用户固定落在租户 0，不接受调用方指定租户
+	req.Data.TenantId = nil
 
 	var roleIds []uint32
 	if len(req.Data.GetRoleIds()) > 0 {
@@ -568,17 +509,9 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		return nil, adminV1.ErrorBadRequest("role_ids is required")
 	}
 
-	var queryString string
-	if operator.GetTenantId() > 0 || req.Data.GetTenantId() > 0 {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "TENANT", "tenant_id": %d}`,
-			sliceutil.NumberSliceToString(roleIds),
-			req.Data.GetTenantId(),
-		)
-	} else {
-		queryString = fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
-			sliceutil.NumberSliceToString(roleIds),
-		)
-	}
+	queryString := fmt.Sprintf(`{"id__in": "[%s]", "type": "SYSTEM"}`,
+		sliceutil.NumberSliceToString(roleIds),
+	)
 	roles, err := s.roleRepo.List(ctx, &paginationV1.PagingRequest{
 		NoPaging: trans.Ptr(true),
 		FilteringType: &paginationV1.PagingRequest_Query{
@@ -611,10 +544,21 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		if listErr != nil {
 			s.log.Errorf(ctx, "list roles before update failed for user [%d]: %v", req.GetId(), listErr)
 			revokeForRoleChange = true
+			currentRoleIDs = nil // 现有集合不明：按全部是新加的角色做上限校验
 		} else if !sameUint32Set(sliceutil.Unique(currentRoleIDs), roleIds) {
 			revokeForRoleChange = true
 		}
+
+		// 授权上限只看新加的角色：页面保存会带上目标用户原有的角色，原样保留不算分配。
+		added := newlyAdded(roleIds, currentRoleIDs)
+		if err = ensureRolesWithinOperator(ctx, s.roleRepo, s.userRepo.ListRoleIDsByUserID, operator, added); err != nil {
+			s.log.Errorf(ctx, "operator [%d] assign roles %v to user [%d] rejected: %v", operator.GetUserId(), added, req.GetId(), err)
+			return nil, err
+		}
 	}
+
+	// 停用、锁定、注销等非正常状态：旧令牌不能继续认证（认证器只核对 Redis，不查用户状态）。
+	revokeForStatus := userUpdateDeactivates(req)
 
 	// 更新用户
 	if err = s.userRepo.Update(ctx, req); err != nil {
@@ -622,10 +566,10 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 		return nil, err
 	}
 
-	// 角色集合已经落库。吊销失败只记日志：更新已提交，不能再把本次请求判失败。
-	if revokeForRoleChange {
+	// 角色集合或状态已经落库。吊销失败只记日志：更新已提交，不能再把本次请求判失败。
+	if revokeForRoleChange || revokeForStatus {
 		if rerr := s.authenticator.RevokeUserTokenAllClientTypes(ctx, req.GetId()); rerr != nil {
-			s.log.Errorf(ctx, "revoke tokens after role change failed for user [%d]: %v", req.GetId(), rerr)
+			s.log.Errorf(ctx, "revoke tokens after role/status change failed for user [%d]: %v", req.GetId(), rerr)
 		}
 	}
 
@@ -661,7 +605,7 @@ func (s *UserService) Update(ctx context.Context, req *identityV1.UpdateUserRequ
 			targetUsername = targetUser.GetUsername()
 		}
 
-		if err = s.userCredentialRepo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+		if err = s.userCredentialRepo.ResetCredential(ctx, req.GetId(), &authenticationV1.ResetCredentialRequest{
 			IdentityType:  authenticationV1.UserCredential_USERNAME,
 			Identifier:    targetUsername,
 			NewCredential: req.GetPassword(),
@@ -692,6 +636,24 @@ func userUpdateRewritesRoles(req *identityV1.UpdateUserRequest) bool {
 	for _, p := range fm.GetPaths() {
 		switch p {
 		case "role_ids", "role_id":
+			return true
+		}
+	}
+	return false
+}
+
+// userUpdateDeactivates 判断本次更新是否把用户写成非 NORMAL 状态。
+// 无 mask 或空 paths 视为全量更新；有 mask 时只看 status 是否在 mask 里。
+func userUpdateDeactivates(req *identityV1.UpdateUserRequest) bool {
+	if req.GetData().Status == nil || req.GetData().GetStatus() == identityV1.User_NORMAL {
+		return false
+	}
+	fm := req.GetUpdateMask()
+	if fm == nil || len(fm.GetPaths()) == 0 {
+		return true
+	}
+	for _, p := range fm.GetPaths() {
+		if p == "status" {
 			return true
 		}
 	}
@@ -760,9 +722,16 @@ func (s *UserService) Delete(ctx context.Context, req *identityV1.DeleteUserRequ
 	}
 
 	// 删除用户
-	err = s.userRepo.Delete(ctx, req)
+	if err = s.userRepo.Delete(ctx, req); err != nil {
+		return nil, err
+	}
 
-	return &emptypb.Empty{}, err
+	// 删除已提交，旧令牌必须失效。吊销失败只记日志，不把已完成的删除判失败。
+	if rerr := s.authenticator.RevokeUserTokenAllClientTypes(ctx, target.GetId()); rerr != nil {
+		s.log.Errorf(ctx, "revoke tokens after delete failed for user [%d]: %v", target.GetId(), rerr)
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (s *UserService) UserExists(ctx context.Context, req *identityV1.UserExistsRequest) (*identityV1.UserExistsResponse, error) {
@@ -794,7 +763,7 @@ func (s *UserService) EditUserPassword(ctx context.Context, req *identityV1.Edit
 		return nil, adminV1.ErrorForbidden("no permission to reset password of user in other tenant")
 	}
 
-	if err = s.userCredentialRepo.ResetCredential(ctx, &authenticationV1.ResetCredentialRequest{
+	if err = s.userCredentialRepo.ResetCredential(ctx, u.GetId(), &authenticationV1.ResetCredentialRequest{
 		IdentityType:  authenticationV1.UserCredential_USERNAME,
 		Identifier:    u.GetUsername(),
 		NewCredential: req.GetNewPassword(),
@@ -865,10 +834,18 @@ func (s *UserService) createDefaultUser(ctx context.Context) error {
 // overrideUserID > 0 时覆盖种子里的 UserId（初始化路径绑定实际生成的用户 ID）；
 // 为 0 时保留种子原值（自愈补种路径，此时 admin 即空表首行 id=1）。
 func (s *UserService) createDefaultUserCredentials(ctx context.Context, overrideUserID uint32) error {
+	initialPassword := os.Getenv(constants.AdminInitialPasswordEnv)
+	if initialPassword == "" {
+		s.log.Warnf(ctx, "⚠️ 未设置 %s，admin 初始密码使用仓库公开的默认值，部署后必须立即修改",
+			constants.AdminInitialPasswordEnv)
+	}
 	for _, userCredential := range constants.DefaultUserCredentials {
 		credential := proto.Clone(userCredential).(*authenticationV1.UserCredential)
 		if overrideUserID > 0 {
 			credential.UserId = trans.Ptr(overrideUserID)
+		}
+		if initialPassword != "" {
+			credential.Credential = trans.Ptr(initialPassword)
 		}
 		if err := s.userCredentialRepo.Create(ctx, &authenticationV1.CreateUserCredentialRequest{
 			Data: credential,

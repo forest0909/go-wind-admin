@@ -21,6 +21,10 @@ import (
 
 var codec = encoding.GetCodec("json")
 
+func uploadTooLargeError() error {
+	return storageV1.ErrorFileTooLarge("request body exceeds %d bytes", maxUploadRequestBytes)
+}
+
 func registerFileTransferServiceHandler(srv *http.Server, svc *service.FileTransferService) {
 	r := srv.Route("/")
 
@@ -50,11 +54,20 @@ func _FileTransferService_PostUploadFile_HTTP_Handler(svc *service.FileTransferS
 		var err error
 
 		file, header, err := ctx.Request().FormFile("file")
+		if isBodyTooLarge(err) {
+			return uploadTooLargeError()
+		}
 		if err == nil {
 			defer file.Close()
 
 			b := new(strings.Builder)
-			_, err = io.Copy(b, file)
+			if _, err = io.Copy(b, file); err != nil {
+				log.Errorf("Read upload file error: %v", err)
+				if isBodyTooLarge(err) {
+					return uploadTooLargeError()
+				}
+				return err
+			}
 
 			in.Source = &storageV1.UploadFileRequest_File{File: []byte(b.String())}
 
@@ -98,6 +111,9 @@ func _FileTransferService_PostUploadFile_HTTP_Handler(svc *service.FileTransferS
 		} else {
 			if err = ctx.Bind(&in); err != nil {
 				log.Errorf("Bind upload file request error: %v", err)
+				if isBodyTooLarge(err) {
+					return uploadTooLargeError()
+				}
 				return err
 			}
 		}
@@ -132,11 +148,20 @@ func _FileTransferService_PutUploadFile_HTTP_Handler(svc *service.FileTransferSe
 		var err error
 
 		file, header, err := ctx.Request().FormFile("file")
+		if isBodyTooLarge(err) {
+			return uploadTooLargeError()
+		}
 		if err == nil {
 			defer file.Close()
 
 			b := new(strings.Builder)
-			_, err = io.Copy(b, file)
+			if _, err = io.Copy(b, file); err != nil {
+				log.Errorf("Read upload file error: %v", err)
+				if isBodyTooLarge(err) {
+					return uploadTooLargeError()
+				}
+				return err
+			}
 
 			in.Source = &storageV1.UploadFileRequest_File{File: []byte(b.String())}
 
@@ -180,6 +205,9 @@ func _FileTransferService_PutUploadFile_HTTP_Handler(svc *service.FileTransferSe
 		} else {
 			if err = ctx.Bind(&in); err != nil {
 				log.Errorf("Bind upload file request error: %v", err)
+				if isBodyTooLarge(err) {
+					return uploadTooLargeError()
+				}
 				return err
 			}
 		}

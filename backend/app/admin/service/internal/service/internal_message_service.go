@@ -23,7 +23,6 @@ import (
 
 	adminV1 "go-wind-admin/api/gen/go/admin/service/v1"
 	authenticationV1 "go-wind-admin/api/gen/go/authentication/service/v1"
-	identityV1 "go-wind-admin/api/gen/go/identity/service/v1"
 	internalMessageV1 "go-wind-admin/api/gen/go/internal_message/service/v1"
 
 	"go-wind-admin/pkg/middleware/auth"
@@ -43,9 +42,11 @@ const (
 	// 脱离请求的 HTTP ctx 后由该超时兜底，避免广播 goroutine 因个别慢操作无限期挂起。
 	defaultBroadcastTimeout = 5 * time.Minute
 
-	// broadcastUserPageSize 全员广播时按页拉取用户的页大小。
+	// broadcastUserPageSize 全员广播时按 id 游标每批拉取的用户数。
 	// 不用 NoPaging 全量拉取，避免用户量大时把全表用户一次性读进内存。
-	broadcastUserPageSize uint32 = 1000
+	// 不能超过 go-crud 的 paginator.MaxLimit（100）：超出会被静默截成 100。
+	// 以前写 1000、又用"本页不足 1000 行"当终止条件，第一页只回 100 行就停了，全员广播只发到前 100 人。
+	broadcastUserPageSize uint32 = 100
 )
 
 type InternalMessagePublisher interface {
@@ -354,7 +355,6 @@ func (s *InternalMessageService) SendMessage(ctx context.Context, req *internalM
 		if s.taskEnqueuer != nil {
 			if err := s.taskEnqueuer.NewTask(task.BroadcastMessageTaskType, &task.BroadcastMessageTaskData{
 				MessageId: msgId,
-				TenantId:  operator.GetTenantId(),
 			}); err != nil {
 				s.log.Errorf(ctx, "enqueue broadcast task for message [%d] failed, falling back to goroutine: %s", msgId, err)
 				s.fanoutBroadcastGoroutine(msgId, senderId, categoryId, title, content, vc)
@@ -390,15 +390,9 @@ func (s *InternalMessageService) SendMessage(ctx context.Context, req *internalM
 // 状态直接写 RECEIVED 并落 received_at：SENT→RECEIVED 的流转本应由客户端确认送达
 // （MarkNotificationsStatus），但该接口没有 HTTP 路由也无人调用，若写 SENT，
 // 按 status=RECEIVED 过滤的收件箱/未读列表将永远查不到新消息。
-//
-// tenantId 必须由调用方显式传入，且取的是**收件用户自己的**租户（不是操作人的）：
-// 收件箱读取被 go-crud TenantPrivacy 按 viewer 租户过滤，打在别的租户上的收件行
-// 对收件人来说是"落了库但永远读不到"，既不报错也不留日志（§2.4-2 的原始成因）。
-// 租户上下文下这一列会被 TenantPrivacy 强制覆盖为 viewer 租户，与受众必然同值，
-// 所以两条入口都不会因为传参而分叉。
-func newMessageRecipient(messageId, recipientUserId, senderUserId, tenantId uint32, now *time.Time, title, content string) *internalMessageV1.InternalMessageRecipient {
+// 单租户：收件行不打租户，落库为租户 0。
+func newMessageRecipient(messageId, recipientUserId, senderUserId uint32, now *time.Time, title, content string) *internalMessageV1.InternalMessageRecipient {
 	return &internalMessageV1.InternalMessageRecipient{
-		TenantId:        trans.Ptr(tenantId),
 		MessageId:       trans.Ptr(messageId),
 		RecipientUserId: trans.Ptr(recipientUserId),
 		Status:          trans.Ptr(internalMessageV1.InternalMessageRecipient_RECEIVED),
@@ -442,7 +436,7 @@ func (s *InternalMessageService) publishNotification(ctx context.Context, recipi
 // sendNotification 单个收件人：落库 + 实时推送。
 // 全员广播的批量形态见 executeBroadcast。
 func (s *InternalMessageService) sendNotification(ctx context.Context, messageId, recipientUserId, senderUserId uint32, now *time.Time, title, content string) error {
-	recipient := newMessageRecipient(messageId, recipientUserId, senderUserId, s.recipientTenantID(ctx, recipientUserId), now, title, content)
+	recipient := newMessageRecipient(messageId, recipientUserId, senderUserId, now, title, content)
 
 	var err error
 	var entity *internalMessageV1.InternalMessageRecipient
@@ -455,58 +449,18 @@ func (s *InternalMessageService) sendNotification(ctx context.Context, messageId
 	return nil
 }
 
-// recipientTenantID 查收件用户自己的租户，用于给收件行打标（定向路径；广播路径的受众
-// 已经带着这个字段，见 executeBroadcast）。
-//
-// 查不到就回退 ctx viewer 的租户并留下 error：跨租户定向（租户 A 的收件人在 B，读取被
-// 隐私层挡掉）与"DTO 没带 tenant_id"都属异常，此时按操作人租户落库至少保持改动前的行为，
-// 而不是静默写 0 —— 0 是"平台"，会把行藏进任何租户读者都看不见的地方。
-func (s *InternalMessageService) recipientTenantID(ctx context.Context, recipientUserId uint32) uint32 {
-	user, err := s.userRepo.Get(ctx, &identityV1.GetUserRequest{
-		QueryBy: &identityV1.GetUserRequest_Id{Id: recipientUserId},
-	})
-	if err != nil {
-		s.log.Errorf(ctx, "get recipient [%d] for tenant labeling failed, fall back to viewer tenant: %s", recipientUserId, err)
-		return viewerTenantID(ctx)
-	}
-
-	return user.GetTenantId()
-}
-
-// viewerTenantID 取 ctx viewer 的租户，viewer 缺失时返回 0（调用方负责把这次兜底记成 error，
-// 因为"缺 viewer"只有结合具体投递才知道后果）。
-func viewerTenantID(ctx context.Context) uint32 {
-	if vc, ok := viewer.FromContext(ctx); ok {
-		return uint32(vc.TenantID())
-	}
-	return 0
-}
-
 // executeBroadcast 执行全员广播 fan-out：按页拉取用户 + 分批幂等写入收件记录 + 逐条 SSE 推送。
 // 由 AsyncBroadcastMessage（asynq handler）和 fanoutBroadcastGoroutine（回退路径）共用。
 // 注意 viewer：ent 的 TenantPrivacy 在 viewer 缺失时会返回 error，调用方必须传入带 viewer 的 ctx。
-//
-// 收件行的 tenant_id 逐行取自**收件用户自己**（受众 DTO 上的 tenant_id），不取 viewer 的：
-// 平台管理员的广播在 SystemContext 下跑，viewer 租户恒为 0，用它打标会把全平台的收件行都写进
-// 租户 0，而收件箱读取按读者租户过滤 → 租户用户一行都读不到（父消息行本身也是 tenant 0，
-// 读侧的回填同因，见 internal_message_recipient_service.go 的 ListUserInbox）。
-// 租户管理员的广播不受影响：受众已被隐私层筛成本租户，逐行取值与 viewer 同值。
 //
 // categoryId 保留在签名里，供调用方传入消息分类；偏好退订已随通知域删除，这里不再按它过滤。
 func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId, senderUserId, categoryId uint32, title, content string) {
 	now := time.Now()
 
-	broadcastTenantId := viewerTenantID(ctx)
-	if _, ok := viewer.FromContext(ctx); !ok {
-		s.log.Errorf(ctx, "broadcast message [%d]: no viewer in context, recipients will be written as tenant 0", messageId)
-	}
-
 	var total int
+	var lastUserID uint32
 	for page := uint32(1); ; page++ {
-		users, err := s.userRepo.List(ctx, &paginationV1.PagingRequest{
-			Page:     trans.Ptr(page),
-			PageSize: trans.Ptr(broadcastUserPageSize),
-		})
+		users, err := s.userRepo.List(ctx, broadcastUserBatchRequest(lastUserID))
 		if err != nil {
 			s.log.Errorf(ctx, "broadcast message [%d]: list users (page %d) failed: %s", messageId, page, err)
 			break
@@ -514,19 +468,17 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 		if len(users.GetItems()) == 0 {
 			break
 		}
+		// 游标必须前进，否则仓储不按 id 过滤/排序时会原地打转。
+		nextUserID := users.GetItems()[len(users.GetItems())-1].GetId()
+		if nextUserID <= lastUserID {
+			s.log.Errorf(ctx, "broadcast message [%d]: user cursor did not advance (last %d, got %d), stop", messageId, lastUserID, nextUserID)
+			break
+		}
+		lastUserID = nextUserID
 
 		recipients := make([]*internalMessageV1.InternalMessageRecipient, 0, len(users.GetItems()))
 		for _, user := range users.GetItems() {
-			userId := user.GetId()
-			userTenantId := user.GetTenantId()
-			if userTenantId == 0 && broadcastTenantId != 0 {
-				// 平台用户的租户确实是 0，所以"受众没带租户"只在广播方是租户时才可能被察觉——
-				// 那种情况下按 0 落库等于把行藏进收件人读不到的地方（go-crud 的 DTO 映射退化即触发）。
-				s.log.Errorf(ctx, "broadcast message [%d]: recipient user [%d] carries no tenant, labeled with broadcaster tenant [%d]",
-					messageId, userId, broadcastTenantId)
-				userTenantId = broadcastTenantId
-			}
-			recipients = append(recipients, newMessageRecipient(messageId, userId, senderUserId, userTenantId, &now, title, content))
+			recipients = append(recipients, newMessageRecipient(messageId, user.GetId(), senderUserId, &now, title, content))
 		}
 
 		// CreateBulk 用 ON CONFLICT DO NOTHING 幂等写入：asynq 重试时已落库的行会被忽略而非报错。
@@ -550,13 +502,27 @@ func (s *InternalMessageService) executeBroadcast(ctx context.Context, messageId
 			recipient.Id = trans.Ptr(recipientIds[recipient.GetRecipientUserId()])
 			s.publishNotification(ctx, recipient)
 		}
-
-		if len(users.GetItems()) < int(broadcastUserPageSize) {
-			break
-		}
 	}
 
 	s.log.Infof(ctx, "broadcast message [%d] to %d recipients done", messageId, total)
+}
+
+// broadcastUserBatchRequest 取 id > afterID 的下一批用户，按 id 升序。
+// 用 id 游标而不是页码：广播过程中有用户增删时，offset 翻页会跳行或重复。
+func broadcastUserBatchRequest(afterID uint32) *paginationV1.PagingRequest {
+	return &paginationV1.PagingRequest{
+		Page:     trans.Ptr(uint32(1)),
+		PageSize: trans.Ptr(broadcastUserPageSize),
+		Sorting:  []*paginationV1.Sorting{{Field: "id", Direction: paginationV1.Sorting_ASC}},
+		FilteringType: &paginationV1.PagingRequest_FilterExpr{FilterExpr: &paginationV1.FilterExpr{
+			Type: paginationV1.ExprType_AND,
+			Conditions: []*paginationV1.FilterCondition{{
+				Field:      "id",
+				Op:         paginationV1.Operator_GT,
+				ValueOneof: &paginationV1.FilterCondition_Value{Value: strconv.FormatUint(uint64(afterID), 10)},
+			}},
+		}},
+	}
 }
 
 // fanoutBroadcastGoroutine 是 asynq 未配置时的回退路径：
@@ -577,21 +543,12 @@ func (s *InternalMessageService) fanoutBroadcastGoroutine(messageId, senderUserI
 // 从 payload 取 messageId，从 DB 取回消息本体后执行 fan-out。
 // asynq 的重试机制保证进程重启后未完成的投递自动恢复；
 // 幂等性由 (message_id, recipient_user_id) 唯一约束 + CreateBulk 的 ON CONFLICT DO NOTHING 保证。
-// 注意：asynq handler 的 ctx 不携带请求期的 viewer，需按 payload 的发送方租户重建，
+// 注意：asynq handler 的 ctx 不携带请求期的 viewer，以系统上下文执行，
 // 否则 ent 租户隐私层会拒绝查询。
 func (s *InternalMessageService) AsyncBroadcastMessage(taskType string, taskData *task.BroadcastMessageTaskData) error {
-	s.log.Infof(context.Background(), "AsyncBroadcastMessage [%s] messageId=%d tenantId=%d", taskType, taskData.MessageId, taskData.TenantId)
+	s.log.Infof(context.Background(), "AsyncBroadcastMessage [%s] messageId=%d", taskType, taskData.MessageId)
 
-	// asynq handler 的 ctx 不携带请求期的 viewer，ent 的 TenantPrivacy 会拒绝无 viewer 的查询。
-	// 平台管理员（tid==0）用 SystemContext 保持"全平台受众"；租户管理员必须用本租户的 viewer，
-	// 因为平台上下文不给 userRepo.List 注入租户谓词，全员广播会变成跨租户全平台投递。
-	// 升级前已入队的旧任务无 tenant_id 字段，按 tid==0 处理，退化为升级前的行为。
-	var ctx context.Context
-	if taskData.TenantId == 0 {
-		ctx = viewer.WithSystemContext(context.Background())
-	} else {
-		ctx = viewer.WithContext(context.Background(), viewer.NewUserContext(0, uint64(taskData.TenantId), 0, "", nil))
-	}
+	ctx := viewer.WithSystemContext(context.Background())
 
 	msg, err := s.internalMessageRepo.Get(ctx, &internalMessageV1.GetInternalMessageRequest{
 		QueryBy: &internalMessageV1.GetInternalMessageRequest_Id{

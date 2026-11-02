@@ -151,11 +151,13 @@ func TestDictTypeRepoSqlite_Get(t *testing.T) {
 	})
 	require.Error(t, err, "不存在的 ID 查询应返回错误")
 
-	// 平台上下文（无租户）按 type_code 查询应被拒绝
-	_, err = repo.Get(ctx, &dictV1.GetDictTypeRequest{
+	// 按 type_code 查询：固定按租户 0 匹配，旧库遗留的同码 tenant_id>0 行不干扰
+	repo.entClient.Client().DictType.Create().SetTenantID(5).SetTypeCode("sqlite_dt_get_code").SetTypeName("遗留租户字典").SaveX(ctx)
+	byCode, err := repo.Get(ctx, &dictV1.GetDictTypeRequest{
 		QueryBy: &dictV1.GetDictTypeRequest_Code{Code: "sqlite_dt_get_code"},
 	})
-	require.Error(t, err, "系统级上下文按 type_code 查询应返回 BadRequest")
+	require.NoError(t, err, "按 type_code 查询应命中租户 0 的行")
+	require.Equal(t, createdID, byCode.GetId())
 }
 
 // TestDictTypeRepoSqlite_Update 验证 Update 只更新掩码内字段，

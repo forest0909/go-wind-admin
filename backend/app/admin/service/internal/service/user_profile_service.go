@@ -225,8 +225,8 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		if len(imageBytes) == 0 {
 			return nil, authenticationV1.ErrorBadRequest("empty avatar data")
 		}
-		// 校验图片大小（复用上传限制，头像不应超过该上限）
-		if int64(len(imageBytes)) > ossutil.MaxUploadSize {
+		// 校验图片大小（与前端 BaseSetting 的 5 MiB 一致）
+		if int64(len(imageBytes)) > MaxAvatarBytes {
 			return nil, authenticationV1.ErrorBadRequest("avatar exceeds max size")
 		}
 		// 嗅探真实图片类型并校验白名单
@@ -279,6 +279,10 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		Url: avatarURL,
 	}, nil
 }
+
+// MaxAvatarBytes 头像解码后的大小上限，与前端上传前的 5 MiB 校验一致。
+// REST 默认请求体上限按它推算（见 server/body_limit.go）。
+const MaxAvatarBytes int64 = 5 << 20
 
 // avatarDirectory 用户头像对象所在目录。
 func avatarDirectory(userID uint32) string {

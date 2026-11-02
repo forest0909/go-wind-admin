@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kratos/kratos/v2/middleware"
 	kratosHttp "github.com/go-kratos/kratos/v2/transport/http"
@@ -84,5 +85,27 @@ func TestReadyz_503NamesFailedDependencyWithoutLeakingError(t *testing.T) {
 		if *called {
 			t.Fatal("readyz went through the middleware chain (authz/audit)")
 		}
+	}
+}
+
+// 审查：Redis 客户端不遵守 ctx 期限时，迟到的成功结果不能让 /readyz 返回 200。
+func TestReadyz_503WhenCheckIgnoresDeadline(t *testing.T) {
+	old := readinessTimeout
+	readinessTimeout = 100 * time.Millisecond
+	defer func() { readinessTimeout = old }()
+
+	release := make(chan struct{})
+	defer close(release)
+	srv, _ := newHealthServer(t, HealthCheck{Name: "redis", Check: func(context.Context) error {
+		<-release // 忽略 ctx，一直阻塞
+		return nil
+	}})
+	start := time.Now()
+	rec := get(srv, "/readyz")
+	if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), "redis") {
+		t.Fatalf("readyz = %d %q, want 503 naming redis", rec.Code, rec.Body.String())
+	}
+	if d := time.Since(start); d > time.Second {
+		t.Fatalf("readyz took %v, want about the deadline", d)
 	}
 }

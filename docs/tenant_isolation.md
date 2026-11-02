@@ -18,8 +18,8 @@
 
 ## 旧库升级
 
-启动时 `PermissionService.init()` 在权限点同步之前调用 `PermissionRepo.PurgeLegacyTenantConfig`
-（`backend/app/admin/service/internal/data/legacy_tenant_cleanup.go`），幂等地删掉这些配置行：
+升级步骤 v1 `purge_legacy_tenant_config`（`backend/app/admin/service/internal/data/schema_upgrade.go`，
+实现在同目录 `legacy_tenant_cleanup.go`）在启动期权限点同步之前执行一次，删掉这些配置行：
 
 - `/tenant` 菜单整棵子树，以及组件在 `app/tenant/` 下的页面，连同它们的权限点-菜单关联；
 - 租户和套餐的权限点：`sys:tenant_manager`、`sys:manage_tenants`，以及资源段为
@@ -29,8 +29,8 @@
 - 「租户管理」权限组（组下还有别的权限点时保留）。
 
 已删除接口在 `sys_apis` 里的行由启动期接口同步自动删除。`sys_tenants`、`sys_plans`、
-`sys_plan_modules`、`sys_plan_quotas` 四张表和 `sys_apis.business_module`、`sys_menus.module`
-两列不再被程序读写，自动迁移不删表、不删列，留在库里无害。
+`sys_plan_modules`、`sys_plan_quotas` 四张表由升级步骤 v2 `drop_legacy_tenant_tables` 删除（删除前日志里打出表名）。
+`sys_apis.business_module`、`sys_menus.module` 两列不再被程序读写，留在库里无害。
 
 ### tenant_id > 0 的业务数据（不自动删除）
 
@@ -51,7 +51,4 @@ DELETE FROM sys_roles WHERE tenant_id > 0;
 -- 其余带 tenant_id 的表：sys_org_units、sys_positions、sys_memberships*、sys_user_org_units、
 -- sys_user_positions、sys_role_org_units、sys_role_field_permissions、sys_dict_*、files、
 -- internal_message*、sys_login_audit_logs、sys_operation_audit_logs、sys_tasks
-
--- 不再使用的表（可选）
-DROP TABLE IF EXISTS sys_plan_modules, sys_plan_quotas, sys_tenants, sys_plans;
 ```

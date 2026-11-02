@@ -38,6 +38,15 @@ A 档纯前端，直接跳 §3。B/C 档先看 §1 的三条前提，能省掉�
 2. **想加的字段很可能已经在 mixin 里。** `AutoIncrementId / TimeAt / OperatorID / IsEnabled / SortOrder / TenantID` 六个 mixin（`data/ent/schema/dict_type.go:50-59`）已经贡献了 `id / created_at / updated_at / deleted_at / created_by / updated_by / deleted_by / is_enabled / sort_order / tenant_id`。先看这张表，别在 `Fields()` 里重造一个 `status`。
 3. **BFF proto 不定义 message，所以加字段只改一个 proto。** `api/protos/admin/service/v1/i_dict_type.proto:9` 只是 `import` domain 包再挂 `google.api.http`；43 个 `i_*.proto` 里只有 `i_admin_portal.proto`、`i_dashboard.proto` 自己声明 message，而它们不是 CRUD 资源。→ domain 那一处加完就够了。
 
+**什么时候要写升级步骤**：自动迁移只增不删。改名、删列、删表、给已有行回填数据、清理旧数据、改约束，这些
+自动迁移做不了，老库升级上来要靠升级步骤。只是加字段（可空）不需要。
+
+**怎么写一个**：在 `internal/data/schema_upgrade.go` 的 `schemaUpgradeSteps` 末尾追加一项，版本号取下一个整数，
+名称用 snake_case 描述做了什么；`Run` 拿到绑定在本步事务上的 ent client 和执行原生 SQL 的 `exec`。要求：
+已发布的步骤不改不删；对全新库也安全（`DROP TABLE IF EXISTS`、按条件删）；能重复执行（MySQL 的 DDL 会隐式提交，
+失败后整步重跑）；原生 SQL 要同时适用于 PostgreSQL、MySQL、SQLite，做不到就按 `client` 的方言分支。
+在 `schema_upgrade_sqlite_test.go` 里加一条 SQLite 测试：先造出老库的样子，跑 `RunSchemaUpgrades`，断言结果。
+
 字段编号规则照 04 章：业务字段取下一个空号，审计字段固定 `100/101/102`（*By）与 `200/201/202`（*At）；全部 `optional` + `json_name` camelCase。
 
 ---

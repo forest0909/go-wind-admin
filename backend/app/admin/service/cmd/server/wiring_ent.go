@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/go-kratos/kratos/v2"
@@ -226,6 +227,15 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 		return nil, nil, err
 	}
 	releaseStartupLock()
+
+	if restServer != nil {
+		server.RegisterHealthRoutes(restServer,
+			server.HealthCheck{Name: "database", Check: entClient.DB().PingContext},
+			server.HealthCheck{Name: "redis", Check: func(ctx context.Context) error {
+				return redisClient.Ping(ctx).Err()
+			}},
+		)
+	}
 
 	asynqServer, err := server.NewAsynqServer(ctx, taskService, internalMessageService)
 	if err != nil {

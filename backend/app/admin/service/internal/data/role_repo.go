@@ -195,6 +195,11 @@ func (r *RoleRepo) fillOrgUnitIDs(ctx context.Context, dto *permissionV1.Role) e
 	return nil
 }
 
+// ListOrgUnitIDsByRoleIDs 按角色列出自定义数据范围（SELECTED_UNITS）配置的组织单元。
+func (r *RoleRepo) ListOrgUnitIDsByRoleIDs(ctx context.Context, roleIDs []uint32) (map[uint32][]uint32, error) {
+	return r.roleOrgUnitRepo.ListOrgUnitIDsByRoleIDs(ctx, roleIDs)
+}
+
 // EnsureGrantSnapshot 读出授权比较要用的权限、组织单元和字段权限。
 // Get 会填这三项，但填充失败只记日志；调用方在更新前再查一次，失败就放弃更新，
 // 避免把没读到的关联当成空集。

@@ -190,3 +190,59 @@ func newlyAdded(want, have []uint32) []uint32 {
 	}
 	return out
 }
+
+// ensureSelectedUnitsWithinOperator 自定义单元集（SELECTED_UNITS）新增的目标单元必须是操作人自己
+// 可见的：操作人有 ALL 时放行，否则只能从操作人启用的 SELECTED_UNITS 角色已配置的单元里选。
+// 操作人的 UNIT_ONLY / UNIT_AND_CHILD 取决于本人所属组织，这里不展开，按保守处理不计入可授出集合。
+func ensureSelectedUnitsWithinOperator(ctx context.Context, roleRepo *data.RoleRepo, listRoles operatorRoleIDsFunc,
+	operator *authenticationV1.UserTokenPayload, addedUnits []uint32) error {
+	if operator.GetIsPlatformAdmin() || len(addedUnits) == 0 {
+		return nil
+	}
+	maxRank, err := operatorMaxDataScopeRank(ctx, roleRepo, listRoles, operator.GetUserId())
+	if err != nil {
+		return err
+	}
+	if maxRank >= dataScopeRank(identityV1.DataScope_ALL) {
+		return nil
+	}
+
+	roleIDs, err := listRoles(ctx, operator.GetUserId())
+	if err != nil {
+		return err
+	}
+	roleIDs, err = roleRepo.EnabledRoleIDs(ctx, roleIDs)
+	if err != nil {
+		return err
+	}
+	var selectedRoleIDs []uint32
+	if len(roleIDs) > 0 {
+		roles, lerr := roleRepo.ListRolesByRoleIds(ctx, roleIDs)
+		if lerr != nil {
+			return lerr
+		}
+		for _, role := range roles {
+			if role.GetDataScope() == identityV1.DataScope_SELECTED_UNITS {
+				selectedRoleIDs = append(selectedRoleIDs, role.GetId())
+			}
+		}
+	}
+	grantable := make(map[uint32]struct{})
+	if len(selectedRoleIDs) > 0 {
+		byRole, lerr := roleRepo.ListOrgUnitIDsByRoleIDs(ctx, selectedRoleIDs)
+		if lerr != nil {
+			return lerr
+		}
+		for _, ids := range byRole {
+			for _, id := range ids {
+				grantable[id] = struct{}{}
+			}
+		}
+	}
+	for _, id := range addedUnits {
+		if _, ok := grantable[id]; !ok {
+			return adminV1.ErrorForbidden("cannot grant org units outside your own data scope")
+		}
+	}
+	return nil
+}

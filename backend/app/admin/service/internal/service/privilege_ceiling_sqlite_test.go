@@ -220,3 +220,48 @@ func TestUserServiceSqlite_PrivilegeCeilingOnAssignedRoleDataScope(t *testing.T)
 	_, err = e.svc.Create(ctx, &identityV1.CreateUserRequest{Data: &identityV1.User{Username: trans.Ptr("scope-b"), RoleIds: []uint32{selfRole}}, Password: pw})
 	require.NoError(t, err)
 }
+
+// review-a2 round2 R1：范围保持 SELECTED_UNITS、只改 org_units，也不能加进操作人自己没有的单元。
+func TestRoleServiceSqlite_PrivilegeCeilingOnSelectedUnits(t *testing.T) {
+	e := newRoleGrantEnv(t)
+	u11 := e.createOrgUnit(t, 0, "单元11")
+	u22 := e.createOrgUnit(t, 0, "单元22")
+	own := e.createFullRole(t, &permissionV1.Role{
+		Name: trans.Ptr("自定义单元"), Code: trans.Ptr("UNITS_OWN"),
+		Status: permissionV1.Role_ON.Enum(), Type: permissionV1.Role_SYSTEM.Enum(),
+		DataScope: identityV1.DataScope_SELECTED_UNITS.Enum(), OrgUnits: []uint32{u11}, TenantId: trans.Ptr(uint32(0)),
+	})
+	e.bindHolder(t, own)
+	op := opCtx(e.sys, roleGrantHolderID, 0, false)
+	mask := &fieldmaskpb.FieldMask{Paths: []string{"org_units"}}
+
+	// 给自己的角色加上没有的单元 22：拒绝，库里不变
+	_, err := e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: own, Data: &permissionV1.Role{OrgUnits: []uint32{u11, u22}}, UpdateMask: mask,
+	})
+	require.True(t, adminV1.IsForbidden(err), "got %v", err)
+	require.ElementsMatch(t, []uint32{u11}, e.mustGetRole(t, own).GetOrgUnits())
+
+	// 另一个 SELECTED_UNITS 角色（已有 22，操作人没有）：原样保留 22、再加自己有的 11 可以
+	other := e.createFullRole(t, &permissionV1.Role{
+		Name: trans.Ptr("别的自定义单元"), Code: trans.Ptr("UNITS_OTHER"),
+		Status: permissionV1.Role_ON.Enum(), Type: permissionV1.Role_SYSTEM.Enum(),
+		DataScope: identityV1.DataScope_SELECTED_UNITS.Enum(), OrgUnits: []uint32{u22}, TenantId: trans.Ptr(uint32(0)),
+	})
+	_, err = e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: other, Data: &permissionV1.Role{OrgUnits: []uint32{u22, u11}}, UpdateMask: mask,
+	})
+	require.NoError(t, err)
+
+	// 收窄可以
+	_, err = e.svc.Update(op, &permissionV1.UpdateRoleRequest{
+		Id: other, Data: &permissionV1.Role{OrgUnits: []uint32{u11}}, UpdateMask: mask,
+	})
+	require.NoError(t, err)
+
+	// 超级管理员不受限
+	_, err = e.svc.Update(opCtx(e.sys, roleGrantHolderID, 0, true), &permissionV1.UpdateRoleRequest{
+		Id: own, Data: &permissionV1.Role{OrgUnits: []uint32{u11, u22}}, UpdateMask: mask,
+	})
+	require.NoError(t, err)
+}

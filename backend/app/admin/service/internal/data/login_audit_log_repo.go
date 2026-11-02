@@ -108,6 +108,15 @@ func (r *LoginAuditLogRepo) List(ctx context.Context, req *paginationV1.PagingRe
 
 	builder := r.entClient.Client().LoginAuditLog.Query()
 
+	scopeSel, err := operatorScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		builder.Where(predicate.LoginAuditLog(scopeSel))
+	}
+
 	ret, err := r.repository.ListWithPaging(ctx, builder, builder.Clone(), req)
 	if err != nil {
 		return nil, err
@@ -147,8 +156,21 @@ func (r *LoginAuditLogRepo) Get(ctx context.Context, req *auditV1.GetLoginAuditL
 		whereCond = append(whereCond, loginauditlog.IDEQ(req.GetId()))
 	}
 
+	scopeSel, err := operatorScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		whereCond = append(whereCond, scopeSel)
+	}
+
 	dto, err := r.repository.Get(ctx, builder, req.GetViewMask(), whereCond...)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, adminV1.ErrorNotFound("audit log not found")
+		}
+		r.log.Errorf(ctx, "query audit log failed: %v", err)
 		return nil, err
 	}
 

@@ -31,11 +31,11 @@ func NewLoginAuditLogService(ctx *bootstrap.Context, repo *data.LoginAuditLogRep
 }
 
 func (s *LoginAuditLogService) List(ctx context.Context, req *paginationV1.PagingRequest) (*auditV1.ListLoginAuditLogResponse, error) {
-	return s.repo.List(ctx, req)
+	return s.repo.List(data.WithDataScope(ctx), req)
 }
 
 func (s *LoginAuditLogService) Get(ctx context.Context, req *auditV1.GetLoginAuditLogRequest) (*auditV1.LoginAuditLog, error) {
-	return s.repo.Get(ctx, req)
+	return s.repo.Get(data.WithDataScope(ctx), req)
 }
 
 func (s *LoginAuditLogService) Create(ctx context.Context, req *auditV1.CreateLoginAuditLogRequest) (*emptypb.Empty, error) {

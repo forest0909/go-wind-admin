@@ -96,6 +96,14 @@ func (r *OrgUnitRepo) count(ctx context.Context, whereCond []func(s *sql.Selecto
 
 func (r *OrgUnitRepo) Count(ctx context.Context, req *paginationV1.PagingRequest) (int, error) {
 	builder := r.entClient.Client().OrgUnit.Query()
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return 0, err
+	}
+	if scopeSel != nil {
+		builder.Where(predicate.OrgUnit(scopeSel))
+	}
 
 	whereSelectors, _, _ := r.repository.BuildListSelectorWithPaging(builder, req)
 	if len(whereSelectors) != 0 {
@@ -118,10 +126,22 @@ func (r *OrgUnitRepo) List(ctx context.Context, req *paginationV1.PagingRequest)
 
 	builder := r.entClient.Client().OrgUnit.Query()
 
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		builder.Where(predicate.OrgUnit(scopeSel))
+	}
+
 	whereSelectors, _, err := r.repository.BuildListSelectorWithPaging(builder, req)
 	if err != nil {
 		r.log.Errorf(ctx, "parse list param error [%s]", err.Error())
 		return nil, identityV1.ErrorBadRequest("invalid query parameter")
+	}
+	if scopeSel != nil {
+		whereSelectors = append(whereSelectors, scopeSel)
 	}
 
 	entities, err := builder.All(ctx)
@@ -148,11 +168,25 @@ func (r *OrgUnitRepo) List(ctx context.Context, req *paginationV1.PagingRequest)
 		dtos = append(dtos, dto)
 	}
 
-	// 构建树形结构
+	// 构建树形结构。按数据范围过滤后，可见子树的父节点可能不可见：
+	// 这类节点当作根，否则 BuildTree 会把它们当孤儿丢掉。parent_id 字段本身不改。
+	parentOf := func(node *identityV1.OrgUnit) *uint32 { return node.ParentId }
+	if scopeSel != nil {
+		present := make(map[uint32]bool, len(dtos))
+		for _, d := range dtos {
+			present[d.GetId()] = true
+		}
+		parentOf = func(node *identityV1.OrgUnit) *uint32 {
+			if node.ParentId != nil && present[*node.ParentId] {
+				return node.ParentId
+			}
+			return nil
+		}
+	}
 	dtos = pagination.BuildTree(
 		dtos,
 		func(node *identityV1.OrgUnit) *uint32 { return node.Id },
-		func(node *identityV1.OrgUnit) *uint32 { return node.ParentId },
+		parentOf,
 		func(node *identityV1.OrgUnit) *[]*identityV1.OrgUnit { return &node.Children },
 	)
 
@@ -192,8 +226,22 @@ func (r *OrgUnitRepo) Get(ctx context.Context, req *identityV1.GetOrgUnitRequest
 		whereCond = append(whereCond, orgunit.IDEQ(req.GetId()))
 	}
 
+	scopeSel, err := orgUnitScopeSelector(ctx)
+	if err != nil {
+		r.log.Errorf(ctx, "resolve data scope failed: %v", err)
+		return nil, err
+	}
+	if scopeSel != nil {
+		// 越界与不存在同样回 404，不泄露存在性
+		whereCond = append(whereCond, scopeSel)
+	}
+
 	dto, err := r.repository.Get(ctx, builder, req.GetViewMask(), whereCond...)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, identityV1.ErrorNotFound("org unit not found")
+		}
+		r.log.Errorf(ctx, "query org unit failed: %v", err)
 		return nil, err
 	}
 

@@ -20,7 +20,7 @@ type sharedPolicyProvider struct {
 	allow bool
 }
 
-func (p *sharedPolicyProvider) set(allow bool) { p.mu.Lock(); p.allow = allow; p.mu.Unlock() }
+func (p *sharedPolicyProvider) set(allow bool)                               { p.mu.Lock(); p.allow = allow; p.mu.Unlock() }
 func (p *sharedPolicyProvider) ProvideModels(string) authorizer.ModelDataMap { return nil }
 func (p *sharedPolicyProvider) ProvidePolicies(context.Context) (authorizer.PermissionDataMap, error) {
 	p.mu.Lock()

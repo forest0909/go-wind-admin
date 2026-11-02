@@ -36,7 +36,7 @@ func TestUnixMilliToStringPtr(t *testing.T) {
 	now = time.Now().UnixMilli()
 	result := UnixMilliToStringPtr(&now)
 	assert.NotNil(t, result)
-	expected := time.UnixMilli(now).Format(TimeLayout)
+	expected := time.UnixMilli(now).In(GetDefaultTimeLocation()).Format(TimeLayout)
 	assert.Equal(t, expected, *result)
 
 	// 测试空输入
@@ -102,7 +102,7 @@ func TestTimeToTimeString(t *testing.T) {
 	now := time.Now()
 	result := TimeToTimeString(&now)
 	assert.NotNil(t, result)
-	expected := now.Format(TimeLayout)
+	expected := now.In(GetDefaultTimeLocation()).Format(TimeLayout)
 	assert.Equal(t, expected, *result)
 
 	// 测试空输入

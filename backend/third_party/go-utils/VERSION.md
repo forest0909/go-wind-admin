@@ -40,3 +40,5 @@
 `authorizer` 加了 `SetResetWrapper` / `ReloadPolicies`：`ResetPolicies` 设置了包装函数时经它调用实际装载（admin 用它在装载前递增 Redis 版本号、装载后广播，让其他实例重载）；`ReloadPolicies` 只重载本实例。实际装载加了互斥锁，并发装载不会让旧快照覆盖新快照。
 
 `id.GenerateOrderIdWithRandom` 的 4 位随机数改为补零（`%04d`）：原来随机数小于 1000 时订单号少一位，`TestGenerateOrderIdWithRandom` 约 10% 概率失败。
+
+`timeutil` 的 `TestUnixMilliToStringPtr` / `TestTimeToTimeString` 期望值改为按 `GetDefaultTimeLocation()` 格式化：被测函数固定转到默认时区，测试原来用机器本地时区，在 UTC 的 CI 上必然失败。

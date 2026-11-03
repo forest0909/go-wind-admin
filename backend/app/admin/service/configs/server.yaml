@@ -33,7 +33,6 @@ server:
         - "OPTIONS"
       origins:
         # 本仓库只保留 React。15889 是 Vite 端口被占用时的顺延位。
-        - "https://react.admin.gowind.cloud"
         - "http://localhost:15888"
         - "http://localhost:15889"
     middleware:

@@ -6,17 +6,16 @@ import "gnostic/openapi/v3/annotations.proto";
 
 option (gnostic.openapi.v3.document) = {
   info: {
-    title: "GoWind Admin API";
+    title: "林间 Admin API";
     version: "1.0";
-    description: "GoWind Admin API";
+    description: "林间 Admin（linjian-admin）管理端 API";
     contact: {
-      name: "tx7do";
-      url: "https://github.com/tx7do/go-wind-admin";
-      email: "yanglinbo@gmail.com";
+      name: "林间代码";
+      url: "https://github.com/forest0909/linjian-admin";
     }
     license: {
       name: "MIT License";
-      url: "https://github.com/tx7do/go-wind-admin/blob/master/LICENSE";
+      url: "https://github.com/forest0909/linjian-admin/blob/main/LICENSE";
     }
   }
 

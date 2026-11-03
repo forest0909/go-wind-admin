@@ -43,21 +43,21 @@ type mailCopy struct {
 
 var tables = map[Locale]mailCopy{
 	LocaleZhCN: {
-		passwordResetTitle: "GoWind Admin 密码重置验证码",
+		passwordResetTitle: "林间 Admin 密码重置验证码",
 		passwordResetBody:  "您的密码重置验证码是：%s\n\n10 分钟内有效。若非本人操作请忽略本邮件。\n",
-		contactBindTitle:   "GoWind Admin 邮箱绑定验证码",
+		contactBindTitle:   "林间 Admin 邮箱绑定验证码",
 		contactBindBody:    "您的邮箱绑定验证码是：%s\n\n10 分钟内有效。若非本人操作请忽略本邮件。\n",
 
-		phoneBindTitle: "GoWind Admin 手机号绑定验证码（短信）",
+		phoneBindTitle: "林间 Admin 手机号绑定验证码（短信）",
 		phoneBindBody:  "已向本手机号发送绑定验证码（服务商模板短信）。\n验证码：%s，10 分钟内有效。若非本人操作请忽略。\n",
 	},
 	LocaleEnUS: {
-		passwordResetTitle: "GoWind Admin password reset code",
+		passwordResetTitle: "林间 Admin password reset code",
 		passwordResetBody:  "Your password reset code is %s.\n\nIt expires in 10 minutes. Ignore this email if you did not request it.\n",
-		contactBindTitle:   "GoWind Admin email binding code",
+		contactBindTitle:   "林间 Admin email binding code",
 		contactBindBody:    "Your email binding code is %s.\n\nIt expires in 10 minutes. Ignore this email if you did not request it.\n",
 
-		phoneBindTitle: "GoWind Admin phone binding code (SMS)",
+		phoneBindTitle: "林间 Admin phone binding code (SMS)",
 		phoneBindBody:  "A phone binding code has been sent to this number (provider template SMS).\nCode: %s. It expires in 10 minutes. Ignore this if you did not request it.\n",
 	},
 }

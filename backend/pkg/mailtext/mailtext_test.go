@@ -68,17 +68,17 @@ func TestRender(t *testing.T) {
 	zh := requestCtx(http.Header{"Accept-Language": []string{"zh-CN,zh;q=0.9"}})
 
 	title, body := PasswordResetCode(zh, "123456")
-	assert.Equal(t, "GoWind Admin 密码重置验证码", title)
+	assert.Equal(t, "林间 Admin 密码重置验证码", title)
 	assert.Contains(t, body, "123456")
 
 	title, body = PasswordResetCode(en, "123456")
-	assert.Equal(t, "GoWind Admin password reset code", title)
+	assert.Equal(t, "林间 Admin password reset code", title)
 	assert.Equal(t,
 		"Your password reset code is 123456.\n\nIt expires in 10 minutes. Ignore this email if you did not request it.\n",
 		body)
 
 	title, body = ContactBindCode(en, "654321")
-	assert.Equal(t, "GoWind Admin email binding code", title)
+	assert.Equal(t, "林间 Admin email binding code", title)
 	assert.Contains(t, body, "654321")
 }
 

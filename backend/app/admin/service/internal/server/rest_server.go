@@ -256,7 +256,7 @@ func NewRestServer(
 	if cfg.GetServer().GetRest().GetEnableSwagger() {
 		swaggerUI.RegisterSwaggerUIServerWithOption(
 			srv,
-			swaggerUI.WithTitle("GoWind Admin"),
+			swaggerUI.WithTitle("林间 Admin"),
 			swaggerUI.WithMemoryData(assets.OpenApiData, "yaml"),
 		)
 	}

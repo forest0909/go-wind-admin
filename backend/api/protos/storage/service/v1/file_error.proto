@@ -38,6 +38,7 @@ enum StorageErrorReason {
 
     // 409
     CONFLICT = 900 [(errors.code) = 409];                   // 冲突
+    STORAGE_PROVIDER_MISMATCH = 901 [(errors.code) = 409];  // 文件记录的存储方式与当前配置不一致
 
     // 410
     GONE = 1000 [(errors.code) = 410];                       // 已删除

@@ -46,6 +46,15 @@ message OSS {
     string download_host = 21; // 下载链接主机名（可选）
   }
 
+  // 本地磁盘
+  message Local {
+    string root_dir = 1; // 根目录，对象存放在 root_dir/bucket/object
+  }
+
   optional MinIO minio = 1;
   optional S3 s3 = 2;
+  optional Local local = 3;
+
+  // 使用哪种存储：minio（默认，留空同此）或 local
+  string storage = 4;
 }

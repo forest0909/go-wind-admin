@@ -81,7 +81,8 @@ const FileManagement = () => {
       downloadMutation.mutate({
         fileId: record.id,
         fileName: record.fileName || record.saveFileName || '',
-        preferPresignedUrl: true,
+        // 一律经后端下载：本地存储没有预签名地址；MinIO 的预签名地址指向 download_host，浏览器多半访问不到。
+        preferPresignedUrl: false,
       });
     }
   };

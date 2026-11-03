@@ -139,7 +139,7 @@ resetPreferences();
 | `breadcrumb` | `BreadcrumbPreferences` | 面包屑配置 | 启用，显示首页图标 |
 | `navigation` | `NavigationPreferences` | 导航菜单配置 | 手风琴模式，圆润风格 |
 | `footer` | `FooterPreferences` | 底栏配置 | 默认隐藏 |
-| `logo` | `LogoPreferences` | Logo 配置 | 启用，使用 `/logo.png` |
+| `logo` | `LogoPreferences` | Logo 配置 | 启用，使用 `/logo.svg` |
 | `copyright` | `CopyrightPreferences` | 版权配置 | 启用 |
 | `transition` | `TransitionPreferences` | 页面动画配置 | `fade-slide`，显示进度条 |
 | `shortcutKeys` | `ShortcutKeyPreferences` | 快捷键配置 | 全部启用 |

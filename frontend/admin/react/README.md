@@ -1,4 +1,4 @@
-# GoWind React Admin
+# 林间 Admin React 前端
 
 基于 React 19 + Ant Design 6 的后台管理系统前端，提供权限管理、组织架构、审计日志、国际化、主题切换等开箱即用的企业级能力。
 
@@ -55,17 +55,17 @@ pnpm preview
 |------|------|
 | `.env` | 公共配置（应用标题、命名空间、AES 密钥等） |
 | `.env.development` | 开发环境（`VITE_API_URL=/` + `VITE_PROXY` 代理到 `127.0.0.1:7788`） |
-| `.env.production` | 生产环境（API 地址 `api.demo.admin.gowind.cloud`） |
+| `.env.production` | 生产环境（同源部署：`VITE_API_URL=/`、`VITE_SSE_URL=/events`，由 nginx 反代） |
 
 关键变量：
 
 | 变量 | 说明 | 示例 |
 |------|------|------|
-| `VITE_API_URL` | API 基础地址 | dev: `/`（走代理）· prod: `https://api.demo.admin.gowind.cloud` |
+| `VITE_API_URL` | API 基础地址 | dev: `/`（走代理）· prod: `/`（同源，nginx 反代） |
 | `VITE_SSE_URL` | SSE 推送地址 | `http://localhost:7789/events` |
 | `VITE_SERVER_PORT` | 开发服务器端口 | `15888` |
 | `VITE_PROXY` | 开发代理配置 | `[["/admin", "http://127.0.0.1:7788/"]]` |
-| `VITE_APP_TITLE` | 应用标题 | `GoWind Admin` |
+| `VITE_APP_TITLE` | 应用标题 | `林间 Admin` |
 | `VITE_MOCK` | 是否启用 Mock | `false` |
 
 > dev 下 `VITE_API_URL` 取 `/` 而非后端地址：请求以绝对路径 `/admin/v1/...` 发出，由 vite dev server 按 `VITE_PROXY` 原样转发到 `http://127.0.0.1:7788`（不做 rewrite，后端路由自带 `/admin/v1` 前缀），既避开 CORS，也避免生成代码里无前导 `/` 的 path 被浏览器按当前页面目录相对解析。

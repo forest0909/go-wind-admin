@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢你对 GoWind Admin 的关注！本文档说明如何向本项目提交代码、文档与问题反馈。在开始之前，请先阅读 [README.md](./README.md) 了解项目定位与技术栈。
+感谢你对 林间 Admin 的关注！本文档说明如何向本项目提交代码、文档与问题反馈。在开始之前，请先阅读 [README.md](./README.md) 了解项目定位与技术栈。
 
 ## 行为准则
 
@@ -11,9 +11,9 @@
 1. **Fork 并克隆仓库**
 
    ```bash
-   git clone https://github.com/<your-name>/go-wind-admin.git
-   cd go-wind-admin
-   git remote add upstream https://github.com/<org>/go-wind-admin.git
+   git clone https://github.com/<your-name>/linjian-admin.git
+   cd linjian-admin
+   git remote add upstream https://github.com/forest0909/linjian-admin.git
    ```
 
 2. **搭建开发环境**
@@ -133,4 +133,4 @@ string email = 11 [(validate.rules).string.max_len = 254];  // 见 api/protos/au
 
 ## 致谢
 
-你的每一次贡献——无论代码、文档还是问题反馈——都让 GoWind Admin 更好。感谢你的参与。
+你的每一次贡献——无论代码、文档还是问题反馈——都让 林间 Admin 更好。感谢你的参与。

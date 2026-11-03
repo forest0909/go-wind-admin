@@ -1,4 +1,4 @@
-# Add CRUD Module (go-wind-admin)
+# Add CRUD Module (林间 Admin)
 
 > **定位**：本目录是「新增完整 CRUD 业务模块」的参考层手册：执行顺序与通用陷阱在本页；
 > 后端全流程与样例镜像索引在 [backend.md](./backend.md)，React 页面实现在 [react.md](./react.md)。

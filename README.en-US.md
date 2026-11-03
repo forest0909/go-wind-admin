@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/brand/vortex-tile.svg" width="120" alt="GoWind Admin" />
+<img src="frontend/admin/react/public/logo.svg" width="120" alt="Linjian Admin" />
 
-# GoWind Admin
+# 林间 Admin (linjian-admin)
 
-**Out-of-the-box, enterprise-grade full-stack admin scaffold (Go backend + React 19 frontend)**
+**By Linjian Code (林间代码) · Out-of-the-box, enterprise-grade full-stack admin scaffold (Go backend + React 19 frontend)**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
@@ -262,7 +262,7 @@ Security capabilities are designed with reference to the technical requirements 
 ## Project Structure
 
 ```
-go-wind-admin/
+linjian-admin/
 ├── backend/                        # Backend project
 │   ├── api/                        # Protobuf API definitions & generated code
 │   │   ├── protos/                 # .proto sources (layered by domain)
@@ -343,7 +343,7 @@ Code generation runs under `backend/`: `make api`, `make openapi`, `make ent`, `
 
 ## Community & Contribution
 
-Welcome to join the GoWind Admin community. The documents below describe how to contribute code, report issues, and disclose security vulnerabilities:
+Welcome to join the 林间 Admin (linjian-admin) community. The documents below describe how to contribute code, report issues, and disclose security vulnerabilities:
 
 - [Contributing Guide](./CONTRIBUTING.md) — development environment, codegen conventions, commit conventions and the PR process
 - [Code of Conduct](./.github/CODE_OF_CONDUCT.md) — community interaction expectations

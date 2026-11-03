@@ -1,4 +1,4 @@
-# AGENTS.md — go-wind-admin 开发指南（AI Agent 入口）
+# AGENTS.md — 林间 Admin（linjian-admin）开发指南（AI Agent 入口）
 
 > 本仓库是单租户管理端：Go 后端 + React 前端（`frontend/admin/react`）。没有第二套前端，没有 AI 模块。租户、套餐、配额已删除；底层 `tenant_id` 列和 ent 租户隐私规则保留，值固定为 0，新模块不需要做租户处理（见 `docs/tenant_isolation.md`）。
 

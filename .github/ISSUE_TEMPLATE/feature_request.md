@@ -1,6 +1,6 @@
 ---
 name: 功能请求
-about: 建议为 GoWind Admin 增加新功能或改进
+about: 建议为 林间 Admin 增加新功能或改进
 title: "[feat] "
 labels: enhancement
 ---

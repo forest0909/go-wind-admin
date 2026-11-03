@@ -2,7 +2,7 @@
 
 ## 支持版本
 
-GoWind Admin 处于活跃开发中，仅对 `main` 分支最新版本提供安全维护。建议始终使用最新代码，旧版本不单独维护补丁分支。
+林间 Admin 处于活跃开发中，仅对 `main` 分支最新版本提供安全维护。建议始终使用最新代码，旧版本不单独维护补丁分支。
 
 | 版本 | 支持状态 |
 |------|---------|
@@ -13,8 +13,7 @@ GoWind Admin 处于活跃开发中，仅对 `main` 分支最新版本提供安�
 
 我们鼓励**私下上报**安全漏洞，避免在修复前被公开利用。请按以下任一方式联系：
 
-- **微信个人号**：`yang_lin_bo`（备注：`go-wind-admin security`）
-- **掘金私信**：通过 [掘金专栏](https://juejin.cn/column/7541283508041826367) 联系维护者
+- **GitHub 私密漏洞报告**：在 [linjian-admin 的 Security Advisories](https://github.com/forest0909/linjian-admin/security/advisories/new) 提交（只有维护者可见）
 
 上报时请尽量包含：
 
@@ -49,7 +48,6 @@ GoWind Admin 处于活跃开发中，仅对 `main` 分支最新版本提供安�
 以下情况一般不在受理范围，但仍欢迎反馈：
 
 - 第三方依赖自身的漏洞（请同时向上游报备，我们会跟进升级）
-- 在演示环境（`*.admin.gowind.cloud`）进行的大规模压测 / DoS
 - 部署时使用默认弱口令（`admin/admin`）导致的入侵——请在生产前自行改密
 - 自定义业务代码引入的漏洞
 

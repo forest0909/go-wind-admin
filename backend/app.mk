@@ -1,4 +1,4 @@
-# Makefile for building the GoWind micro service application
+# Makefile for building the 林间 Admin service application
 
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MKFILE_DIR  := $(dir $(MKFILE_PATH))

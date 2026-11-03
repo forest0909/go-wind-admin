@@ -1,8 +1,8 @@
-# GoWind React Admin 脚手架开发指南
+# 林间 Admin React 前端开发指南
 
 ## 项目概述
 
-GoWind React Admin 是基于 React 19 的企业级后台管理脚手架。
+林间 Admin 的 React 前端是基于 React 19 的企业级后台管理脚手架。
 
 ## 技术栈
 

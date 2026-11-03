@@ -218,7 +218,7 @@ body {
     --app-bg-nav: #ffffff;
 }
 
-/* ========== 品牌标识插画令牌（docs/brand/README.md 色板 · 三端同名） ==========
+/* ========== 品牌标识插画令牌（登录页 SloganIcon 用，色值取 docs/design-language.md 主色系） ==========
    渐变三档是品牌资产、不随主题反色，故两态同值；--brand-primary 跟主题主色，
    原先插画里那颗轨道光点写的 #3B82F6 是 §2.1 沿革中已退役的旧主色。
    var() 必须带字面量兜底：--app-color-primary 由 ThemeProvider 的 effect 写到 <html>，

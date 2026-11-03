@@ -1,55 +1,27 @@
-# GoWind 风行 · 品牌视觉标识
+# 品牌标识（临时）
 
-品牌主名 **GoWind**，中文名 **风行**。图形主题为「风」：速度、流动、汇聚。
-Admin 是产品线之一（另有 CMS / UBA / IM / Quant 量化等），因此采用**主品牌标识 + 产品名文字后缀**的架构：图形标与字标属于 GoWind 风行，产品不单独造标。
+产品名：中文「林间 Admin」，英文 / 仓库名 `linjian-admin`，出品方「林间代码」。
 
-> **✅ 2026-09-10 已选定方案 B「旋涡 Vortex」并落地三端**（见文末落地记录）。可视化对比仍见 [preview.html](./preview.html)。
+当前 logo 是**临时的**：两棵树代表「林」，中间留出的空隙代表「间」，主色取 `docs/design-language.md` 的品牌蓝 `#006BE6`。等设计师出了正式 logo，按下表替换即可。
 
-## 色板（与 docs/design-language.md 同源）
+原项目 go-wind-admin 的「GoWind / 风行」品牌和旋涡 logo 属于原作者，本仓库已不再使用。
 
-| 用途 | 值 |
-|---|---|
-| 品牌主色（权威值） | `hsl(212 100% 45%)` ≈ `#006BE6` |
-| 渐变亮端 | `#70B3FF` |
-| 渐变中段 | `#0D74F2` |
-| 渐变暗端 | `#005AC2` |
-| 应用图标底渐变 | `#1E7BFF` → `#0053BD`（135°） |
-| 中文名「风行」 | `#0D74F2`（实色） |
+## logo 在哪
 
-## 文件清单
+| 文件 | 用在哪里 | 替换方法 |
+|---|---|---|
+| `frontend/admin/react/public/logo.svg` | 侧栏左上角、浏览器标签页图标（`index.html` 的 `<link rel="icon">`）、三份 README 顶部 | 直接覆盖同名文件。正方形，建议带底色，32px 下仍能看清 |
+| `frontend/admin/react/src/components/bussiness/AuthLayout/icons/SloganIcon.tsx` | 登录页 / 注册页左侧的大插画 | 换成新插画的 SVG（JSX）；颜色用 `src/styles/global.css` 的 `--brand-*` 令牌，亮暗两态都要看一遍 |
 
-| 方案 | 图形标 | 应用图标 | favicon | 横版组合 |
-|---|---|---|---|---|
-| A 阵风 Gust | `gust.svg` | `gust-tile.svg` | `gust-favicon.svg` | `gust-lockup.svg` |
-| B 旋涡 Vortex ✅ **已选定 v3** | `vortex.svg` | `vortex-tile.svg` | `vortex-favicon.svg` | `vortex-lockup.svg` |
-| C W 字标 Monogram | `wmark.svg` | `wmark-tile.svg` | `wmark-favicon.svg` | `wmark-lockup.svg` |
+改名相关的文字在这些地方：
 
-> v3 几何（2026-09-10 二次迭代）：双粗臂涡旋（外臂 r176/宽 84 扫 295°，内臂 r58/宽 54 扫 235°，缺口错位 ~125° 形成 S 形负空间气道），替代原三细弧版——16px favicon 与 32px 侧栏下辨识度显著更高。
+- 标签页标题：`frontend/admin/react/.env` 的 `VITE_APP_TITLE`
+- 侧栏站名、版权公司名：`frontend/admin/react/src/core/preferences/config/default.ts`（`app.name`、`copyright`）
+- 登录页大标题：`frontend/admin/react/src/locales/*/_core/auth.json` 的 `systemTitle`
+- Swagger 标题：`backend/api/protos/admin/service/v1/admin_doc.proto`（改完 `make openapi`）和 `rest_server.go` 的 `swaggerUI.WithTitle`
+- 邮件 / 短信标题：`backend/pkg/mailtext/mailtext.go`
 
-公共资产：`wordmark.svg`（GOWIND + 风行 两行式几何字标）、`preview.html`、`vortex-login.svg`（登录页品牌插画 v2：旋涡主标 **24s/圈 缓旋**（SMIL animateTransform，以字形局部坐标为轴）+ 双层对旋虚线环流 + 轨道光点 + 四向漂移风痕 + GOWIND 几何字标签名；CSS 动效尊重 prefers-reduced-motion；已入三端代码）、`brand-render.html`（PNG 导出画布，改资产后可经 Playwright 截图重新生成）。
+## 换 logo 时注意
 
-## 落地记录（2026-09-10，方案 B）
-
-| 资产 | 目标 |
-|---|---|
-| `logo.png`（tile 200×200 透明底） | `react/public/`、`vue-element/public/`（补齐原 404）、`vue-element/src/assets/images/`（登录页头部 24px + 侧栏 LayoutLogo 32px）、`vue-vben/public/`（侧栏 + 认证页经 `preferences.logo.source`） |
-| `favicon.ico`（16/32/48 多尺寸） | 三端 `public/favicon.ico` |
-| `pwa-icon-192/512.png` | `vue-vben/public/` |
-| `vortex-login.svg` | 登录页品牌插画，三端同款：`vue-element/src/pages/core/login/icons/slogan.vue`、`react/src/components/bussiness/AuthLayout/icons/SloganIcon.tsx`（AuthLayout + UserLayout 共用）、`vue-vben/framework/effects/layouts/src/authentication/icons/slogan.vue`（替换原库存占位插画 87667-SVG8，float 动效保留） |
-
-vue-element / react / vben 三端 typecheck 门禁全部通过（2026-09-10）。PNG 导出管线：`brand-render.html` + Playwright 截图（omitBackground 保透明）+ Pillow 打包 ICO。
-
-## 使用规则
-
-- 图形标为渐变描边，浅底/深底通用，无需出双版本；禁拉伸、禁改色相、禁加投影描边。
-- 字标（GOWIND + 风行）已全部转路径，不依赖字体，任何环境渲染一致。其中「风行」二字取自 **Noto Sans SC Bold**（SIL OFL 授权，可免费商用与嵌入）轮廓，经 fontTools 提取转路径。
-- `*-tile.svg`：512×512、圆角 116（≈22.6%），用于桌面/移动应用图标与产品列表头像；缩放即可。
-- `*-favicon.svg`：48 视窗简化形，16px 仍可辨识；生产 `favicon.ico` 由它导出 32/16 位 PNG 后打包。
-- 最小留白：图形标四周预留 ≥ 1/4 高度的净空。
-- 产品线命名：「GoWind + 产品名」（GoWind Admin / GoWind CMS / GoWind UBA / GoWind IM / GoWind Quant），图形标不变，产品名用系统字体作后缀。
-
-## 落点核对（已落地，改资产时按这几处回归）
-
-- react：`frontend/admin/react/public/logo.png`（200×200，由 tile SVG 导出 PNG）+ `src/core/preferences/config/default.ts:52-54` 的 `logo.source`（实测值为 `/logo.png`）
-- favicon：三端 `public/favicon.ico`（react / vue-element / vue-vben）
-- 登录页品牌区：按 `docs/design-language.md` 认证页规范（画布深底 + 表面卡 + float 动效）
+- 如果新 logo 不是 SVG（比如 PNG），把 `default.ts` 里的 `logo.source` 和 `index.html` 的 favicon 一起改掉。老用户浏览器里存着偏好设置，`logo.source` 改了文件名就要在 `src/core/preferences/store/index.ts` 的 `migratePreferences` 里加一版迁移，否则老用户的侧栏 logo 会 404。
+- 只换图、文件名不变时不需要迁移。

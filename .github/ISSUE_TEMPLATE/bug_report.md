@@ -1,6 +1,6 @@
 ---
 name: Bug 报告
-about: 报告 GoWind Admin 的缺陷
+about: 报告 林间 Admin 的缺陷
 title: "[bug] "
 labels: bug
 ---

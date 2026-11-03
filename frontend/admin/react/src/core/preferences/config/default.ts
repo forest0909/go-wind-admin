@@ -18,7 +18,7 @@ const defaultPreferences: Preferences = {
         layout: "sidebar-nav",
         locale: "zh-CN",
         loginExpiredMode: "page",
-        name: "GoWind Admin",
+        name: "林间 Admin",
         version: "0.0.0",
         preferencesButtonPosition: "auto",
         watermark: false,
@@ -31,8 +31,8 @@ const defaultPreferences: Preferences = {
         styleType: "normal",
     },
     copyright: {
-        companyName: "GoWind",
-        companySiteLink: "https://www.gowind.cloud",
+        companyName: "林间代码",
+        companySiteLink: "https://github.com/forest0909/linjian-admin",
         date: "2026",
         enable: true,
         icp: "",
@@ -50,7 +50,7 @@ const defaultPreferences: Preferences = {
     },
     logo: {
         enable: true,
-        source: "/logo.png",
+        source: "/logo.svg",
     },
     navigation: {
         accordion: true,

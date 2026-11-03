@@ -175,6 +175,6 @@ describe('backend menus', () => {
       ...before,
       app: { ...before.app, accessMode: 'backend' },
     });
-    expect(JSON.parse(localStorage.getItem('app-preferences') ?? '{}').version).toBe(3);
+    expect(JSON.parse(localStorage.getItem('app-preferences') ?? '{}').version).toBe(4);
   });
 });

@@ -1,6 +1,6 @@
 # 文档索引（docs/）
 
-本目录是 GoWind Admin 的全部项目文档入口。文档分**两层**，各有分工：
+本目录是 林间 Admin 的全部项目文档入口。文档分**两层**，各有分工：
 
 | 层 | 位置 | 定位 | 读者 |
 |---|---|---|---|
@@ -59,7 +59,7 @@
 | [windows-startup-guide.md](./windows-startup-guide.md) | Windows 本地从零启动全流程与常见问题 | Windows 开发机首次搭建时（含 FAQ） |
 | [design-language.md](./design-language.md) | 三端视觉唯一权威值表（颜色/圆角/布局尺寸） | 改任何视觉相关代码前 |
 | [form_drawer_close_guard.md](./form_drawer_close_guard.md) | 表单抽屉关闭守卫：遮罩/ESC/X/取消四路径脏数据确认，三端实现约定 | 改表单抽屉关闭行为、新做表单抽屉前 |
-| [brand/](./brand/) | 品牌资产（logo / favicon / 锁版 / wordmark） | 换品牌或引用素材时 |
+| [brand/](./brand/) | 当前临时 logo 放在哪些文件、以后怎么替换 | 换 logo 或改产品名时 |
 
 另：仓库级开发约定（铁律、门禁、工具链）在根 [`AGENTS.md`](../AGENTS.md) 与各端 `AGENTS.md`，属于维护层文档，不在本目录。
 

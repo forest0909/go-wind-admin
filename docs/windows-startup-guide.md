@@ -1,6 +1,6 @@
-# GoWind Admin Windows 本地开发启动指南
+# 林间 Admin Windows 本地开发启动指南
 
-本文档介绍如何在 Windows 系统上从零搭建开发环境并启动 GoWind Admin 项目。
+本文档介绍如何在 Windows 系统上从零搭建开发环境并启动 林间 Admin 项目。
 
 基于实际在 Windows 11 上完整跑通后编写，包含所有已知的坑和解决方案。
 

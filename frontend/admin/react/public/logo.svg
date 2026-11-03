@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="林间 Admin">
+  <!-- 林间 Admin 临时标识（两棵树 =「林」，中间留出的空隙 =「间」）。正式 logo 出来后整文件替换，见 docs/brand/README.md -->
+  <rect width="64" height="64" rx="14" fill="#006BE6"/>
+  <path fill="#FFFFFF" d="M20 10l8 13h-4l7 11h-5l7 11H22v7h-4v-7H7l7-11H9l7-11h-4z"/>
+  <path fill="#FFFFFF" fill-opacity="0.82" transform="translate(45 19) scale(0.8)" d="M0 0l8 13h-4l7 11h-5l7 11H2v7h-4v-7h-11l7-11h-5l7-11h-4z"/>
+</svg>

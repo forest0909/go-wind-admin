@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/brand/vortex-tile.svg" width="120" alt="GoWind 風行" />
+<img src="frontend/admin/react/public/logo.svg" width="120" alt="林间 Admin" />
 
-# GoWind Admin｜風行
+# 林间 Admin（linjian-admin）
 
-**すぐに使える企業級管理システムスキャフォールド（Go バックエンド + React 19）**
+**林间代码 制作 · すぐに使える企業級管理システムスキャフォールド（Go バックエンド + React 19）**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
@@ -262,7 +262,7 @@ pnpm dev                    # ポート 15888
 ## プロジェクト構成
 
 ```
-go-wind-admin/
+linjian-admin/
 ├── backend/                        # バックエンドプロジェクト
 │   ├── api/                        # Protobuf API 定義と生成コード
 │   │   ├── protos/                 # .proto ソースファイル（ドメイン別）
@@ -343,7 +343,7 @@ go-wind-admin/
 
 ## コミュニティとコントリビューション
 
-GoWind Admin コミュニティへの参加を歓迎します。以下のドキュメントで、コードの貢献方法、Issue の報告、セキュリティ脆弱性の開示について説明しています：
+林间 Admin コミュニティへの参加を歓迎します。以下のドキュメントで、コードの貢献方法、Issue の報告、セキュリティ脆弱性の開示について説明しています：
 
 - [コントリビューションガイド](./CONTRIBUTING.md) — 開発環境、コード生成規約、コミット規約と PR フロー
 - [行動規範](./.github/CODE_OF_CONDUCT.md) — コミュニティでの交流に関する方針

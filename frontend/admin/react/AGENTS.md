@@ -1,10 +1,10 @@
-# AGENTS.md - GoWind React Admin 脚手架开发指南
+# AGENTS.md - 林间 Admin React 前端开发指南
 
 > 本文件面向二开人员，帮助 AI 助手理解项目架构并遵循开发规范。
 
 ## 项目概述
 
-GoWind React Admin 是基于 React 19 的企业级后台管理脚手架，采用 Ant Design v6 + ProComponents 作为 UI 框架。
+林间 Admin 的 React 前端是基于 React 19 的企业级后台管理脚手架，采用 Ant Design v6 + ProComponents 作为 UI 框架。
 
 ## 技术栈
 

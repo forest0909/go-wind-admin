@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/brand/vortex-tile.svg" width="120" alt="GoWind Admin｜风行" />
+<img src="frontend/admin/react/public/logo.svg" width="120" alt="林间 Admin" />
 
-# GoWind Admin｜风行
+# 林间 Admin
 
-**开箱即用的企业级前后端一体管理脚手架（Go 后端 + React 19 前端）**
+**林间代码出品 · 开箱即用的企业级前后端一体管理脚手架（Go 后端 + React 19 前端）**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
@@ -262,7 +262,7 @@ pnpm dev                    # 端口 15888
 ## 项目结构
 
 ```
-go-wind-admin/
+linjian-admin/
 ├── backend/                        # 后端项目
 │   ├── api/                        # Protobuf API 定义与生成代码
 │   │   ├── protos/                 # .proto 源文件（按领域分层）
@@ -343,7 +343,7 @@ go-wind-admin/
 
 ## 社区与贡献
 
-欢迎参与 GoWind Admin 的建设。以下文档说明如何贡献代码、报告问题与反馈安全漏洞：
+欢迎参与林间 Admin 的建设。以下文档说明如何贡献代码、报告问题与反馈安全漏洞：
 
 - [贡献指南](./CONTRIBUTING.md) —— 开发环境、代码生成约定、提交规范与 PR 流程
 - [行为准则](./.github/CODE_OF_CONDUCT.md) —— 社区互动预期

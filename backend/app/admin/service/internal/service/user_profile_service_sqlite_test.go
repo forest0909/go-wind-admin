@@ -76,6 +76,10 @@ func (s *userProfileUserRepoStub) Get(_ context.Context, req *identityV1.GetUser
 }
 
 func (s *userProfileUserRepoStub) Update(_ context.Context, req *identityV1.UpdateUserRequest) error {
+	// 和真实 userRepo.Update 一样要求顶层 id，否则桩会放过线上必然失败的请求
+	if req.GetId() == 0 {
+		return identityV1.ErrorBadRequest("id is required")
+	}
 	s.capturedUpdates = append(s.capturedUpdates, req)
 	return nil
 }

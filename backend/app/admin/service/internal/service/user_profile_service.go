@@ -186,6 +186,7 @@ func (s *UserProfileService) DeleteAvatar(ctx context.Context, _ *emptypb.Empty)
 	}
 
 	if err = s.userRepo.Update(ctx, &identityV1.UpdateUserRequest{
+		Id: operator.UserId,
 		Data: &identityV1.User{
 			Id:     trans.Ptr(operator.UserId),
 			Avatar: trans.Ptr(""),
@@ -258,6 +259,7 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 	}
 
 	if err = s.userRepo.Update(ctx, &identityV1.UpdateUserRequest{
+		Id: operator.UserId,
 		Data: &identityV1.User{
 			Id:     trans.Ptr(operator.UserId),
 			Avatar: trans.Ptr(avatarURL),

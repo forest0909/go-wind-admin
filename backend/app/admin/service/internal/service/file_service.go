@@ -25,18 +25,18 @@ type FileService struct {
 	log *bLogger.Helper
 
 	fileRepo *data.FileRepo
-	mc       *oss.MinIOClient
+	storage  oss.Storage
 }
 
 func NewFileService(
 	ctx *bootstrap.Context,
 	fileRepo *data.FileRepo,
-	mc *oss.MinIOClient,
+	storage oss.Storage,
 ) *FileService {
 	return &FileService{
 		log:      ctx.NewLoggerHelper("file/service/admin-service"),
 		fileRepo: fileRepo,
-		mc:       mc,
+		storage:  storage,
 	}
 }
 
@@ -106,16 +106,25 @@ func (s *FileService) Delete(ctx context.Context, req *storageV1.DeleteFileReque
 		return nil, err
 	}
 
+	// 手工建的文件记录没有存储位置（见 clearFileStorageFields），没有对象可删。
+	hasObject := f.GetBucketName() != "" && f.GetSaveFileName() != ""
+
+	// 对象存在别的存储里（中途换了存储）时删不掉它，记录也不删，返回明确的错误。
+	if hasObject {
+		if err = oss.CheckFileProvider(f, s.storage); err != nil {
+			return nil, err
+		}
+	}
+
 	if err = s.fileRepo.Delete(ctx, req); err != nil {
 		return nil, err
 	}
 
-	// 手工建的文件记录没有存储位置（见 clearFileStorageFields），没有对象可删。
-	if f.GetBucketName() == "" || f.GetSaveFileName() == "" {
+	if !hasObject {
 		return &emptypb.Empty{}, nil
 	}
 
-	if err = s.mc.DeleteFile(ctx,
+	if err = s.storage.DeleteFile(ctx,
 		f.GetBucketName(),
 		joinObjectPath(f.GetFileDirectory(), f.GetSaveFileName()),
 	); err != nil {

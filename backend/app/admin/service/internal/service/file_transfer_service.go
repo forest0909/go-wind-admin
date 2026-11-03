@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minio/minio-go/v7"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"go-wind-admin/third_party/go-utils/id"
@@ -38,18 +37,18 @@ type FileTransferService struct {
 
 	log *bLogger.Helper
 
-	mc                *oss.MinIOClient
+	storage           oss.Storage
 	fileServiceClient *data.FileRepo
 }
 
 func NewFileTransferService(
 	ctx *bootstrap.Context,
-	mc *oss.MinIOClient,
+	storage oss.Storage,
 	fileServiceClient *data.FileRepo,
 ) *FileTransferService {
 	return &FileTransferService{
 		log:               ctx.NewLoggerHelper("file-transfer/service/app-service"),
-		mc:                mc,
+		storage:           storage,
 		fileServiceClient: fileServiceClient,
 	}
 }
@@ -111,7 +110,7 @@ func (s *FileTransferService) recordFile(
 	tenantID, userID uint32,
 	fileData []byte,
 	sourceFileName string,
-	info minio.UploadInfo,
+	info oss.UploadInfo,
 	downloadUrl string,
 ) error {
 
@@ -123,7 +122,7 @@ func (s *FileTransferService) recordFile(
 
 	if err := s.fileServiceClient.Create(ctx, &storageV1.CreateFileRequest{
 		Data: &storageV1.File{
-			Provider:      trans.Ptr(storageV1.OSSProvider_MINIO),
+			Provider:      trans.Ptr(s.storage.Provider()),
 			BucketName:    trans.Ptr(info.Bucket),
 			SaveFileName:  trans.Ptr(fileName + "." + ext),
 			ContentHash:   trans.Ptr(sha256Hex),
@@ -200,7 +199,7 @@ func (s *FileTransferService) directUploadFile(ctx context.Context, req *storage
 		),
 	)
 
-	info, storagePath, downloadUrl, err := s.mc.UploadFile(
+	info, storagePath, downloadUrl, err := s.storage.UploadFile(
 		ctx,
 		req.GetStorageObject().GetBucketName(),
 		req.GetStorageObject().GetObjectName(),
@@ -285,7 +284,7 @@ func (s *FileTransferService) ServeImageHandler(w http.ResponseWriter, r *http.R
 		return nil
 	}
 
-	reader, contentType, size, err := s.mc.GetObjectReader(r.Context(), parts[0], parts[1])
+	reader, contentType, size, err := s.storage.GetObjectReader(r.Context(), parts[0], parts[1])
 	if err != nil {
 		http.Error(w, "object not found", http.StatusNotFound)
 		return nil
@@ -428,6 +427,9 @@ func (s *FileTransferService) DownloadFile(ctx context.Context, req *storageV1.D
 		if err != nil {
 			return nil, storageV1.ErrorDownloadFailed("file not found")
 		}
+		if err = oss.CheckFileProvider(resp, s.storage); err != nil {
+			return nil, err
+		}
 
 		req.Selector = &storageV1.DownloadFileRequest_StorageObject{
 			StorageObject: &storageV1.StorageObject{
@@ -438,7 +440,7 @@ func (s *FileTransferService) DownloadFile(ctx context.Context, req *storageV1.D
 			},
 		}
 
-		return s.mc.DownloadFile(ctx, req)
+		return s.storage.DownloadFile(ctx, req)
 
 	case *storageV1.DownloadFileRequest_StorageObject:
 		// 直接按 bucket/objectName 下载会绕过文件表的归属检查，只允许按 fileId 下载。

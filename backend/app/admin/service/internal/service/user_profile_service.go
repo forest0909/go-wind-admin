@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"io"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -60,7 +62,9 @@ type UserProfileService struct {
 	authenticator      *data.Authenticator
 	outbound           *OutboundSender
 	vcodeCache         *data.VCodeCache
-	mc                 *oss.MinIOClient
+	storage            oss.Storage
+	// legacyAvatarHost 旧版头像地址的前缀（MinIO 的 download_host），只用来认出旧头像以便删除。
+	legacyAvatarHost string
 
 	log    *bLogger.Helper
 	mailer *TransactionMailer
@@ -74,7 +78,8 @@ func NewUserProfileService(
 	authenticator *data.Authenticator,
 	outbound *OutboundSender,
 	vcodeCache *data.VCodeCache,
-	mc *oss.MinIOClient,
+	storage oss.Storage,
+	legacyAvatarHost string,
 	mailer *TransactionMailer,
 ) *UserProfileService {
 	return &UserProfileService{
@@ -85,7 +90,8 @@ func NewUserProfileService(
 		authenticator:      authenticator,
 		outbound:           outbound,
 		vcodeCache:         vcodeCache,
-		mc:                 mc,
+		storage:            storage,
+		legacyAvatarHost:   legacyAvatarHost,
 		mailer:             mailer,
 	}
 }
@@ -234,18 +240,16 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		if !ossutil.IsAllowedMimeType(realMime) || len(realMime) < 6 || realMime[:6] != "image/" {
 			return nil, authenticationV1.ErrorBadRequest("only image files are allowed for avatar")
 		}
-		// 上传到 OSS：桶按 MIME 选（图片进 images），对象名放在本人的头像目录下，
-		// 换头像时只删得掉这个目录里的旧对象。
-		_, _, downloadUrl, uerr := s.mc.UploadFile(ctx,
-			ossutil.ContentTypeToBucketName(realMime),
-			ossutil.GenerateObjectName(avatarDirectory(operator.GetUserId()), imageBytes,
-				ossutil.ContentTypeToFileExtension(realMime), ossutil.GenerateFileNameTypeUUID),
-			realMime, imageBytes)
-		if uerr != nil {
-			s.log.Errorf(ctx, "upload avatar to oss failed [%s]", uerr.Error())
+		// 上传到 images 桶，对象名放在本人的头像目录下，换头像时只删得掉这个目录里的旧对象。
+		name := ossutil.GenerateFileName(imageBytes, ossutil.ContentTypeToFileExtension(realMime), ossutil.GenerateFileNameTypeUUID)
+		if _, _, _, uerr := s.storage.UploadFile(ctx,
+			oss.AvatarBucket, oss.AvatarDirectory(operator.GetUserId())+"/"+name,
+			realMime, imageBytes); uerr != nil {
+			s.log.Errorf(ctx, "upload avatar to oss failed: %v", uerr)
 			return nil, authenticationV1.ErrorInternalServerError("upload avatar failed")
 		}
-		avatarURL = downloadUrl
+		// 存后端相对地址，由 ServeAvatar 从存储读出返回（见 pkg/oss/avatar.go）。
+		avatarURL = oss.AvatarURL(operator.GetUserId(), name)
 	case *identityV1.UploadAvatarRequest_ImageUrl:
 		avatarURL = req.GetImageUrl()
 	default:
@@ -267,8 +271,8 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 	}
 
 	if oldAvatar != "" && oldAvatar != avatarURL {
-		if bucket, object, ok := ownedAvatarObject(s.mc.DownloadHost(), oldAvatar, operator.GetUserId()); ok {
-			if derr := s.mc.DeleteFile(ctx, bucket, object); derr != nil {
+		if bucket, object, ok := ownedAvatarObject(s.legacyAvatarHost, oldAvatar, operator.GetUserId()); ok {
+			if derr := s.storage.DeleteFile(ctx, bucket, object); derr != nil {
 				// 新头像已生效，旧对象删不掉只留下孤儿对象，不让本次请求失败。
 				s.log.Errorf(ctx, "delete old avatar object %s/%s failed: %v", bucket, object, derr)
 			}
@@ -284,23 +288,53 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 // REST 默认请求体上限按它推算（见 server/body_limit.go）。
 const MaxAvatarBytes int64 = 5 << 20
 
-// avatarDirectory 用户头像对象所在目录。
-func avatarDirectory(userID uint32) string {
-	return "avatar/" + strconv.FormatUint(uint64(userID), 10)
+// ownedAvatarObject 判断头像地址是否指向本服务给该用户上传的头像对象，是则返回桶和对象名。
+// 认两种地址：现在的 /admin/v1/avatars/{userId}/{name}，和旧版的 {download_host}/images/avatar/{userId}/{name}。
+// 头像也可能是任意外链（ImageUrl），或者指向别人的对象，这些都不能删。
+func ownedAvatarObject(legacyHost, avatarURL string, userID uint32) (bucket, object string, ok bool) {
+	if uid, obj, isNew := oss.ParseAvatarURL(avatarURL); isNew {
+		if uid != userID {
+			return "", "", false
+		}
+		return oss.AvatarBucket, obj, true
+	}
+	if obj, isOld := oss.LegacyAvatarObject(legacyHost, avatarURL, userID); isOld {
+		return oss.AvatarBucket, obj, true
+	}
+	return "", "", false
 }
 
-// ownedAvatarObject 判断头像 URL 是否指向本服务给该用户上传的头像对象，是则返回桶和对象名。
-// 头像也可能是任意外链（ImageUrl），或者指向别人的对象，这些都不能删。
-func ownedAvatarObject(downloadHost, avatarURL string, userID uint32) (bucket, object string, ok bool) {
-	bucket = ossutil.BucketImages
-	prefix := ossutil.JoinObjectUrl(downloadHost, bucket, avatarDirectory(userID)) + "/"
-	if !strings.HasPrefix(avatarURL, prefix) {
-		return "", "", false
+// ServeAvatar 头像读取（免鉴权，<img> 带不了 Bearer token）：GET /admin/v1/avatars/{userId}/{name}。
+// 只读 images 桶 avatar/ 目录下的对象，对象名是 UUID，猜不到。其他路径一律 404。
+func (s *UserProfileService) ServeAvatar(w http.ResponseWriter, r *http.Request) {
+	_, object, ok := oss.ParseAvatarURL(r.URL.Path)
+	if !ok {
+		http.NotFound(w, r)
+		return
 	}
-	name := strings.TrimPrefix(avatarURL, prefix)
-	if name == "" || strings.Contains(name, "/") || strings.Contains(name, "..") ||
-		strings.ContainsAny(name, "?#") {
-		return "", "", false
+	reader, contentType, size, err := s.storage.GetObjectReader(r.Context(), oss.AvatarBucket, object)
+	if err != nil {
+		// 实现内已记录原始错误
+		http.NotFound(w, r)
+		return
 	}
-	return bucket, avatarDirectory(userID) + "/" + name, true
+	defer func() {
+		if cerr := reader.Close(); cerr != nil {
+			s.log.Warnf(r.Context(), "close avatar reader %s failed: %v", object, cerr)
+		}
+	}()
+	if !strings.HasPrefix(contentType, "image/") {
+		s.log.Warnf(r.Context(), "avatar object %s has non-image content type %q, refused", object, contentType)
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// 对象名唯一（换头像会生成新名字），可以长期缓存。
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	if _, err = io.Copy(w, reader); err != nil {
+		s.log.Warnf(r.Context(), "write avatar %s failed: %v", object, err)
+	}
 }

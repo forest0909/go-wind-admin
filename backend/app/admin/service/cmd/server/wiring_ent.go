@@ -65,7 +65,11 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	}
 	cleanups = append(cleanups, cleanupEnt)
 
-	minioClient := data.NewMinIoClient(ctx)
+	fileStorage, err := data.NewStorage(ctx)
+	if err != nil {
+		rollback()
+		return nil, nil, fmt.Errorf("file storage: %w", err)
+	}
 
 	// 外部数据源（客户已有的业务库，不走 ent，见 docs/crud_module_guide/external.md）
 	externalSources, cleanupExternalSources, err := data.NewExternalSources(ctx)
@@ -175,7 +179,7 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 
 	// 身份与组织
 	userService := service.NewUserService(ctx, userRepo, roleRepo, userCredentialRepo, positionRepo, orgUnitRepo, membershipRepo, authenticator)
-	userProfileService := service.NewUserProfileService(ctx, userRepo, roleRepo, userCredentialRepo, authenticator, outboundSender, vcodeCache, minioClient, transactionalMailer)
+	userProfileService := service.NewUserProfileService(ctx, userRepo, roleRepo, userCredentialRepo, authenticator, outboundSender, vcodeCache, fileStorage, ctx.GetConfig().GetOss().GetMinio().GetDownloadHost(), transactionalMailer)
 	positionService := service.NewPositionService(ctx, positionRepo, orgUnitRepo)
 	orgUnitService := service.NewOrgUnitService(ctx, orgUnitRepo, userRepo)
 
@@ -192,8 +196,8 @@ func initApp(ctx *bootstrap.Context) (*kratos.App, func(), error) {
 	languageService := service.NewLanguageService(ctx, languageRepo)
 
 	// 文件与任务
-	fileService := service.NewFileService(ctx, fileRepo, minioClient)
-	fileTransferService := service.NewFileTransferService(ctx, minioClient, fileRepo)
+	fileService := service.NewFileService(ctx, fileRepo, fileStorage)
+	fileTransferService := service.NewFileTransferService(ctx, fileStorage, fileRepo)
 	taskService := service.NewTaskService(ctx, taskRepo, userRepo, auditLogArchiveRepo, redisClient)
 
 	// 审计日志

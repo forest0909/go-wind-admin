@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -13,6 +14,8 @@ import (
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"go-wind-admin/app/admin/service/internal/data/ent"
+	"go-wind-admin/app/admin/service/internal/data/ent/user"
+	"go-wind-admin/pkg/oss"
 	"go-wind-admin/third_party/go-crud/viewer"
 )
 
@@ -47,14 +50,18 @@ type schemaUpgradeStep struct {
 }
 
 // schemaUpgradeSteps 全部升级步骤，按版本号升序，只追加。
-var schemaUpgradeSteps = []schemaUpgradeStep{
-	{Version: 1, Name: "purge_legacy_tenant_config", Run: upgradePurgeLegacyTenantConfig},
-	{Version: 2, Name: "drop_legacy_tenant_tables", Run: upgradeDropLegacyTenantTables},
+// legacyAvatarHost 是 MinIO 的 download_host，v3 用它认出旧版头像地址。
+func schemaUpgradeSteps(legacyAvatarHost string) []schemaUpgradeStep {
+	return []schemaUpgradeStep{
+		{Version: 1, Name: "purge_legacy_tenant_config", Run: upgradePurgeLegacyTenantConfig},
+		{Version: 2, Name: "drop_legacy_tenant_tables", Run: upgradeDropLegacyTenantTables},
+		{Version: 3, Name: "rewrite_legacy_avatar_urls", Run: upgradeRewriteLegacyAvatarURLs(legacyAvatarHost)},
+	}
 }
 
 // RunSchemaUpgrades 执行还没执行过的升级步骤。任何一步失败立即返回原始错误，该步不写记录。
-func RunSchemaUpgrades(ctx context.Context, drv *entsql.Driver, l *bLogger.Helper) error {
-	return runSchemaUpgrades(ctx, drv, schemaUpgradeSteps, l)
+func RunSchemaUpgrades(ctx context.Context, drv *entsql.Driver, legacyAvatarHost string, l *bLogger.Helper) error {
+	return runSchemaUpgrades(ctx, drv, schemaUpgradeSteps(legacyAvatarHost), l)
 }
 
 func runSchemaUpgrades(ctx context.Context, drv *entsql.Driver, steps []schemaUpgradeStep, l *bLogger.Helper) error {
@@ -185,4 +192,40 @@ func upgradeDropLegacyTenantTables(ctx context.Context, _ *ent.Client, exec dial
 		}
 	}
 	return nil
+}
+
+// upgradeRewriteLegacyAvatarURLs v3：把旧版存进 user.avatar 的 {download_host}/images/avatar/{userId}/{name}
+// 改写成 /admin/v1/avatars/{userId}/{name}。旧值没有协议头、指向私有桶，任何部署下都显示不出来。
+// 只改能确认是本系统给该用户上传的头像对象的值；外链（ImageUrl 设置的）和其他值不动。
+// 没配 download_host 时认不出旧地址，什么都不改。
+func upgradeRewriteLegacyAvatarURLs(legacyAvatarHost string) func(context.Context, *ent.Client, dialect.ExecQuerier, *bLogger.Helper) error {
+	return func(ctx context.Context, client *ent.Client, _ dialect.ExecQuerier, l *bLogger.Helper) error {
+		if legacyAvatarHost == "" {
+			l.Infof(ctx, "[UPGRADE] oss.minio.download_host is empty, legacy avatar urls cannot be recognized, skipped")
+			return nil
+		}
+		users, err := client.User.Query().
+			Where(user.AvatarNotNil(), user.AvatarNEQ("")).
+			Select(user.FieldID, user.FieldAvatar).
+			All(ctx)
+		if err != nil {
+			return fmt.Errorf("query user avatars: %w", err)
+		}
+		rewritten := 0
+		for _, u := range users {
+			object, ok := oss.LegacyAvatarObject(legacyAvatarHost, *u.Avatar, u.ID)
+			if !ok {
+				continue
+			}
+			newURL := oss.AvatarURL(u.ID, path.Base(object))
+			if err = client.User.UpdateOneID(u.ID).SetAvatar(newURL).Exec(ctx); err != nil {
+				return fmt.Errorf("rewrite avatar of user %d: %w", u.ID, err)
+			}
+			rewritten++
+		}
+		if rewritten > 0 {
+			l.Infof(ctx, "[UPGRADE] rewrote %d legacy avatar urls", rewritten)
+		}
+		return nil
+	}
 }

@@ -232,6 +232,13 @@ func NewRestServer(
 	// 但，代码生成器生成代码可以提供给OpenAPI使用。
 	registerFileTransferServiceHandler(srv, fileTransferService)
 
+	// 头像读取：手动注册，免鉴权（<img> 带不了 Bearer token）。手动路由没有 Operation，
+	// auth / 审计中间件不应用，也不进 openapi 和 Api 表；handler 只读头像目录，见 ServeAvatar。
+	srv.Route("/").GET("admin/v1/avatars/{user_id}/{name}", func(ctx http.Context) error {
+		userProfileService.ServeAvatar(ctx.Response(), ctx.Request())
+		return nil
+	})
+
 	// 审计日志服务端导出：手动注册（二进制文件响应，proto 生成路由写不了响应头）。
 	// 手动路由无 Operation → auth 中间件不应用 → 鉴权在 handler 内显式做（平台管理员）。
 	srv.Route("/").GET("admin/v1/audit-logs:export", func(ctx http.Context) error {

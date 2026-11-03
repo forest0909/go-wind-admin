@@ -28,7 +28,7 @@ func TestPermissionServiceInit_PurgesLegacyTenantBeforeSync(t *testing.T) {
 	client.Api.Create().SetPath("/admin/v1/configs").SetMethod("GET").SetModule("ConfigService").SaveX(ctx)
 
 	// 生产顺序：NewEntClient 里跑升级步骤，之后才构造 PermissionService
-	require.NoError(t, data.RunSchemaUpgrades(ctx, entClient.Driver(), bLogger.NewHelper(bLogger.NopLogger())))
+	require.NoError(t, data.RunSchemaUpgrades(ctx, entClient.Driver(), "", bLogger.NewHelper(bLogger.NopLogger())))
 	svc.init()
 
 	codes := client.Permission.Query().Select("code").StringsX(ctx)
@@ -39,7 +39,7 @@ func TestPermissionServiceInit_PurgesLegacyTenantBeforeSync(t *testing.T) {
 	require.Zero(t, client.Menu.Query().Where(menu.ComponentHasPrefix("app/tenant/")).CountX(ctx))
 
 	// 再启动一次：仍然干净
-	require.NoError(t, data.RunSchemaUpgrades(ctx, entClient.Driver(), bLogger.NewHelper(bLogger.NopLogger())))
+	require.NoError(t, data.RunSchemaUpgrades(ctx, entClient.Driver(), "", bLogger.NewHelper(bLogger.NopLogger())))
 	svc.init()
 	codes = client.Permission.Query().Select("code").StringsX(ctx)
 	for _, code := range codes {

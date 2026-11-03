@@ -435,7 +435,7 @@ trace:
 - 文件下载走 `GET /admin/v1/file/download?fileId=`（要登录），响应一律 `Content-Disposition: attachment` 加 `X-Content-Type-Options: nosniff`，浏览器不会在本站内联渲染上传的内容。
 - 头像地址存成 `/admin/v1/avatars/{userId}/{文件名}`，免登录读取，只能读头像目录下的图片，文件名是随机 UUID。旧版本把头像存成 `{download_host}/images/avatar/...`（没有协议头、指向私有桶，显示不出来），升级时由升级步骤 v3 按当前的 `oss.minio.download_host` 改写成新地址；当时用别的 `download_host` 上传的、或通过外链设置的头像不改。
 - 富文本图片沿用签名地址 `/admin/v1/file/image`。
-- 头像和签名图片这两个免登录地址只返回 png / jpeg / gif / webp 位图（按文件内容判断，不看扩展名），SVG、HTML、文本等一律 404；头像上传也只收这四种。本地存储不保存 Content-Type，读取时按文件头重新判断，和上传校验用的是同一个函数。
+- 头像和签名图片这两个免登录地址只返回 png / jpeg / gif / webp / bmp 位图（按文件内容判断，不看扩展名），SVG、HTML、文本等一律 404；头像上传也只收这五种。本地存储不保存 Content-Type，读取时按文件头重新判断，和上传校验用的是同一个函数。
 
 **本地目录备份**：本地模式下要备份 `root_dir` 整个目录（Compose 里是 `admin-data` 卷的 `storage/` 目录），和数据库一起备份、一起恢复，文件表记录和磁盘上的文件才对得上。直接复制目录即可（例如 `tar czf storage.tgz -C <root_dir> .`）；写入是先写临时文件再改名，不会复制到写了一半的文件。恢复后目录的属主要是运行后端的用户（镜像里是 `appuser`）。
 

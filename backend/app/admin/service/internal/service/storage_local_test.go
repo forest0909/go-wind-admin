@@ -217,16 +217,14 @@ func TestLocalStorage_ProviderMismatch(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// 头像只收 png/jpeg/gif/webp：SVG、BMP 等直接 400，不上传、不写库。
+// 头像只收 png/jpeg/gif/webp/bmp：SVG、HTML 等直接 400，不上传、不写库。
 func TestUploadAvatar_RejectsNonBitmap(t *testing.T) {
 	e := newUserProfileServiceForTest(t)
 	e.stub.getUserResult = &identityV1.User{Id: trans.Ptr(uint32(7))}
 	ctx := auth.NewContext(context.Background(), &authenticationV1.UserTokenPayload{UserId: 7})
 
-	bmp := append([]byte("BM"), make([]byte, 64)...)
 	for name, body := range map[string][]byte{
 		"svg":  []byte(`<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><rect/></svg>`),
-		"bmp":  bmp,
 		"html": []byte("<html><script>alert(1)</script></html>"),
 	} {
 		_, err := e.svc.UploadAvatar(ctx, &identityV1.UploadAvatarRequest{
@@ -268,4 +266,57 @@ func TestServeImageHandler_OnlySafeBitmaps(t *testing.T) {
 	rec = get(upload("payload.html", []byte("hello<script>window.reviewProbe=1</script>"), "text/html"))
 	require.Equal(t, http.StatusNotFound, rec.Code)
 	require.NotContains(t, rec.Body.String(), "<script>")
+}
+
+// 1x1 BMP（24 位，BITMAPINFOHEADER），按 BMP 规范手工拼出
+var tinyBMP = []byte{
+	'B', 'M', 58, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, // 文件头：大小 58，像素偏移 54
+	40, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 24, 0, // 信息头：40 字节，1x1，1 平面，24 位
+	0, 0, 0, 0, 4, 0, 0, 0, 0x13, 0x0b, 0, 0, 0x13, 0x0b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0x00, 0x00, 0xff, 0x00, // 一个红色像素 + 行填充
+}
+
+// BMP 一直是支持的图片类型：已有 BMP 头像、新上传的 BMP 头像都能读出来。
+func TestAvatar_BMPSupported(t *testing.T) {
+	e := newUserProfileServiceForTest(t)
+	ctx := auth.NewContext(context.Background(), &authenticationV1.UserTokenPayload{UserId: 7})
+
+	// 存储里已有的 BMP 头像（v3 改写后的地址形式）
+	_, _, _, err := e.svc.storage.UploadFile(ctx, oss.AvatarBucket, "avatar/7/old.bmp", "image/bmp", tinyBMP)
+	require.NoError(t, err)
+	rec := serveAvatar(e.svc, oss.AvatarURL(7, "old.bmp"))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "image/bmp", rec.Header().Get("Content-Type"))
+	require.Equal(t, tinyBMP, rec.Body.Bytes())
+
+	// 新上传 BMP 头像
+	e.stub.getUserResult = &identityV1.User{Id: trans.Ptr(uint32(7))}
+	resp, err := e.svc.UploadAvatar(ctx, &identityV1.UploadAvatarRequest{
+		Source: &identityV1.UploadAvatarRequest_ImageBase64{ImageBase64: base64.StdEncoding.EncodeToString(tinyBMP)},
+	})
+	require.NoError(t, err)
+	rec = serveAvatar(e.svc, resp.GetUrl())
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "image/bmp", rec.Header().Get("Content-Type"))
+	require.Equal(t, tinyBMP, rec.Body.Bytes())
+}
+
+// 普通上传（富文本插图走这条）的 BMP，上传返回的签名地址能读出来。
+func TestServeImageHandler_BMP(t *testing.T) {
+	require.NoError(t, crypto.InitGlobalEncryptor("0123456789abcdef0123456789abcdef", true))
+	e := newLocalFileEnv(t)
+	resp, err := e.transfer.UploadFile(e.ctx, &storageV1.UploadFileRequest{
+		Source:         &storageV1.UploadFileRequest_File{File: tinyBMP},
+		Mime:           trans.Ptr("image/bmp"),
+		SourceFileName: trans.Ptr("a.bmp"),
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.GetPublicUrl())
+
+	rec := httptest.NewRecorder()
+	require.NoError(t, e.transfer.ServeImageHandler(rec, httptest.NewRequest(http.MethodGet, "http://x"+resp.GetPublicUrl(), nil)))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "image/bmp", rec.Header().Get("Content-Type"))
+	require.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	require.Equal(t, tinyBMP, rec.Body.Bytes())
 }

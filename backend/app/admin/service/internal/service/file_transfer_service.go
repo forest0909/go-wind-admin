@@ -255,7 +255,7 @@ func urlQueryEscape(s string) string {
 
 // ServeImageHandler 签名图片代理（免鉴权，签名即凭证）：
 // GET /admin/v1/file/image?path={bucket}/{object}&expires={unix}&sig={hmac}
-// 签名 = HMAC-SHA256(secret, path|expires)。流式回源存储，只返回 png/jpeg/gif/webp。
+// 签名 = HMAC-SHA256(secret, path|expires)。流式回源存储，只返回 png/jpeg/gif/webp/bmp。
 func (s *FileTransferService) ServeImageHandler(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	mediaPath := q.Get("path")

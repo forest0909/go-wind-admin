@@ -62,10 +62,10 @@ func TestLegacyAvatarObject(t *testing.T) {
 }
 
 func TestIsSafeInlineImage(t *testing.T) {
-	for _, ct := range []string{"image/png", "image/jpeg", "image/gif", "image/webp", "IMAGE/PNG", "image/png; charset=binary"} {
+	for _, ct := range []string{"image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp", "IMAGE/PNG", "image/png; charset=binary"} {
 		require.True(t, IsSafeInlineImage(ct), ct)
 	}
-	for _, ct := range []string{"image/svg+xml", "text/html", "text/plain; charset=utf-8", "image/bmp", "application/octet-stream", ""} {
+	for _, ct := range []string{"image/svg+xml", "text/html", "text/plain; charset=utf-8", "image/x-icon", "application/octet-stream", ""} {
 		require.False(t, IsSafeInlineImage(ct), ct)
 	}
 }

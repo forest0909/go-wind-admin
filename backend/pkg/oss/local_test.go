@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -107,16 +108,91 @@ func TestLocalStorage_UploadReadDownloadDelete(t *testing.T) {
 	require.True(t, storageV1.IsFileNotFound(err), "%v", err)
 }
 
-// 图片按扩展名给出 Content-Type。
-func TestLocalStorage_ContentTypeByExtension(t *testing.T) {
+// Content-Type 按内容嗅探，不看扩展名：文本以 .html/.svg 命名不会被当成 HTML/SVG 返回。
+func TestLocalStorage_ContentTypeByContentNotExtension(t *testing.T) {
 	s, _ := newLocalForTest(t)
 	ctx := context.Background()
-	_, _, _, err := s.UploadFile(ctx, "images", "avatar/1/x.png", "image/png", []byte("\x89PNG\r\n\x1a\nxxxx"))
+	png := []byte("\x89PNG\r\n\x1a\nxxxx")
+	text := []byte("hello<script>window.x=1</script>")
+	cases := []struct {
+		object string
+		body   []byte
+		want   string
+	}{
+		{"temp/payload.html", text, "text/plain"},
+		{"temp/payload.svg", text, "text/plain"},
+		{"temp/payload.htm", text, "text/plain"},
+		{"avatar/1/fake.png", text, "text/plain"},
+		{"temp/real.txt", png, "image/png"},
+	}
+	for _, c := range cases {
+		_, _, _, err := s.UploadFile(ctx, "files", c.object, "", c.body)
+		require.NoError(t, err)
+		rc, ct, _, err := s.GetObjectReader(ctx, "files", c.object)
+		require.NoError(t, err)
+		require.NoError(t, rc.Close())
+		require.True(t, strings.HasPrefix(ct, c.want), "%s: got %q", c.object, ct)
+
+		resp, err := s.DownloadFile(ctx, downloadReq("files", c.object))
+		require.NoError(t, err)
+		require.True(t, strings.HasPrefix(resp.GetMime(), c.want), "%s download: got %q", c.object, resp.GetMime())
+	}
+}
+
+// root_dir 里的符号链接（中间目录或最终文件，指向根目录内外都算）一律拒绝，根目录外的文件不会被读、写、删。
+func TestLocalStorage_RejectsSymlinks(t *testing.T) {
+	s, root := newLocalForTest(t)
+	ctx := context.Background()
+
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.txt")
+	require.NoError(t, os.WriteFile(secret, []byte("secret"), 0o600))
+
+	// 目录链接指向根目录外
+	require.NoError(t, os.Symlink(outside, filepath.Join(root, "evil")))
+	// 最终文件链接指向根目录外
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "files", "d"), 0o750))
+	require.NoError(t, os.Symlink(secret, filepath.Join(root, "files", "d", "link.txt")))
+	// 根目录内的目录链接也拒绝
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "images"), 0o750))
+	require.NoError(t, os.Symlink(filepath.Join(root, "images"), filepath.Join(root, "files", "alias")))
+
+	for _, c := range []struct{ bucket, object string }{
+		{"evil", "secret.txt"},
+		{"evil", "new.txt"},
+		{"files", "d/link.txt"},
+		{"files", "alias/x.png"},
+	} {
+		_, _, _, err := s.GetObjectReader(ctx, c.bucket, c.object)
+		require.Error(t, err, "read %s/%s", c.bucket, c.object)
+		_, err = s.DownloadFile(ctx, downloadReq(c.bucket, c.object))
+		require.True(t, storageV1.IsBadRequest(err), "download %s/%s: %v", c.bucket, c.object, err)
+		_, _, _, err = s.UploadFile(ctx, c.bucket, c.object, "text/plain", []byte("pwned"))
+		require.True(t, storageV1.IsBadRequest(err), "upload %s/%s: %v", c.bucket, c.object, err)
+		require.True(t, storageV1.IsBadRequest(s.DeleteFile(ctx, c.bucket, c.object)), "delete %s/%s", c.bucket, c.object)
+	}
+
+	got, err := os.ReadFile(secret)
 	require.NoError(t, err)
-	rc, ct, _, err := s.GetObjectReader(ctx, "images", "avatar/1/x.png")
+	require.Equal(t, []byte("secret"), got, "outside file must be untouched")
+	_, err = os.Stat(filepath.Join(outside, "new.txt"))
+	require.ErrorIs(t, err, os.ErrNotExist, "nothing may be created outside root")
+	entries, err := os.ReadDir(filepath.Join(root, "images"))
 	require.NoError(t, err)
-	require.NoError(t, rc.Close())
-	require.Equal(t, "image/png", ct)
+	require.Empty(t, entries)
+}
+
+// 根目录本身是符号链接（如 macOS 的 /tmp）可以用，按解析后的目录工作。
+func TestNewLocalStorage_RootDirMayBeSymlink(t *testing.T) {
+	real := t.TempDir()
+	link := filepath.Join(t.TempDir(), "root-link")
+	require.NoError(t, os.Symlink(real, link))
+	s, err := NewLocalStorage(link, bLogger.NopLogger())
+	require.NoError(t, err)
+	_, _, _, err = s.UploadFile(context.Background(), "files", "a.txt", "text/plain", []byte("x"))
+	require.NoError(t, err)
+	_, err = os.Stat(filepath.Join(real, "files", "a.txt"))
+	require.NoError(t, err)
 }
 
 // 目录穿越、绝对路径、空段一律拒绝，根目录外的文件不会被写、读、删。

@@ -238,7 +238,8 @@ func (s *UserProfileService) UploadAvatar(ctx context.Context, req *identityV1.U
 		}
 		// 嗅探真实图片类型并校验白名单
 		realMime, _ := ossutil.DetectFileType(imageBytes)
-		if !ossutil.IsAllowedMimeType(realMime) || len(realMime) < 6 || realMime[:6] != "image/" {
+		// 头像经免鉴权路由同源返回，只收可安全内联的位图（png/jpeg/gif/webp），不收 SVG 等。
+		if !oss.IsSafeInlineImage(realMime) {
 			return nil, authenticationV1.ErrorBadRequest("only image files are allowed for avatar")
 		}
 		// 上传到 images 桶，对象名放在本人的头像目录下，换头像时只删得掉这个目录里的旧对象。
@@ -307,7 +308,7 @@ func ownedAvatarObject(legacyHost, avatarURL string, userID uint32) (bucket, obj
 }
 
 // ServeAvatar 头像读取（免鉴权，<img> 带不了 Bearer token）：GET /admin/v1/avatars/{userId}/{name}。
-// 只读 images 桶 avatar/ 目录下的对象，对象名是 UUID，猜不到。其他路径一律 404。
+// 只读 images 桶 avatar/ 目录下的位图（png/jpeg/gif/webp），对象名是 UUID，猜不到。其他一律 404。
 func (s *UserProfileService) ServeAvatar(w http.ResponseWriter, r *http.Request) {
 	_, object, ok := oss.ParseAvatarURL(r.URL.Path)
 	if !ok {
@@ -325,8 +326,8 @@ func (s *UserProfileService) ServeAvatar(w http.ResponseWriter, r *http.Request)
 			s.log.Warnf(r.Context(), "close avatar reader %s failed: %v", object, cerr)
 		}
 	}()
-	if !strings.HasPrefix(contentType, "image/") {
-		s.log.Warnf(r.Context(), "avatar object %s has non-image content type %q, refused", object, contentType)
+	if !oss.IsSafeInlineImage(contentType) {
+		s.log.Warnf(r.Context(), "avatar object %s has content type %q, not a safe inline image, refused", object, contentType)
 		http.NotFound(w, r)
 		return
 	}

@@ -60,3 +60,12 @@ func TestLegacyAvatarObject(t *testing.T) {
 	_, ok = LegacyAvatarObject("", "/images/avatar/7/abc.png", 7)
 	require.False(t, ok, "empty host recognizes nothing")
 }
+
+func TestIsSafeInlineImage(t *testing.T) {
+	for _, ct := range []string{"image/png", "image/jpeg", "image/gif", "image/webp", "IMAGE/PNG", "image/png; charset=binary"} {
+		require.True(t, IsSafeInlineImage(ct), ct)
+	}
+	for _, ct := range []string{"image/svg+xml", "text/html", "text/plain; charset=utf-8", "image/bmp", "application/octet-stream", ""} {
+		require.False(t, IsSafeInlineImage(ct), ct)
+	}
+}

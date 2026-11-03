@@ -255,7 +255,7 @@ func urlQueryEscape(s string) string {
 
 // ServeImageHandler 签名图片代理（免鉴权，签名即凭证）：
 // GET /admin/v1/file/image?path={bucket}/{object}&expires={unix}&sig={hmac}
-// 签名 = HMAC-SHA256(secret, path|expires)。流式回源 MinIO。
+// 签名 = HMAC-SHA256(secret, path|expires)。流式回源存储，只返回 png/jpeg/gif/webp。
 func (s *FileTransferService) ServeImageHandler(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	mediaPath := q.Get("path")
@@ -291,7 +291,15 @@ func (s *FileTransferService) ServeImageHandler(w http.ResponseWriter, r *http.R
 	}
 	defer func() { _ = reader.Close() }()
 
+	// 免鉴权同源返回，只放行可安全内联的位图；HTML、SVG、文本等一律不在这里返回（下载走鉴权接口）。
+	if !oss.IsSafeInlineImage(contentType) {
+		s.log.Warnf(r.Context(), "signed image %s has content type %q, not a safe inline image, refused", mediaPath, contentType)
+		http.Error(w, "object not found", http.StatusNotFound)
+		return nil
+	}
+
 	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	_, _ = io.Copy(w, reader)

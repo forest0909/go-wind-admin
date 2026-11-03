@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	paginationV1 "go-wind-admin/third_party/go-crud/api/gen/go/pagination/v1"
+	"go-wind-admin/third_party/go-utils/crypto"
 	"go-wind-admin/third_party/go-utils/trans"
 	"go-wind-admin/third_party/kratos-bootstrap/bootstrap"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
@@ -74,12 +75,19 @@ func TestServeAvatar_RejectsNonAvatarObjects(t *testing.T) {
 	}
 	_, _, _, err := st.UploadFile(ctx, "images", "avatar/7/note.txt", "text/plain", []byte("not an image"))
 	require.NoError(t, err)
+	// 扩展名是 .png、内容是 HTML/文本：按内容判断，不能当图片返回
+	_, _, _, err = st.UploadFile(ctx, "images", "avatar/7/fake.png", "image/png", []byte("<html><script>alert(1)</script></html>"))
+	require.NoError(t, err)
+	_, _, _, err = st.UploadFile(ctx, "images", "avatar/7/x.svg", "image/svg+xml", []byte(`<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>`))
+	require.NoError(t, err)
 
 	for _, p := range []string{
 		"/admin/v1/avatars/7/../../temp/x.png",
 		"/admin/v1/avatars/7/..%2F..%2Ftemp%2Fx.png",
 		"/admin/v1/avatars/x.png",
 		"/admin/v1/avatars/7/note.txt",
+		"/admin/v1/avatars/7/fake.png",
+		"/admin/v1/avatars/7/x.svg",
 		"/admin/v1/avatars/7/missing.png",
 		"/admin/v1/avatars/8/x.png",
 		"/admin/v1/file/image",
@@ -207,4 +215,57 @@ func TestLocalStorage_ProviderMismatch(t *testing.T) {
 	}
 	_, err = e.files.Delete(e.ctx, &storageV1.DeleteFileRequest{QueryBy: &storageV1.DeleteFileRequest_Id{Id: manualID}})
 	require.NoError(t, err)
+}
+
+// 头像只收 png/jpeg/gif/webp：SVG、BMP 等直接 400，不上传、不写库。
+func TestUploadAvatar_RejectsNonBitmap(t *testing.T) {
+	e := newUserProfileServiceForTest(t)
+	e.stub.getUserResult = &identityV1.User{Id: trans.Ptr(uint32(7))}
+	ctx := auth.NewContext(context.Background(), &authenticationV1.UserTokenPayload{UserId: 7})
+
+	bmp := append([]byte("BM"), make([]byte, 64)...)
+	for name, body := range map[string][]byte{
+		"svg":  []byte(`<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><rect/></svg>`),
+		"bmp":  bmp,
+		"html": []byte("<html><script>alert(1)</script></html>"),
+	} {
+		_, err := e.svc.UploadAvatar(ctx, &identityV1.UploadAvatarRequest{
+			Source: &identityV1.UploadAvatarRequest_ImageBase64{ImageBase64: base64.StdEncoding.EncodeToString(body)},
+		})
+		require.Error(t, err, name)
+		require.Contains(t, err.Error(), "only image files are allowed", name)
+	}
+	require.Empty(t, e.stub.capturedUpdates)
+}
+
+// 签名图片代理免鉴权：只返回位图并带 nosniff；文本文件即使以 .html 命名上传也拿不到（以前按扩展名返回 text/html，同源 XSS）。
+func TestServeImageHandler_OnlySafeBitmaps(t *testing.T) {
+	require.NoError(t, crypto.InitGlobalEncryptor("0123456789abcdef0123456789abcdef", true))
+	e := newLocalFileEnv(t)
+
+	upload := func(name string, body []byte, mimeType string) string {
+		resp, err := e.transfer.UploadFile(e.ctx, &storageV1.UploadFileRequest{
+			Source:         &storageV1.UploadFileRequest_File{File: body},
+			Mime:           trans.Ptr(mimeType),
+			SourceFileName: trans.Ptr(name),
+		})
+		require.NoError(t, err, name)
+		require.NotEmpty(t, resp.GetPublicUrl(), name)
+		return resp.GetPublicUrl()
+	}
+	get := func(u string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		require.NoError(t, e.transfer.ServeImageHandler(rec, httptest.NewRequest(http.MethodGet, "http://x"+u, nil)))
+		return rec
+	}
+
+	rec := get(upload("a.png", tinyPNG, "image/png"))
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "image/png", rec.Header().Get("Content-Type"))
+	require.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	require.Equal(t, tinyPNG, rec.Body.Bytes())
+
+	rec = get(upload("payload.html", []byte("hello<script>window.reviewProbe=1</script>"), "text/html"))
+	require.Equal(t, http.StatusNotFound, rec.Code)
+	require.NotContains(t, rec.Body.String(), "<script>")
 }

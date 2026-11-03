@@ -3,12 +3,12 @@ package oss
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	"mime"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,9 +27,14 @@ const (
 	localFilePerm fs.FileMode = 0o640
 )
 
+// errSymlink 对象路径上出现符号链接。
+var errSymlink = errors.New("symlink in object path")
+
 // LocalStorage 本地磁盘存储，对象存放在 root/bucket/object。
+// 所有读写删都经 os.Root 进行，不会落到根目录之外；另外拒绝路径上的任何符号链接。
 type LocalStorage struct {
-	root string
+	dir  string   // 解析过符号链接的根目录，只用于日志和报错
+	root *os.Root // 进程生命周期内不关闭
 	log  *bLogger.Helper
 }
 
@@ -40,25 +45,35 @@ func NewLocalStorage(rootDir string, logger bLogger.Logger) (*LocalStorage, erro
 	if strings.TrimSpace(rootDir) == "" {
 		return nil, errors.New("oss.local.root_dir is required when oss.storage is local")
 	}
-	root, err := filepath.Abs(rootDir)
+	abs, err := filepath.Abs(rootDir)
 	if err != nil {
 		return nil, fmt.Errorf("oss.local.root_dir %q: %w", rootDir, err)
 	}
-	if err = os.MkdirAll(root, localDirPerm); err != nil {
-		return nil, fmt.Errorf("oss.local.root_dir %q: create directory: %w", root, err)
+	if err = os.MkdirAll(abs, localDirPerm); err != nil {
+		return nil, fmt.Errorf("oss.local.root_dir %q: create directory: %w", abs, err)
 	}
-	probe, err := os.CreateTemp(root, ".write-check-*")
+	// 根目录本身可以是符号链接（如 macOS 的 /tmp），按解析后的真实目录打开。
+	dir, err := filepath.EvalSymlinks(abs)
 	if err != nil {
-		return nil, fmt.Errorf("oss.local.root_dir %q is not writable: %w", root, err)
+		return nil, fmt.Errorf("oss.local.root_dir %q: resolve: %w", abs, err)
+	}
+	probe, err := os.CreateTemp(dir, ".write-check-*")
+	if err != nil {
+		return nil, fmt.Errorf("oss.local.root_dir %q is not writable: %w", dir, err)
 	}
 	name := probe.Name()
 	if err = probe.Close(); err != nil {
-		return nil, fmt.Errorf("oss.local.root_dir %q: close probe file: %w", root, err)
+		return nil, fmt.Errorf("oss.local.root_dir %q: close probe file: %w", dir, err)
 	}
 	if err = os.Remove(name); err != nil {
-		return nil, fmt.Errorf("oss.local.root_dir %q: remove probe file: %w", root, err)
+		return nil, fmt.Errorf("oss.local.root_dir %q: remove probe file: %w", dir, err)
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, fmt.Errorf("oss.local.root_dir %q: open: %w", dir, err)
 	}
 	return &LocalStorage{
+		dir:  dir,
 		root: root,
 		log:  bLogger.NewHelper(logger.With("module", "oss/local")),
 	}, nil
@@ -66,13 +81,14 @@ func NewLocalStorage(rootDir string, logger bLogger.Logger) (*LocalStorage, erro
 
 func (s *LocalStorage) Provider() storageV1.OSSProvider { return storageV1.OSSProvider_LOCAL }
 
-// objectPath 把 bucket/object 映射成 root 下的文件路径。
-// 拒绝空段、"."、".."、绝对路径和反斜杠，最后再确认结果落在 root 内。
-func (s *LocalStorage) objectPath(bucketName, objectName string) (string, error) {
+// objectPath 把 bucket/object 映射成相对根目录的路径（斜杠分隔，os.Root 接受）。
+// 拒绝空段、"."、".."、绝对路径、反斜杠和 NUL。
+func objectPath(bucketName, objectName string) (string, error) {
 	if bucketName == "" || objectName == "" {
 		return "", storageV1.ErrorBadRequest("bucket name and object name are required")
 	}
-	if strings.ContainsAny(bucketName, `/\`) || bucketName == "." || bucketName == ".." {
+	if strings.ContainsAny(bucketName, `/\`) || strings.ContainsRune(bucketName, 0) ||
+		bucketName == "." || bucketName == ".." {
 		return "", storageV1.ErrorBadRequest("invalid bucket name")
 	}
 	if strings.HasPrefix(objectName, "/") || strings.Contains(objectName, `\`) ||
@@ -84,12 +100,40 @@ func (s *LocalStorage) objectPath(bucketName, objectName string) (string, error)
 			return "", storageV1.ErrorBadRequest("invalid object name")
 		}
 	}
-	p := filepath.Join(s.root, bucketName, filepath.FromSlash(objectName))
-	rel, err := filepath.Rel(s.root, p)
-	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", storageV1.ErrorBadRequest("invalid object path")
+	return bucketName + "/" + objectName, nil
+}
+
+// checkNoSymlink 逐级 Lstat，路径上（中间目录和最终文件）出现符号链接就拒绝。
+// 遇到不存在的一级就停：后面的都还不存在，会由本服务按普通目录/文件创建。
+// os.Root 本身已保证不会越出根目录；这里再拒绝根目录内的链接，避免链接把两个对象指到一起。
+func (s *LocalStorage) checkNoSymlink(rel string) error {
+	segs := strings.Split(rel, "/")
+	for i := range segs {
+		p := strings.Join(segs[:i+1], "/")
+		st, err := s.root.Lstat(p)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if st.Mode()&fs.ModeSymlink != 0 {
+			return fmt.Errorf("%s: %w", p, errSymlink)
+		}
 	}
-	return p, nil
+	return nil
+}
+
+// resolve 校验对象名并检查符号链接，返回相对路径。
+func (s *LocalStorage) resolve(bucketName, objectName string) (string, error) {
+	rel, err := objectPath(bucketName, objectName)
+	if err != nil {
+		return "", err
+	}
+	if err = s.checkNoSymlink(rel); err != nil {
+		return "", err
+	}
+	return rel, nil
 }
 
 // UploadFile 先写同目录下的临时文件，再 rename 到目标位置，读的人看不到写了一半的文件。
@@ -97,31 +141,53 @@ func (s *LocalStorage) UploadFile(ctx context.Context, bucketName, objectName, m
 	if len(fileContent) == 0 {
 		return UploadInfo{}, "", "", storageV1.ErrorUploadFailed("empty fileContent data")
 	}
-	p, err := s.objectPath(bucketName, objectName)
+	rel, err := objectPath(bucketName, objectName)
 	if err != nil {
 		return UploadInfo{}, "", "", err
 	}
-	if err = s.writeFile(p, fileContent); err != nil {
-		s.log.Errorf(ctx, "local storage: write %s/%s failed: %v", bucketName, objectName, err)
+	if err = s.writeFile(rel, fileContent); err != nil {
+		s.log.Errorf(ctx, "local storage: write %s/%s under %s failed: %v", bucketName, objectName, s.dir, err)
+		if errors.Is(err, errSymlink) {
+			return UploadInfo{}, "", "", storageV1.ErrorBadRequest("invalid object path")
+		}
 		return UploadInfo{}, "", "", storageV1.ErrorUploadFailed("failed to upload fileContent")
 	}
 	info := UploadInfo{Bucket: bucketName, Key: objectName, Size: int64(len(fileContent))}
 	return info, ossutil.JoinObjectUrl("", bucketName, objectName), "", nil
 }
 
-func (s *LocalStorage) writeFile(p string, content []byte) (err error) {
-	dir := filepath.Dir(p)
-	if err = os.MkdirAll(dir, localDirPerm); err != nil {
+func randomSuffix() (string, error) {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func (s *LocalStorage) writeFile(rel string, content []byte) (err error) {
+	if err = s.checkNoSymlink(rel); err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".upload-*")
+	dir := path.Dir(rel)
+	if err = s.root.MkdirAll(dir, localDirPerm); err != nil {
+		return err
+	}
+	// MkdirAll 之后再查一次：新建的目录不会是链接，并发出现的链接在这里拦下（越界由 os.Root 兜底）。
+	if err = s.checkNoSymlink(rel); err != nil {
+		return err
+	}
+	suffix, err := randomSuffix()
 	if err != nil {
 		return err
 	}
-	tmpName := tmp.Name()
+	tmpName := dir + "/.upload-" + suffix
+	tmp, err := s.root.OpenFile(tmpName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, localFilePerm)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if err != nil {
-			if rmErr := os.Remove(tmpName); rmErr != nil && !errors.Is(rmErr, fs.ErrNotExist) {
+			if rmErr := s.root.Remove(tmpName); rmErr != nil && !errors.Is(rmErr, fs.ErrNotExist) {
 				err = errors.Join(err, rmErr)
 			}
 		}
@@ -137,18 +203,24 @@ func (s *LocalStorage) writeFile(p string, content []byte) (err error) {
 	if err = tmp.Close(); err != nil {
 		return err
 	}
-	if err = os.Chmod(tmpName, localFilePerm); err != nil {
+	// OpenFile 的权限受 umask 影响，显式设一次
+	if err = s.root.Chmod(tmpName, localFilePerm); err != nil {
 		return err
 	}
-	return os.Rename(tmpName, p)
+	// 目标若是链接，rename 只替换链接本身，不会写到链接指向的位置
+	return s.root.Rename(tmpName, rel)
 }
 
 func (s *LocalStorage) DeleteFile(ctx context.Context, bucketName, objectName string) error {
-	p, err := s.objectPath(bucketName, objectName)
+	rel, err := s.resolve(bucketName, objectName)
+	if errors.Is(err, errSymlink) {
+		s.log.Errorf(ctx, "local storage: refuse to delete %s/%s: %v", bucketName, objectName, err)
+		return storageV1.ErrorBadRequest("invalid object path")
+	}
 	if err != nil {
 		return err
 	}
-	if err = os.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err = s.root.Remove(rel); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		s.log.Errorf(ctx, "local storage: delete %s/%s failed: %v", bucketName, objectName, err)
 		return storageV1.ErrorDeleteFailed("failed to delete file")
 	}
@@ -157,11 +229,11 @@ func (s *LocalStorage) DeleteFile(ctx context.Context, bucketName, objectName st
 
 // open 打开对象文件并确认是普通文件。
 func (s *LocalStorage) open(bucketName, objectName string) (*os.File, fs.FileInfo, error) {
-	p, err := s.objectPath(bucketName, objectName)
+	rel, err := s.resolve(bucketName, objectName)
 	if err != nil {
 		return nil, nil, err
 	}
-	f, err := os.Open(p)
+	f, err := s.root.Open(rel)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,11 +249,10 @@ func (s *LocalStorage) open(bucketName, objectName string) (*os.File, fs.FileInf
 	return f, st, nil
 }
 
-// contentTypeOf 本地文件不存 Content-Type：先按扩展名，认不出再嗅探文件头。
-func contentTypeOf(f io.ReadSeeker, objectName string) (string, error) {
-	if ct := mime.TypeByExtension(path.Ext(objectName)); ct != "" {
-		return ct, nil
-	}
+// contentTypeOf 本地文件不存 Content-Type，按内容嗅探，和上传时校验用的是同一个函数
+// （ossutil.DetectFileType 只看前 512 字节），所以得到的就是上传时校验过的类型。
+// 不看扩展名：文件名由上传者决定，不能让它把类型提升成 HTML 之类的主动内容。
+func contentTypeOf(f io.ReadSeeker) (string, error) {
 	head := make([]byte, 512)
 	n, err := io.ReadFull(f, head)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
@@ -193,7 +264,11 @@ func contentTypeOf(f io.ReadSeeker, objectName string) (string, error) {
 	if n == 0 {
 		return DefaultContentType, nil
 	}
-	return http.DetectContentType(head[:n]), nil
+	ct, _ := ossutil.DetectFileType(head[:n])
+	if ct == "" {
+		ct = DefaultContentType
+	}
+	return ct, nil
 }
 
 func (s *LocalStorage) GetObjectReader(ctx context.Context, bucketName, objectName string) (io.ReadCloser, string, int64, error) {
@@ -202,7 +277,7 @@ func (s *LocalStorage) GetObjectReader(ctx context.Context, bucketName, objectNa
 		s.log.Errorf(ctx, "local storage: open %s/%s failed: %v", bucketName, objectName, err)
 		return nil, "", 0, err
 	}
-	ct, err := contentTypeOf(f, objectName)
+	ct, err := contentTypeOf(f)
 	if err != nil {
 		_ = f.Close() // 返回检测类型时的错误
 		s.log.Errorf(ctx, "local storage: detect content type of %s/%s failed: %v", bucketName, objectName, err)
@@ -223,8 +298,13 @@ func (s *LocalStorage) DownloadFile(ctx context.Context, req *storageV1.Download
 	f, st, err := s.open(bucketName, objectName)
 	if err != nil {
 		s.log.Errorf(ctx, "local storage: open %s/%s failed: %v", bucketName, objectName, err)
-		if errors.Is(err, fs.ErrNotExist) {
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
 			return nil, storageV1.ErrorFileNotFound("file not found")
+		case errors.Is(err, errSymlink):
+			return nil, storageV1.ErrorBadRequest("invalid object path")
+		case storageV1.IsBadRequest(err):
+			return nil, err
 		}
 		return nil, storageV1.ErrorDownloadFailed("failed to get object")
 	}
@@ -252,7 +332,7 @@ func (s *LocalStorage) DownloadFile(ctx context.Context, req *storageV1.Download
 	}
 	if req.GetAcceptMime() != "" {
 		resp.Mime = req.GetAcceptMime()
-	} else if resp.Mime, err = contentTypeOf(f, objectName); err != nil {
+	} else if resp.Mime, err = contentTypeOf(f); err != nil {
 		s.log.Errorf(ctx, "local storage: detect content type of %s/%s failed: %v", bucketName, objectName, err)
 		return nil, storageV1.ErrorDownloadFailed("failed to read object")
 	}

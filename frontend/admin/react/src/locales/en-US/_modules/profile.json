@@ -86,7 +86,7 @@
   },
   "avatarUploadSuccess": "Avatar uploaded",
   "avatarUploadFailed": "Failed to upload avatar",
-  "avatarNotImage": "Only image files are allowed",
+  "avatarNotImage": "Only PNG, JPEG, GIF, WebP or BMP images are allowed",
   "avatarTooLarge": "Image must be less than 5MB",
   "avatarDeleted": "Avatar deleted",
   "avatarDeleteFailed": "Failed to delete avatar",

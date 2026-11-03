@@ -1,4 +1,14 @@
 oss:
+  # 文件存储：minio（默认，留空同此）或 local（本地磁盘）。每个部署选一种。
+  # 中途切换后，旧存储里的文件不会自动迁移：文件管理里已有记录下载/删除会提示「存储方式不一致」，
+  # 旧头像显示不出来（详见 docs/backend_deploy.md「文件存储」）。
+  storage: "${GWA_OSS_STORAGE:minio}"
+
+  # storage 为 local 时使用：对象存放在 root_dir/{bucket}/{object}。
+  # 目录不存在会自动创建；不可写时启动失败。docker 部署时要挂数据卷，见 docker-compose.yaml。
+  local:
+    root_dir: "${GWA_OSS_LOCAL_ROOT_DIR:./data/storage}"
+
   minio:
     endpoint: "minio:9000"
     upload_host: "minio:9000"

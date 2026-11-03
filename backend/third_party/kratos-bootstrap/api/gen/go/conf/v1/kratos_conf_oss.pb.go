@@ -23,9 +23,12 @@ const (
 
 // 对象存储
 type OSS struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Minio         *OSS_MinIO             `protobuf:"bytes,1,opt,name=minio,proto3,oneof" json:"minio,omitempty"`
-	S3            *OSS_S3                `protobuf:"bytes,2,opt,name=s3,proto3,oneof" json:"s3,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Minio *OSS_MinIO             `protobuf:"bytes,1,opt,name=minio,proto3,oneof" json:"minio,omitempty"`
+	S3    *OSS_S3                `protobuf:"bytes,2,opt,name=s3,proto3,oneof" json:"s3,omitempty"`
+	Local *OSS_Local             `protobuf:"bytes,3,opt,name=local,proto3,oneof" json:"local,omitempty"`
+	// 使用哪种存储：minio（默认，留空同此）或 local
+	Storage       string `protobuf:"bytes,4,opt,name=storage,proto3" json:"storage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -72,6 +75,20 @@ func (x *OSS) GetS3() *OSS_S3 {
 		return x.S3
 	}
 	return nil
+}
+
+func (x *OSS) GetLocal() *OSS_Local {
+	if x != nil {
+		return x.Local
+	}
+	return nil
+}
+
+func (x *OSS) GetStorage() string {
+	if x != nil {
+		return x.Storage
+	}
+	return ""
 }
 
 // MinIO
@@ -324,14 +341,61 @@ func (x *OSS_S3) GetDownloadHost() string {
 	return ""
 }
 
+// 本地磁盘
+type OSS_Local struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RootDir       string                 `protobuf:"bytes,1,opt,name=root_dir,json=rootDir,proto3" json:"root_dir,omitempty"` // 根目录，对象存放在 root_dir/bucket/object
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OSS_Local) Reset() {
+	*x = OSS_Local{}
+	mi := &file_conf_v1_kratos_conf_oss_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OSS_Local) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OSS_Local) ProtoMessage() {}
+
+func (x *OSS_Local) ProtoReflect() protoreflect.Message {
+	mi := &file_conf_v1_kratos_conf_oss_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OSS_Local.ProtoReflect.Descriptor instead.
+func (*OSS_Local) Descriptor() ([]byte, []int) {
+	return file_conf_v1_kratos_conf_oss_proto_rawDescGZIP(), []int{0, 2}
+}
+
+func (x *OSS_Local) GetRootDir() string {
+	if x != nil {
+		return x.RootDir
+	}
+	return ""
+}
+
 var File_conf_v1_kratos_conf_oss_proto protoreflect.FileDescriptor
 
 const file_conf_v1_kratos_conf_oss_proto_rawDesc = "" +
 	"\n" +
-	"\x1dconf/v1/kratos_conf_oss.proto\x12\x04conf\x1a\x1dconf/v1/kratos_conf_tls.proto\"\xb4\x06\n" +
+	"\x1dconf/v1/kratos_conf_oss.proto\x12\x04conf\x1a\x1dconf/v1/kratos_conf_tls.proto\"\xa8\a\n" +
 	"\x03OSS\x12*\n" +
 	"\x05minio\x18\x01 \x01(\v2\x0f.conf.OSS.MinIOH\x00R\x05minio\x88\x01\x01\x12!\n" +
-	"\x02s3\x18\x02 \x01(\v2\f.conf.OSS.S3H\x01R\x02s3\x88\x01\x01\x1a\xb5\x02\n" +
+	"\x02s3\x18\x02 \x01(\v2\f.conf.OSS.S3H\x01R\x02s3\x88\x01\x01\x12*\n" +
+	"\x05local\x18\x03 \x01(\v2\x0f.conf.OSS.LocalH\x02R\x05local\x88\x01\x01\x12\x18\n" +
+	"\astorage\x18\x04 \x01(\tR\astorage\x1a\xb5\x02\n" +
 	"\x05MinIO\x12\x1a\n" +
 	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12\x1d\n" +
 	"\n" +
@@ -364,9 +428,12 @@ const file_conf_v1_kratos_conf_oss_proto_rawDesc = "" +
 	"\vupload_host\x18\x14 \x01(\tR\n" +
 	"uploadHost\x12#\n" +
 	"\rdownload_host\x18\x15 \x01(\tR\fdownloadHostB\x15\n" +
-	"\x13_retry_max_attemptsB\b\n" +
+	"\x13_retry_max_attempts\x1a\"\n" +
+	"\x05Local\x12\x19\n" +
+	"\broot_dir\x18\x01 \x01(\tR\arootDirB\b\n" +
 	"\x06_minioB\x05\n" +
-	"\x03_s3B\x8d\x01\n" +
+	"\x03_s3B\b\n" +
+	"\x06_localB\x8d\x01\n" +
 	"\bcom.confB\x12KratosConfOssProtoP\x01Z=go-wind-admin/third_party/kratos-bootstrap/api/gen/go/conf/v1\xa2\x02\x03CXX\xaa\x02\x04Conf\xca\x02\x04Conf\xe2\x02\x10Conf\\GPBMetadata\xea\x02\x04Confb\x06proto3"
 
 var (
@@ -381,23 +448,25 @@ func file_conf_v1_kratos_conf_oss_proto_rawDescGZIP() []byte {
 	return file_conf_v1_kratos_conf_oss_proto_rawDescData
 }
 
-var file_conf_v1_kratos_conf_oss_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_conf_v1_kratos_conf_oss_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_conf_v1_kratos_conf_oss_proto_goTypes = []any{
 	(*OSS)(nil),       // 0: conf.OSS
 	(*OSS_MinIO)(nil), // 1: conf.OSS.MinIO
 	(*OSS_S3)(nil),    // 2: conf.OSS.S3
-	(*TLS)(nil),       // 3: conf.TLS
+	(*OSS_Local)(nil), // 3: conf.OSS.Local
+	(*TLS)(nil),       // 4: conf.TLS
 }
 var file_conf_v1_kratos_conf_oss_proto_depIdxs = []int32{
 	1, // 0: conf.OSS.minio:type_name -> conf.OSS.MinIO
 	2, // 1: conf.OSS.s3:type_name -> conf.OSS.S3
-	3, // 2: conf.OSS.MinIO.tls:type_name -> conf.TLS
-	3, // 3: conf.OSS.S3.tls:type_name -> conf.TLS
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 2: conf.OSS.local:type_name -> conf.OSS.Local
+	4, // 3: conf.OSS.MinIO.tls:type_name -> conf.TLS
+	4, // 4: conf.OSS.S3.tls:type_name -> conf.TLS
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_conf_v1_kratos_conf_oss_proto_init() }
@@ -414,7 +483,7 @@ func file_conf_v1_kratos_conf_oss_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_conf_v1_kratos_conf_oss_proto_rawDesc), len(file_conf_v1_kratos_conf_oss_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

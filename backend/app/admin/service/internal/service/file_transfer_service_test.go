@@ -66,7 +66,7 @@ func newFileTransferServiceForTest(t *testing.T) (*FileTransferService, *fakeS3)
 
 	return &FileTransferService{
 		log:               bLogger.NewHelper(bLogger.NopLogger()),
-		mc:                mc,
+		storage:           mc,
 		fileServiceClient: data.NewFileRepo(boot, enttest.NewEntClientForTest(t)),
 	}, s3
 }

@@ -93,8 +93,13 @@ services:
       # 可选：外部数据源连接串，每个源一行，和 configs/data.yaml 的 ${GWA_EXT_<NAME>_DSN} 对应
       # - GWA_EXT_DEMO_DSN=${GWA_EXT_DEMO_DSN:-}
       - AUDIT_ARCHIVE_DIR=/app/data/audit-archive
+      # 文件存储，默认 MinIO。改存本地磁盘：把下面两行取消注释（文件落在 admin-data 卷的 storage/ 目录），
+      # 再删掉本服务 depends_on 里的 minio，不需要 MinIO 时也可以删掉上面的 minio 服务和 minio-data 卷。
+      # 中途切换存储的后果见 docs/backend_deploy.md「文件存储」。
+      # - GWA_OSS_STORAGE=local
+      # - GWA_OSS_LOCAL_ROOT_DIR=/app/data/storage
     volumes:
-      # 审计归档文件
+      # 审计归档文件；本地存储模式下的上传文件也在这里（/app/data/storage）
       - admin-data:/app/data
     # /readyz 会 Ping 数据库和 Redis。首次启动要建表、播种、同步接口和权限，给足 start_period。
     healthcheck:

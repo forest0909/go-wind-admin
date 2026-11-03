@@ -223,6 +223,7 @@
       "UPLOAD_FAILED": "Upload failed, please try again later",
       "FILE_NOT_FOUND": "File not found",
       "FILE_TOO_LARGE": "File too large: exceeds the upload size or storage limit",
+      "STORAGE_PROVIDER_MISMATCH": "The file is stored in a different storage backend than the one currently configured",
       "DEPARTMENT_NOT_FOUND": "Department not found",
       "ORGANIZATION_NOT_FOUND": "Organization not found",
       "POSITION_NOT_FOUND": "Position not found",

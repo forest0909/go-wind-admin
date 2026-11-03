@@ -41,6 +41,10 @@ func NewMinIoClient(cfg *conf.Bootstrap, logger bLogger.Logger) *MinIOClient {
 	}
 }
 
+var _ Storage = (*MinIOClient)(nil)
+
+func (c *MinIOClient) Provider() storageV1.OSSProvider { return storageV1.OSSProvider_MINIO }
+
 // DownloadHost 返回配置的下载地址前缀（UploadFile 返回的 downloadUrl 以它开头）。
 func (c *MinIOClient) DownloadHost() string {
 	if c == nil || c.conf == nil || c.conf.Minio == nil {
@@ -224,10 +228,10 @@ func (c *MinIOClient) UploadFile(
 	bucketName string, objectName string,
 	mimeType string,
 	fileContent []byte,
-) (minio.UploadInfo, string, string, error) {
+) (UploadInfo, string, string, error) {
 	if len(fileContent) == 0 {
 		c.log.Errorf(ctx, "empty fileContent data")
-		return minio.UploadInfo{}, "", "", storageV1.ErrorUploadFailed("empty fileContent data")
+		return UploadInfo{}, "", "", storageV1.ErrorUploadFailed("empty fileContent data")
 	}
 
 	if bucketName == "" {
@@ -252,13 +256,13 @@ func (c *MinIOClient) UploadFile(
 	}
 
 	if err := c.EnsureBucketExists(ctx, bucketName); err != nil {
-		return minio.UploadInfo{}, "", "", err
+		return UploadInfo{}, "", "", err
 	}
 
 	reader := bytes.NewReader(fileContent)
 	if reader == nil {
 		c.log.Errorf(ctx, "invalid fileContent data")
-		return minio.UploadInfo{}, "", "", storageV1.ErrorUploadFailed("invalid fileContent data")
+		return UploadInfo{}, "", "", storageV1.ErrorUploadFailed("invalid fileContent data")
 	}
 
 	info, err := c.mc.PutObject(
@@ -271,13 +275,13 @@ func (c *MinIOClient) UploadFile(
 	)
 	if err != nil {
 		c.log.Errorf(ctx, "failed to upload fileContent: %v", err)
-		return info, "", "", storageV1.ErrorUploadFailed("failed to upload fileContent")
+		return UploadInfo{}, "", "", storageV1.ErrorUploadFailed("failed to upload fileContent")
 	}
 
 	downloadUrl := ossutil.JoinObjectUrl(c.conf.Minio.DownloadHost, bucketName, objectName)
 	storagePath := ossutil.JoinObjectUrl("", bucketName, objectName)
 
-	return info, storagePath, downloadUrl, nil
+	return UploadInfo{Bucket: info.Bucket, Key: info.Key, Size: info.Size}, storagePath, downloadUrl, nil
 }
 
 // getDownloadUrlWithStorageObjectDirect 直接获取文件内容

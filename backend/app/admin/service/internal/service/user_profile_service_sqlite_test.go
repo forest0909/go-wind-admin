@@ -50,6 +50,7 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent/usercredential"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
 	"go-wind-admin/pkg/middleware/auth"
+	"go-wind-admin/pkg/oss"
 )
 
 // userProfileUserRepoStub 是 UserProfileService 专用的 data.UserRepo 桩：
@@ -75,6 +76,10 @@ func (s *userProfileUserRepoStub) Get(_ context.Context, req *identityV1.GetUser
 }
 
 func (s *userProfileUserRepoStub) Update(_ context.Context, req *identityV1.UpdateUserRequest) error {
+	// 和真实 userRepo.Update 一样要求顶层 id，否则桩会放过线上必然失败的请求
+	if req.GetId() == 0 {
+		return identityV1.ErrorBadRequest("id is required")
+	}
 	s.capturedUpdates = append(s.capturedUpdates, req)
 	return nil
 }
@@ -93,8 +98,8 @@ type userProfileServiceTestEnv struct {
 // log 换 NopLogger；userRepo 用本文件桩；roleRepo 走既有 testkit；
 // userCredentialRepo / configRepo 走 repo_testkit5（miniredis 假 client 注入，
 // 装配关系与生产 wiring_ent.go 一致）；authenticator 走 repo_testkit5 注入式
-// 构造；notifier（换绑验证码邮件出口）与 mc（需 MinIO 实例）
-// 置 nil，见文件头跳过说明。
+// 构造；notifier（换绑验证码邮件出口）置 nil，见文件头跳过说明；
+// storage 用临时目录下的本地存储。
 func newUserProfileServiceForTest(t *testing.T) userProfileServiceTestEnv {
 	t.Helper()
 	entClient := enttest.NewEntClientForTest(t)
@@ -114,6 +119,9 @@ func newUserProfileServiceForTest(t *testing.T) userProfileServiceTestEnv {
 	passwordCrypto := data.NewPasswordCrypto()
 	userCredentialRepo := data.NewUserCredentialRepoForTest(entClient, passwordCrypto, configRepo)
 
+	localStorage, err := oss.NewLocalStorage(t.TempDir(), bLogger.NopLogger())
+	require.NoError(t, err)
+
 	stub := &userProfileUserRepoStub{}
 	svc := &UserProfileService{
 		log:                bLogger.NewHelper(bLogger.NopLogger()),
@@ -123,7 +131,7 @@ func newUserProfileServiceForTest(t *testing.T) userProfileServiceTestEnv {
 		authenticator:      authenticator,
 		outbound:           nil,
 		vcodeCache:         nil,
-		mc:                 nil,
+		storage:            localStorage,
 	}
 	return userProfileServiceTestEnv{svc: svc, stub: stub, entClient: entClient, tokenCache: tokenCache}
 }

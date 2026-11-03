@@ -12,6 +12,9 @@ import {
 import { getCharColor, getRandomColor } from '@/utils/color';
 import { formatDateTime } from '@/utils/date';
 
+// 头像可接受的图片类型，与后端白名单一致（backend/pkg/oss/inline.go）
+const AVATAR_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/bmp'];
+
 const BaseSetting = () => {
   const { t } = useTranslation(['profile', 'common']);
   const { message } = App.useApp();
@@ -78,7 +81,7 @@ const BaseSetting = () => {
   };
 
   const beforeAvatarUpload = (file: File) => {
-    const isImage = file.type.startsWith('image/');
+    const isImage = AVATAR_MIME_TYPES.includes(file.type);
     const withinSize = file.size / 1024 / 1024 < 5;
     if (!isImage) {
       message.error(t('avatarNotImage'));
@@ -184,7 +187,7 @@ const BaseSetting = () => {
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <Upload
               showUploadList={false}
-              accept="image/*"
+              accept={AVATAR_MIME_TYPES.join(',')}
               beforeUpload={beforeAvatarUpload}
               customRequest={({ file }) => handleUploadAvatar(file as File)}
             >

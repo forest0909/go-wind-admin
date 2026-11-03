@@ -47,6 +47,8 @@ gui-test-screenshots/
 
 # 审计日志归档任务的落盘目录（AUDIT_ARCHIVE_DIR，默认 ./data/audit-archive，按进程 CWD 生成）
 **/data/audit-archive/
+# 本地文件存储的默认根目录（oss.local.root_dir，默认 ./data/storage，按进程 CWD 生成）
+**/data/storage/
 
 # 依赖目录兜底（各端自己的 .gitignore 之外，防在错误目录跑包管理器把依赖带进仓）
 node_modules/

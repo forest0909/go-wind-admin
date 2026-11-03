@@ -31,3 +31,5 @@
 2026-11-02：`conf.Server.REST` 新增 `enable_metrics = 23`（`api/protos/conf/v1/kratos_conf_server.proto`，已 `make api` 重新生成 pb），由 admin 服务的 `internal/server/metrics.go` 读取，控制 `GET /metrics`。
 
 2026-11-02：`conf/v1/kratos_conf_data.proto` 的 `Data` 增加 `map<string, ExternalSource> external_sources = 20`（外部数据源：driver、dsn、read_only、连接池、query_timeout、required、timezone），重新 `make api` 生成 `kratos_conf_data.pb.go`。用法见 `docs/crud_module_guide/external.md`。
+
+2026-11-03：`conf/v1/kratos_conf_oss.proto` 的 `OSS` 增加 `Local local = 3`（`root_dir`）和 `string storage = 4`（`minio` / `local`，留空等于 `minio`），重新 `make api` 生成 `kratos_conf_oss.pb.go`。由 admin 服务的 `pkg/oss.NewStorage` 读取，选择文件存储实现。

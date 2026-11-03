@@ -21,6 +21,17 @@ import (
 
 var codec = encoding.GetCodec("json")
 
+// downloadDisposition 下载响应的 Content-Disposition：总是 attachment，文件名去掉引号、反斜杠和控制字符。
+func downloadDisposition(filename string) string {
+	clean := strings.Map(func(r rune) rune {
+		if r == '"' || r == '\\' || r < 0x20 || r == 0x7f {
+			return '_'
+		}
+		return r
+	}, filename)
+	return "attachment; filename=\"" + clean + "\""
+}
+
 func uploadTooLargeError() error {
 	return storageV1.ErrorFileTooLarge("request body exceeds %d bytes", maxUploadRequestBytes)
 }
@@ -282,13 +293,10 @@ func _FileTransferService_DownloadFile_HTTP_Handler(svc *service.FileTransferSer
 			filename = "file"
 		}
 
-		var disposition string
-		if in.GetDisposition() != "" {
-			disposition = in.GetDisposition()
-		} else {
-			disposition = "attachment; filename=\"" + filename + "\""
-		}
-		rw.Header().Set("Content-Disposition", disposition)
+		// 一律 attachment + nosniff：文件内容和类型都由上传者决定，不能让浏览器在本站同源下内联渲染
+		// （客户端传的 disposition=inline 不再生效）。
+		rw.Header().Set("Content-Disposition", downloadDisposition(filename))
+		rw.Header().Set("X-Content-Type-Options", "nosniff")
 		rw.Header().Set("Accept-Ranges", "bytes")
 
 		// 使用 bytes.Reader 以便支持高效的部分读取/流式写入

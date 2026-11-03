@@ -165,6 +165,20 @@ func ErrorConflict(format string, args ...interface{}) *errors.Error {
 	return errors.New(409, StorageErrorReason_CONFLICT.String(), fmt.Sprintf(format, args...))
 }
 
+// 文件记录的存储方式与当前配置不一致
+func IsStorageProviderMismatch(err error) bool {
+	if err == nil {
+		return false
+	}
+	e := errors.FromError(err)
+	return e.Reason == StorageErrorReason_STORAGE_PROVIDER_MISMATCH.String() && e.Code == 409
+}
+
+// 文件记录的存储方式与当前配置不一致
+func ErrorStorageProviderMismatch(format string, args ...interface{}) *errors.Error {
+	return errors.New(409, StorageErrorReason_STORAGE_PROVIDER_MISMATCH.String(), fmt.Sprintf(format, args...))
+}
+
 // 410
 func IsGone(err error) bool {
 	if err == nil {

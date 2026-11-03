@@ -86,7 +86,7 @@
   },
   "avatarUploadSuccess": "头像上传成功",
   "avatarUploadFailed": "头像上传失败",
-  "avatarNotImage": "只能上传图片文件",
+  "avatarNotImage": "只能上传 PNG、JPEG、GIF、WebP 或 BMP 图片",
   "avatarTooLarge": "图片大小不能超过 5MB",
   "avatarDeleted": "头像已删除",
   "avatarDeleteFailed": "头像删除失败",

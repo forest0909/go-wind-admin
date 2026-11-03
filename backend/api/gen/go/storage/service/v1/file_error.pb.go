@@ -46,7 +46,8 @@ const (
 	// 408
 	StorageErrorReason_REQUEST_TIMEOUT StorageErrorReason = 800 // 请求超时
 	// 409
-	StorageErrorReason_CONFLICT StorageErrorReason = 900 // 冲突
+	StorageErrorReason_CONFLICT                  StorageErrorReason = 900 // 冲突
+	StorageErrorReason_STORAGE_PROVIDER_MISMATCH StorageErrorReason = 901 // 文件记录的存储方式与当前配置不一致
 	// 410
 	StorageErrorReason_GONE StorageErrorReason = 1000 // 已删除
 	// 411
@@ -131,6 +132,7 @@ var (
 		700:  "PROXY_AUTHENTICATION_REQUIRED",
 		800:  "REQUEST_TIMEOUT",
 		900:  "CONFLICT",
+		901:  "STORAGE_PROVIDER_MISMATCH",
 		1000: "GONE",
 		1010: "LENGTH_REQUIRED",
 		1020: "PRECONDITION_FAILED",
@@ -180,6 +182,7 @@ var (
 		"PROXY_AUTHENTICATION_REQUIRED":   700,
 		"REQUEST_TIMEOUT":                 800,
 		"CONFLICT":                        900,
+		"STORAGE_PROVIDER_MISMATCH":       901,
 		"GONE":                            1000,
 		"LENGTH_REQUIRED":                 1010,
 		"PRECONDITION_FAILED":             1020,
@@ -250,7 +253,7 @@ var File_storage_service_v1_file_error_proto protoreflect.FileDescriptor
 
 const file_storage_service_v1_file_error_proto_rawDesc = "" +
 	"\n" +
-	"#storage/service/v1/file_error.proto\x12\x12storage.service.v1\x1a\x13errors/errors.proto*\x96\v\n" +
+	"#storage/service/v1/file_error.proto\x12\x12storage.service.v1\x1a\x13errors/errors.proto*\xbc\v\n" +
 	"\x12StorageErrorReason\x12\x15\n" +
 	"\vBAD_REQUEST\x10\x00\x1a\x04\xa8E\x90\x03\x12\x16\n" +
 	"\fUNAUTHORIZED\x10d\x1a\x04\xa8E\x91\x03\x12\x1b\n" +
@@ -262,7 +265,8 @@ const file_storage_service_v1_file_error_proto_rawDesc = "" +
 	"\x0eNOT_ACCEPTABLE\x10\xd8\x04\x1a\x04\xa8E\x96\x03\x12(\n" +
 	"\x1dPROXY_AUTHENTICATION_REQUIRED\x10\xbc\x05\x1a\x04\xa8E\x97\x03\x12\x1a\n" +
 	"\x0fREQUEST_TIMEOUT\x10\xa0\x06\x1a\x04\xa8E\x98\x03\x12\x13\n" +
-	"\bCONFLICT\x10\x84\a\x1a\x04\xa8E\x99\x03\x12\x0f\n" +
+	"\bCONFLICT\x10\x84\a\x1a\x04\xa8E\x99\x03\x12$\n" +
+	"\x19STORAGE_PROVIDER_MISMATCH\x10\x85\a\x1a\x04\xa8E\x99\x03\x12\x0f\n" +
 	"\x04GONE\x10\xe8\a\x1a\x04\xa8E\x9a\x03\x12\x1a\n" +
 	"\x0fLENGTH_REQUIRED\x10\xf2\a\x1a\x04\xa8E\x9b\x03\x12\x1e\n" +
 	"\x13PRECONDITION_FAILED\x10\xfc\a\x1a\x04\xa8E\x9c\x03\x12\x1c\n" +

@@ -42,8 +42,9 @@ func NewRedisClient(ctx *bootstrap.Context) (*redis.Client, func(), error) {
 	}, nil
 }
 
-func NewMinIoClient(ctx *bootstrap.Context) *oss.MinIOClient {
-	return oss.NewMinIoClient(ctx.GetConfig(), ctx.GetLogger())
+// NewStorage 按 oss.storage 创建文件存储（minio 或 local）。
+func NewStorage(ctx *bootstrap.Context) (oss.Storage, error) {
+	return oss.NewStorage(ctx.GetConfig(), ctx.GetLogger())
 }
 
 func NewPasswordCrypto() password.Crypto {

@@ -3,6 +3,8 @@ package data
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -57,14 +59,14 @@ func TestRunSchemaUpgrades_FreshDB(t *testing.T) {
 	drv := entClient.Driver()
 	ctx := context.Background()
 
-	require.NoError(t, RunSchemaUpgrades(ctx, drv, nopUpgradeLogger()))
-	want := make([]upgradeRecord, 0, len(schemaUpgradeSteps))
-	for _, s := range schemaUpgradeSteps {
+	require.NoError(t, RunSchemaUpgrades(ctx, drv, "", nopUpgradeLogger()))
+	want := make([]upgradeRecord, 0, len(schemaUpgradeSteps("")))
+	for _, s := range schemaUpgradeSteps("") {
 		want = append(want, upgradeRecord{Version: s.Version, Name: s.Name})
 	}
 	require.Equal(t, want, readUpgradeRecords(t, drv))
 
-	require.NoError(t, RunSchemaUpgrades(ctx, drv, nopUpgradeLogger()))
+	require.NoError(t, RunSchemaUpgrades(ctx, drv, "", nopUpgradeLogger()))
 	require.Equal(t, want, readUpgradeRecords(t, drv))
 }
 
@@ -173,7 +175,7 @@ func TestRunSchemaUpgrades_LegacyDB(t *testing.T) {
 	}
 	db := seedLegacyTenantDB(t, client, sysCtx)
 
-	require.NoError(t, RunSchemaUpgrades(ctx, drv, nopUpgradeLogger()))
+	require.NoError(t, RunSchemaUpgrades(ctx, drv, "", nopUpgradeLogger()))
 
 	for _, table := range legacyTenantTables {
 		require.False(t, sqliteTableExists(t, drv, table), table)
@@ -197,4 +199,51 @@ func TestSchemaUpgradeRecordInsert(t *testing.T) {
 	require.Equal(t, "INSERT INTO `sys_schema_upgrades` (`version`, `name`, `applied_at`) VALUES (?, ?, ?)", q)
 	q, _ = schemaUpgradeRecordInsert(dialect.SQLite, step, at)
 	require.Equal(t, "INSERT INTO `sys_schema_upgrades` (`version`, `name`, `applied_at`) VALUES (?, ?, ?)", q)
+}
+
+// TestUpgradeRewriteLegacyAvatarURLs v3：{download_host}/images/avatar/{本人ID}/{name} 改写成 /admin/v1/avatars/{ID}/{name}；
+// 外链、别人的头像目录、其他 host、已是新地址、空值都不动。没配 download_host 时什么都不改。
+func TestUpgradeRewriteLegacyAvatarURLs(t *testing.T) {
+	entClient := enttest.NewEntClientForTest(t)
+	drv := entClient.Driver()
+	client := entClient.Client()
+	ctx := context.Background()
+	sysCtx := enttest.NewSystemContext(ctx)
+
+	avatars := map[string]string{
+		"legacy":   "minio:9000/images/avatar/%d/abc.png",
+		"external": "https://cdn.example.com/images/avatar/%d/abc.png",
+		"other":    "minio:9000/images/avatar/999/abc.png",
+		"host":     "other:9000/images/avatar/%d/abc.png",
+		"nested":   "minio:9000/images/avatar/%d/sub/abc.png",
+		"new":      "/admin/v1/avatars/%d/abc.png",
+		"empty":    "",
+	}
+	ids := map[string]uint32{}
+	for name, tpl := range avatars {
+		u := client.User.Create().SetUsername("u-" + name).SaveX(sysCtx)
+		ids[name] = u.ID
+		v := tpl
+		if strings.Contains(tpl, "%d") {
+			v = fmt.Sprintf(tpl, u.ID)
+		}
+		avatars[name] = v
+		client.User.UpdateOneID(u.ID).SetAvatar(v).ExecX(sysCtx)
+	}
+	avatarOf := func(name string) *string {
+		return client.User.GetX(sysCtx, ids[name]).Avatar
+	}
+
+	// 没配 download_host：认不出旧地址，什么都不改
+	require.NoError(t, runSchemaUpgrades(ctx, drv, schemaUpgradeSteps("")[2:], nopUpgradeLogger()))
+	require.Equal(t, avatars["legacy"], *avatarOf("legacy"))
+
+	_, err := drv.ExecContext(ctx, "DELETE FROM sys_schema_upgrades")
+	require.NoError(t, err)
+	require.NoError(t, runSchemaUpgrades(ctx, drv, schemaUpgradeSteps("minio:9000")[2:], nopUpgradeLogger()))
+
+	require.Equal(t, fmt.Sprintf("/admin/v1/avatars/%d/abc.png", ids["legacy"]), *avatarOf("legacy"))
+	for _, name := range []string{"external", "other", "host", "nested", "new", "empty"} {
+		require.Equal(t, avatars[name], *avatarOf(name), name)
+	}
 }

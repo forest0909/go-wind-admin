@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minio/minio-go/v7"
 	bLogger "go-wind-admin/third_party/kratos-bootstrap/logger"
 
 	"go-wind-admin/third_party/go-utils/id"
@@ -38,18 +37,18 @@ type FileTransferService struct {
 
 	log *bLogger.Helper
 
-	mc                *oss.MinIOClient
+	storage           oss.Storage
 	fileServiceClient *data.FileRepo
 }
 
 func NewFileTransferService(
 	ctx *bootstrap.Context,
-	mc *oss.MinIOClient,
+	storage oss.Storage,
 	fileServiceClient *data.FileRepo,
 ) *FileTransferService {
 	return &FileTransferService{
 		log:               ctx.NewLoggerHelper("file-transfer/service/app-service"),
-		mc:                mc,
+		storage:           storage,
 		fileServiceClient: fileServiceClient,
 	}
 }
@@ -111,7 +110,7 @@ func (s *FileTransferService) recordFile(
 	tenantID, userID uint32,
 	fileData []byte,
 	sourceFileName string,
-	info minio.UploadInfo,
+	info oss.UploadInfo,
 	downloadUrl string,
 ) error {
 
@@ -123,7 +122,7 @@ func (s *FileTransferService) recordFile(
 
 	if err := s.fileServiceClient.Create(ctx, &storageV1.CreateFileRequest{
 		Data: &storageV1.File{
-			Provider:      trans.Ptr(storageV1.OSSProvider_MINIO),
+			Provider:      trans.Ptr(s.storage.Provider()),
 			BucketName:    trans.Ptr(info.Bucket),
 			SaveFileName:  trans.Ptr(fileName + "." + ext),
 			ContentHash:   trans.Ptr(sha256Hex),
@@ -200,7 +199,7 @@ func (s *FileTransferService) directUploadFile(ctx context.Context, req *storage
 		),
 	)
 
-	info, storagePath, downloadUrl, err := s.mc.UploadFile(
+	info, storagePath, downloadUrl, err := s.storage.UploadFile(
 		ctx,
 		req.GetStorageObject().GetBucketName(),
 		req.GetStorageObject().GetObjectName(),
@@ -256,7 +255,7 @@ func urlQueryEscape(s string) string {
 
 // ServeImageHandler 签名图片代理（免鉴权，签名即凭证）：
 // GET /admin/v1/file/image?path={bucket}/{object}&expires={unix}&sig={hmac}
-// 签名 = HMAC-SHA256(secret, path|expires)。流式回源 MinIO。
+// 签名 = HMAC-SHA256(secret, path|expires)。流式回源存储，只返回 png/jpeg/gif/webp/bmp。
 func (s *FileTransferService) ServeImageHandler(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 	mediaPath := q.Get("path")
@@ -285,14 +284,22 @@ func (s *FileTransferService) ServeImageHandler(w http.ResponseWriter, r *http.R
 		return nil
 	}
 
-	reader, contentType, size, err := s.mc.GetObjectReader(r.Context(), parts[0], parts[1])
+	reader, contentType, size, err := s.storage.GetObjectReader(r.Context(), parts[0], parts[1])
 	if err != nil {
 		http.Error(w, "object not found", http.StatusNotFound)
 		return nil
 	}
 	defer func() { _ = reader.Close() }()
 
+	// 免鉴权同源返回，只放行可安全内联的位图；HTML、SVG、文本等一律不在这里返回（下载走鉴权接口）。
+	if !oss.IsSafeInlineImage(contentType) {
+		s.log.Warnf(r.Context(), "signed image %s has content type %q, not a safe inline image, refused", mediaPath, contentType)
+		http.Error(w, "object not found", http.StatusNotFound)
+		return nil
+	}
+
 	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	_, _ = io.Copy(w, reader)
@@ -428,6 +435,9 @@ func (s *FileTransferService) DownloadFile(ctx context.Context, req *storageV1.D
 		if err != nil {
 			return nil, storageV1.ErrorDownloadFailed("file not found")
 		}
+		if err = oss.CheckFileProvider(resp, s.storage); err != nil {
+			return nil, err
+		}
 
 		req.Selector = &storageV1.DownloadFileRequest_StorageObject{
 			StorageObject: &storageV1.StorageObject{
@@ -438,7 +448,7 @@ func (s *FileTransferService) DownloadFile(ctx context.Context, req *storageV1.D
 			},
 		}
 
-		return s.mc.DownloadFile(ctx, req)
+		return s.storage.DownloadFile(ctx, req)
 
 	case *storageV1.DownloadFileRequest_StorageObject:
 		// 直接按 bucket/objectName 下载会绕过文件表的归属检查，只允许按 fileId 下载。

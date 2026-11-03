@@ -223,6 +223,7 @@
       "UPLOAD_FAILED": "上传失败，请稍后重试",
       "FILE_NOT_FOUND": "文件不存在",
       "FILE_TOO_LARGE": "文件过大，超出上传大小或存储空间限制",
+      "STORAGE_PROVIDER_MISMATCH": "文件存放在其他存储中，与当前存储配置不一致，无法访问",
       "DEPARTMENT_NOT_FOUND": "部门不存在",
       "ORGANIZATION_NOT_FOUND": "组织不存在",
       "POSITION_NOT_FOUND": "岗位不存在",

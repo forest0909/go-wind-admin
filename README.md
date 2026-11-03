@@ -20,8 +20,8 @@
 
 ## 项目亮点
 
-- **前端只有 React 19 + Ant Design**：目录是 `frontend/admin/react`。没有第二套前端
-- **权限**：角色、部门、菜单、按钮和数据范围。接口鉴权用 Casbin，不提供 OPA
+- **前端 React 19 + Ant Design**：目录是 `frontend/admin/react`
+- **权限**：角色、部门、菜单、按钮和数据范围。接口鉴权用 Casbin
 - **安全**：登录日志和操作日志、口令策略、图形验证码、登录限流、口令加密。详见[安全与等保合规](#安全与等保合规)
 - **微服务 + 单体自由切换**：基于 go-kratos 微服务框架，但支持单体架构模式开发与部署，灵活适配团队规模
 - **全栈代码生成**：Protobuf → Go API / TypeScript 客户端，Ent Schema → ORM。命令在 `backend/` 下：`make api`、`make ent`、`make ts`。
@@ -30,9 +30,9 @@
 - **文件存储二选一**：MinIO 或本地磁盘，每个部署按配置选择
 ### 本仓库的定位
 
-**单租户管理端：Go 后端 + React 前端。** 没有第二套前端，也没有 AI 模块。
+**单租户管理端：Go 后端 + React 前端。**
 
-租户、套餐、配额已删除；底层 `tenant_id` 列保留，值固定为 0，新模块不用管租户。接口鉴权是 Casbin。
+各表的 `tenant_id` 列值固定为 0，新模块不用管它。接口鉴权是 Casbin。
 
 依赖在 `backend/third_party/`，许可证见 [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES)。命令见 [AGENTS.md](./AGENTS.md)。
 
@@ -49,13 +49,11 @@
 
 本项目 fork 自 [tx7do/go-wind-admin](https://github.com/tx7do/go-wind-admin)（作者 Bobo，MIT 许可证），在原项目基础上做了大量裁剪和改造，不随上游自动同步。原项目的版权声明保留在 [LICENSE](./LICENSE)；收进 `backend/third_party/` 的依赖大多也出自原作者，许可证见 [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES)。
 
-**删掉的部分**：Vue 前端（vben、element），只保留 React；AI、SSO、MFA、通知、监控、脚本、程序内备份；未接线的 GORM 平行后端；多租户、套餐、配额业务层。原来通过 go.mod 远程拉取的 `github.com/tx7do/*` 依赖，源码已收进 `backend/third_party/`，可以直接修改。
-
-**新增和改造的部分**：
+**主要改造**：
 
 - 数据权限范围，作用于用户、组织和日志
 - 健康检查 `/healthz`、`/readyz`，可选的 Prometheus `/metrics`，访问日志带 trace_id
-- 按版本号执行的数据库升级步骤，老库启动时自动清理遗留的租户表
+- 按版本号执行的数据库升级步骤
 - `docker compose` 一条命令拉起单个客户的完整环境，CI 里整套冒烟
 - 外部数据源：接入客户已有的 PostgreSQL / MySQL / SQL Server，可读可写，附 Demo 页面和[接入规范](./docs/crud_module_guide/external.md)
 - 文件存储可选 MinIO 或本地磁盘；修复头像无法显示
@@ -67,7 +65,7 @@
 
 ## 演示地址
 
-本仓库没有在线演示。本地前端只有 React，开发端口 15888。
+本地前端开发端口 15888。
 
 | 端 | 说明 |
 |---------|--------|
@@ -88,7 +86,7 @@
 |------|------|
 | Go | 1.26+（以 `backend/go.mod` 为准） |
 | Node.js | `^20.19.0 \|\| >=22.12.0`（Vite 8 需要）。**不要用 21.x**，也不要用 20.18 及以下 |
-| pnpm | `>= 9`。React 端没有钉死 pnpm 版本 |
+| pnpm | `>= 9` |
 | Docker | 20.0+ |
 
 ### 环境脚本选型
@@ -151,7 +149,7 @@ make -C app/admin/service run
 
 ### 前端启动
 
-本仓库只保留 React，目录是 `frontend/admin/react`。仓库根和 `frontend/admin/` 没有 `package.json`，在这两处安装会 ENOENT。
+前端目录是 `frontend/admin/react`，请在这个目录下执行 `pnpm install`。
 
 | 前端版本 | 目录 | 启动命令 | 端口 |
 |---------|------|---------|------|
@@ -183,10 +181,7 @@ pnpm dev                    # 端口 15888
 <tr><td><strong>中间件</strong></td><td><code>Redis</code>（compose 拉 <code>bitnami/redis:latest</code>，未固定版本；代码只用到 Set/Expire/Publish 一类的长期命令，未使用 Redis 8 专属命令） · <code>MinIO</code>（S3 兼容对象存储）</td></tr>
 <tr><td><strong>认证授权</strong></td><td><code>JWT</code>（认证） · <code>Casbin</code>（接口鉴权）。配置不是 casbin 时启动失败</td></tr>
 <tr><td><strong>实时通信</strong></td><td><code>SSE</code>（服务端推送） · <code>Asynq</code>（异步任务）</td></tr>
-<tr><td><strong>前端</strong></td><td>只有 React，技术见「React 版」那一行</td></tr>
-<tr><td><strong>已删除</strong></td><td>第二套前端、AI、SSO、MFA、程序内备份都不在本仓库</td></tr>
-<tr><td><strong>已删除（多租户）</strong></td><td>租户、套餐、配额、用量、租户白标。底层 <code>tenant_id</code> 列保留，值固定为 0</td></tr>
-<tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code>（无 UMI） · <code>Tailwind CSS</code></td></tr>
+<tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>部署运维</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
 
@@ -201,9 +196,8 @@ pnpm dev                    # 端口 15888
 | **安全审计** | 登录日志和操作日志，记录客户端 IP（并解析归属地）与前端下发的 `X-Request-ID` 请求号。asynq 每日定时归档：库内留存 180 天（`AUDIT_RETENTION_DAYS` 可调），超期数据导出 JSONL 归档文件留痕，库瘦身与日志留存两不误 |
 | **身份鉴别** | 口令复杂度（≥8 位、小写/大写/数字/符号四类取三）、历史口令复用检查（默认近 3 条）、口令有效期（默认 90 天），阈值经「参数管理」平台参数调整（内置参数启动时播种，环境变量配置已废弃）；图形验证码；Redis 登录失败限流（IP + 用户名双维度） |
 | **访问控制** | 接口鉴权是 Casbin。角色、权限、接口的对应关系存在数据库里，权限变更会热更新。另有菜单和按钮权限、角色级数据范围、字段级权限 |
-| **租户** | 多租户业务层已删除，只剩值固定为 0 的 `tenant_id` 列。本仓库是单租户管理端 |
 | **数据保密性** | 登录、创建用户、重置密码和个人中心改密的口令均应用层 AES 加密传输、bcrypt 哈希存储；敏感任务配置 AES-256-GCM 静态加密（Ent Hook 透明加解密）；JWT RS256 非对称签名；refresh token 走 HttpOnly Cookie；传输层 TLS 由部署层启用（后端 `server.rest.tls` 配置或 nginx / 负载均衡终止） |
-| **数据备份恢复** | 程序内不提供数据库备份。用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练恢复 |
+| **数据备份恢复** | 用数据库自带工具（如 `pg_dump`）或运维平台做全量备份，并演练恢复 |
 | **前端安全** | React 的 `frontend/admin/react/scripts/deploy/nginx.conf` 在生产侧下发 X-Frame-Options / HSTS / Content-Security-Policy。构建期还会向 `index.html` 注入 CSP `<meta>` |
 
 > **说明**：等保测评除技术要求外，还包含管理制度、物理环境、人员组织等非软件范畴的内容。本项目覆盖的是技术措施部分，可为私有化部署的等保测评准备提供直接支撑，但不能替代完整的等保测评流程。
@@ -235,7 +229,7 @@ pnpm dev                    # 端口 15888
 | 文件管理 | 管理文件上传，支持文件查询、上传到 MinIO 或本地磁盘（按配置二选一）、下载、复制文件地址、删除文件、图片支持查看大图功能 |
 | 外部数据示例 | 外部数据源的增删改查范例页，数据来自配置的外部库（`data.external_sources.demo`）。新接客户库时照它和[接入规范](./docs/crud_module_guide/external.md)写 |
 | 账号登录 | 支持用户名 / 邮箱 / 手机号多标识登录，并带图形验证码与登录限流 |
-| 验证码发信 | 个人中心换绑邮箱、换绑手机读 `app/admin/service/configs/mail.yaml` 的 SMTP 和短信账号。host 或 provider 留空表示这一路未配置；发送不再进任务队列 |
+| 验证码发信 | 个人中心换绑邮箱、换绑手机读 `app/admin/service/configs/mail.yaml` 的 SMTP 和短信账号。host 或 provider 留空表示这一路未配置 |
 | 在线用户 | 查看当前在线会话（用户、客户端类型、登录 IP、User-Agent、设备 ID、登录时间），支持关键词过滤、分页（登录时间倒序）与单会话强制下线，30 秒自动刷新 |
 | 参数管理 | 平台全局系统参数的键值管理（区别于业务字典），内置参数启动时播种、禁删可改；服务侧经缓存 accessor 读取，多实例部署下参数变更经 Redis 发布订阅广播失效各实例缓存 |
 | 语言管理 | 管理系统支持的多语言，配置语言名称、语言代码、本地名称、启用与默认状态 |
@@ -277,7 +271,7 @@ linjian-admin/
 │   │   └── ...                     # 其他工具包
 │   ├── scripts/                    # 部署脚本（env/docker/deploy）
 │   └── sql/                        # 演示数据 SQL（默认数据由服务启动自动播种）
-├── frontend/admin/                 # 前端（只保留 React）
+├── frontend/admin/                 # 前端（React）
 │   └── react/                      # React 19 + Ant Design V6
 └── docs/                           # 项目文档
 ```

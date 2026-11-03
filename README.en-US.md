@@ -20,8 +20,8 @@
 
 ## Project Highlights
 
-- **Frontend: React 19 + Ant Design only**. The directory is `frontend/admin/react`. There is no second frontend
-- **Access control**: roles, departments, menus, buttons, and data scope. API authorization uses Casbin. OPA is not included
+- **Frontend: React 19 + Ant Design**. The directory is `frontend/admin/react`
+- **Access control**: roles, departments, menus, buttons, and data scope. API authorization uses Casbin
 - **Security**: login logs and operation logs, password policy, image captcha, login rate limiting, and password encryption. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
 - **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM. Under `backend/`: `make api`, `make ent`, `make ts`.
@@ -30,9 +30,9 @@
 - **Pick a file storage**: MinIO or local disk, chosen per deployment in config
 ### What this tree is
 
-**A single-tenant admin: Go backend + React frontend.** There is no second frontend and no AI module.
+**A single-tenant admin: Go backend + React frontend.**
 
-Tenants, plans, and quotas have been removed. The underlying `tenant_id` column stays, always 0, and new modules ignore it. API authorization is Casbin.
+Tables keep a `tenant_id` column fixed at 0; new modules can ignore it. API authorization is Casbin.
 
 Dependencies live in `backend/third_party/`. Licenses: [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES). Commands: [AGENTS.md](./AGENTS.md).
 
@@ -49,13 +49,11 @@ Dependencies live in `backend/third_party/`. Licenses: [THIRD_PARTY_LICENSES](./
 
 This project is a fork of [tx7do/go-wind-admin](https://github.com/tx7do/go-wind-admin) (by Bobo, MIT License), heavily trimmed and reworked. It does not sync with upstream. The original copyright notice is kept in [LICENSE](./LICENSE); most of the dependencies vendored into `backend/third_party/` are also by the original author, see [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES).
 
-**Removed**: the Vue frontends (vben, element), keeping only React; AI, SSO, MFA, notifications, monitoring, scripts, in-app backup; the unwired GORM parallel backend; the multi-tenant, plan, and quota business layer. The `github.com/tx7do/*` dependencies that used to be fetched via go.mod are now vendored as source in `backend/third_party/` and can be edited directly.
-
-**Added and reworked**:
+**Main changes**:
 
 - Data scope, applied to users, org units, and logs
 - Health checks `/healthz`, `/readyz`; optional Prometheus `/metrics`; trace_id in the access log
-- Versioned database upgrade steps; legacy tenant tables are cleaned up automatically on old databases
+- Versioned database upgrade steps
 - One `docker compose` command brings up a full customer environment, smoke-tested in CI
 - External data sources: connect a customer's existing PostgreSQL / MySQL / SQL Server, read-write, with a demo page and a [convention guide](./docs/crud_module_guide/external.md)
 - File storage on MinIO or local disk; fixed avatars not displaying
@@ -67,7 +65,7 @@ Upstream: [GitHub](https://github.com/tx7do/go-wind-admin) · [Gitee](https://gi
 
 ## Demo
 
-This tree has no online demo. The local frontend is React only, on dev port 15888.
+The local frontend dev port is 15888.
 
 | Part | Where |
 |---------|--------|
@@ -88,7 +86,7 @@ This tree has no online demo. The local frontend is React only, on dev port 1588
 |------|---------|
 | Go | 1.26+ (follow `backend/go.mod`) |
 | Node.js | `^20.19.0 \|\| >=22.12.0` (required by Vite 8). **Do not use 21.x**, or 20.18 and below |
-| pnpm | `>= 9`. The React app does not pin a pnpm version |
+| pnpm | `>= 9` |
 | Docker | 20.0+ |
 
 ### Environment Scripts
@@ -151,7 +149,7 @@ make -C app/admin/service run
 
 ### Frontend Startup
 
-This tree keeps React only, at `frontend/admin/react`. There is no `package.json` at the repo root or under `frontend/admin/`; `pnpm install` there fails with ENOENT.
+The frontend lives in `frontend/admin/react`; run `pnpm install` in that directory.
 
 | Frontend Edition | Directory | Command | Port |
 |------------------|-----------|---------|------|
@@ -183,10 +181,7 @@ pnpm dev                    # port 15888
 <tr><td><strong>Middleware</strong></td><td><code>Redis</code> (compose pulls <code>bitnami/redis:latest</code>, no version pin; the codebase uses only long-standing commands such as Set/Expire/Publish — nothing Redis-8-specific) · <code>MinIO</code> (S3-compatible object storage)</td></tr>
 <tr><td><strong>Authentication & Authorization</strong></td><td><code>JWT</code> for authentication · <code>Casbin</code> for API authorization. Startup fails when the engine is not casbin</td></tr>
 <tr><td><strong>Realtime</strong></td><td><code>SSE</code> (server push) · <code>Asynq</code> (async tasks)</td></tr>
-<tr><td><strong>Frontend</strong></td><td>React only. See the React row below</td></tr>
-<tr><td><strong>Removed</strong></td><td>No second frontend, no AI, no SSO, no MFA, and no in-app database backup</td></tr>
-<tr><td><strong>Removed (multi-tenancy)</strong></td><td>Tenants, plans, quotas, usage, and tenant branding. The underlying <code>tenant_id</code> column stays, always 0</td></tr>
-<tr><td><strong>React Edition</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> (no UMI) · <code>Tailwind CSS</code></td></tr>
+<tr><td><strong>React Edition</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>Deployment & Ops</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
 
@@ -201,9 +196,8 @@ Security capabilities are designed with reference to the technical requirements 
 | **Security Audit** | Login logs and operation logs, recording the client IP (with geolocation) and the `X-Request-ID` request id sent by the frontend. Daily scheduled archiving via asynq: 180-day in-database retention (`AUDIT_RETENTION_DAYS`, adjustable); expired rows are exported to JSONL archive files for long-term traceability |
 | **Identity Authentication** | Password complexity (≥8 chars, at least 3 of 4 character classes), password history reuse check (last 3 by default), password validity period (90 days by default) — thresholds are adjusted via the "Parameter Management" platform parameters (built-in keys seeded at startup; environment-variable configuration is deprecated); image captcha; Redis login failure rate limiting (IP + username dual dimensions) |
 | **Access Control** | API authorization is Casbin. Role, permission, and API mappings live in the database and hot-reload. Menus, buttons, role data scope, and field permissions are also in place |
-| **Tenancy** | The multi-tenant business layer has been removed; only a `tenant_id` column fixed at 0 remains. This tree is a single-tenant admin |
 | **Data Confidentiality** | Passwords for login, user creation, reset, and profile change are AES-encrypted in transit and bcrypt-hashed at rest; sensitive task configs encrypted at rest with AES-256-GCM (transparent via Ent hooks); JWT RS256 asymmetric signing; refresh token in HttpOnly Cookie; transport-layer TLS enabled at deployment (backend `server.rest.tls` config, or nginx / load balancer termination) |
-| **Data Backup & Recovery** | The program does not ship a database backup. Use the database's own tools (for example `pg_dump`) or an operations platform, and rehearse a restore |
+| **Data Backup & Recovery** | Use the database's own tools (for example `pg_dump`) or an operations platform for full backups, and rehearse a restore |
 | **Frontend Security** | `frontend/admin/react/scripts/deploy/nginx.conf` sets X-Frame-Options / HSTS / Content-Security-Policy. The React build also injects a CSP `<meta>` into `index.html` |
 
 > **Note**: MLPS evaluation covers more than technical requirements — management policies, physical environment, personnel organization, etc. This project covers the technical measures portion, providing direct support for evaluation preparation in private deployments, but it does not replace the full MLPS certification process.
@@ -235,7 +229,7 @@ Security capabilities are designed with reference to the technical requirements 
 | File Management | Manage uploads: search, upload to MinIO or local disk (one per deployment, set in config), download, copy file address, delete, and image preview (large view). |
 | External Data Demo | Reference CRUD page for an external data source; data comes from the configured external database (`data.external_sources.demo`). Follow it and the [convention guide](./docs/crud_module_guide/external.md) when connecting a customer's database. |
 | Account Login | Sign in with username / email / phone number, with image captcha and login rate limiting. |
-| Verification delivery | Profile email and phone changes read SMTP and SMS credentials from `app/admin/service/configs/mail.yaml`. An empty SMTP host or SMS provider means that path is not configured. Sends are synchronous and do not enter the task queue. |
+| Verification delivery | Profile email and phone changes read SMTP and SMS credentials from `app/admin/service/configs/mail.yaml`. An empty SMTP host or SMS provider means that path is not configured. |
 | Online Sessions | View currently online sessions (user, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
 | Parameter Management | Manage platform-wide system parameters as key/value pairs (distinct from business dictionaries); built-in parameters are seeded at startup and cannot be deleted; reads go through a server-side caching accessor, and in multi-instance deployments changes are broadcast over Redis pub/sub to invalidate every instance's cache. |
 | Language Management | Manage supported languages: name, code, native name, enabled and default status. |
@@ -277,7 +271,7 @@ linjian-admin/
 │   │   └── ...                     # Other utility packages
 │   ├── scripts/                    # Deployment scripts (env/docker/deploy)
 │   └── sql/                        # Demo data SQL (default data is seeded automatically at service startup)
-├── frontend/admin/                 # Frontend (React only)
+├── frontend/admin/                 # Frontend (React)
 │   └── react/                      # React 19 + Ant Design V6
 └── docs/                           # Project documentation
 ```

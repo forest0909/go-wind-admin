@@ -25,7 +25,9 @@
 - **Security**: login logs and operation logs, password policy, image captcha, login rate limiting, and password encryption. See [Security & Compliance](#security--compliance-mlps-20)
 - **Microservice + Monolith**: Built on the go-kratos microservice framework, yet supports monolith-mode development and deployment — flexible for any team size
 - **Full-stack Code Generation**: Protobuf → Go API / TypeScript clients, Ent Schema → ORM. Under `backend/`: `make api`, `make ent`, `make ts`.
-- **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, one-click Docker deployment
+- **Production-ready**: JWT auth, SSE push, async task scheduling, Swagger docs, health checks and Prometheus metrics, one-command `docker compose` deployment
+- **Connect a customer's existing database**: configure PostgreSQL / MySQL / SQL Server external data sources, read-write, outside Ent
+- **Pick a file storage**: MinIO or local disk, chosen per deployment in config
 ### What this tree is
 
 **A single-tenant admin: Go backend + React frontend.** There is no second frontend and no AI module.
@@ -43,15 +45,23 @@ Dependencies live in `backend/third_party/`. Licenses: [THIRD_PARTY_LICENSES](./
 
 ---
 
-## Code Repositories
+## Origin & License
 
-This is a trimmed working copy. It does not track the two upstream URLs below:
+This project is a fork of [tx7do/go-wind-admin](https://github.com/tx7do/go-wind-admin) (by Bobo, MIT License), heavily trimmed and reworked. It does not sync with upstream. The original copyright notice is kept in [LICENSE](./LICENSE); most of the dependencies vendored into `backend/third_party/` are also by the original author, see [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES).
 
-| Platform | URL |
-|----------|-----|
-| Repository | this working copy |
-| Upstream Gitee | <https://gitee.com/tx7do/go-wind-admin> |
-| Upstream AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+**Removed**: the Vue frontends (vben, element), keeping only React; AI, SSO, MFA, notifications, monitoring, scripts, in-app backup; the unwired GORM parallel backend; the multi-tenant, plan, and quota business layer. The `github.com/tx7do/*` dependencies that used to be fetched via go.mod are now vendored as source in `backend/third_party/` and can be edited directly.
+
+**Added and reworked**:
+
+- Data scope, applied to users, org units, and logs
+- Health checks `/healthz`, `/readyz`; optional Prometheus `/metrics`; trace_id in the access log
+- Versioned database upgrade steps; legacy tenant tables are cleaned up automatically on old databases
+- One `docker compose` command brings up a full customer environment, smoke-tested in CI
+- External data sources: connect a customer's existing PostgreSQL / MySQL / SQL Server, read-write, with a demo page and a [convention guide](./docs/crud_module_guide/external.md)
+- File storage on MinIO or local disk; fixed avatars not displaying
+- Security and correctness fixes from several rounds of independent code review
+
+Upstream: [GitHub](https://github.com/tx7do/go-wind-admin) · [Gitee](https://gitee.com/tx7do/go-wind-admin) · [AtomGit](https://atomgit.com/tx7do/go-wind-admin)
 
 ---
 
@@ -222,7 +232,8 @@ Security capabilities are designed with reference to the technical requirements 
 | API Management | Manage APIs with API synchronization (mainly for picking endpoints when adding permission points), tree-view listing, and operation-log request/response configuration. |
 | Dictionary Management | Manage dictionary categories and entries; category-linked entries, server-side multi-column sorting, import/export. |
 | Task Scheduler | Manage tasks and task run logs; create, update, delete, start, pause, and run immediately. |
-| File Management | Manage uploads: search, upload to OSS or local storage, download, copy file address, delete, and image preview (large view). |
+| File Management | Manage uploads: search, upload to MinIO or local disk (one per deployment, set in config), download, copy file address, delete, and image preview (large view). |
+| External Data Demo | Reference CRUD page for an external data source; data comes from the configured external database (`data.external_sources.demo`). Follow it and the [convention guide](./docs/crud_module_guide/external.md) when connecting a customer's database. |
 | Account Login | Sign in with username / email / phone number, with image captcha and login rate limiting. |
 | Verification delivery | Profile email and phone changes read SMTP and SMS credentials from `app/admin/service/configs/mail.yaml`. An empty SMTP host or SMS provider means that path is not configured. Sends are synchronous and do not enter the task queue. |
 | Online Sessions | View currently online sessions (user, client type, login IP, User-Agent, device ID, login time), with keyword filtering, pagination (login time desc) and per-session forced logout; auto-refresh every 30s. |
@@ -343,11 +354,9 @@ Welcome to join the GoWind Admin community. The documents below describe how to 
 
 ## Contact
 
-- WeChat: `yang_lin_bo` (note: `go-wind-admin`)
-- Juejin column: [go-wind-admin](https://juejin.cn/column/7541283508041826367)
+- Maintainer of this repository: [forest0909](https://github.com/forest0909)
+- For the original author's contact details, see the [upstream repository](https://github.com/tx7do/go-wind-admin)
 
 ## Acknowledgements
 
-[![JetBrains](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)](https://jb.gg/OpenSource)
-
-Thanks to JetBrains for providing free GoLand & WebStorm open-source licenses.
+Thanks to [Bobo (tx7do)](https://github.com/tx7do) for open-sourcing go-wind-admin and its companion libraries such as kratos-bootstrap, go-crud, and go-utils. This project is built on top of them.

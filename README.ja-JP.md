@@ -25,7 +25,9 @@
 - **セキュリティ**：ログインログと操作ログ、パスワードポリシー、画像認証コード、ログイン失敗制限、パスワード暗号化。詳しくは[セキュリティと等級保護コンプライアンス](#セキュリティと等級保護コンプライアンス等保-20)
 - **マイクロサービス + モノリスの自由切替**：go-kratos マイクロサービスフレームワークベースでありながら、モノリス構成での開発・デプロイもサポートし、チーム規模に柔軟に対応
 - **フルスタックコード生成**：Protobuf → Go API / TypeScript クライアント、Ent Schema → ORM。`backend/` で `make api`、`make ent`、`make ts`。
-- **本番即戦力**：JWT 認証、SSE プッシュ、非同期タスクスケジューリング、Swagger ドキュメント、Docker ワンクリックデプロイ
+- **本番即戦力**：JWT 認証、SSE プッシュ、非同期タスクスケジューリング、Swagger ドキュメント、ヘルスチェックと Prometheus メトリクス、`docker compose` ワンコマンドデプロイ
+- **顧客の既存データベースに接続**：設定だけで PostgreSQL / MySQL / SQL Server の外部データソースを接続。読み書き可能、Ent を通さない
+- **ファイルストレージを選択**：MinIO またはローカルディスク。デプロイごとに設定で選ぶ
 ### このツリーの位置づけ
 
 **単一テナントの管理端：Go バックエンド + React フロントエンド。** 第二のフロントエンドも AI モジュールもない。
@@ -43,15 +45,23 @@
 
 ---
 
-## リポジトリ
+## 由来とライセンス
 
-これは削ったあとの作業コピーです。下の二つの上流アドレスには追従しません：
+本プロジェクトは [tx7do/go-wind-admin](https://github.com/tx7do/go-wind-admin)（作者 Bobo、MIT ライセンス）の fork で、元のプロジェクトを大幅に削減・改修しています。上流には追従しません。元のプロジェクトの著作権表示は [LICENSE](./LICENSE) に残しています。`backend/third_party/` に取り込んだ依存も大半が元の作者によるもので、ライセンスは [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES) を参照してください。
 
-| プラットフォーム | URL |
-|------------------|-----|
-| リポジトリ | この作業コピー |
-| 上流 Gitee | <https://gitee.com/tx7do/go-wind-admin> |
-| 上流 AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+**削除したもの**：Vue フロントエンド（vben、element）。React のみ残す。AI、SSO、MFA、通知、監視、スクリプト、プログラム内バックアップ。未接続の GORM 並行バックエンド。マルチテナント・プラン・クォータの業務層。以前 go.mod でリモート取得していた `github.com/tx7do/*` 依存は、ソースを `backend/third_party/` に取り込み、直接修正できる。
+
+**追加・改修したもの**：
+
+- データ範囲。ユーザー、組織、ログに適用
+- ヘルスチェック `/healthz`、`/readyz`、任意の Prometheus `/metrics`、アクセスログに trace_id
+- バージョン番号で実行するデータベースアップグレード手順。古いデータベースでは残ったテナント表を起動時に自動で削除
+- `docker compose` 一つのコマンドで顧客一社分の環境を起動。CI で全体のスモークテスト
+- 外部データソース：顧客の既存 PostgreSQL / MySQL / SQL Server に接続。読み書き可能。Demo ページと[接続規約](./docs/crud_module_guide/external.md)付き
+- ファイルストレージは MinIO またはローカルディスク。アバターが表示されない問題を修正
+- 複数回の独立コードレビューによるセキュリティと正確性の修正
+
+上流リポジトリ：[GitHub](https://github.com/tx7do/go-wind-admin) · [Gitee](https://gitee.com/tx7do/go-wind-admin) · [AtomGit](https://atomgit.com/tx7do/go-wind-admin)
 
 ---
 
@@ -222,7 +232,8 @@ pnpm dev                    # ポート 15888
 | インターフェース管理 | インターフェースの管理を行い、インターフェース同期機能をサポート。主に新規権限ポイント追加時のインターフェース選択に使用し、ツリーリスト表示、操作ログのリクエストパラメーターとレスポンス結果の設定をサポート。 |
 | ディクショナリ管理 | データディクショナリの大分類と小分類の管理を行い、ディクショナリ大分類に連動した小分類検索、サーバー側の多列ソート、データのインポート・エクスポートをサポート。 |
 | タスクスケジューリング | タスクとタスク実行ログの管理・参照を行い、タスクの新規追加、修正、削除、起動、一時停止、即時実行をサポート。 |
-| ファイル管理 | ファイルアップロードの管理を行い、ファイルクエリ、OSS またはローカルへのアップロード、ダウンロード、ファイルアドレスのコピー、ファイル削除、画像の拡大表示をサポート。 |
+| ファイル管理 | ファイルアップロードの管理を行い、ファイルクエリ、MinIO またはローカルディスク（設定でどちらか一つ）へのアップロード、ダウンロード、ファイルアドレスのコピー、ファイル削除、画像の拡大表示をサポート。 |
+| 外部データサンプル | 外部データソースの CRUD サンプルページ。データは設定した外部データベース（`data.external_sources.demo`）から取得。顧客のデータベースを接続するときは、これと[接続規約](./docs/crud_module_guide/external.md)に従って書く。 |
 | アカウントログイン | ユーザー名 / メールアドレス / 電話番号をアカウント識別子としてログイン可能。画像認証コードとログイン失敗レート制限付き。 |
 | 認証コード送信 | 個人センターのメール・電話番号変更は `app/admin/service/configs/mail.yaml` の SMTP と SMS を読む。host または provider が空ならその経路は未設定。送信はタスクキューに入らない。 |
 | オンラインユーザー | 現在オンラインのセッション一覧（ユーザー、クライアント種別、ログイン IP、User-Agent、デバイス ID、ログイン時刻）。キーワード絞り込み・ページング（ログイン時刻の降順）・セッション単位の強制ログアウトに対応、30 秒自動更新。 |
@@ -343,11 +354,9 @@ GoWind Admin コミュニティへの参加を歓迎します。以下のドキ�
 
 ## お問い合わせ
 
-- WeChat 個人アカウント：`yang_lin_bo`（備考：`go-wind-admin`）
-- 掘金コラム：[go-wind-admin](https://juejin.cn/column/7541283508041826367)
+- 本リポジトリのメンテナー：[forest0909](https://github.com/forest0909)
+- 元の作者の連絡先は[上流リポジトリ](https://github.com/tx7do/go-wind-admin)を参照
 
 ## 謝辞
 
-[![JetBrains](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)](https://jb.gg/OpenSource)
-
-JetBrains により無料の GoLand & WebStorm オープンソースライセンスを提供いただいています。心より感謝申し上げます。
+go-wind-admin と、kratos-bootstrap、go-crud、go-utils などの関連ライブラリをオープンソースで公開してくださった [Bobo（tx7do）](https://github.com/tx7do) に感謝します。本プロジェクトはそれらを基にしています。

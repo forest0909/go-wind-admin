@@ -1,6 +1,7 @@
 import { useMutation, type UseMutationOptions } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { RequestClient } from '@/core';
+import { downloadTransformResponse } from './download-response';
 
 // ==============================
 // 文件下载 / 上传辅助函数
@@ -38,20 +39,11 @@ async function downloadFile(
     return;
   }
 
-  // 后端直接返回文件字节（Content-Type 为文件类型），不能走默认的 JSON 解析，否则二进制被当成文本损坏。
-  // 出错时响应体是 JSON：在 transformResponse 里同步解析回对象，全局错误提示才能按 reason 翻译。
+  // 后端直接返回文件字节，不能走默认的 JSON 解析（二进制会被当成文本损坏，.json 文件会被解析成对象）。
   const data = await RequestClient.getInstance().get<ArrayBuffer>('admin/v1/file/download', {
     params: { fileId, preferPresignedUrl },
     responseType: 'arraybuffer',
-    transformResponse: [
-      (body: unknown, headers: Record<string, unknown> | undefined) => {
-        const ct = String(headers?.['content-type'] ?? '');
-        if (body instanceof ArrayBuffer && ct.includes('application/json')) {
-          return JSON.parse(new TextDecoder().decode(body));
-        }
-        return body;
-      },
-    ],
+    transformResponse: [downloadTransformResponse],
   } as never);
 
   const blob = new Blob([data]);

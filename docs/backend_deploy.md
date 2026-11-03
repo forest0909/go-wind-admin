@@ -426,15 +426,16 @@ trace:
 | 取值 | 存储 | 说明 |
 |---|---|---|
 | `minio`（默认，留空同此） | MinIO | 用 `oss.minio` 的连接配置，桶由第一次上传时自动创建 |
-| `local` | 本地磁盘 | 文件放在 `oss.local.root_dir/{bucket}/{object}`。目录不存在会自动创建，不可写时启动失败。选它时不连 MinIO |
+| `local` | 本地磁盘 | 文件放在 `oss.local.root_dir/{bucket}/{object}`。目录不存在会自动创建，不可写时启动失败。选它时不连 MinIO。读写删都限制在根目录内，路径上出现符号链接一律拒绝（根目录本身可以是链接），所以不要用符号链接把子目录挪到别处，要换位置就整体改 `root_dir` 或挂载 |
 
 环境变量 `GWA_OSS_STORAGE`、`GWA_OSS_LOCAL_ROOT_DIR` 对应这两项（见 `oss.yaml` 的占位符）。完整 Compose 切到本地：在 `docker-compose.yaml` 里取消 `admin-service` 下两行注释，设成 `local` 和 `/app/data/storage`，文件就落在 `admin-data` 卷里；再去掉 `depends_on` 里的 minio，不需要 MinIO 时可以把 `minio` 服务和 `minio-data` 卷一起删掉。
 
 两种存储下，下载、头像和富文本图片都经后端读出，浏览器不直接访问 MinIO 或磁盘：
 
-- 文件下载走 `GET /admin/v1/file/download?fileId=`（要登录）。
+- 文件下载走 `GET /admin/v1/file/download?fileId=`（要登录），响应一律 `Content-Disposition: attachment` 加 `X-Content-Type-Options: nosniff`，浏览器不会在本站内联渲染上传的内容。
 - 头像地址存成 `/admin/v1/avatars/{userId}/{文件名}`，免登录读取，只能读头像目录下的图片，文件名是随机 UUID。旧版本把头像存成 `{download_host}/images/avatar/...`（没有协议头、指向私有桶，显示不出来），升级时由升级步骤 v3 按当前的 `oss.minio.download_host` 改写成新地址；当时用别的 `download_host` 上传的、或通过外链设置的头像不改。
 - 富文本图片沿用签名地址 `/admin/v1/file/image`。
+- 头像和签名图片这两个免登录地址只返回 png / jpeg / gif / webp 位图（按文件内容判断，不看扩展名），SVG、HTML、文本等一律 404；头像上传也只收这四种。本地存储不保存 Content-Type，读取时按文件头重新判断，和上传校验用的是同一个函数。
 
 **本地目录备份**：本地模式下要备份 `root_dir` 整个目录（Compose 里是 `admin-data` 卷的 `storage/` 目录），和数据库一起备份、一起恢复，文件表记录和磁盘上的文件才对得上。直接复制目录即可（例如 `tar czf storage.tgz -C <root_dir> .`）；写入是先写临时文件再改名，不会复制到写了一半的文件。恢复后目录的属主要是运行后端的用户（镜像里是 `appuser`）。
 
@@ -444,7 +445,7 @@ trace:
 - 已上传的头像、富文本图片显示不出来（新存储里找不到对象，返回 404），用户重新上传头像即可；
 - 新上传的文件记成新的 `provider`。
 
-确实要换，就自己把旧存储里的对象按同样的 `{bucket}/{object}` 结构拷到新存储，并把 `sys_files.provider` 改成新值。
+确实要换，就自己把旧存储里的对象按同样的 `{bucket}/{object}` 结构拷到新存储，并把 `files` 表的 `provider` 改成新值（`MINIO` / `LOCAL`）。
 
 ## 上传限制与超时
 

@@ -20,8 +20,8 @@
 
 ## プロジェクトのハイライト
 
-- **フロントエンドは React 19 + Ant Design のみ**。ディレクトリは `frontend/admin/react`。第二のフロントエンドはない
-- **権限**：ロール、部署、メニュー、ボタン、データ範囲。API 認可は Casbin。OPA はない
+- **フロントエンドは React 19 + Ant Design**。ディレクトリは `frontend/admin/react`
+- **権限**：ロール、部署、メニュー、ボタン、データ範囲。API 認可は Casbin
 - **セキュリティ**：ログインログと操作ログ、パスワードポリシー、画像認証コード、ログイン失敗制限、パスワード暗号化。詳しくは[セキュリティと等級保護コンプライアンス](#セキュリティと等級保護コンプライアンス等保-20)
 - **マイクロサービス + モノリスの自由切替**：go-kratos マイクロサービスフレームワークベースでありながら、モノリス構成での開発・デプロイもサポートし、チーム規模に柔軟に対応
 - **フルスタックコード生成**：Protobuf → Go API / TypeScript クライアント、Ent Schema → ORM。`backend/` で `make api`、`make ent`、`make ts`。
@@ -30,9 +30,9 @@
 - **ファイルストレージを選択**：MinIO またはローカルディスク。デプロイごとに設定で選ぶ
 ### このツリーの位置づけ
 
-**単一テナントの管理端：Go バックエンド + React フロントエンド。** 第二のフロントエンドも AI モジュールもない。
+**単一テナントの管理端：Go バックエンド + React フロントエンド。**
 
-テナント、プラン、クォータは削除済み。下位の `tenant_id` 列は残るが値は常に 0 で、新しいモジュールは扱わなくてよい。API 認可は Casbin。
+各テーブルの `tenant_id` 列は常に 0 で、新しいモジュールは扱わなくてよい。API 認可は Casbin。
 
 依存は `backend/third_party/`。ライセンスは [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES)。コマンドは [AGENTS.md](./AGENTS.md)。
 
@@ -49,13 +49,11 @@
 
 本プロジェクトは [tx7do/go-wind-admin](https://github.com/tx7do/go-wind-admin)（作者 Bobo、MIT ライセンス）の fork で、元のプロジェクトを大幅に削減・改修しています。上流には追従しません。元のプロジェクトの著作権表示は [LICENSE](./LICENSE) に残しています。`backend/third_party/` に取り込んだ依存も大半が元の作者によるもので、ライセンスは [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES) を参照してください。
 
-**削除したもの**：Vue フロントエンド（vben、element）。React のみ残す。AI、SSO、MFA、通知、監視、スクリプト、プログラム内バックアップ。未接続の GORM 並行バックエンド。マルチテナント・プラン・クォータの業務層。以前 go.mod でリモート取得していた `github.com/tx7do/*` 依存は、ソースを `backend/third_party/` に取り込み、直接修正できる。
-
-**追加・改修したもの**：
+**主な改修**：
 
 - データ範囲。ユーザー、組織、ログに適用
 - ヘルスチェック `/healthz`、`/readyz`、任意の Prometheus `/metrics`、アクセスログに trace_id
-- バージョン番号で実行するデータベースアップグレード手順。古いデータベースでは残ったテナント表を起動時に自動で削除
+- バージョン番号で実行するデータベースアップグレード手順
 - `docker compose` 一つのコマンドで顧客一社分の環境を起動。CI で全体のスモークテスト
 - 外部データソース：顧客の既存 PostgreSQL / MySQL / SQL Server に接続。読み書き可能。Demo ページと[接続規約](./docs/crud_module_guide/external.md)付き
 - ファイルストレージは MinIO またはローカルディスク。アバターが表示されない問題を修正
@@ -67,7 +65,7 @@
 
 ## デモ
 
-このツリーにオンラインデモはない。ローカルのフロントエンドは React のみで、開発ポートは 15888。
+ローカルのフロントエンド開発ポートは 15888。
 
 | 端 | 説明 |
 |------------------|------|
@@ -88,7 +86,7 @@
 |--------|-----------|
 | Go | 1.26+（`backend/go.mod` に従う） |
 | Node.js | `^20.19.0 \|\| >=22.12.0`（Vite 8 の要件）。**21.x は不可**。20.18 以下も不可 |
-| pnpm | `>= 9`。React 側は pnpm のバージョンを固定していない |
+| pnpm | `>= 9` |
 | Docker | 20.0+ |
 
 ### 環境スクリプト選択
@@ -151,7 +149,7 @@ make -C app/admin/service run
 
 ### フロントエンド起動
 
-このツリーは React のみ。ディレクトリは `frontend/admin/react`。リポジトリ直下と `frontend/admin/` に `package.json` は無く、そこで `pnpm install` すると ENOENT になる。
+フロントエンドのディレクトリは `frontend/admin/react`。このディレクトリで `pnpm install` を実行する。
 
 | フロントエンド版 | ディレクトリ | 起動コマンド | ポート |
 |------------------|--------------|--------------|--------|
@@ -183,10 +181,7 @@ pnpm dev                    # ポート 15888
 <tr><td><strong>ミドルウェア</strong></td><td><code>Redis</code>（compose は <code>bitnami/redis:latest</code> を取得、バージョン固定なし。コード側は Set/Expire/Publish などの長期コマンドのみで、Redis 8 専用コマンドは不使用） · <code>MinIO</code>（S3 互換オブジェクトストレージ）</td></tr>
 <tr><td><strong>認証・認可</strong></td><td><code>JWT</code>（認証） · <code>Casbin</code>（API 認可）。casbin 以外では起動に失敗する</td></tr>
 <tr><td><strong>リアルタイム通信</strong></td><td><code>SSE</code>（サーバープッシュ） · <code>Asynq</code>（非同期タスク）</td></tr>
-<tr><td><strong>フロントエンド</strong></td><td>React のみ。技術は下の React 行</td></tr>
-<tr><td><strong>削除済み</strong></td><td>第二のフロントエンド、AI、SSO、MFA、プログラム内バックアップはない</td></tr>
-<tr><td><strong>削除済み（マルチテナント）</strong></td><td>テナント、プラン、クォータ、使用量、テナントブランディング。下位の <code>tenant_id</code> 列は残り、値は常に 0</td></tr>
-<tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code>（UMI 不使用） · <code>Tailwind CSS</code></td></tr>
+<tr><td><strong>React 版</strong></td><td><code>React 19</code> · <code>TypeScript</code> · <code>Vite</code> · <code>Zustand</code> · <code>Ant Design V6</code> · <code>Tailwind CSS</code></td></tr>
 <tr><td><strong>デプロイ・運用</strong></td><td><code>Docker</code> · <code>Docker Compose</code> · <code>PM2</code> · <code>Swagger UI</code></td></tr>
 </table>
 
@@ -201,9 +196,8 @@ pnpm dev                    # ポート 15888
 | **セキュリティ監査** | ログインログと操作ログ。クライアント IP と所属地、フロントエンド発行の `X-Request-ID` リクエスト ID を記録する。asynq による毎日定時アーカイブ：DB 内保持は 180 日（`AUDIT_RETENTION_DAYS` で調整可能）、期限超過データは JSONL アーカイブファイルへエクスポートして痕跡を保持 |
 | **本人認証** | パスワード複雑度（8 文字以上、小文字 / 大文字 / 数字 / 記号の 4 種類から 3 種類以上）、履歴パスワード再利用チェック（デフォルト直近 3 件）、パスワード有効期間（デフォルト 90 日）— しきい値は「パラメータ管理」のプラットフォームパラメータで調整（内蔵パラメータは起動時にシードされ、環境変数による設定は廃止）。画像認証コード、Redis ログイン失敗レート制限（IP + ユーザー名の 2 次元） |
 | **アクセス制御** | API 認可は Casbin。ロール、権限、インターフェースの対応はデータベースにあり、変更はホットリロードされる。メニュー、ボタン、データ範囲、フィールド権限もある |
-| **テナント** | マルチテナントの業務層は削除済みで、値が常に 0 の `tenant_id` 列だけが残る。このツリーは単一テナントの管理端 |
 | **データ機密性** | ログイン、ユーザー作成、パスワード再設定、個人設定の変更はいずれも AES 暗号化送信、bcrypt ハッシュで保存。機密タスク設定は AES-256-GCM で保存時暗号化（Ent Hook による透過的加復号）。JWT RS256 非対称署名、refresh token は HttpOnly Cookie。トランスポート層 TLS はデプロイ層で有効化（バックエンド `server.rest.tls` 設定、または nginx / ロードバランサー終端） |
-| **データバックアップ・リカバリ** | プログラム内にデータベースバックアップはない。データベース付属ツール（例: `pg_dump`）か運用基盤で全量バックアップし、リストアを一度リハーサルする |
+| **データバックアップ・リカバリ** | データベース付属ツール（例: `pg_dump`）か運用基盤で全量バックアップし、リストアを一度リハーサルする |
 | **フロントエンドセキュリティ** | `frontend/admin/react/scripts/deploy/nginx.conf` が X-Frame-Options / HSTS / Content-Security-Policy を出す。ビルド時に `index.html` へ CSP `<meta>` も注入する |
 
 > **注記**：等保評価には技術要求のほか、管理制度、物理環境、人員組織などソフトウェア以外の領域が含まれます。本プロジェクトがカバーするのは技術措置の部分であり、プライベートデプロイにおける等保評価準備を直接支援しますが、完全な等保評価プロセスの代替ではありません。
@@ -235,7 +229,7 @@ pnpm dev                    # ポート 15888
 | ファイル管理 | ファイルアップロードの管理を行い、ファイルクエリ、MinIO またはローカルディスク（設定でどちらか一つ）へのアップロード、ダウンロード、ファイルアドレスのコピー、ファイル削除、画像の拡大表示をサポート。 |
 | 外部データサンプル | 外部データソースの CRUD サンプルページ。データは設定した外部データベース（`data.external_sources.demo`）から取得。顧客のデータベースを接続するときは、これと[接続規約](./docs/crud_module_guide/external.md)に従って書く。 |
 | アカウントログイン | ユーザー名 / メールアドレス / 電話番号をアカウント識別子としてログイン可能。画像認証コードとログイン失敗レート制限付き。 |
-| 認証コード送信 | 個人センターのメール・電話番号変更は `app/admin/service/configs/mail.yaml` の SMTP と SMS を読む。host または provider が空ならその経路は未設定。送信はタスクキューに入らない。 |
+| 認証コード送信 | 個人センターのメール・電話番号変更は `app/admin/service/configs/mail.yaml` の SMTP と SMS を読む。host または provider が空ならその経路は未設定。|
 | オンラインユーザー | 現在オンラインのセッション一覧（ユーザー、クライアント種別、ログイン IP、User-Agent、デバイス ID、ログイン時刻）。キーワード絞り込み・ページング（ログイン時刻の降順）・セッション単位の強制ログアウトに対応、30 秒自動更新。 |
 | パラメータ管理 | プラットフォーム全体のシステムパラメータをキー / 値で管理（業務ディクショナリとは区別）。内蔵パラメータは起動時にシードされ、削除は不可。読み取りはサービス側のキャッシュ付き accessor を経由し、マルチインスタンス構成では変更が Redis パブリッシュ / サブスクライブでブロードキャストされて各インスタンスのキャッシュが失効される。 |
 | 言語管理 | システムがサポートする多言語を管理し、言語名、言語コード、ネイティブ名、有効化およびデフォルト状態を設定。 |
@@ -277,7 +271,7 @@ linjian-admin/
 │   │   └── ...                     # その他ユーティリティパッケージ
 │   ├── scripts/                    # デプロイスクリプト（env/docker/deploy）
 │   └── sql/                        # デモデータ SQL（デフォルトデータはサービス起動時に自動シード）
-├── frontend/admin/                 # フロントエンド（React のみ）
+├── frontend/admin/                 # フロントエンド（React）
 │   └── react/                      # React 19 + Ant Design V6
 └── docs/                           # プロジェクトドキュメント
 ```

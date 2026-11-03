@@ -45,6 +45,7 @@ const FileManagement = () => {
     onSuccess: () => {
       message.success(t('deleteSuccess'));
       queryClient.invalidateQueries({ queryKey: ['listFiles'] });
+      actionRef.current?.reload();
     },
     onError: (error: Error) => {
       message.error(error.message || t('deleteFailed'));
@@ -56,6 +57,7 @@ const FileManagement = () => {
     onSuccess: () => {
       message.success(t('uploadSuccess'));
       queryClient.invalidateQueries({ queryKey: ['listFiles'] });
+      actionRef.current?.reload();
     },
     onError: (error: Error) => {
       message.error(error.message || t('uploadFailed'));

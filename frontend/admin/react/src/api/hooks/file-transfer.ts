@@ -38,55 +38,23 @@ async function downloadFile(
     return;
   }
 
-  const resp = await apiClient.fileTransferService.DownloadFile({
-    fileId,
-    preferPresignedUrl,
-  });
+  // 后端直接返回文件字节（Content-Type 为文件类型），不能走默认的 JSON 解析，否则二进制被当成文本损坏。
+  // 出错时响应体是 JSON：在 transformResponse 里同步解析回对象，全局错误提示才能按 reason 翻译。
+  const data = await RequestClient.getInstance().get<ArrayBuffer>('admin/v1/file/download', {
+    params: { fileId, preferPresignedUrl },
+    responseType: 'arraybuffer',
+    transformResponse: [
+      (body: unknown, headers: Record<string, unknown> | undefined) => {
+        const ct = String(headers?.['content-type'] ?? '');
+        if (body instanceof ArrayBuffer && ct.includes('application/json')) {
+          return JSON.parse(new TextDecoder().decode(body));
+        }
+        return body;
+      },
+    ],
+  } as never);
 
-  const contentType = (resp as any).contentType || 'application/octet-stream';
-  const payload: ArrayBuffer | Blob | string | Uint8Array | undefined =
-    (resp as any).file ?? (resp as any).data ?? (resp as any).payload ?? resp;
-
-  function normalizeBase64(s: string): string {
-    let str = s.replaceAll(/\s+/g, '');
-    str = str.replaceAll('-', '+').replaceAll('_', '/');
-    while (str.length % 4 !== 0) str += '=';
-    return str;
-  }
-
-  function toBlob(data: any, type = contentType): Blob {
-    if (!data) return new Blob([], { type });
-    if (data instanceof Blob) return data;
-    if (data instanceof ArrayBuffer) return new Blob([data], { type });
-    if (ArrayBuffer.isView(data)) return new Blob([data as BufferSource], { type });
-
-    if (typeof data === 'string') {
-      // 支持 data URI 或纯 base64（处理 URL-safe base64）
-      const maybeBase64 = data.includes('base64,') ? data.split('base64,')[1] : data;
-      const base64 = normalizeBase64(maybeBase64 ?? '');
-
-      let binary: string;
-      try {
-        binary = atob(base64);
-      } catch (error) {
-        // base64 非法时兜底返回空 Blob（下载产物损坏对用户不可见，必须留痕）
-        console.error('toBlob: base64 解码失败，返回空 Blob:', error);
-        return new Blob([], { type });
-      }
-
-      const len = binary.length;
-      const arr = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        arr[i] = (binary.codePointAt(i) ?? 0) & 0xff;
-      }
-      return new Blob([arr], { type });
-    }
-
-    // fallback
-    return new Blob([data], { type });
-  }
-
-  const blob = toBlob(payload, contentType);
+  const blob = new Blob([data]);
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = objectUrl;

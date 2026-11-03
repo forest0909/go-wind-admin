@@ -25,7 +25,9 @@
 - **安全**：登录日志和操作日志、口令策略、图形验证码、登录限流、口令加密。详见[安全与等保合规](#安全与等保合规)
 - **微服务 + 单体自由切换**：基于 go-kratos 微服务框架，但支持单体架构模式开发与部署，灵活适配团队规模
 - **全栈代码生成**：Protobuf → Go API / TypeScript 客户端，Ent Schema → ORM。命令在 `backend/` 下：`make api`、`make ent`、`make ts`。
-- **生产就绪**：JWT 鉴权、SSE 消息推送、异步任务调度、Swagger 文档、Docker 一键部署
+- **生产就绪**：JWT 鉴权、SSE 消息推送、异步任务调度、Swagger 文档、健康检查与 Prometheus 指标、`docker compose` 一键部署
+- **接客户已有数据库**：配置即可接入 PostgreSQL / MySQL / SQL Server 外部数据源，可读可写，不走 Ent
+- **文件存储二选一**：MinIO 或本地磁盘，每个部署按配置选择
 ### 本仓库的定位
 
 **单租户管理端：Go 后端 + React 前端。** 没有第二套前端，也没有 AI 模块。
@@ -43,15 +45,23 @@
 
 ---
 
-## 代码仓库
+## 来源与许可
 
-这是裁剪后的工作副本，不随下面两个上游地址自动更新：
+本项目 fork 自 [tx7do/go-wind-admin](https://github.com/tx7do/go-wind-admin)（作者 Bobo，MIT 许可证），在原项目基础上做了大量裁剪和改造，不随上游自动同步。原项目的版权声明保留在 [LICENSE](./LICENSE)；收进 `backend/third_party/` 的依赖大多也出自原作者，许可证见 [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES)。
 
-| 平台 | 地址 |
-|------|------|
-| 仓库 | 当前工作副本 |
-| 上游 Gitee | <https://gitee.com/tx7do/go-wind-admin> |
-| 上游 AtomGit | <https://atomgit.com/tx7do/go-wind-admin> |
+**删掉的部分**：Vue 前端（vben、element），只保留 React；AI、SSO、MFA、通知、监控、脚本、程序内备份；未接线的 GORM 平行后端；多租户、套餐、配额业务层。原来通过 go.mod 远程拉取的 `github.com/tx7do/*` 依赖，源码已收进 `backend/third_party/`，可以直接修改。
+
+**新增和改造的部分**：
+
+- 数据权限范围，作用于用户、组织和日志
+- 健康检查 `/healthz`、`/readyz`，可选的 Prometheus `/metrics`，访问日志带 trace_id
+- 按版本号执行的数据库升级步骤，老库启动时自动清理遗留的租户表
+- `docker compose` 一条命令拉起单个客户的完整环境，CI 里整套冒烟
+- 外部数据源：接入客户已有的 PostgreSQL / MySQL / SQL Server，可读可写，附 Demo 页面和[接入规范](./docs/crud_module_guide/external.md)
+- 文件存储可选 MinIO 或本地磁盘；修复头像无法显示
+- 多轮独立代码审查后的安全与正确性修复
+
+上游仓库：[GitHub](https://github.com/tx7do/go-wind-admin) · [Gitee](https://gitee.com/tx7do/go-wind-admin) · [AtomGit](https://atomgit.com/tx7do/go-wind-admin)
 
 ---
 
@@ -222,7 +232,8 @@ pnpm dev                    # 端口 15888
 | 接口管理 | 管理接口，支持接口同步功能，主要用于新增权限点时选择接口，支持树形列表展示、操作日志请求参数和响应结果配置 |
 | 字典管理 | 管理数据字典大类及其小类，支持按字典大类联动字典小类、服务端多列排序、数据导入和导出 |
 | 任务调度 | 管理和查看任务及其任务运行日志，支持任务新增、修改、删除、启动、暂停、立即执行 |
-| 文件管理 | 管理文件上传，支持文件查询、上传到 OSS 或本地、下载、复制文件地址、删除文件、图片支持查看大图功能 |
+| 文件管理 | 管理文件上传，支持文件查询、上传到 MinIO 或本地磁盘（按配置二选一）、下载、复制文件地址、删除文件、图片支持查看大图功能 |
+| 外部数据示例 | 外部数据源的增删改查范例页，数据来自配置的外部库（`data.external_sources.demo`）。新接客户库时照它和[接入规范](./docs/crud_module_guide/external.md)写 |
 | 账号登录 | 支持用户名 / 邮箱 / 手机号多标识登录，并带图形验证码与登录限流 |
 | 验证码发信 | 个人中心换绑邮箱、换绑手机读 `app/admin/service/configs/mail.yaml` 的 SMTP 和短信账号。host 或 provider 留空表示这一路未配置；发送不再进任务队列 |
 | 在线用户 | 查看当前在线会话（用户、客户端类型、登录 IP、User-Agent、设备 ID、登录时间），支持关键词过滤、分页（登录时间倒序）与单会话强制下线，30 秒自动刷新 |
@@ -343,11 +354,9 @@ go-wind-admin/
 
 ## 联系我们
 
-- 微信个人号：`yang_lin_bo`（备注：`go-wind-admin`）
-- 掘金专栏：[go-wind-admin](https://juejin.cn/column/7541283508041826367)
+- 本仓库维护者：[forest0909](https://github.com/forest0909)
+- 原项目作者的联系方式见[上游仓库](https://github.com/tx7do/go-wind-admin)
 
 ## 致谢
 
-[![JetBrains](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)](https://jb.gg/OpenSource)
-
-感谢 JetBrains 提供免费的 GoLand & WebStorm 开源授权。
+感谢 [Bobo（tx7do）](https://github.com/tx7do) 开源的 go-wind-admin 及配套的 kratos-bootstrap、go-crud、go-utils 等库，本项目在此基础上完成。

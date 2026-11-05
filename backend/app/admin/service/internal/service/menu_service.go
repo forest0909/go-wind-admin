@@ -159,11 +159,37 @@ func (s *MenuService) SyncMenus(ctx context.Context, req *permissionV1.SyncMenus
 }
 
 func (s *MenuService) createDefaultMenus(ctx context.Context) error {
-	for _, m := range constants.DefaultMenus {
+	for _, m := range parentFirstMenus(constants.DefaultMenus) {
 		if err := s.menuRepo.Create(ctx, &permissionV1.CreateMenuRequest{Data: m}); err != nil {
 			s.log.Errorf(ctx, "create default menu err: %v", err)
 			return err
 		}
 	}
 	return nil
+}
+
+// parentFirstMenus 把菜单排成「父菜单先于子菜单」的插入顺序，同层保持原有先后。
+// sys_menus.parent_id 是自引用外键，子菜单先插会违约；DefaultMenus 的书写顺序按页面分组，
+// 不保证父在前（如 ProfilePage 挂在后面才定义的 /opm 下），所以播种前必须重排。
+// 父 ID 不在列表里的菜单原样放到最后，交给数据库报错，不在这里静默丢弃。
+func parentFirstMenus(menus []*permissionV1.Menu) []*permissionV1.Menu {
+	out := make([]*permissionV1.Menu, 0, len(menus))
+	placed := make(map[uint32]bool, len(menus))
+	pending := menus
+	for len(pending) > 0 {
+		next := pending[:0:0]
+		for _, m := range pending {
+			if m.GetParentId() == 0 || placed[m.GetParentId()] {
+				out = append(out, m)
+				placed[m.GetId()] = true
+			} else {
+				next = append(next, m)
+			}
+		}
+		if len(next) == len(pending) {
+			return append(out, next...)
+		}
+		pending = next
+	}
+	return out
 }

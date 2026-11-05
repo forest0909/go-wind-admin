@@ -18,6 +18,7 @@ import (
 	"go-wind-admin/app/admin/service/internal/data/ent"
 	entMenu "go-wind-admin/app/admin/service/internal/data/ent/menu"
 	"go-wind-admin/app/admin/service/internal/data/enttest"
+	"go-wind-admin/pkg/constants"
 	"go-wind-admin/pkg/middleware/auth"
 )
 
@@ -286,4 +287,19 @@ func TestMenuServiceSqlite_SyncMenus_MergeInsertsTree(t *testing.T) {
 	require.True(t, rootFound, "应找到同步根菜单")
 	require.True(t, childFound, "应找到同步子菜单")
 	require.Equal(t, rootID, childParentID, "同步子菜单的外键应指向同步根菜单")
+}
+
+// TestMenuServiceSqlite_CreateDefaultMenus_FreshDB 在开了外键的空库上跑完整的默认菜单播种：
+// DefaultMenus 里有子菜单写在父菜单前面（ProfilePage→/opm、InboxPage→40），
+// 不按父先子后重排就会触发 sys_menus 自引用外键违约，新库菜单只播进去前几条。
+func TestMenuServiceSqlite_CreateDefaultMenus_FreshDB(t *testing.T) {
+	entClient := enttest.NewEntClientForTest(t)
+	svc := newMenuServiceForTest(t, entClient)
+	ctx := enttest.NewSystemContext(context.Background())
+
+	require.NoError(t, svc.createDefaultMenus(ctx))
+
+	n, err := entClient.Client().Menu.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, len(constants.DefaultMenus), n, "默认菜单应全部播种")
 }
